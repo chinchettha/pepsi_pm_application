@@ -1,0 +1,67 @@
+-- ตรวจ schema app หลัง migration 001–010
+-- รันใน DBeaver หรือ: psql "$DATABASE_URL" -f database/scripts/verify_app_schema.sql
+
+\echo '=== 1) ตารางใน schema app ==='
+SELECT table_name,
+       CASE WHEN table_type = 'VIEW' THEN 'view' ELSE 'table' END AS kind
+FROM information_schema.tables
+WHERE table_schema = 'app'
+ORDER BY kind, table_name;
+
+\echo ''
+\echo '=== 2) ตารางที่ต้องมี (migration 001–010) ==='
+WITH expected(name) AS (
+  VALUES
+    ('tbworkcenter'),
+    ('tbworkcenter_userlog'),
+    ('tbactivitytype'),
+    ('tblineschdul'),
+    ('tbwkstatus'),
+    ('tbiw37n'),
+    ('tbmoveplan'),
+    ('tbwkzb'),
+    ('tbfunctional'),
+    ('tbiw37n_import_batch'),
+    ('tbplangingwork'),
+    ('tbmenu'),
+    ('tbl_member'),
+    ('tbl_system_userlog'),
+    ('tbreason'),
+    ('tbmanhours')
+),
+views_expected(name) AS (
+  VALUES ('view_order'), ('view_planwork')
+)
+SELECT e.name AS object_name,
+       'table' AS expected_kind,
+       EXISTS (
+         SELECT 1 FROM information_schema.tables t
+         WHERE t.table_schema = 'app' AND t.table_name = e.name AND t.table_type = 'BASE TABLE'
+       ) AS ok
+FROM expected e
+UNION ALL
+SELECT v.name, 'view',
+       EXISTS (
+         SELECT 1 FROM information_schema.views t
+         WHERE t.table_schema = 'app' AND t.table_name = v.name
+       )
+FROM views_expected v
+ORDER BY expected_kind, object_name;
+
+\echo ''
+\echo '=== 3) จำนวนแถวสำคัญ (หลัง seed) ==='
+SELECT 'tbworkcenter' AS tbl, COUNT(*)::text AS n FROM app.tbworkcenter
+UNION ALL SELECT 'tbmenu', COUNT(*)::text FROM app.tbmenu
+UNION ALL SELECT 'tbiw37n', COUNT(*)::text FROM app.tbiw37n
+UNION ALL SELECT 'tbwkstatus', COUNT(*)::text FROM app.tbwkstatus
+UNION ALL SELECT 'tblineschdul', COUNT(*)::text FROM app.tblineschdul
+UNION ALL SELECT 'tbactivitytype', COUNT(*)::text FROM app.tbactivitytype
+UNION ALL SELECT 'tbwkzb', COUNT(*)::text FROM app.tbwkzb
+UNION ALL SELECT 'tbfunctional', COUNT(*)::text FROM app.tbfunctional
+UNION ALL SELECT 'tbl_member', COUNT(*)::text FROM app.tbl_member
+UNION ALL SELECT 'tbmanhours', COUNT(*)::text FROM app.tbmanhours
+ORDER BY tbl;
+
+\echo ''
+\echo '=== 4) ตัวอย่าง login (work center) ==='
+SELECT idwkctr, wkctr, userst, plnt FROM app.tbworkcenter ORDER BY idwkctr LIMIT 5;

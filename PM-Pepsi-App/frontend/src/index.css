@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+
+/*
+  PM / CM — Preventive maintenance (Pepsi factory)
+  Stack: skills.md — React Vite, Tailwind, Radix-style UI, TanStack Query, offline-ready (no CDN).
+  สีแบรนด์ลูกค้า (Pepsi): แดง / ขาว / น้ำเงิน — เฉดด้านล่างเป็นค่าประมาณสำหรับ dev; ใช้ asset จากลูกค้าเป็นต้นทางสุดท้าย
+*/
+
+:root {
+  --brand-pepsi-red: #e31837;
+  --brand-pepsi-blue: #004c97;
+  --brand-pepsi-white: #ffffff;
+}
+
+html {
+  @apply antialiased;
+}
+
+body {
+  @apply m-0 min-h-svh bg-zinc-50 text-zinc-900;
+}
+
+#root {
+  @apply min-h-svh;
+}
+
+/* FullCalendar — align with app shell (Pepsi PM) */
+.pm-fullcalendar .fc {
+  --fc-border-color: theme(colors.zinc.200);
+  --fc-button-bg-color: theme(colors.zinc.900);
+  --fc-button-border-color: theme(colors.zinc.900);
+  --fc-button-hover-bg-color: theme(colors.zinc.800);
+  --fc-button-hover-border-color: theme(colors.zinc.800);
+  --fc-today-bg-color: color-mix(in srgb, var(--brand-pepsi-blue) 12%, white);
+  font-size: 0.875rem;
+}
+
+.pm-fullcalendar .fc .fc-toolbar-title {
+  @apply text-base font-semibold capitalize text-zinc-900;
+}
+
+.pm-fullcalendar .fc .fc-button {
+  @apply rounded-md text-sm font-medium shadow-sm;
+}
+
+.pm-fullcalendar .fc .fc-daygrid-event {
+  @apply cursor-pointer rounded px-0.5 text-[11px] font-medium;
+}
