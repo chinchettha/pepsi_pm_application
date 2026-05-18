@@ -39,7 +39,8 @@ WITH expected(name) AS (
     ('tbposition'),
     ('tbwkctrgroup'),
     ('tbtasklist'),
-    ('tbcofirm')
+    ('tbcofirm'),
+    ('tbiw37n_import_row')
 ),
 views_expected(name) AS (
   VALUES ('view_order'), ('view_planwork'), ('view_confirmation')

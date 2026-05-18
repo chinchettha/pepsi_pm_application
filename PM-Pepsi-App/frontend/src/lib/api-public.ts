@@ -10,6 +10,9 @@ import {
   calendarSearchBodySchema,
   dashboardSummarySchema,
   iw37nBatchesResponseSchema,
+  iw37nBatchRowsResponseSchema,
+  iw37nItemResponseSchema,
+  iw37nItemsResponseSchema,
   iw37nImportResponseSchema,
   kpiResponseSchema,
   manhoursResponseSchema,
@@ -42,6 +45,8 @@ import {
   workOrdersResponseSchema,
 } from '@/api/schemas'
 import { fetchApi } from '@/lib/fetch-api'
+import { getAuthToken } from '@/features/auth/login-api'
+import { getApiBaseUrl } from '@/lib/api-client'
 import { z } from 'zod'
 
 export type WorkOrderListItem = z.infer<typeof workOrderListItemSchema>
@@ -221,7 +226,63 @@ export async function postIw37nImport(file: File) {
     method: 'POST',
     body: form,
   })
-  return iw37nImportResponseSchema.parse(json).batch
+  return iw37nImportResponseSchema.parse(json)
+}
+
+export async function fetchIw37nBatchRows(batchId: string, opts?: { limit?: number; offset?: number }) {
+  const sp = new URLSearchParams()
+  if (typeof opts?.limit === 'number') sp.set('limit', String(opts.limit))
+  if (typeof opts?.offset === 'number') sp.set('offset', String(opts.offset))
+  const qs = sp.toString()
+  const path = qs
+    ? `/api/v1/iw37n/batches/${encodeURIComponent(batchId)}/rows?${qs}`
+    : `/api/v1/iw37n/batches/${encodeURIComponent(batchId)}/rows`
+  const json = await fetchApi<unknown>(path)
+  return iw37nBatchRowsResponseSchema.parse(json)
+}
+
+export async function fetchIw37nBatchCsv(batchId: string): Promise<Blob> {
+  const base = getApiBaseUrl()
+  const p = `/api/v1/iw37n/batches/${encodeURIComponent(batchId)}/export.csv`
+  const url = base ? `${base}${p}` : p
+  const token = getAuthToken()
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      Accept: 'text/csv',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+  return res.blob()
+}
+
+export async function fetchIw37nItems(params?: { q?: string; limit?: number; offset?: number }) {
+  const sp = new URLSearchParams()
+  if (params?.q) sp.set('q', params.q)
+  if (typeof params?.limit === 'number') sp.set('limit', String(params.limit))
+  if (typeof params?.offset === 'number') sp.set('offset', String(params.offset))
+  const qs = sp.toString()
+  const path = qs ? `/api/v1/iw37n/items?${qs}` : '/api/v1/iw37n/items'
+  const json = await fetchApi<unknown>(path)
+  return iw37nItemsResponseSchema.parse(json).items
+}
+
+export async function fetchIw37nItem(id: number) {
+  const json = await fetchApi<unknown>(`/api/v1/iw37n/items/${encodeURIComponent(String(id))}`)
+  return iw37nItemResponseSchema.parse(json).item
+}
+
+export async function putIw37nItem(id: number, body: any) {
+  const json = await fetchApi<unknown>(`/api/v1/iw37n/items/${encodeURIComponent(String(id))}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return iw37nItemResponseSchema.parse(json).item
 }
 
 export async function fetchMasterData(entity: string) {

@@ -66,7 +66,8 @@ $files = @(
   '023_tblineschdul_unique.sql',
   '024_tbzone_extend.sql',
   '025_tbmenu_userlog.sql',
-  '026_confirmation_tables.sql'
+  '026_confirmation_tables.sql',
+  '030_tbiw37n_import_row.sql'
 )
 
 Write-Host "Target: $DatabaseUrl"
