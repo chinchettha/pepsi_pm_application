@@ -28,7 +28,7 @@
 
 ## UI / UX เทียบ PHP
 
-- [x] **FullCalendar** แทนปฏิทินเดือนแบบง่าย (ลำดับ 3, 4, 5) — `MonthFullCalendar` ใน `/calendar`, `/line-calendar`, `/backlog` *(แกน UI — ยังไม่ DnD/MovePlant, ไม่นับ stack เต็ม)*
+- [x] **FullCalendar** (ลำดับ 3, 4, 5) — `MonthFullCalendar` ใน `/calendar`, `/line-calendar`, `/backlog` (รองรับ click event/date และ drag & drop ผ่าน callback ของแต่ละหน้า)
 - [x] Date picker มาตรฐาน Shadcn แทน jQuery UI (`DatePicker` + `react-day-picker` — ใช้ใน backlog manhour ช่วงวันที่) *(บางจุด — ยังไม่แทน `datepicker.php` ทุกหน้า)*
 
 ## `sap/modalPages/` (§5 ใน checklist หลัก)

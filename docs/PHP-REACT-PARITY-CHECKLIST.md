@@ -48,9 +48,9 @@
 
 | กลุ่มงานหลัก (PHP) | Route / หน้า React (แนวทาง) |
 |---------------------|------------------------------|
-| ปฏิทินงาน / **`calendar.php`** (Work scheduling + `M_filter_iw37`), `W_calendar*` | **`/calendar`** — รายเดือน + **`GET /api/v1/calendar/events`** (PG `view_order`); ยังไม่มี FullCalendar + ฟิลเตอร์ + modal |
-| ปฏิทินตาม WC / **`calendar_wkctr.php`** (`view_confrim`, ลิงก์จาก `user.php`) | **ยังไม่ทำ** — แนะ `/calendar?wkctr=` หรือ `/calendar/wc/:code` เมื่อต่อ API |
-| ปฏิทินเส้น / `line_calendar.php` (**ค่าเริ่มต้น** `index.php` เมื่อไม่ส่ง `module`) | **`/line-calendar`** — รายเดือน + **`GET /api/v1/line-calendar/events`** (PG `app.tblineschdul`); ยังไม่มี FullCalendar/modal |
+| ปฏิทินงาน / **`calendar.php`** (Work scheduling + `M_filter_iw37`), `W_calendar*` | **`/calendar`** — FullCalendar + filter form (POST) + modal รายละเอียด + ลากย้ายแผน → **`GET /api/v1/calendar/events`**, **`GET /api/v1/calendar/filter-options`**, **`POST /api/v1/calendar/events`** (PG `view_order`) |
+| ปฏิทินตาม WC / **`calendar_wkctr.php`** (`view_confrim`, ลิงก์จาก `user.php`) | **`/calendar?wkctr=`** หรือ **`/calendar/wc/:code`** — prefill ตัวกรอง `wkctr` แล้วใช้ `POST /api/v1/calendar/events` (กรอง `wkctr` จะอ่านจาก `app.view_confrim`) |
+| ปฏิทินเส้น / `line_calendar.php` (**ค่าเริ่มต้น** `index.php` เมื่อไม่ส่ง `module`) | **`/line-calendar`** — FullCalendar รายเดือน + modal create/edit + drag & drop → **`GET /api/v1/line-calendar/events`** (PG `app.tblineschdul`) + `POST/PUT /api/v1/master-data/lineschdul` |
 | Backlog / `backlog.php` (view_order CRTD+REL + FullCalendar เดิม) | **`/backlog`** — ฟิลเตอร์ + **`GET /backlog/filter-options`**, **`POST /backlog/events`** (PG `view_order`); รายละเอียด WO ยัง MSW |
 | รับรอง / `M_confirmation` (admin) หรือ flow ช่างจาก `W_planwork_view` | **`/confirmation`** (placeholder) |
 | ดู worktime รวม / `W_worktime_view.php` | **`/worktime`** (placeholder) |
@@ -201,13 +201,13 @@
 |--------|----------|-------------------------|
 | ข้าม | `aa.php` | เนื้อหาไฟล์มีแค่ข้อความ `aa` ไม่มี PHP/HTML — ไม่พบ `module=aa` ใน `sap/` — ไม่ต้องพอร์ต React |
 | ข้าม | `autocomplete.php` | **หน้า `pages/`** — ตัวอย่าง autocomplete (โหลด `wkorder` ทั้งหมดจาก `tbiw37n` เป็น array ใน JS) ฟอร์มส่งไป `/action_page.php` — ไม่พบการลิงก์ `module=autocomplete` — ไม่ต้องมี route แยก; ฟังก์ชันจริงใช้ `modalPages/autocomplete.php` |
-| กำลังทำ | `backlog.php` | **Route:** `/backlog` — **BE:** filter-options + events + **`GET /work-orders/:id`** (PG) — **React:** [`BacklogPage`](../PM-Pepsi-App/frontend/src/features/backlog/BacklogPage.tsx) — **ยังไม่ครบ:** `MovePlant`, FullCalendar DnD |
+| เสร็จ | `backlog.php` | **Route:** `/backlog` — **BE:** `GET /api/v1/backlog/filter-options` + `POST /api/v1/backlog/events` + `POST /api/v1/scheduling/move-plan` + **`GET /api/v1/work-orders/:id`** (PG) — **React:** [`BacklogPage`](../PM-Pepsi-App/frontend/src/features/backlog/BacklogPage.tsx) + FullCalendar month/week/day + tooltip + select ช่วงวัน + drag&drop เปิด `MovePlanDialog` |
 | ข้าม | `blankpage_bk17052563.php` | **สำรอง** — ไฟล์เป็น fragment เทมเพลต SB Admin “Blank Page” (ไม่มี `<?php` ไม่มี logic) — **ไม่พบ** `module=blankpage_bk17052563` ในโค้ดที่ใช้งาน (มีแค่ `module=blankpage` ใน `left_menu_bk09052563.php` ซึ่งเป็นเมนูสำรอง) — ไม่ต้องพอร์ต React |
 | ข้าม | `calc_birthday.php` | **ไม่ใช่หน้า module** — ส่วน include แสดง “ปัจจุบันอายุ” จาก `$_SESSION['birthday']` + `timespan()` ใน [`include/function_calc_birthday.php`](../sap/include/function_calc_birthday.php); ใน `navbar.php` **ถูกคอมเมนต์** (`include('calc_birthday.php')`) — ไม่ต้องมี route แยก; พอร์ตเมื่อทำ **โปรไฟล์ผู้ใช้ / header** ให้คำนวณอายุแบบเดียวกับ `timespan` (เทียบ `index2.php` + `function_calc_birthday.php`) |
 | ข้าม | `calc_worktime.php` | **ไม่ใช่หน้า module** — fragment include แสดง “อายุการทำงาน” จาก `$_SESSION['startwork']` + `timespan($startwork, $today)` ใน [`include/function_calc_birthday.php`](../sap/include/function_calc_birthday.php) (ฟังก์ชัน `timespan` ใช้ร่วมกับ `calc_birthday.php`); **ไม่พบ**การอ้างชื่อไฟล์ใน repo อื่น — ไม่ต้องมี route แยก; พอร์ตคู่กับ **โปรไฟล์ผู้ใช้ / header** เมื่อมีวันที่เริ่มงานจาก API |
-| กำลังทำ | `calendar.php` | **`index.php?module=calendar`** — FullCalendar + `M_filter_iw37.php` + `view_order` + สี `tbwkstatus` / ย้ายแผน — **React/BE:** [`004_tbiw37n_calendar.sql`](../database/migrations/004_tbiw37n_calendar.sql) + `GET /api/v1/calendar/events` + [`CalendarPage`](../PM-Pepsi-App/frontend/src/features/calendar/CalendarPage.tsx) — **ยังไม่ครบ:** ฟิลเตอร์ POST, FullCalendar, modal, drag `MovePlant` |
+| เสร็จ | `calendar.php` | **`index.php?module=calendar`** — FullCalendar + `M_filter_iw37.php` + `view_order` + สี `tbwkstatus` / ย้ายแผน — **React/BE:** [`004_tbiw37n_calendar.sql`](../database/migrations/004_tbiw37n_calendar.sql) + `GET /api/v1/calendar/events` + `GET /api/v1/calendar/filter-options` + `POST /api/v1/calendar/events` + [`CalendarPage`](../PM-Pepsi-App/frontend/src/features/calendar/CalendarPage.tsx) — **Parity:** filter form (Activity/Type/Status/Resources/Team/Product Line/Equipment/ช่วงวันที่) + modal รายละเอียด + drag เปิด MovePlanDialog |
 | ข้าม | `calendar_bk170563.php` | สำรองของ `calendar.php` (bootstrap-select แบบ local แทน CDN) — ไม่พอร์ตแยก |
-| ยังไม่ทำ | `calendar_wkctr.php` | **`index.php?module=calendar_wkctr&wkctr=`** — PDO อ่าน `view_confrim WHERE wkctr=…` + FullCalendar; ถูกเรียกจาก `user.php` (ลิงก์ WC / ปุ่มเปิดตารางงาน) — ยังไม่มี route/query ใน React |
+| เสร็จ | `calendar_wkctr.php` | **`index.php?module=calendar_wkctr&wkctr=`** — PDO อ่าน `view_confrim WHERE wkctr=…` + FullCalendar; ถูกเรียกจาก `user.php` — **React:** รองรับ `/calendar?wkctr=` และ `/calendar/wc/:code` (prefill `wkctr`) และ backend เลือกอ่าน `app.view_confrim` เมื่อมี filter `wkctr` (migration `028_view_confrim.sql`) |
 | ข้าม | `charts.php` | **เทมเพลต SB Admin** — กราฟ Chart.js ตัวอย่าง (Area/Bar/Pie) **ไม่เชื่อม DB**; พบลิงก์ใน [`left_menu_bk09052563.php`](../sap/pages/left_menu_bk09052563.php) เป็น `index2.php?module=charts` เท่านั้น — ไม่พอร์ตเป็นหน้าแยก; รายงาน/KPI จริงให้ไป **`/reports`** |
 | ข้าม | `Confirmation.php` | **ไม่ใช่เมนู production** — เมนูที่ใช้ชี้ไป **`M_confirmation.php`** (`index2.php?module=M_confirmation`); ไฟล์นี้โหลด `SELECT * FROM confirmation` แต่ปุ่ม/ลิงก์ส่วนใหญ่เป็น **`member_form.php` / `member_edit.php`** (คัดลอกจากโมดูลสมาชิก) — ถือเป็น dead/wrong template — **ไม่พอร์ต**; รวมความต้องการ “รับรองงาน” กับ **`/confirmation`** + `M_confirmation.php` / `W_confirmation.php` |
 | ข้าม | `content.php` | **เทมเพลต SB Admin “Dashboard”** — การ์ดสี + กราฟตัวอย่าง + DataTable ข้อมูลสมมติ (พนักงาน Tiger Nixon ฯลฯ) **ไม่มี logic ระบบ** — ค่าเริ่มต้น [`index2.php`](../sap/index2.php) เมื่อไม่ส่ง `module` (`$module` = `content`) — ไม่พอร์ต clone ไฟล์นี้; หน้าแรก React ใช้ **`/`** (`HomePage`) แทน |
@@ -221,55 +221,55 @@
 | เสร็จ | `left_menu.php` | **`GET /api/v1/nav/menu`** + import สคริปต์ [`import-auth-from-mysql.ps1`](../database/scripts/import-auth-from-mysql.ps1) — 2026-05-16 (แกน §3.6) |
 | ข้าม | `left_menu_bk09052563.php` | **สำรอง** — เมนูคงที่ (calendar, backlog, line_calendar, M_iw37n, …) — ใช้เป็น **อ้างอิง parity** เท่านั้น — ไม่พอร์ตแยก |
 | ข้าม | `left_menu_bk17052563.php` | **สำรอง** — เมนูคงที่ + เงื่อนไข `UserST` บางส่วน — **อ้างอิง parity** ใน checklist / sidebar — ไม่พอร์ตแยก |
-| กำลังทำ | `line_calendar.php` | **`index.php?module=line_calendar`** — PDO **`view_lineschdul`** / `tblineschdul` + สี `#408a63` / `#bfbfbf` — **React/BE:** migration [`003_tblineschdul.sql`](../database/migrations/003_tblineschdul.sql) + `GET /api/v1/line-calendar/events` + [`LineCalendarPage`](../PM-Pepsi-App/frontend/src/features/line-calendar/LineCalendarPage.tsx) — **ยังไม่ครบ:** FullCalendar, modal แก้ไข, CRUD **`M_lineschdul*`** |
+| เสร็จ | `line_calendar.php` | **`index.php?module=line_calendar`** — PDO **`view_lineschdul`** / `tblineschdul` + สี `#408a63` / `#bfbfbf` — **React/BE:** migration [`003_tblineschdul.sql`](../database/migrations/003_tblineschdul.sql) + unique index [`023_tblineschdul_unique.sql`](../database/migrations/023_tblineschdul_unique.sql) + view [`027_view_lineschdul.sql`](../database/migrations/027_view_lineschdul.sql) + `GET /api/v1/line-calendar/events` + [`LineCalendarPage`](../PM-Pepsi-App/frontend/src/features/line-calendar/LineCalendarPage.tsx) — **Parity:** FullCalendar + สี `#408a63`/`#bfbfbf` + modal คลิกวัน(สร้าง)/คลิกกิจกรรม(แก้ไข) + drag & drop (เรียก `POST/PUT /api/v1/master-data/lineschdul`) |
 | เสร็จ | `login.php` | Work center + member tabs, bcrypt, seed `009`, profile API — §3.6 — 2026-05-16 |
 | ข้าม | `login-bk.php` | **สำรอง** — ล็อกอิน **`tbl_member`** + `last_login` + `tbl_system_userlog`; meta refresh ไป **`?module=info`** — ไม่ใช่ flow หลักของ `login.php` (`tbworkcenter`) — **ไม่พอร์ต** |
 | เสร็จ | `logout.php` | `/logout` + API + userlog — §3.6 — 2026-05-16 |
-| กำลังทำ | `M_activitytype.php` | **PHP:** `tbactivitytype` + Excel/CRUD — **React/BE:** [`002_tbactivitytype.sql`](../database/migrations/002_tbactivitytype.sql) + CRUD/import API + [`ActivityTypePanel`](../PM-Pepsi-App/frontend/src/features/master-data/ActivityTypePanel.tsx) — **ยังไม่ครบ:** อัปโหลดไฟล์ `.xlsx` ตรง (ใช้ CSV paste แทน) |
-| กำลังทำ | `M_activitytype_form.php` | รวมกับ **`M_activitytype.php`** — modal เพิ่ม/แก้ใน React |
-| กำลังทำ | `M_activitytype_imports.php` | รวมกับ **`M_activitytype.php`** — `POST …/activitytype/import` (CSV rows) |
-| ยังไม่ทำ | `M_Confirm.php` | |
-| ยังไม่ทำ | `M_Confirm_form.php` | |
-| ยังไม่ทำ | `M_Confirm_imports.php` | |
-| ยังไม่ทำ | `M_confirmation.php` | |
-| ยังไม่ทำ | `M_confirmation_form.php` | |
-| ยังไม่ทำ | `M_department.php` | |
-| ยังไม่ทำ | `M_department_form.php` | |
-| ยังไม่ทำ | `M_equipment.php` | |
-| ยังไม่ทำ | `M_equipment_form.php` | |
-| ยังไม่ทำ | `M_equipment_imports.php` | |
+| เสร็จ | `M_activitytype.php` | **PHP:** `tbactivitytype` + Excel/CRUD — **React/BE:** [`002_tbactivitytype.sql`](../database/migrations/002_tbactivitytype.sql) + CRUD/import API + [`ActivityTypePanel`](../PM-Pepsi-App/frontend/src/features/master-data/ActivityTypePanel.tsx) — **Parity:** import รองรับ `.csv/.xls/.xlsx/.xlsm/.xlsb` + skip 2 แถวแรกสำหรับ Excel; ฟอร์ม modal add/edit/delete (English-first validation+errors) |
+| เสร็จ | `M_activitytype_form.php` | รวมกับ **`M_activitytype.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_activitytype_imports.php` | รวมกับ **`M_activitytype.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
+| ยังไม่ทำ | `M_Confirm.php` | import confirm (phase 2) |
+| ยังไม่ทำ | `M_Confirm_form.php` | (phase 2) |
+| ยังไม่ทำ | `M_Confirm_imports.php` | (phase 2) |
+| กำลังทำ | `M_confirmation.php` | **React:** `/confirmation` — Phase 1: ค้นหา WO + tab Confirmation (เพิ่ม/ลบช่าง + เวลา) |
+| กำลังทำ | `M_confirmation_form.php` | รวมกับ `M_confirmation.php` (Phase 1) |
+| เสร็จ | `M_department.php` | **PHP:** `tbdepartment` + CRUD — **React/BE:** migration [`011_tbdepartment.sql`](../database/migrations/011_tbdepartment.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/department` + แท็บ `department` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
+| เสร็จ | `M_department_form.php` | รวมกับ **`M_department.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_equipment.php` | **PHP:** `tbequipment` + Excel import/CRUD — **React/BE:** migration [`012_tbequipment.sql`](../database/migrations/012_tbequipment.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/equipment` + `POST /api/v1/master-data/equipment/import` + แท็บ `equipment` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete + import file, English-first validation+errors; Excel skip 2 rows) |
+| เสร็จ | `M_equipment_form.php` | รวมกับ **`M_equipment.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_equipment_imports.php` | รวมกับ **`M_equipment.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
 | ยังไม่ทำ | `M_Export_confirm.php` | |
 | ยังไม่ทำ | `M_Export_confirm_excel.php` | |
 | ยังไม่ทำ | `M_filter_iw37.php` | |
-| ยังไม่ทำ | `M_functional.php` | |
-| ยังไม่ทำ | `M_functional_form.php` | |
-| ยังไม่ทำ | `M_functional_imports.php` | |
-| ยังไม่ทำ | `M_Group.php` | |
-| ยังไม่ทำ | `M_group_form.php` | |
+| เสร็จ | `M_functional.php` | **PHP:** `tbfunctional` + Excel import/CRUD — **React/BE:** ใช้ migration [`005_tbwkzb_tbfunctional.sql`](../database/migrations/005_tbwkzb_tbfunctional.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/functional` + `POST /api/v1/master-data/functional/import` + แท็บ `functional` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete + import file, English-first validation+errors; Excel skip 2 rows) |
+| เสร็จ | `M_functional_form.php` | รวมกับ **`M_functional.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_functional_imports.php` | รวมกับ **`M_functional.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
+| เสร็จ | `M_Group.php` | **PHP:** `tbwkctrgroup` CRUD — **React/BE:** migration [`021_tbwkctrgroup.sql`](../database/migrations/021_tbwkctrgroup.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/group` + แท็บ `group` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
+| เสร็จ | `M_group_form.php` | รวมกับ **`M_Group.php`** — modal ฟอร์มใน React: create/edit/delete |
 | ยังไม่ทำ | `M_importConfrim.php` | |
 | กำลังทำ | `M_iw37n.php` | **PHP:** Excel → `tbiw37n` (upsert wkorder+opac) — **React/BE:** [`006_tbiw37n_import_batch.sql`](../database/migrations/006_tbiw37n_import_batch.sql) + `POST /api/v1/iw37n/import` (multipart) + [`Iw37nPage`](../PM-Pepsi-App/frontend/src/features/iw37n/Iw37nPage.tsx) — **ยังไม่ครบ:** ตารางผล import รายแถวแบบ PHP, CRUD modal |
 | กำลังทำ | `M_iw37n_form.php` | รวมกับ flow IW37N — ฟอร์มแก้รายการเดียว (ภายหลัง) |
 | กำลังทำ | `M_iw37n_imports.php` | รวมกับ **`M_iw37n.php`** — modal upload ใน React |
-| ยังไม่ทำ | `M_level.php` | |
-| ยังไม่ทำ | `M_level_form.php` | |
-| ยังไม่ทำ | `M_lineproduct.php` | |
-| ยังไม่ทำ | `M_lineproduct_form.php` | |
-| ยังไม่ทำ | `M_lineproduct_imports.php` | |
-| ยังไม่ทำ | `M_lineschdul.php` | |
-| ยังไม่ทำ | `M_lineschdul_form.php` | |
-| ยังไม่ทำ | `M_lineschdul_imports.php` | |
-| ยังไม่ทำ | `M_machine.php` | |
-| ยังไม่ทำ | `M_machine_form.php` | |
-| ยังไม่ทำ | `M_machine_imports.php` | |
+| เสร็จ | `M_level.php` | **PHP:** `tbwklevel` CRUD — **React/BE:** migration [`019_tbwklevel.sql`](../database/migrations/019_tbwklevel.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/level` + แท็บ `level` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
+| เสร็จ | `M_level_form.php` | รวมกับ **`M_level.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_lineproduct.php` | **PHP:** `tbproductline` + Excel import/CRUD — **React/BE:** migration [`015_tbproductline.sql`](../database/migrations/015_tbproductline.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/lineproduct` + `POST /api/v1/master-data/lineproduct/import` + แท็บ `lineproduct` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete + import file; Excel skip 2 rows) |
+| เสร็จ | `M_lineproduct_form.php` | รวมกับ **`M_lineproduct.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_lineproduct_imports.php` | รวมกับ **`M_lineproduct.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
+| เสร็จ | `M_lineschdul.php` | **PHP:** `tblineschdul` + Excel import/CRUD — **React/BE:** migration [`003_tblineschdul.sql`](../database/migrations/003_tblineschdul.sql) + unique index [`023_tblineschdul_unique.sql`](../database/migrations/023_tblineschdul_unique.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/lineschdul` + `POST /api/v1/master-data/lineschdul/import` + แท็บ `lineschdul` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete + import file; Excel skip 2 rows; รองรับ CSV ด้วย) |
+| เสร็จ | `M_lineschdul_form.php` | รวมกับ **`M_lineschdul.php`** — modal ฟอร์มใน React: create/edit/delete |
+| เสร็จ | `M_lineschdul_imports.php` | รวมกับ **`M_lineschdul.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
+| เสร็จ | `M_machine.php` | **PHP:** `tbmainteanance` + Excel import/CRUD (map Zone/Type) — **React/BE:** migrations [`016_tbzone.sql`](../database/migrations/016_tbzone.sql), [`017_tbmainteanance.sql`](../database/migrations/017_tbmainteanance.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/machine` + `POST /api/v1/master-data/machine/import` + แท็บ `machine` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete + import file; Excel skip 2 rows) |
+| เสร็จ | `M_machine_form.php` | รวมกับ **`M_machine.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_machine_imports.php` | รวมกับ **`M_machine.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
 | ยังไม่ทำ | `M_manhour.php` | |
 | ยังไม่ทำ | `M_manhour_chart.php` | |
 | ยังไม่ทำ | `M_manhour_chart_performance.php` | |
 | ยังไม่ทำ | `M_manhour_chart_show.php` | |
 | ยังไม่ทำ | `M_manhour_form.php` | |
 | ยังไม่ทำ | `M_manhour_imports.php` | |
-| ยังไม่ทำ | `M_material.php` | |
-| ยังไม่ทำ | `M_material_form.php` | |
-| ยังไม่ทำ | `M_material_imports.php` | |
+| เสร็จ | `M_material.php` | **PHP:** `tbmaterial` + Excel import/CRUD — **React/BE:** migration [`018_tbmaterial.sql`](../database/migrations/018_tbmaterial.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/material` + `POST /api/v1/master-data/material/import` + แท็บ `material` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete + import file; Excel skip 2 rows; เก็บ `date` ใน PG) |
+| เสร็จ | `M_material_form.php` | รวมกับ **`M_material.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_material_imports.php` | รวมกับ **`M_material.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
 | ยังไม่ทำ | `M_personel.php` | |
 | ยังไม่ทำ | `M_personel_confirm.php` | |
 | ยังไม่ทำ | `M_personel_confirm_form.php` | |
@@ -280,23 +280,23 @@
 | กำลังทำ | `M_planwork_view.php` | React **`/planning`** + `007_tbplangingwork_view_planwork.sql` + `GET /planning/orders`; ยังไม่มี `M_planwork_view_form` / modal จ่ายทีม |
 | ยังไม่ทำ | `M_planwork_view_form.php` | |
 | ยังไม่ทำ | `M_planwork_view_form_close.php` | |
-| ยังไม่ทำ | `M_position.php` | |
-| ยังไม่ทำ | `M_position_form.php` | |
-| ยังไม่ทำ | `M_reason.php` | |
-| ยังไม่ทำ | `M_reason_form.php` | |
-| ยังไม่ทำ | `M_tasklist.php` | |
-| ยังไม่ทำ | `M_tasklist_form.php` | |
-| ยังไม่ทำ | `M_tasklist_imports.php` | |
-| ยังไม่ทำ | `M_UserLog.php` | |
-| ยังไม่ทำ | `M_workstatus.php` | |
-| ยังไม่ทำ | `M_workstatus_form.php` | |
-| ยังไม่ทำ | `M_worktype.php` | |
-| ยังไม่ทำ | `M_worktype_form.php` | |
-| ยังไม่ทำ | `M_zb.php` | |
-| ยังไม่ทำ | `M_zb_form.php` | |
-| ยังไม่ทำ | `M_zone.php` | |
-| ยังไม่ทำ | `M_zone_form.php` | |
-| ยังไม่ทำ | `M_zone_imports.php` | |
+| เสร็จ | `M_position.php` | **PHP:** `tbposition` CRUD — **React/BE:** migration [`020_tbposition.sql`](../database/migrations/020_tbposition.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/position` + แท็บ `position` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
+| เสร็จ | `M_position_form.php` | รวมกับ **`M_position.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_reason.php` | **PHP:** `tbreason` CRUD — **React/BE:** ใช้ migration [`009_tbreason.sql`](../database/migrations/009_tbreason.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/reason` + แท็บ `reason` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
+| เสร็จ | `M_reason_form.php` | รวมกับ **`M_reason.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_tasklist.php` | **PHP:** `tbtasklist` + Excel import/CRUD — **React/BE:** migration [`022_tbtasklist.sql`](../database/migrations/022_tbtasklist.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/tasklist` + `POST /api/v1/master-data/tasklist/import` + แท็บ `tasklist` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete + import file; Excel skip 2 rows; รองรับ CSV ด้วย) |
+| เสร็จ | `M_tasklist_form.php` | รวมกับ **`M_tasklist.php`** — modal ฟอร์มใน React: create/edit/delete |
+| เสร็จ | `M_tasklist_imports.php` | รวมกับ **`M_tasklist.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
+| เสร็จ | `M_UserLog.php` | **React:** `/user-log` — **BE:** `GET /api/v1/user-log` (filter ตามผู้ใช้ที่ล็อกอิน; limit 50) |
+| เสร็จ | `M_workstatus.php` | **PHP:** `tbwkstatus` CRUD — **React/BE:** migration [`013_tbwkstatus_add_wkstreason.sql`](../database/migrations/013_tbwkstatus_add_wkstreason.sql) (เพิ่ม `wkstreason`) + `GET/POST/PUT/DELETE /api/v1/master-data/workstatus` + แท็บ `workstatus` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
+| เสร็จ | `M_workstatus_form.php` | รวมกับ **`M_workstatus.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_worktype.php` | **PHP:** `tbwkctrtype` CRUD — **React/BE:** migration [`014_tbwkctrtype.sql`](../database/migrations/014_tbwkctrtype.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/worktype` + แท็บ `worktype` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
+| เสร็จ | `M_worktype_form.php` | รวมกับ **`M_worktype.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
+| เสร็จ | `M_zb.php` | **PHP:** `tbwkzb` CRUD — **React/BE:** ใช้ migration [`005_tbwkzb_tbfunctional.sql`](../database/migrations/005_tbwkzb_tbfunctional.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/zb` + แท็บ `zb` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
+| เสร็จ | `M_zb_form.php` | รวมกับ **`M_zb.php`** — modal ฟอร์มใน React: create/edit/delete |
+| เสร็จ | `M_zone.php` | **Dependency สำหรับ Machine:** migration [`016_tbzone.sql`](../database/migrations/016_tbzone.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/zone` + แท็บ `zone` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) |
+| เสร็จ | `M_zone_form.php` | รวมกับ **`M_zone.php`** — modal ฟอร์มใน React: create/edit/delete |
+| เสร็จ | `M_zone_imports.php` | **PHP:** Excel import `tbzone` (skip 2 rows; map `productline` → `idproductline`) — **React/BE:** migration [`016_tbzone.sql`](../database/migrations/016_tbzone.sql) + extend [`024_tbzone_extend.sql`](../database/migrations/024_tbzone_extend.sql) + `POST /api/v1/master-data/zone/import` + แท็บ `zone` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (import file รองรับ CSV/Excel + skip 2 rows; เพิ่มฟิลด์ `zonedescrip` + `idproductline`) |
 | ยังไม่ทำ | `member.php` | |
 | ยังไม่ทำ | `member_change_password.php` | |
 | ยังไม่ทำ | `member_change_password_process.php` | |
@@ -380,14 +380,14 @@
 | ยังไม่ทำ | `W_calc_worktime.php` | |
 | ยังไม่ทำ | `W_calendar.php` | |
 | ยังไม่ทำ | `W_calendar_wkctr.php` | |
-| ยังไม่ทำ | `W_confirm_form.php` | |
-| ยังไม่ทำ | `W_confirm_formcom.php` | |
-| ยังไม่ทำ | `W_confirm_formcom_edit.php` | |
-| ยังไม่ทำ | `W_confirm_formimg.php` | |
-| ยังไม่ทำ | `W_confirm_formimg2.php` | |
-| ยังไม่ทำ | `W_confirm_workclose.php` | |
-| ยังไม่ทำ | `W_confirmation.php` | |
-| ยังไม่ทำ | `W_confirmation_form.php` | |
+| เสร็จ | `W_confirm_form.php` | **React:** แท็บ `Confirm` ใน `WorkOrderDetailDialog` รวม 3 แท็บ (Close Images/Close Detail/Close Work) |
+| เสร็จ | `W_confirm_formcom.php` | **React:** Close Detail (comment) — API: `GET/POST/PUT/DELETE /api/v1/confirmation/...comments...` (migration `029_confirmation_comments_images.sql`) |
+| เสร็จ | `W_confirm_formcom_edit.php` | **React:** edit comment ใน Close Detail |
+| เสร็จ | `W_confirm_formimg.php` | **React:** Close Images (upload/list/delete/view) — API: `GET/POST/DELETE /api/v1/confirmation/...images...` + `GET /api/v1/confirmation/images/:idcimg/data` |
+| เสร็จ | `W_confirm_formimg2.php` | **React:** Close Images (รองรับ JPEG) |
+| เสร็จ | `W_confirm_workclose.php` | **React:** Close Work Confirm — API: `GET /api/v1/confirmation/by-wkorder/:wkorder` + `POST /api/v1/confirmation/:idiw37/close` + `DELETE /api/v1/confirmation/close/:idclose` |
+| เสร็จ | `W_confirmation.php` | **React:** รายละเอียด WO → Confirm tab (รวม flow confirmation) |
+| เสร็จ | `W_confirmation_form.php` | **React:** ฟอร์มปิดงานใน Confirm tab |
 | ยังไม่ทำ | `W_manhours_hr.php` | |
 | ยังไม่ทำ | `W_planwork_view.php` | |
 | ยังไม่ทำ | `W_planwork_view_close.php` | |
@@ -398,8 +398,8 @@
 | ยังไม่ทำ | `W_summary_weekly_chart2_full.php` | |
 | ยังไม่ทำ | `W_worktime_count.php` | |
 | ยังไม่ทำ | `W_worktime_view.php` | |
-| ยังไม่ทำ | `Work_Order_Status.php` | |
-| ยังไม่ทำ | `workorder.php` | |
+| เสร็จ | `Work_Order_Status.php` | **React:** `/work-orders` แสดงตาราง status จาก `app.tbwkstatus` (syst/wkstreason/wkstcolor) |
+| เสร็จ | `workorder.php` | **React:** `/work-orders` ฟิลเตอร์แบบ `M_filter_iw37` + ตารางรายการจาก `app.view_order` + เลือก Team A/B/P ต่อแถว (API: `GET /api/v1/work-orders/filter-options`, `POST /api/v1/work-orders/search`, `PUT /api/v1/work-orders/:id/team`) |
 | ยังไม่ทำ | `worktime_count.php` | |
 | ยังไม่ทำ | `worktime_manhours.php` | |
 | ยังไม่ทำ | `worktime_view.php` | |
@@ -420,10 +420,10 @@
 | ยังไม่ทำ | `confirmTab2.php` | |
 | ยังไม่ทำ | `confirmTab3.php` | |
 | ยังไม่ทำ | `confirmTab4.php` | |
-| ยังไม่ทำ | `FilterDetail.php` | |
+| เสร็จ | `FilterDetail.php` | **React:** `/backlog` แสดง “สรุปตัวกรอง” (WorkOrder + breakdown ตาม `tbwkzb` + completion + Team A/B/P + sum(work)) — **API:** `POST /api/v1/backlog/filter-detail` |
 | ยังไม่ทำ | `FilterDetail_AddTeam.php` | |
-| ยังไม่ทำ | `ModalMHshow.php` | |
-| ยังไม่ทำ | `ModalOrderDetail.php` | |
+| เสร็จ | `ModalMHshow.php` | **React:** `/backlog` manhour dialog (เลือกช่วงวันจาก FullCalendar / DatePicker) → **API:** `POST /api/v1/backlog/manhour-summary` (รวม plan/action, breakdown ตาม `tbwkzb`, completion, ตารางรายการจาก `view_order`) |
+| เสร็จ | `ModalOrderDetail.php` | **React:** `WorkOrderDetailDialog` (แท็บ Work Order / Task List / Machine / Planning / Material / Confirm) — **API:** `GET /api/v1/work-orders/:id/modal-detail` + **Planning:** `PUT/DELETE /api/v1/work-orders/:id/planning` |
 | ยังไม่ทำ | `ModalOrderDetailXXX.php` | |
 | ยังไม่ทำ | `MovePlant.php` | |
 | ยังไม่ทำ | `plan_confirmTab1.php` | |
@@ -502,3 +502,19 @@
 | 2026-05-16 | — | **Auth ลำดับที่ 1 (ต่อ)** — `008_auth_tbmenu_member.sql`; `GET /nav/menu`; bcrypt + member login; `/logout`; อัปเดต [`01-auth.md`](parity-pending/01-auth.md) |
 | 2026-05-16 | — | **Auth ลำดับที่ 1 (ปิดแกน)** — import MySQL script, seed `009`, footer, `GET /auth/profile`, §3.6 เสร็จ; parity-pending ลำดับ 9–13 + [`COMPLETION-MATRIX.md`](parity-pending/COMPLETION-MATRIX.md) |
 | 2026-05-16 | — | **Cross-cutting §DB** — `run-all-migrations.ps1`, `run-all-seeds.ps1`, `verify_app_schema.sql`, seed `010`, [`ON-SITE-DATABASE-SETUP.md`](ON-SITE-DATABASE-SETUP.md) |
+| 2026-05-18 | — | **`M_activitytype.php` (+ `_form` / `_imports`)** — ปิด parity: import รองรับ `.csv/.xls/.xlsx/.xlsm/.xlsb` + skip 2 แถวแรก (Excel), modal ฟอร์ม create/edit/delete, validation+errors ฝั่ง UI (English-first); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_department.php` (+ `_form`)** — ปิด parity: migration `011_tbdepartment.sql`, CRUD API `.../master-data/department`, แท็บ Department ต่อ DB ใน `/master-data` (modal create/edit/delete, English-first validation+errors); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_equipment.php` (+ `_form` / `_imports`)** — ปิด parity: migration `012_tbequipment.sql`, CRUD/import API `.../master-data/equipment`, แท็บ Equipment ต่อ DB ใน `/master-data` (modal create/edit/delete + import file, English-first validation+errors; Excel skip 2 rows); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_functional.php` (+ `_form` / `_imports`)** — ปิด parity: ใช้ migration `005_tbwkzb_tbfunctional.sql`, CRUD/import API `.../master-data/functional`, แท็บ Functional loc. ต่อ DB ใน `/master-data` (modal create/edit/delete + import file, English-first validation+errors; Excel skip 2 rows); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_reason.php` (+ `_form`)** — ปิด parity: ใช้ migration `009_tbreason.sql`, CRUD API `.../master-data/reason`, แท็บ Reason ต่อ DB ใน `/master-data` (modal create/edit/delete, English-first validation+errors); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_workstatus.php` (+ `_form`)** — ปิด parity: migration `013_tbwkstatus_add_wkstreason.sql` เพิ่ม `wkstreason`, CRUD API `.../master-data/workstatus`, แท็บ Work status ต่อ DB ใน `/master-data` (modal create/edit/delete, English-first validation+errors); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_worktype.php` (+ `_form`)** — ปิด parity: migration `014_tbwkctrtype.sql`, CRUD API `.../master-data/worktype`, แท็บ Work type ต่อ DB ใน `/master-data` (modal create/edit/delete, English-first validation+errors); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_lineproduct.php` (+ `_form` / `_imports`)** — ปิด parity: migration `015_tbproductline.sql`, CRUD/import API `.../master-data/lineproduct`, แท็บ Line product ต่อ DB ใน `/master-data` (modal create/edit/delete + import file; Excel skip 2 rows); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_zone.php` (+ `_form`)** — ปิด parity: migration `016_tbzone.sql`, CRUD API `.../master-data/zone`, แท็บ Zone ต่อ DB ใน `/master-data`; อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_machine.php` (+ `_form` / `_imports`)** — ปิด parity: migration `017_tbmainteanance.sql` + dependency `tbzone`/`tbwkctrtype`, CRUD/import API `.../master-data/machine`, แท็บ Machine ต่อ DB ใน `/master-data` (modal create/edit/delete + import file; Excel skip 2 rows); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **`M_material.php` (+ `_form` / `_imports`)** — ปิด parity: migration `018_tbmaterial.sql`, CRUD/import API `.../master-data/material`, แท็บ Material ต่อ DB ใน `/master-data` (modal create/edit/delete + import file; Excel skip 2 rows; เก็บ date ใน PG); อัปเดต [`parity-pending/02-master-data.md`](parity-pending/02-master-data.md) |
+| 2026-05-18 | — | **Line calendar docs** — อัปเดตแมปข้อ 2 ให้ตรงสถานะจริง (มี FullCalendar/modal/DnD แล้ว) และระบุ dependency `023_tblineschdul_unique.sql` สำหรับ upsert/import |
+| 2026-05-18 | — | **PG view_lineschdul** — เพิ่ม migration `027_view_lineschdul.sql` สร้าง `app.view_lineschdul` เพื่อ parity กับ legacy `SELECT * FROM view_lineschdul` |
+| 2026-05-18 | — | **Work calendar** — ปิด parity `calendar.php` (ฟิลเตอร์ `M_filter_iw37` บน React) ด้วย `GET /calendar/filter-options` + `POST /calendar/events`; อัปเดต [`parity-pending/04-work-calendar.md`](parity-pending/04-work-calendar.md) |
+| 2026-05-18 | — | **calendar_wkctr route** — เพิ่ม route `/calendar/wc/:code` และรองรับ query `/calendar?wkctr=` เพื่อ prefill ตัวกรอง `wkctr` (ยังไม่ต่อ `view_confrim`) |
+| 2026-05-18 | — | **PG view_confrim** — เพิ่ม migration `028_view_confrim.sql` สร้าง `app.view_confrim` และให้ calendar ใช้ view นี้เมื่อกรอง `wkctr` |

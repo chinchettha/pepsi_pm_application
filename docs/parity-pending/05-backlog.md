@@ -1,6 +1,6 @@
-﻿# ลำดับที่ 5 — Backlog
+# ลำดับที่ 5 — Backlog
 
-**สถานะรวม:** กำลังทำ  
+**สถานะรวม:** เสร็จ  
 **Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ยังไม่มี — ดู [00-stack-target.md](00-stack-target.md)
 **Checklist หลัก:** `backlog.php`  
 **Migration:** ใช้ `004` (`view_order`) — ไม่มีไฟล์แยก  
@@ -22,18 +22,18 @@
 
 ### ปฏิทิน / interaction
 
-- [ ] FullCalendar แบบ [`backlog.php`](../../sap/pages/backlog.php)
-- [ ] Drag-and-drop ย้ายงานบนปฏิทิน
-- [ ] [`MovePlant.php`](../../sap/modalPages/MovePlant.php) — flow ย้ายแผนครบ
+- [x] FullCalendar แบบ [`backlog.php`](../../sap/pages/backlog.php) (month/week/day + hover tooltip + select ช่วงวัน)
+- [x] Drag-and-drop ย้ายงานบนปฏิทิน (เปิด MovePlant dialog)
+- [x] [`MovePlant.php`](../../sap/modalPages/MovePlant.php) — flow ย้ายแผนครบ
 
 ### Manhour / modal อื่น
 
-- [ ] [`ModalMHshow.php`](../../sap/modalPages/ModalMHshow.php) — ตอนนี้ Manhour dialog ยัง **mock** ใน BacklogPage
-- [ ] [`FilterDetail.php`](../../sap/modalPages/FilterDetail.php) ถ้า PHP เรียกจาก backlog
+- [x] [`ModalMHshow.php`](../../sap/modalPages/ModalMHshow.php) — ใช้ `POST /api/v1/backlog/manhour-summary` และแสดงสรุป + breakdown + ตารางรายการ
+- [x] [`FilterDetail.php`](../../sap/modalPages/FilterDetail.php) — เพิ่ม `POST /api/v1/backlog/filter-detail` และแสดงสรุปตัวกรองบน BacklogPage
 
 ### Parity checklist
 
-- [ ] เปลี่ยนแถว `backlog.php` ใน checklist หลักจาก **กำลังทำ** → **เสร็จ** เมื่อครบ §3
+- [x] เปลี่ยนแถว `backlog.php` ใน checklist หลักจาก **กำลังทำ** → **เสร็จ**
 
 ---
 
@@ -42,3 +42,6 @@
 | วันที่ | สรุป |
 |--------|------|
 | 2026-05-16 | สร้างไฟล์ |
+| 2026-05-18 | ปิด parity FullCalendar backlog: month/week/day, tooltip, select ช่วงวัน (manhour), drag&drop เปิด MovePlant |
+| 2026-05-18 | ทำ `ModalMHshow` parity: เพิ่ม `POST /api/v1/backlog/manhour-summary` และแทนที่ mock dialog ใน BacklogPage |
+| 2026-05-18 | ทำ `FilterDetail` parity: เพิ่ม `POST /api/v1/backlog/filter-detail` และแสดงสรุปตัวกรองบน BacklogPage |

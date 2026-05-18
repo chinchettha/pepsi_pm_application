@@ -1,4 +1,4 @@
-﻿# ลำดับที่ 6 — Work orders + master filters
+# ลำดับที่ 6 — Work orders + master filters
 
 **สถานะรวม:** กำลังทำ  
 **Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ยังไม่มี — ดู [00-stack-target.md](00-stack-target.md)
@@ -22,19 +22,19 @@
 
 ### หน้า Work orders
 
-- [ ] Badge **API + DB** บน WorkOrdersPage (สอดคล้องโมดูลอื่น)
-- [ ] Deep link เปิด WO รายตัว เช่น `/work-orders/:id` (Planning ลิงก์ไปแค่รายการรวม)
-- [ ] Parity [`workorder.php`](../../sap/pages/workorder.php), `Work_Order_Status.php`
-- [ ] ชุด `W_confirm*.php` — ยืนยันปิดงาน (อาจทับกับลำดับ 9 Confirmation)
+- [x] Badge **API + DB** บน WorkOrdersPage (สอดคล้องโมดูลอื่น)
+- [x] Deep link เปิด WO รายตัว เช่น `/work-orders/:id` (เปิด `WorkOrderDetailDialog` ทันที)
+- [x] Parity [`workorder.php`](../../sap/pages/workorder.php), `Work_Order_Status.php`
+- [x] ชุด `W_confirm*.php` — ยืนยันปิดงาน + comment + image (รวมอยู่ในแท็บ Confirm ของ `WorkOrderDetailDialog`)
 
 ### Master UI สำหรับ filter tables
 
-- [ ] CRUD UI `M_functional*` (ตารางมีใน `005`)
-- [ ] CRUD UI สำหรับ work center zone / `tbwkzb` ถ้ามีหน้า PHP แยก
+- [x] CRUD UI `M_functional*` (ตารางมีใน `005`) — ทำใน `/master-data` แท็บ `functional` (CRUD + import)
+- [x] CRUD UI สำหรับ work center zone / `tbwkzb` — ทำใน `/master-data` แท็บ `zone` + `zb` (CRUD + import)
 
 ### Modal
 
-- [ ] [`ModalOrderDetail.php`](../../sap/modalPages/ModalOrderDetail.php) เต็มรูปแบบ (แท็บ machine/material/planning ฯลฯ)
+- [x] [`ModalOrderDetail.php`](../../sap/modalPages/ModalOrderDetail.php) เต็มรูปแบบ (แท็บ machine/material/planning ฯลฯ)
 
 ---
 
@@ -43,3 +43,10 @@
 | วันที่ | สรุป |
 |--------|------|
 | 2026-05-16 | สร้างไฟล์ |
+| 2026-05-18 | เพิ่ม badge `API + DB` ใน WorkOrdersPage ให้สอดคล้องโมดูลอื่น |
+| 2026-05-18 | เพิ่ม route `/work-orders/:id` และเปิด `WorkOrderDetailDialog` อัตโนมัติ |
+| 2026-05-18 | ปิด parity workorder.php + Work_Order_Status.php: เพิ่ม filter-options + search (POST) + เลือกทีมต่อแถว + แสดงตาราง work status จาก `tbwkstatus` |
+| 2026-05-18 | ปิด parity W_confirm*: เพิ่ม comment + image + close-work ในแท็บ Confirm ของ `WorkOrderDetailDialog` (ใช้ migrations 026 + 029) |
+| 2026-05-18 | ปิด CRUD UI `M_functional*` โดยใช้แท็บ `functional` ในหน้า `/master-data` |
+| 2026-05-18 | ปิด CRUD UI work center zone / `tbwkzb` โดยใช้แท็บ `zone` + `zb` ในหน้า `/master-data` |
+| 2026-05-18 | ปิด `ModalOrderDetail.php` เต็มรูปแบบ: ต่อแท็บ Task List / Machine / Planning / Material ใน `WorkOrderDetailDialog` + API `/api/v1/work-orders/:id/modal-detail` + จ่ายงาน `/planning` |
