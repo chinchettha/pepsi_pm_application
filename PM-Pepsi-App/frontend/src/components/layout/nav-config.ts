@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   BadgeCheck,
   BarChart3,
+  BookText,
   Boxes,
   CalendarDays,
   ChartGantt,
@@ -65,6 +66,7 @@ export const appNav: NavEntry[] = [
   { kind: 'item', to: '/summary-weekly', label: 'สรุปรายสัปดาห์', icon: LineChart, menuright: 'A:U:W' },
 
   { kind: 'heading', label: 'ระบบ' },
+  { kind: 'item', to: '/user-log', label: 'User Log', icon: BookText, menuright: 'A:U:W' },
   { kind: 'item', to: '/settings', label: 'ตั้งค่า', icon: Settings, menuright: 'A' },
 ]
-
+

@@ -1,7 +1,7 @@
-import type { EventClickArg, EventDropArg, DatesSetArg } from '@fullcalendar/core'
+import type { DatesSetArg, DateSelectArg, EventClickArg, EventDropArg } from '@fullcalendar/core'
 import thLocale from '@fullcalendar/core/locales/th'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import interactionPlugin from '@fullcalendar/interaction'
+import interactionPlugin, { type DateClickArg } from '@fullcalendar/interaction'
 import FullCalendar from '@fullcalendar/react'
 import { useEffect, useMemo, useRef } from 'react'
 
@@ -17,6 +17,9 @@ type MonthFullCalendarProps = {
   month: number
   events: ScheduleCalendarEvent[]
   onMonthChange: (year: number, month: number) => void
+  viewMode?: 'month' | 'month-week-day'
+  onDateClick?: (date: string) => void
+  onRangeSelect?: (fromDate: string, toDate: string) => void
   onEventClick?: (event: ScheduleCalendarEvent) => void
   onEventDrop?: (event: ScheduleCalendarEvent, newDate: string) => void
   className?: string
@@ -27,6 +30,9 @@ export function MonthFullCalendar({
   month,
   events,
   onMonthChange,
+  viewMode = 'month',
+  onDateClick,
+  onRangeSelect,
   onEventClick,
   onEventDrop,
   className,
@@ -68,6 +74,31 @@ export function MonthFullCalendar({
     onEventDrop(mapped, `${y}-${m}-${day}`)
   }
 
+  const handleDateClick = (arg: DateClickArg) => {
+    if (!onDateClick) return
+    const d = arg.date
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    onDateClick(`${y}-${m}-${day}`)
+  }
+
+  const toYyyyMmDd = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
+  const handleSelect = (arg: DateSelectArg) => {
+    if (!onRangeSelect) return
+    const start = arg.start
+    const end = new Date(arg.end)
+    end.setDate(end.getDate() - 1)
+    onRangeSelect(toYyyyMmDd(start), toYyyyMmDd(end))
+    calRef.current?.getApi().unselect()
+  }
+
   return (
     <div
       className={cn(
@@ -84,10 +115,13 @@ export function MonthFullCalendar({
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
-          right: '',
+          right: viewMode === 'month-week-day' ? 'dayGridMonth,dayGridWeek,dayGridDay' : '',
         }}
         buttonText={{
           today: 'เดือนนี้',
+          month: 'เดือน',
+          week: 'สัปดาห์',
+          day: 'วัน',
         }}
         height="auto"
         fixedWeekCount={false}
@@ -97,9 +131,16 @@ export function MonthFullCalendar({
         editable={Boolean(onEventDrop)}
         eventStartEditable={Boolean(onEventDrop)}
         eventDurationEditable={false}
+        dateClick={onDateClick ? handleDateClick : undefined}
+        selectable={Boolean(onDateClick || onRangeSelect)}
+        select={onRangeSelect ? handleSelect : undefined}
         eventClick={onEventClick ? handleEventClick : undefined}
         eventDrop={onEventDrop ? handleEventDrop : undefined}
         eventDisplay="block"
+        eventDidMount={(arg) => {
+          const desc = arg.event.extendedProps.description
+          if (typeof desc === 'string' && desc.trim()) arg.el.setAttribute('title', desc.trim())
+        }}
       />
     </div>
   )

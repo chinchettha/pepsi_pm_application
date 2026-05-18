@@ -1,4 +1,4 @@
--- ตรวจ schema app หลัง migration 001–010
+-- ตรวจ schema app หลัง migration 001–026
 -- รันใน DBeaver หรือ: psql "$DATABASE_URL" -f database/scripts/verify_app_schema.sql
 
 \echo '=== 1) ตารางใน schema app ==='
@@ -9,12 +9,13 @@ WHERE table_schema = 'app'
 ORDER BY kind, table_name;
 
 \echo ''
-\echo '=== 2) ตารางที่ต้องมี (migration 001–010) ==='
+\echo '=== 2) ตารางที่ต้องมี (migration 001–026) ==='
 WITH expected(name) AS (
   VALUES
     ('tbworkcenter'),
     ('tbworkcenter_userlog'),
     ('tbactivitytype'),
+    ('tbdepartment'),
     ('tblineschdul'),
     ('tbwkstatus'),
     ('tbiw37n'),
@@ -27,10 +28,21 @@ WITH expected(name) AS (
     ('tbl_member'),
     ('tbl_system_userlog'),
     ('tbreason'),
-    ('tbmanhours')
+    ('tbmanhours'),
+    ('tbequipment'),
+    ('tbwkctrtype'),
+    ('tbproductline'),
+    ('tbzone'),
+    ('tbmainteanance'),
+    ('tbmaterial'),
+    ('tbwklevel'),
+    ('tbposition'),
+    ('tbwkctrgroup'),
+    ('tbtasklist'),
+    ('tbcofirm')
 ),
 views_expected(name) AS (
-  VALUES ('view_order'), ('view_planwork')
+  VALUES ('view_order'), ('view_planwork'), ('view_confirmation')
 )
 SELECT e.name AS object_name,
        'table' AS expected_kind,
@@ -56,10 +68,21 @@ UNION ALL SELECT 'tbiw37n', COUNT(*)::text FROM app.tbiw37n
 UNION ALL SELECT 'tbwkstatus', COUNT(*)::text FROM app.tbwkstatus
 UNION ALL SELECT 'tblineschdul', COUNT(*)::text FROM app.tblineschdul
 UNION ALL SELECT 'tbactivitytype', COUNT(*)::text FROM app.tbactivitytype
+UNION ALL SELECT 'tbdepartment', COUNT(*)::text FROM app.tbdepartment
 UNION ALL SELECT 'tbwkzb', COUNT(*)::text FROM app.tbwkzb
 UNION ALL SELECT 'tbfunctional', COUNT(*)::text FROM app.tbfunctional
 UNION ALL SELECT 'tbl_member', COUNT(*)::text FROM app.tbl_member
 UNION ALL SELECT 'tbmanhours', COUNT(*)::text FROM app.tbmanhours
+UNION ALL SELECT 'tbequipment', COUNT(*)::text FROM app.tbequipment
+UNION ALL SELECT 'tbwkctrtype', COUNT(*)::text FROM app.tbwkctrtype
+UNION ALL SELECT 'tbproductline', COUNT(*)::text FROM app.tbproductline
+UNION ALL SELECT 'tbzone', COUNT(*)::text FROM app.tbzone
+UNION ALL SELECT 'tbmainteanance', COUNT(*)::text FROM app.tbmainteanance
+UNION ALL SELECT 'tbmaterial', COUNT(*)::text FROM app.tbmaterial
+UNION ALL SELECT 'tbwklevel', COUNT(*)::text FROM app.tbwklevel
+UNION ALL SELECT 'tbposition', COUNT(*)::text FROM app.tbposition
+UNION ALL SELECT 'tbwkctrgroup', COUNT(*)::text FROM app.tbwkctrgroup
+UNION ALL SELECT 'tbtasklist', COUNT(*)::text FROM app.tbtasklist
 ORDER BY tbl;
 
 \echo ''

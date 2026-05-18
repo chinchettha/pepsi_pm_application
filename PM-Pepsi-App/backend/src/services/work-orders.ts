@@ -1,14 +1,23 @@
 import type { Pool } from 'pg'
 import type { z } from 'zod'
-import type { workOrderListItemSchema } from '../schemas/work-orders.js'
-import { FACTORY_CODE } from './scheduling-shared.js'
+import type {
+  workOrderFilterOptionsResponseSchema,
+  workOrderListItemSchema,
+  workOrderSearchBodySchema,
+  workOrderSearchRowSchema,
+} from '../schemas/work-orders.js'
+import { appendInFilter, FACTORY_CODE } from './scheduling-shared.js'
 import { formatUnixDate } from './scheduling-move.js'
 
 type WorkOrderListItem = z.infer<typeof workOrderListItemSchema>
+type WorkOrderSearch = z.infer<typeof workOrderSearchBodySchema>
+type FilterOptions = z.infer<typeof workOrderFilterOptionsResponseSchema>
+type WorkOrderSearchRow = z.infer<typeof workOrderSearchRowSchema>
 
 type Iw37Row = {
   idiw37: number
   wkorder: string
+  mntplan: string | null
   wktype: string | null
   equipment: string | null
   equdescrip: string | null
@@ -40,6 +49,43 @@ function unixToDateString(sec: number): string {
   return `${y}-${m}-${day}`
 }
 
+function padMatLabel(mat: string, descrip: string | null): string {
+  const n = Number(mat)
+  const code = Number.isFinite(n) ? String(n).padStart(2, '0') : mat
+  return descrip ? `${code} = ${descrip}` : code
+}
+
+function parseIsoYyyyMmDdToSec(v: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim())
+  if (!m) return null
+  const yyyy = Number(m[1])
+  const mm = Number(m[2])
+  const dd = Number(m[3])
+  if (!Number.isFinite(yyyy) || !Number.isFinite(mm) || !Number.isFinite(dd)) return null
+  const dt = new Date(yyyy, mm - 1, dd)
+  const ms = dt.getTime()
+  if (!Number.isFinite(ms)) return null
+  return Math.floor(ms / 1000)
+}
+
+function appendTeamFilter(values: string[], params: unknown[]): string {
+  if (values.length === 0) return ''
+  const includeNull = values.includes('')
+  const nonEmpty = values.filter((x) => x !== '')
+  let sql = ''
+  if (nonEmpty.length > 0) {
+    const start = params.length + 1
+    const placeholders = nonEmpty.map((_, i) => `$${start + i}`).join(', ')
+    params.push(...nonEmpty)
+    sql += ` AND team IN (${placeholders})`
+  }
+  if (includeNull) {
+    sql += nonEmpty.length > 0 ? ` OR (team IS NULL OR team = '')` : ` AND (team IS NULL OR team = '')`
+    if (nonEmpty.length > 0) sql = ` AND (${sql.slice(5)})`
+  }
+  return sql
+}
+
 function mapRow(row: Iw37Row): WorkOrderListItem {
   const title =
     row.operationshorttext?.trim() || row.ostdescription?.trim() || row.wkorder
@@ -62,7 +108,7 @@ function mapRow(row: Iw37Row): WorkOrderListItem {
 }
 
 const SELECT_IW37 = `
-  SELECT idiw37, wkorder, wktype, equipment, equdescrip, functionalloc, untime,
+  SELECT idiw37, wkorder, mntplan, wktype, equipment, equdescrip, functionalloc, untime,
          syst, bscstart, actfinish, systemstatus, wkctr, operationshorttext,
          ostdescription, opac, work
   FROM app.tbiw37n
@@ -87,6 +133,223 @@ export async function listWorkOrders(
 
   const r = await pool.query<Iw37Row>(sql, params)
   return r.rows.map(mapRow)
+}
+
+export async function listWorkOrderFilterOptions(pool: Pool): Promise<FilterOptions> {
+  const factory = `%${FACTORY_CODE}%`
+  const [
+    activitiesR,
+    wktypesDistinctR,
+    wktypesMasterR,
+    statusesR,
+    wcR,
+    fnDistinctR,
+    fnMasterR,
+    eqR,
+  ] = await Promise.all([
+    pool.query<{ mat: string; matdescrip: string | null }>(
+      `SELECT mat, matdescrip FROM app.tbactivitytype ORDER BY mat`,
+    ),
+    pool.query<{ wktype: string }>(
+      `SELECT DISTINCT wktype
+       FROM app.tbiw37n
+       WHERE wktype IS NOT NULL AND wktype <> ''
+         AND functionalloc LIKE $1
+       ORDER BY wktype`,
+      [factory],
+    ),
+    pool.query<{ wkzb: string; zbdescrip: string | null }>(
+      `SELECT wkzb, zbdescrip FROM app.tbwkzb ORDER BY wkzb`,
+    ),
+    pool.query<{ syst: string; wkstreason: string | null; wkstcolor: string | null }>(
+      `SELECT syst, wkstreason, wkstcolor
+       FROM app.tbwkstatus
+       ORDER BY syst`,
+    ),
+    pool.query<{ wkctr: string; namewkctr: string | null; surnamewkctr: string | null }>(
+      `SELECT wkctr, namewkctr, surnamewkctr FROM app.tbworkcenter ORDER BY wkctr`,
+    ),
+    pool.query<{ functionalloc: string; funcdescrip: string | null }>(
+      `SELECT DISTINCT functionalloc, funcdescrip
+       FROM app.tbiw37n
+       WHERE functionalloc IS NOT NULL AND functionalloc <> ''
+         AND functionalloc LIKE $1
+       ORDER BY functionalloc`,
+      [factory],
+    ),
+    pool.query<{ functionalloc: string; funldescrip: string | null }>(
+      `SELECT functionalloc, funldescrip FROM app.tbfunctional ORDER BY functionalloc`,
+    ),
+    pool.query<{ equipment: string; equdescrip: string | null }>(
+      `SELECT DISTINCT equipment, equdescrip
+       FROM app.tbiw37n
+       WHERE equipment IS NOT NULL AND equipment <> ''
+         AND functionalloc LIKE $1
+       ORDER BY equipment`,
+      [factory],
+    ),
+  ])
+
+  return {
+    activities: activitiesR.rows.map((r) => ({
+      code: r.mat,
+      label: padMatLabel(r.mat, r.matdescrip),
+    })),
+    wktypes:
+      wktypesMasterR.rows.length > 0
+        ? wktypesMasterR.rows.map((r) => ({
+            code: r.wkzb,
+            label: r.zbdescrip ? `${r.wkzb} = ${r.zbdescrip}` : r.wkzb,
+          }))
+        : wktypesDistinctR.rows.map((r) => ({ code: r.wktype, label: r.wktype })),
+    statuses: statusesR.rows.map((r) => ({
+      code: r.syst,
+      label: r.wkstreason ? `${r.syst} = ${r.wkstreason}` : r.syst,
+    })),
+    workcenters: wcR.rows.map((r) => {
+      const name = [r.namewkctr, r.surnamewkctr].filter(Boolean).join(' ').trim()
+      return { code: r.wkctr, label: name ? `${r.wkctr} = ${name}` : r.wkctr }
+    }),
+    teams: [
+      { code: 'A', label: 'A' },
+      { code: 'B', label: 'B' },
+      { code: 'P', label: 'P' },
+      { code: '', label: 'Null' },
+    ],
+    functionals:
+      fnMasterR.rows.length > 0
+        ? fnMasterR.rows.map((r) => ({
+            code: r.functionalloc,
+            label: r.funldescrip ? `${r.functionalloc} = ${r.funldescrip}` : r.functionalloc,
+          }))
+        : fnDistinctR.rows.map((r) => ({
+            code: r.functionalloc,
+            label: r.funcdescrip ? `${r.functionalloc} = ${r.funcdescrip}` : r.functionalloc,
+          })),
+    equipments: eqR.rows.map((r) => ({
+      code: r.equipment,
+      label: r.equdescrip ? `${r.equipment} = ${r.equdescrip}` : r.equipment,
+    })),
+  }
+}
+
+type SearchRow = {
+  idiw37: number
+  wkorder: string
+  mntplan: string | null
+  wktype: string | null
+  mat: string | null
+  equdescrip: string | null
+  funcdescrip: string | null
+  work: string | number | null
+  untime: string | number | null
+  actfinish: string | number | null
+  cday: string | number | null
+  bscstart: string | number | null
+  team: string | null
+  wkstcolor: string | null
+  operationshorttext: string | null
+}
+
+export async function searchWorkOrders(
+  pool: Pool,
+  body: WorkOrderSearch,
+): Promise<WorkOrderSearchRow[]> {
+  const factory = `%${FACTORY_CODE}%`
+  const params: unknown[] = [factory]
+  let sql = `
+    SELECT idiw37, wkorder, mntplan, wktype, mat, equdescrip, funcdescrip, work, untime,
+           actfinish, cday, bscstart, team, wkstcolor, operationshorttext
+    FROM app.view_order
+    WHERE functionalloc LIKE $1
+      AND bscstart IS NOT NULL
+      AND bscstart > 0`
+
+  sql += appendInFilter('mat', body.activity, params)
+  sql += appendInFilter('wktype', body.wktype, params)
+  sql += appendInFilter('syst', body.status, params)
+  sql += appendInFilter('wkctr', body.wkctr, params)
+  sql += appendInFilter('functionalloc', body.functionalloc, params)
+  sql += appendInFilter('equipment', body.equipment, params)
+  sql += appendTeamFilter(body.team, params)
+
+  const fromSec = body.fromDate ? parseIsoYyyyMmDdToSec(body.fromDate) : null
+  const toSec = body.toDate ? parseIsoYyyyMmDdToSec(body.toDate) : null
+  if (fromSec != null || toSec != null) {
+    const startSec = Math.min(fromSec ?? toSec ?? 0, toSec ?? fromSec ?? 0)
+    const endSec = Math.max(fromSec ?? toSec ?? 0, toSec ?? fromSec ?? 0) + 86400
+    params.push(startSec, endSec)
+    const a = params.length - 1
+    const b = params.length
+    sql += `
+      AND (
+        (bscstart >= $${a} AND bscstart < $${b})
+        OR (actfinish >= $${a} AND actfinish < $${b})
+        OR (cday >= $${a} AND cday < $${b})
+      )`
+  }
+
+  if (body.q?.trim()) {
+    params.push(`%${body.q.trim()}%`)
+    const i = params.length
+    sql += ` AND (
+      wkorder ILIKE $${i}
+      OR operationshorttext ILIKE $${i}
+      OR equdescrip ILIKE $${i}
+      OR funcdescrip ILIKE $${i}
+    )`
+  }
+
+  sql += ` ORDER BY COALESCE(actfinish, cday, bscstart) DESC NULLS LAST LIMIT 2000`
+
+  const r = await pool.query<SearchRow>(sql, params)
+  return r.rows.map((row) => {
+    const actfinish =
+      row.actfinish != null && row.actfinish !== '' ? Number(row.actfinish) : null
+    const cday = row.cday != null && row.cday !== '' ? Number(row.cday) : null
+    const bscstart =
+      row.bscstart != null && row.bscstart !== '' ? Number(row.bscstart) : null
+    const displayUnix =
+      actfinish != null && actfinish > 0
+        ? actfinish
+        : cday != null && cday > 0
+          ? cday
+          : bscstart != null && bscstart > 0
+            ? bscstart
+            : 0
+    const displayDate = displayUnix > 0 ? unixToDateString(displayUnix) : ''
+    return {
+      id: String(row.idiw37),
+      wkorder: row.wkorder,
+      mntplan: row.mntplan?.trim() ?? '',
+      wktype: row.wktype?.trim() ?? '',
+      mat: row.mat?.trim() ?? '',
+      equdescrip: row.equdescrip?.trim() ?? '',
+      funcdescrip: row.funcdescrip?.trim() ?? '',
+      work: row.work != null && row.work !== '' ? Number(row.work) || 0 : 0,
+      untime: row.untime != null && row.untime !== '' ? String(row.untime) : '',
+      displayDate,
+      team: row.team?.trim() ?? '',
+      wkstcolor: row.wkstcolor?.trim() ?? '#6b7280',
+      operationshorttext: row.operationshorttext?.trim() ?? '',
+    }
+  })
+}
+
+export async function updateWorkOrderTeam(
+  pool: Pool,
+  id: string,
+  team: string,
+): Promise<boolean> {
+  const idiw37 = Number(id)
+  if (!Number.isFinite(idiw37)) return false
+  const factory = `%${FACTORY_CODE}%`
+  const r = await pool.query(
+    `UPDATE app.tbiw37n SET team = $2
+     WHERE idiw37 = $1 AND functionalloc LIKE $3`,
+    [idiw37, team || null, factory],
+  )
+  return (r.rowCount ?? 0) > 0
 }
 
 type ViewOrderRow = Iw37Row & {
@@ -116,7 +379,7 @@ async function getWorkOrderViewRow(
   id: string,
 ): Promise<ViewOrderRow | null> {
   const r = await pool.query<ViewOrderRow>(
-    `SELECT i.idiw37, i.wkorder, i.wktype, i.equipment, i.equdescrip, i.functionalloc, i.untime,
+    `SELECT i.idiw37, i.wkorder, i.mntplan, i.wktype, i.equipment, i.equdescrip, i.functionalloc, i.untime,
             i.syst, i.bscstart, i.actfinish, i.systemstatus, i.wkctr, i.operationshorttext,
             i.ostdescription, i.opac, i.work, i.team, i.mat,
             v.cday, v.wkstcolor,
@@ -174,4 +437,279 @@ export async function enrichWorkOrderDetail(pool: Pool, id: string) {
     ],
     components: [] as { material: string; qty: number; unit: string }[],
   }
+}
+
+export async function enrichWorkOrderDetailForUser(
+  pool: Pool,
+  id: string,
+  userst: string | undefined,
+) {
+  const base = await enrichWorkOrderDetail(pool, id)
+  if (!base) return null
+  const role = (userst ?? '').trim()
+  const movable = (base.status === 'CRTD' || base.status === 'REL') && (role === 'A' || role === 'H')
+  return { ...base, canMovePlan: movable }
+}
+
+function isoToday(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+type ModalDetailTaskRow = {
+  tasklist: string
+  machine: string
+  pmlist: string
+  machinestatus: number | null
+  mat: string | null
+  matdescrip: string | null
+  idzone: string
+  zone: string | null
+  idwkctrtype: string
+  wkctrtype: string | null
+  idproductline: string | null
+  prolinedescrip: string | null
+}
+
+type MachineRow = { machine: string }
+
+type LineRow = { productline: string | null; uptime: string | number | null }
+
+type MaterialRow = {
+  matpo: string | null
+  pstngdate: string | null
+  materialdesc: string | null
+  amountinlc: number | string | null
+  mvt: string | null
+  material: string | null
+}
+
+type PlanningGroupRow = { wkctrgroup: string; wkctrdescription: string | null }
+
+type PlanningAssignedRow = {
+  wkctr: string | null
+  pwcomment: string | null
+  pwteam: string | null
+  titlewkctr: string | null
+  namewkctr: string | null
+  surnamewkctr: string | null
+  wkctrdescription: string | null
+}
+
+export async function getWorkOrderModalDetail(
+  pool: Pool,
+  id: string,
+  opts: { date?: string },
+  userst: string | undefined,
+) {
+  const row = await getWorkOrderViewRow(pool, id)
+  if (!row) return null
+
+  const planned = unixToIsoDate(row.bscstart)
+  const date = opts.date?.trim() || planned || isoToday()
+  const lineday = parseIsoYyyyMmDdToSec(date) ?? 0
+
+  const mntplan = row.mntplan?.trim() ?? ''
+
+  const taskR =
+    mntplan && mntplan !== '-'
+      ? await pool.query<ModalDetailTaskRow>(
+          `SELECT tl.tasklist, tl.machine, tl.pmlist, tl.machinestatus, tl.mat, at.matdescrip,
+                  tl.idzone, z.zone, tl.idwkctrtype, wt.wkctrtype,
+                  z.idproductline, pl.prolinedescrip
+           FROM app.tbtasklist tl
+           LEFT JOIN app.tbactivitytype at ON at.mat = tl.mat
+           LEFT JOIN app.tbzone z ON z.idzone = tl.idzone
+           LEFT JOIN app.tbwkctrtype wt ON wt.idwkctrtype = tl.idwkctrtype
+           LEFT JOIN app.tbproductline pl ON pl.productline = z.idproductline
+           WHERE tl.mntplan = $1
+           ORDER BY tl.tasklist ASC, tl.machine ASC, tl.pmlist ASC
+           LIMIT 2000`,
+          [mntplan],
+        )
+      : { rows: [] as ModalDetailTaskRow[] }
+
+  const taskRows = taskR.rows
+  const firstTask = taskRows[0]
+  const summary = firstTask
+    ? {
+        tasklist: firstTask.tasklist,
+        productline:
+          firstTask.idproductline && firstTask.prolinedescrip
+            ? `${firstTask.idproductline} = ${firstTask.prolinedescrip}`
+            : firstTask.idproductline || firstTask.prolinedescrip || '',
+        zone:
+          firstTask.idzone && firstTask.zone
+            ? `${firstTask.idzone} = ${firstTask.zone}`
+            : firstTask.idzone || firstTask.zone || '',
+        wkctrtype:
+          firstTask.idwkctrtype && firstTask.wkctrtype
+            ? `${firstTask.idwkctrtype} = ${firstTask.wkctrtype}`
+            : firstTask.idwkctrtype || firstTask.wkctrtype || '',
+      }
+    : null
+
+  const zoneCode = firstTask?.idzone ?? ''
+  const typeCode = firstTask?.idwkctrtype ?? ''
+  const plCode = firstTask?.idproductline ?? null
+
+  const machinesR =
+    zoneCode && typeCode
+      ? await pool.query<MachineRow>(
+          `SELECT machine
+           FROM app.tbmainteanance
+           WHERE idzone = $1 AND idwkctrtype = $2
+           ORDER BY machine ASC`,
+          [zoneCode, typeCode],
+        )
+      : { rows: [] as MachineRow[] }
+
+  const lineR =
+    plCode && lineday > 0
+      ? await pool.query<LineRow>(
+          `SELECT productline, uptime
+           FROM app.tblineschdul
+           WHERE idproductline = $1 AND lineday = $2
+           LIMIT 1`,
+          [plCode, lineday],
+        )
+      : { rows: [] as LineRow[] }
+
+  const line = lineR.rows[0]
+  const uptime =
+    line?.uptime != null && line.uptime !== '' ? Number(line.uptime) : null
+
+  const matR = await pool.query<MaterialRow>(
+    `SELECT matpo, pstngdate::text AS pstngdate, materialdesc, amountinlc::float8 AS amountinlc, mvt, material
+     FROM app.tbmaterial
+     WHERE wkorder = $1
+     ORDER BY pstngdate DESC NULLS LAST, idmaterial DESC
+     LIMIT 500`,
+    [row.wkorder],
+  )
+
+  const groupsR = await pool.query<PlanningGroupRow>(
+    `SELECT wkctrgroup, wkctrdescription
+     FROM app.tbwkctrgroup
+     ORDER BY wkctrgroup ASC`,
+  )
+
+  const wcR = await pool.query<{ wkctr: string; titlewkctr: string | null; namewkctr: string | null; surnamewkctr: string | null }>(
+    `SELECT wkctr, titlewkctr, namewkctr, surnamewkctr
+     FROM app.tbworkcenter
+     ORDER BY wkctr ASC`,
+  )
+
+  const assignedR = await pool.query<PlanningAssignedRow>(
+    `SELECT mp.wkctr, mp.pwcomment, mp.pwteam,
+            wc.titlewkctr, wc.namewkctr, wc.surnamewkctr,
+            g.wkctrdescription
+     FROM app.tbplangingwork mp
+     LEFT JOIN app.tbworkcenter wc ON wc.wkctr = mp.wkctr
+     LEFT JOIN app.tbwkctrgroup g ON g.wkctrgroup = mp.wkctr
+     WHERE mp.idiw37 = $1
+     LIMIT 1`,
+    [row.idiw37],
+  )
+
+  const assignedRow = assignedR.rows[0]
+  const assigned =
+    assignedRow?.wkctr
+      ? {
+          kind:
+            assignedRow.titlewkctr || assignedRow.namewkctr || assignedRow.surnamewkctr
+              ? ('person' as const)
+              : assignedRow.wkctrdescription
+                ? ('group' as const)
+                : ('person' as const),
+          code: assignedRow.wkctr,
+          displayName:
+            assignedRow.titlewkctr || assignedRow.namewkctr || assignedRow.surnamewkctr
+              ? `${assignedRow.titlewkctr ?? ''}${assignedRow.namewkctr ?? ''} ${assignedRow.surnamewkctr ?? ''}`.trim()
+              : assignedRow.wkctrdescription?.trim() || assignedRow.wkctr,
+          pwcomment: assignedRow.pwcomment?.trim() ?? '',
+          pwteam: assignedRow.pwteam?.trim() ?? '',
+        }
+      : null
+
+  const canAssign = (userst ?? '').trim() === 'A'
+
+  return {
+    date,
+    taskList: {
+      mntplan,
+      summary,
+      items: taskRows.map((r) => ({
+        tasklist: r.tasklist?.trim() ?? '',
+        machine: r.machine?.trim() ?? '',
+        pmlist: r.pmlist?.trim() ?? '',
+        machinestatus: r.machinestatus != null ? Number(r.machinestatus) : null,
+        mat: r.mat?.trim() ?? '',
+        matdescrip: r.matdescrip?.trim() ?? '',
+      })),
+    },
+    machine: {
+      zone: summary?.zone ?? '',
+      wkctrtype: summary?.wkctrtype ?? '',
+      productline: summary?.productline ?? '',
+      uptime,
+      machines: machinesR.rows.map((x) => x.machine),
+    },
+    planning: {
+      canAssign,
+      assigned,
+      workcenters: wcR.rows.map((w) => ({
+        wkctr: w.wkctr,
+        displayName: `${w.titlewkctr ?? ''}${w.namewkctr ?? ''} ${w.surnamewkctr ?? ''}`.trim(),
+      })),
+      groups: groupsR.rows.map((g) => ({
+        wkctrgroup: g.wkctrgroup,
+        wkctrdescription: g.wkctrdescription?.trim() ?? '',
+      })),
+    },
+    materials: {
+      items: matR.rows.map((m) => ({
+        matpo: m.matpo?.trim() ?? '',
+        pstngdate: m.pstngdate?.trim() ?? '',
+        materialdesc: m.materialdesc?.trim() ?? '',
+        amountinlc: m.amountinlc != null && m.amountinlc !== '' ? Number(m.amountinlc) : 0,
+        mvt: m.mvt?.trim() ?? '',
+        material: m.material?.trim() ?? '',
+      })),
+    },
+  }
+}
+
+export async function upsertWorkOrderPlanning(
+  pool: Pool,
+  id: string,
+  body: { mode: 'P' | 'G'; code: string; comment?: string },
+  actorWkctr: string,
+): Promise<boolean> {
+  const row = await getWorkOrderViewRow(pool, id)
+  if (!row) return false
+  const code = body.code.trim()
+  if (!code) return false
+
+  await pool.query(
+    `INSERT INTO app.tbplangingwork (idiw37, wkctr, wkctrpw, pwcomment, pwteam)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (idiw37)
+     DO UPDATE SET wkctr = EXCLUDED.wkctr,
+                   wkctrpw = EXCLUDED.wkctrpw,
+                   pwcomment = EXCLUDED.pwcomment,
+                   pwteam = EXCLUDED.pwteam`,
+    [row.idiw37, code, actorWkctr, body.comment?.trim() ?? '', body.mode],
+  )
+  return true
+}
+
+export async function deleteWorkOrderPlanning(pool: Pool, id: string): Promise<boolean> {
+  const row = await getWorkOrderViewRow(pool, id)
+  if (!row) return false
+  const r = await pool.query(`DELETE FROM app.tbplangingwork WHERE idiw37 = $1`, [row.idiw37])
+  return (r.rowCount ?? 0) > 0
 }

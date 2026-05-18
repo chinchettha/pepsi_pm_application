@@ -1,6 +1,8 @@
-import type { Express, Response } from 'express'
+import type { Express, Request, Response } from 'express'
 
 import type { Pool } from 'pg'
+
+import { z } from 'zod'
 
 import { clearCookieHeader, serializeCookie } from '../lib/cookies.js'
 
@@ -36,15 +38,23 @@ import {
 
   insertUserLog,
 
+  listUserLogs,
+
 } from '../services/auth.js'
 
 
 
 const SESSION_MAX_AGE_SEC = 8 * 60 * 60
 
+const userLogQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  offset: z.coerce.number().int().min(0).max(1_000_000).optional().default(0),
+})
+
 
 
 function setSessionCookie(res: Response, token: string) {
+
 
   res.setHeader(
 
@@ -277,6 +287,32 @@ export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: stri
 
     res.json(logoutResponseSchema.parse({ ok: true }))
 
+  })
+
+  app.get('/api/v1/user-log', requireAuth, async (req: Request, res: Response) => {
+    const user = req.authUser
+    if (!user) {
+      res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+      return
+    }
+
+    const parsed = userLogQuerySchema.safeParse(req.query)
+    if (!parsed.success) {
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid query params' })
+      return
+    }
+
+    const accountType = user.accountType === 'member' ? 'member' : 'workcenter'
+    const userId = user.memId ?? user.idwkctr
+
+    const items = await listUserLogs(pool, {
+      userId,
+      accountType,
+      limit: parsed.data.limit,
+      offset: parsed.data.offset,
+    })
+
+    res.json({ items })
   })
 
 }

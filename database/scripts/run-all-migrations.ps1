@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  รัน migration 001–010 ต่อเนื่องบน PostgreSQL (schema app)
+  รัน migration 001–026 ต่อเนื่องบน PostgreSQL (schema app)
 
 .PARAMETER DatabaseUrl
   connection string — ถ้าไม่ระบุ อ่านจาก PM-Pepsi-App/backend/.env (DATABASE_URL)
@@ -50,7 +50,23 @@ $files = @(
   '007_tbplangingwork_view_planwork.sql',
   '008_auth_tbmenu_member.sql',
   '009_tbreason.sql',
-  '010_tbmanhours.sql'
+  '010_tbmanhours.sql',
+  '011_tbdepartment.sql',
+  '012_tbequipment.sql',
+  '013_tbwkstatus_add_wkstreason.sql',
+  '014_tbwkctrtype.sql',
+  '015_tbproductline.sql',
+  '016_tbzone.sql',
+  '017_tbmainteanance.sql',
+  '018_tbmaterial.sql',
+  '019_tbwklevel.sql',
+  '020_tbposition.sql',
+  '021_tbwkctrgroup.sql',
+  '022_tbtasklist.sql',
+  '023_tblineschdul_unique.sql',
+  '024_tbzone_extend.sql',
+  '025_tbmenu_userlog.sql',
+  '026_confirmation_tables.sql'
 )
 
 Write-Host "Target: $DatabaseUrl"
@@ -68,4 +84,4 @@ foreach ($f in $files) {
   }
 }
 
-Write-Host 'Migrations OK. Next: database/seeds/009 + 010 + 011 (see database/seeds/README.md)'
+Write-Host 'Migrations OK. Next: database/seeds/009 + 010 (see database/seeds/README.md)'

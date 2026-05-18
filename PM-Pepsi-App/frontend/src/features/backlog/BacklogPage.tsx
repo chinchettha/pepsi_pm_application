@@ -14,7 +14,12 @@ import {
 import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { fetchBacklogFilterOptions, postBacklogEvents } from '@/lib/api-public'
+import {
+  fetchBacklogFilterOptions,
+  postBacklogEvents,
+  postBacklogFilterDetail,
+  postBacklogManhourSummary,
+} from '@/lib/api-public'
 import type { ScheduleCalendarEvent } from '@/lib/schedule-calendar'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
@@ -74,7 +79,7 @@ export function BacklogPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
 
-  const [detailOrderId, setDetailOrderId] = useState<string | null>(null)
+  const [detailTarget, setDetailTarget] = useState<{ id: string; date: string } | null>(null)
   const [moveTarget, setMoveTarget] = useState<{
     idiw37: string
     wkorder: string
@@ -119,6 +124,22 @@ export function BacklogPage() {
         month,
         ...submittedFilters,
       }),
+  })
+
+  const filterDetailQ = useQuery({
+    queryKey: ['backlog', 'filter-detail', year, month, filtersKey],
+    queryFn: () =>
+      postBacklogFilterDetail({
+        year,
+        month,
+        ...submittedFilters,
+      }),
+  })
+
+  const mhQ = useQuery({
+    queryKey: ['backlog', 'manhour-summary', mhFrom, mhTo],
+    queryFn: () => postBacklogManhourSummary({ fromDate: mhFrom, toDate: mhTo }),
+    enabled: mhOpen && Boolean(mhFrom && mhTo),
   })
 
   const onSearch = form.handleSubmit((data) => {
@@ -235,11 +256,71 @@ export function BacklogPage() {
             </Button>
           </div>
         </form>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-medium text-zinc-800">
+            สรุปตัวกรอง (เทียบ `FilterDetail.php`)
+          </p>
+          {filterDetailQ.isLoading ? (
+            <div className="mt-3 space-y-2">
+              <Skeleton className="h-10 w-full rounded-lg" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+            </div>
+          ) : filterDetailQ.isError ? (
+            <p className="mt-3 text-sm text-red-600">
+              {(filterDetailQ.error as Error).message}
+            </p>
+          ) : filterDetailQ.data ? (
+            <div className="mt-3 space-y-3">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-zinc-800">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">WorkOrder</span>
+                  <span>{filterDetailQ.data.totalOrders}</span>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  completion: {filterDetailQ.data.completionCount} (
+                  {filterDetailQ.data.completionPercent}%)
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {filterDetailQ.data.byWkzb.map((x) => (
+                    <Badge key={x.code} variant="secondary" title={x.label}>
+                      {x.code}={x.count}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-zinc-800">
+                  <p className="font-medium">TeamA (No.)</p>
+                  <p className="mt-1">{filterDetailQ.data.teamA.count}</p>
+                  <p className="mt-2 text-xs text-zinc-500">Work (Min)</p>
+                  <p>{filterDetailQ.data.teamA.workSumMinutes}</p>
+                </div>
+                <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-zinc-800">
+                  <p className="font-medium">TeamB (No.)</p>
+                  <p className="mt-1">{filterDetailQ.data.teamB.count}</p>
+                  <p className="mt-2 text-xs text-zinc-500">Work (Min)</p>
+                  <p>{filterDetailQ.data.teamB.workSumMinutes}</p>
+                </div>
+                <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-zinc-800">
+                  <p className="font-medium">TeamP (No.)</p>
+                  <p className="mt-1">{filterDetailQ.data.teamP.count}</p>
+                  <p className="mt-2 text-xs text-zinc-500">Work (Min)</p>
+                  <p>{filterDetailQ.data.teamP.workSumMinutes}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-zinc-600">ยังไม่มีข้อมูล</p>
+          )}
+        </div>
+
 
         <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 p-4">
           <p className="text-sm font-medium text-zinc-800">Manhour ช่วงวันที่ (เทียบเลือกช่วงบน FullCalendar)</p>
           <p className="mt-1 text-xs text-zinc-500">
-            PHP โหลด `modalPages/ModalMHshow.php` — ที่นี่เป็น mock จนกว่าจะมี API จริง
+            เทียบ `modalPages/ModalMHshow.php` — ใช้ `POST /api/v1/backlog/manhour-summary`
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <div className="space-y-1">
@@ -269,12 +350,18 @@ export function BacklogPage() {
           <MonthFullCalendar
             year={year}
             month={month}
+            viewMode="month-week-day"
             events={eventsQ.data?.items ?? []}
             onMonthChange={(y, m) => {
               setYear(y)
               setMonth(m)
             }}
-            onEventClick={(e) => setDetailOrderId(e.id)}
+            onRangeSelect={(from, to) => {
+              setMhFrom(from)
+              setMhTo(to)
+              setMhOpen(true)
+            }}
+            onEventClick={(e) => setDetailTarget({ id: e.id, date: e.date })}
             onEventDrop={(e: ScheduleCalendarEvent, newDate: string) =>
               setMoveTarget({
                 idiw37: e.id,
@@ -287,8 +374,9 @@ export function BacklogPage() {
       </div>
 
       <WorkOrderDetailDialog
-        orderId={detailOrderId}
-        onOpenChange={(o) => !o && setDetailOrderId(null)}
+        orderId={detailTarget?.id ?? null}
+        contextDate={detailTarget?.date}
+        onOpenChange={(o) => !o && setDetailTarget(null)}
       />
 
       <MovePlanDialog
@@ -303,15 +391,80 @@ export function BacklogPage() {
       <Dialog open={mhOpen} onOpenChange={setMhOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Manhour ช่วงที่เลือก (mock)</DialogTitle>
+            <DialogTitle>Manhour ช่วงที่เลือก</DialogTitle>
             <DialogDescription>
               {mhFrom} → {mhTo} — เทียบ `ModalMHshow.php` (POST Event / End)
             </DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-zinc-600">
-            ตัวอย่างผลลัพธ์: ในช่วงนี้มีใบงานที่เกี่ยวข้องกับแบ็คล็อกในปฏิทิน{' '}
-            {eventsQ.data?.items.length ?? 0} รายการในเดือนที่กำลังดู (ไม่กรองซ้ำตามช่วงวันที่ใน mock)
-          </p>
+          {!mhFrom || !mhTo ? (
+            <p className="text-sm text-zinc-600">เลือกช่วงวันก่อน (ลากบนปฏิทิน หรือเลือกจาก DatePicker)</p>
+          ) : mhQ.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+              <Skeleton className="h-48 w-full rounded-lg" />
+            </div>
+          ) : mhQ.isError ? (
+            <p className="text-sm text-red-600">{(mhQ.error as Error).message}</p>
+          ) : !mhQ.data ? (
+            <p className="text-sm text-zinc-600">ยังไม่มีข้อมูล</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-zinc-800">
+                <p className="font-medium">Man Hour</p>
+                <p className="mt-1">
+                  Plan: {mhQ.data.plannedMinutes} MIN ({mhQ.data.plannedHours} H) / Action:{' '}
+                  {mhQ.data.actualMinutes} MIN ({mhQ.data.actualHours} H)
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-zinc-800">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">Work Order</span>
+                  <span>{mhQ.data.totalOrders}</span>
+                  <span className="text-zinc-500">/ completion</span>
+                  <span>
+                    {mhQ.data.completionCount} ({mhQ.data.completionPercent}%)
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {mhQ.data.byWkzb.map((x) => (
+                    <Badge key={x.code} variant="secondary">
+                      {x.code}: {x.count}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="overflow-auto rounded-lg border border-zinc-200">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-zinc-50 text-zinc-700">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Work Order/Type</th>
+                      <th className="px-3 py-2 text-left">Status</th>
+                      <th className="px-3 py-2 text-right">Plan</th>
+                      <th className="px-3 py-2 text-right">Action</th>
+                      <th className="px-3 py-2 text-left">Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mhQ.data.rows.map((r, i) => (
+                      <tr key={`${r.wkorder}-${r.wktype ?? ''}-${i}`} className="border-t">
+                        <td className="px-3 py-2" title={r.operationshorttext ?? ''}>
+                          {r.wkorder}
+                          {r.wktype ? ` / ${r.wktype}` : ''}
+                        </td>
+                        <td className="px-3 py-2">{r.syst ?? ''}</td>
+                        <td className="px-3 py-2 text-right">{r.work}</td>
+                        <td className="px-3 py-2 text-right">{r.actwork}</td>
+                        <td className="px-3 py-2">{r.unit}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -20,6 +20,7 @@ import {
 } from '@/features/parity/SidebarParityPages'
 import { ReportsPage } from '@/features/reports/ReportsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
+import { UserLogPage } from '@/features/user-log/UserLogPage'
 import { WorkOrdersPage } from '@/features/work-orders/WorkOrdersPage'
 import { Route, Routes } from 'react-router-dom'
 
@@ -36,9 +37,11 @@ export default function App() {
           <Route element={<NavRouteGuard />}>
           <Route index element={<HomePage />} />
           <Route path="calendar" element={<CalendarPage />} />
+          <Route path="calendar/wc/:code" element={<CalendarPage />} />
           <Route path="line-calendar" element={<LineCalendarPage />} />
           <Route path="backlog" element={<BacklogPage />} />
           <Route path="work-orders" element={<WorkOrdersPage />} />
+          <Route path="work-orders/:id" element={<WorkOrdersPage />} />
           <Route path="confirmation" element={<ConfirmationParityPage />} />
           <Route path="planning" element={<PlanningPage />} />
           <Route path="iw37n" element={<Iw37nPage />} />
@@ -49,6 +52,7 @@ export default function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="manhours-hr" element={<ManhoursHrParityPage />} />
           <Route path="summary-weekly" element={<SummaryWeeklyParityPage />} />
+          <Route path="user-log" element={<UserLogPage />} />
           <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

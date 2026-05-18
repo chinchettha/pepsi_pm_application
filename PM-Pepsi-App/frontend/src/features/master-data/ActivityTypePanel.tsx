@@ -25,6 +25,7 @@ import {
   deleteActivityType,
   importActivityTypes,
   parseActivityTypeCsv,
+  parseActivityTypeFile,
   updateActivityType,
 } from '@/lib/master-data-api'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -35,6 +36,8 @@ type FormState = { mat: string; matdescrip: string; matcheck: string }
 
 const emptyForm: FormState = { mat: '', matdescrip: '', matcheck: 'Y' }
 
+type FormMode = 'create' | 'edit' | 'delete'
+
 export function ActivityTypePanel() {
   const qc = useQueryClient()
   const q = useQuery({
@@ -44,51 +47,110 @@ export function ActivityTypePanel() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [formMode, setFormMode] = useState<FormMode>('create')
   const [editing, setEditing] = useState<ActivityTypeItem | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormState, string>>>({})
+  const [formErrorSummary, setFormErrorSummary] = useState<string | null>(null)
   const [importText, setImportText] = useState('')
+  const [importFile, setImportFile] = useState<File | null>(null)
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['master-data', 'activitytype'] })
 
-  const saveMut = useMutation({
+  const closeFormDialog = () => {
+    setDialogOpen(false)
+    setEditing(null)
+    setFormMode('create')
+    setForm(emptyForm)
+    setFormErrors({})
+    setFormErrorSummary(null)
+  }
+
+  const closeImportDialog = () => {
+    setImportOpen(false)
+    setImportText('')
+    setImportFile(null)
+  }
+
+  const validateForm = () => {
+    if (formMode === 'delete') {
+      setFormErrors({})
+      setFormErrorSummary(null)
+      return true
+    }
+
+    const next: Partial<Record<keyof FormState, string>> = {}
+
+    const mat = form.mat.trim()
+    const desc = form.matdescrip.trim()
+    const checkRaw = form.matcheck.trim()
+
+    if (!mat) next.mat = 'Mat is required.'
+    if (!desc) next.matdescrip = 'Description is required.'
+
+    if (checkRaw) {
+      const upper = checkRaw.toUpperCase()
+      if (upper !== 'Y' && upper !== 'N') next.matcheck = 'Check must be Y or N.'
+    }
+
+    setFormErrors(next)
+    const first = Object.values(next).find(Boolean) ?? null
+    setFormErrorSummary(first)
+    return Object.keys(next).length === 0
+  }
+
+  const formMut = useMutation({
     mutationFn: async () => {
-      if (editing) {
+      if (!validateForm()) throw new Error('Please fix validation errors and try again.')
+
+      if (formMode === 'edit' && editing) {
+        const check = (form.matcheck || '').trim().toUpperCase()
         return updateActivityType(editing.mat, {
           matdescrip: form.matdescrip,
-          matcheck: form.matcheck,
+          matcheck: check || 'Y',
         })
       }
-      return createActivityType(form)
+      if (formMode === 'delete' && editing) {
+        await deleteActivityType(editing.mat)
+        return null
+      }
+      const check = (form.matcheck || '').trim().toUpperCase()
+      return createActivityType({
+        mat: form.mat.trim(),
+        matdescrip: form.matdescrip.trim(),
+        matcheck: check || 'Y',
+      })
     },
     onSuccess: () => {
       invalidate()
-      setDialogOpen(false)
-      setEditing(null)
-      setForm(emptyForm)
+      closeFormDialog()
     },
-  })
-
-  const deleteMut = useMutation({
-    mutationFn: (mat: string) => deleteActivityType(mat),
-    onSuccess: invalidate,
   })
 
   const importMut = useMutation({
     mutationFn: async () => {
-      const rows = parseActivityTypeCsv(importText)
-      if (rows.length === 0) throw new Error('ไม่พบแถวข้อมูล — ใช้รูปแบบ mat,description,check')
+      if (!importFile && !importText.trim()) {
+        throw new Error('Select a file or paste CSV text before importing.')
+      }
+
+      const rows = importFile
+        ? await parseActivityTypeFile(importFile)
+        : parseActivityTypeCsv(importText)
+      if (rows.length === 0) throw new Error('No rows found. Expected: mat,description,check')
       return importActivityTypes(rows)
     },
     onSuccess: () => {
       invalidate()
-      setImportOpen(false)
-      setImportText('')
+      closeImportDialog()
     },
   })
 
   const openCreate = () => {
     setEditing(null)
     setForm(emptyForm)
+    setFormMode('create')
+    setFormErrors({})
+    setFormErrorSummary(null)
     setDialogOpen(true)
   }
 
@@ -99,6 +161,22 @@ export function ActivityTypePanel() {
       matdescrip: row.matdescrip,
       matcheck: row.matcheck,
     })
+    setFormMode('edit')
+    setFormErrors({})
+    setFormErrorSummary(null)
+    setDialogOpen(true)
+  }
+
+  const openDelete = (row: ActivityTypeItem) => {
+    setEditing(row)
+    setForm({
+      mat: row.mat,
+      matdescrip: row.matdescrip,
+      matcheck: row.matcheck,
+    })
+    setFormMode('delete')
+    setFormErrors({})
+    setFormErrorSummary(null)
     setDialogOpen(true)
   }
 
@@ -114,11 +192,11 @@ export function ActivityTypePanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          เพิ่ม
+          Create
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
-          นำเข้า CSV
+          Import file
         </Button>
       </div>
 
@@ -157,7 +235,7 @@ export function ActivityTypePanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                          if (confirm(`ลบ ${row.mat}?`)) deleteMut.mutate(row.mat)
+                          openDelete(row)
                         }}
                         aria-label="ลบ"
                       >
@@ -172,10 +250,22 @@ export function ActivityTypePanel() {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeFormDialog()
+          else setDialogOpen(true)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? 'แก้ไข Activity type' : 'เพิ่ม Activity type'}</DialogTitle>
+            <DialogTitle>
+              {formMode === 'create'
+                ? 'Create Activity type'
+                : formMode === 'edit'
+                  ? 'Edit Activity type'
+                  : 'Delete Activity type'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -183,54 +273,98 @@ export function ActivityTypePanel() {
               <Input
                 id="mat"
                 value={form.mat}
-                disabled={Boolean(editing)}
+                disabled={formMode !== 'create'}
                 onChange={(e) => setForm((f) => ({ ...f, mat: e.target.value }))}
               />
+              {formErrors.mat ? (
+                <p className="mt-1 text-xs text-red-600">{formErrors.mat}</p>
+              ) : null}
             </div>
             <div>
               <Label htmlFor="matdescrip">Description</Label>
               <Input
                 id="matdescrip"
                 value={form.matdescrip}
+                disabled={formMode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, matdescrip: e.target.value }))}
               />
+              {formErrors.matdescrip ? (
+                <p className="mt-1 text-xs text-red-600">{formErrors.matdescrip}</p>
+              ) : null}
             </div>
             <div>
               <Label htmlFor="matcheck">Check</Label>
               <Input
                 id="matcheck"
                 value={form.matcheck}
+                disabled={formMode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, matcheck: e.target.value }))}
               />
+              {formErrors.matcheck ? (
+                <p className="mt-1 text-xs text-red-600">{formErrors.matcheck}</p>
+              ) : null}
             </div>
           </div>
-          {saveMut.isError ? (
-            <p className="text-sm text-red-600">{(saveMut.error as Error).message}</p>
+          {formMode === 'delete' ? (
+            <p className="text-sm text-red-600">
+              This action cannot be undone. Delete {form.mat}?
+            </p>
+          ) : null}
+          {formErrorSummary && formMode !== 'delete' ? (
+            <p className="text-sm text-red-600">{formErrorSummary}</p>
+          ) : null}
+          {formMut.isError ? (
+            <p className="text-sm text-red-600">{(formMut.error as Error).message}</p>
           ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-              ยกเลิก
+            <Button type="button" variant="outline" onClick={closeFormDialog}>
+              Cancel
             </Button>
             <Button
               type="button"
-              disabled={!form.mat.trim() || saveMut.isPending}
-              onClick={() => saveMut.mutate()}
+              variant={formMode === 'delete' ? 'destructive' : 'default'}
+              disabled={!form.mat.trim() || formMut.isPending}
+              onClick={() => formMut.mutate()}
             >
-              บันทึก
+              {formMode === 'create'
+                ? 'Create'
+                : formMode === 'edit'
+                  ? 'Update'
+                  : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+      <Dialog
+        open={importOpen}
+        onOpenChange={(open) => {
+          if (!open) closeImportDialog()
+          else setImportOpen(true)
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>นำเข้า Activity type (CSV)</DialogTitle>
+            <DialogTitle>Import Activity type (CSV/Excel)</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-zinc-500">
-            วางข้อมูลแบบ Excel export: mat, description, check — ข้ามแถวหัวตารางได้ (เทียบ
-            M_activitytype.php)
+            Upload file export: mat, description, check. For Excel files, the first 2 rows are skipped (PHP parity).
+            Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <Label htmlFor="activitytype-import-file">Select file</Label>
+              <Input
+                id="activitytype-import-file"
+                type="file"
+                accept=".csv,.xls,.xlsx,.xlsm,.xlsb"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
+            <div className="text-xs text-zinc-500">
+              Or paste CSV: mat,description,check
+            </div>
+          </div>
           <Textarea
             rows={8}
             value={importText}
@@ -247,15 +381,15 @@ export function ActivityTypePanel() {
             <p className="text-sm text-red-600">{(importMut.error as Error).message}</p>
           ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setImportOpen(false)}>
-              ปิด
+            <Button type="button" variant="outline" onClick={closeImportDialog}>
+              Close
             </Button>
             <Button
               type="button"
               disabled={importMut.isPending}
               onClick={() => importMut.mutate()}
             >
-              นำเข้า
+              Import
             </Button>
           </DialogFooter>
         </DialogContent>

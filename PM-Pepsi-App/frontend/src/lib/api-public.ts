@@ -1,8 +1,13 @@
 import {
   backlogEventsResponseSchema,
+  backlogFilterDetailResponseSchema,
   backlogFilterOptionsResponseSchema,
+  backlogManhourResponseSchema,
+  backlogManhourSearchBodySchema,
   backlogSearchBodySchema,
   calendarEventsResponseSchema,
+  calendarFilterOptionsResponseSchema,
+  calendarSearchBodySchema,
   dashboardSummarySchema,
   iw37nBatchesResponseSchema,
   iw37nImportResponseSchema,
@@ -11,13 +16,29 @@ import {
   masterDataResponseSchema,
   personnelResponseSchema,
   planningResponseSchema,
+  confirmationByWorkOrderResponseSchema,
+  confirmationCommentBodySchema,
+  confirmationCommentResponseSchema,
+  confirmationCommentsResponseSchema,
+  confirmationImageDataResponseSchema,
+  confirmationImagesResponseSchema,
+  userLogResponseSchema,
+  workcentersResponseSchema,
   usersResponseSchema,
   movePlanReasonsResponseSchema,
   movePlanRequestSchema,
   movePlanResponseSchema,
+  workOrderFilterOptionsResponseSchema,
   workOrderDetailSchema,
   workOrderListItemSchema,
+  workOrderModalDetailSchema,
+  workOrderPlanningOkResponseSchema,
+  workOrderPlanningUpsertBodySchema,
+  workOrderSearchBodySchema,
+  workOrderSearchResponseSchema,
   workOrderSuggestionsResponseSchema,
+  workOrderTeamPatchResponseSchema,
+  workOrderTeamPatchSchema,
   workOrdersResponseSchema,
 } from '@/api/schemas'
 import { fetchApi } from '@/lib/fetch-api'
@@ -42,6 +63,60 @@ export async function fetchWorkOrders(params?: { q?: string; status?: string }) 
 export async function fetchWorkOrderDetail(id: string) {
   const json = await fetchApi<unknown>(`/api/v1/work-orders/${encodeURIComponent(id)}`)
   return workOrderDetailSchema.parse(json).item
+}
+
+export async function fetchWorkOrderModalDetail(id: string, date?: string) {
+  const sp = new URLSearchParams()
+  if (date) sp.set('date', date)
+  const qs = sp.toString()
+  const path = qs
+    ? `/api/v1/work-orders/${encodeURIComponent(id)}/modal-detail?${qs}`
+    : `/api/v1/work-orders/${encodeURIComponent(id)}/modal-detail`
+  const json = await fetchApi<unknown>(path)
+  return workOrderModalDetailSchema.parse(json)
+}
+
+export async function putWorkOrderPlanning(id: string, body: z.infer<typeof workOrderPlanningUpsertBodySchema>) {
+  const payload = workOrderPlanningUpsertBodySchema.parse(body)
+  const json = await fetchApi<unknown>(`/api/v1/work-orders/${encodeURIComponent(id)}/planning`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return workOrderPlanningOkResponseSchema.parse(json)
+}
+
+export async function deleteWorkOrderPlanning(id: string) {
+  const json = await fetchApi<unknown>(`/api/v1/work-orders/${encodeURIComponent(id)}/planning`, {
+    method: 'DELETE',
+  })
+  return workOrderPlanningOkResponseSchema.parse(json)
+}
+
+export async function fetchWorkOrderFilterOptions() {
+  const json = await fetchApi<unknown>('/api/v1/work-orders/filter-options')
+  return workOrderFilterOptionsResponseSchema.parse(json)
+}
+
+export type WorkOrderSearchInput = z.infer<typeof workOrderSearchBodySchema>
+export async function postWorkOrdersSearch(body: WorkOrderSearchInput) {
+  const payload = workOrderSearchBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/work-orders/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return workOrderSearchResponseSchema.parse(json).items
+}
+
+export async function putWorkOrderTeam(id: string, team: z.infer<typeof workOrderTeamPatchSchema>['team']) {
+  const payload = workOrderTeamPatchSchema.parse({ team })
+  const json = await fetchApi<unknown>(`/api/v1/work-orders/${encodeURIComponent(id)}/team`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return workOrderTeamPatchResponseSchema.parse(json)
 }
 
 export async function fetchMovePlanReasons() {
@@ -75,6 +150,22 @@ export async function fetchCalendarEvents(year: number, month: number) {
   return calendarEventsResponseSchema.parse(json)
 }
 
+export async function fetchCalendarFilterOptions() {
+  const json = await fetchApi<unknown>('/api/v1/calendar/filter-options')
+  return calendarFilterOptionsResponseSchema.parse(json)
+}
+
+export type CalendarSearchInput = z.infer<typeof calendarSearchBodySchema>
+export async function postCalendarEvents(body: CalendarSearchInput) {
+  const payload = calendarSearchBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/calendar/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return calendarEventsResponseSchema.parse(json)
+}
+
 export async function fetchLineCalendarEvents(year: number, month: number) {
   const json = await fetchApi<unknown>(
     `/api/v1/line-calendar/events?year=${year}&month=${month}`,
@@ -95,6 +186,27 @@ export async function postBacklogEvents(body: BacklogSearchInput) {
     body: JSON.stringify(payload),
   })
   return backlogEventsResponseSchema.parse(json)
+}
+
+export async function postBacklogFilterDetail(body: BacklogSearchInput) {
+  const payload = backlogSearchBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/backlog/filter-detail', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return backlogFilterDetailResponseSchema.parse(json)
+}
+
+export type BacklogManhourInput = z.infer<typeof backlogManhourSearchBodySchema>
+export async function postBacklogManhourSummary(body: BacklogManhourInput) {
+  const payload = backlogManhourSearchBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/backlog/manhour-summary', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return backlogManhourResponseSchema.parse(json)
 }
 
 export async function fetchIw37nBatches() {
@@ -144,4 +256,122 @@ export async function fetchKpi() {
 export async function fetchUsers() {
   const json = await fetchApi<unknown>('/api/v1/users')
   return usersResponseSchema.parse(json).items
+}
+
+export async function fetchUserLog(params?: { limit?: number; offset?: number }) {
+  const sp = new URLSearchParams()
+  if (typeof params?.limit === 'number') sp.set('limit', String(params.limit))
+  if (typeof params?.offset === 'number') sp.set('offset', String(params.offset))
+  const qs = sp.toString()
+  const path = qs ? `/api/v1/user-log?${qs}` : '/api/v1/user-log'
+  const json = await fetchApi<unknown>(path)
+  return userLogResponseSchema.parse(json).items
+}
+
+export async function fetchWorkcenters() {
+  const json = await fetchApi<unknown>('/api/v1/workcenters')
+  return workcentersResponseSchema.parse(json).items
+}
+
+export async function fetchConfirmationByWorkOrder(wkorder: string) {
+  const json = await fetchApi<unknown>(
+    `/api/v1/confirmation/by-wkorder/${encodeURIComponent(wkorder)}`,
+  )
+  return confirmationByWorkOrderResponseSchema.parse(json)
+}
+
+export async function postConfirmationClose(body: {
+  idiw37: number
+  wkctr: string
+  startD: string
+  startT: string
+  endD: string
+  endT: string
+}) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${body.idiw37}/close`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      wkctr: body.wkctr,
+      startD: body.startD,
+      startT: body.startT,
+      endD: body.endD,
+      endT: body.endT,
+    }),
+  })
+  const ok = z.object({ ok: z.literal(true) }).safeParse(json)
+  if (!ok.success) throw new Error('Unexpected response')
+  return ok.data
+}
+
+export async function deleteConfirmationClose(idclose: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/close/${idclose}`, {
+    method: 'DELETE',
+  })
+  const ok = z.object({ ok: z.literal(true) }).safeParse(json)
+  if (!ok.success) throw new Error('Unexpected response')
+  return ok.data
+}
+
+export async function fetchConfirmationComments(idiw37: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/comments`)
+  return confirmationCommentsResponseSchema.parse(json).items
+}
+
+export async function postConfirmationComment(idiw37: number, comdetail: string) {
+  const payload = confirmationCommentBodySchema.parse({ comdetail })
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return confirmationCommentResponseSchema.parse(json).item
+}
+
+export async function putConfirmationComment(idcom: number, comdetail: string) {
+  const payload = confirmationCommentBodySchema.parse({ comdetail })
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/comments/${idcom}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return confirmationCommentResponseSchema.parse(json).item
+}
+
+export async function deleteConfirmationComment(idcom: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/comments/${idcom}`, {
+    method: 'DELETE',
+  })
+  const ok = z.object({ ok: z.literal(true) }).safeParse(json)
+  if (!ok.success) throw new Error('Unexpected response')
+  return ok.data
+}
+
+export async function fetchConfirmationImages(idiw37: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/images`)
+  return confirmationImagesResponseSchema.parse(json).items
+}
+
+export async function postConfirmationImage(idiw37: number, file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/images`, {
+    method: 'POST',
+    body: form,
+  })
+  return confirmationImagesResponseSchema.parse(json).items[0]
+}
+
+export async function deleteConfirmationImage(idcimg: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/images/${idcimg}`, {
+    method: 'DELETE',
+  })
+  const ok = z.object({ ok: z.literal(true) }).safeParse(json)
+  if (!ok.success) throw new Error('Unexpected response')
+  return ok.data
+}
+
+export async function fetchConfirmationImageData(idcimg: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/images/${idcimg}/data`)
+  return confirmationImageDataResponseSchema.parse(json)
 }

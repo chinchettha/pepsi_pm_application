@@ -25,6 +25,62 @@ export const workOrdersResponseSchema = z.object({
   items: z.array(workOrderListItemSchema),
 })
 
+export const workOrderFilterOptionSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+})
+
+export const workOrderFilterOptionsResponseSchema = z.object({
+  activities: z.array(workOrderFilterOptionSchema),
+  wktypes: z.array(workOrderFilterOptionSchema),
+  statuses: z.array(workOrderFilterOptionSchema),
+  workcenters: z.array(workOrderFilterOptionSchema),
+  teams: z.array(workOrderFilterOptionSchema),
+  functionals: z.array(workOrderFilterOptionSchema),
+  equipments: z.array(workOrderFilterOptionSchema),
+})
+
+export const workOrderSearchBodySchema = z.object({
+  q: z.string().optional(),
+  activity: z.array(z.string()),
+  wktype: z.array(z.string()),
+  status: z.array(z.string()),
+  wkctr: z.array(z.string()),
+  team: z.array(z.string()),
+  functionalloc: z.array(z.string()),
+  equipment: z.array(z.string()),
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+})
+
+export const workOrderSearchRowSchema = z.object({
+  id: z.string(),
+  wkorder: z.string(),
+  mntplan: z.string(),
+  wktype: z.string(),
+  mat: z.string(),
+  equdescrip: z.string(),
+  funcdescrip: z.string(),
+  work: z.number(),
+  untime: z.string(),
+  displayDate: z.string(),
+  team: z.string(),
+  wkstcolor: z.string(),
+  operationshorttext: z.string(),
+})
+
+export const workOrderSearchResponseSchema = z.object({
+  items: z.array(workOrderSearchRowSchema),
+})
+
+export const workOrderTeamPatchSchema = z.object({
+  team: z.enum(['', 'A', 'B', 'P']),
+})
+
+export const workOrderTeamPatchResponseSchema = z.object({
+  ok: z.literal(true),
+})
+
 export const workOrderMovePlanSchema = z.object({
   movedDate: z.string(),
   moveCount: z.number(),
@@ -60,6 +116,92 @@ export const workOrderDetailSchema = z.object({
       }),
     ),
   }),
+})
+
+export const workOrderTaskListItemSchema = z.object({
+  tasklist: z.string(),
+  machine: z.string(),
+  pmlist: z.string(),
+  machinestatus: z.number().nullable(),
+  mat: z.string(),
+  matdescrip: z.string(),
+})
+
+export const workOrderTaskListSchema = z.object({
+  mntplan: z.string(),
+  summary: z
+    .object({
+      tasklist: z.string(),
+      productline: z.string(),
+      zone: z.string(),
+      wkctrtype: z.string(),
+    })
+    .nullable(),
+  items: z.array(workOrderTaskListItemSchema),
+})
+
+export const workOrderMachineSchema = z.object({
+  zone: z.string(),
+  wkctrtype: z.string(),
+  productline: z.string(),
+  uptime: z.number().nullable(),
+  machines: z.array(z.string()),
+})
+
+export const workOrderMaterialItemSchema = z.object({
+  matpo: z.string(),
+  pstngdate: z.string(),
+  materialdesc: z.string(),
+  amountinlc: z.number(),
+  mvt: z.string(),
+  material: z.string(),
+})
+
+export const workOrderMaterialsSchema = z.object({
+  items: z.array(workOrderMaterialItemSchema),
+})
+
+export const workOrderPlanningGroupSchema = z.object({
+  wkctrgroup: z.string(),
+  wkctrdescription: z.string(),
+})
+
+export const workOrderPlanningAssignedSchema = z.object({
+  kind: z.enum(['person', 'group']),
+  code: z.string(),
+  displayName: z.string(),
+  pwcomment: z.string(),
+  pwteam: z.string(),
+})
+
+export const workOrderPlanningSchema = z.object({
+  canAssign: z.boolean(),
+  assigned: workOrderPlanningAssignedSchema.nullable(),
+  workcenters: z.array(
+    z.object({
+      wkctr: z.string(),
+      displayName: z.string(),
+    }),
+  ),
+  groups: z.array(workOrderPlanningGroupSchema),
+})
+
+export const workOrderModalDetailSchema = z.object({
+  date: z.string(),
+  taskList: workOrderTaskListSchema,
+  machine: workOrderMachineSchema,
+  planning: workOrderPlanningSchema,
+  materials: workOrderMaterialsSchema,
+})
+
+export const workOrderPlanningUpsertBodySchema = z.object({
+  mode: z.enum(['P', 'G']),
+  code: z.string().min(1),
+  comment: z.string().optional(),
+})
+
+export const workOrderPlanningOkResponseSchema = z.object({
+  ok: z.literal(true),
 })
 
 export const movePlanReasonSchema = z.object({
@@ -122,6 +264,30 @@ export const backlogFilterOptionSchema = z.object({
   label: z.string(),
 })
 
+export const calendarFilterOptionsResponseSchema = z.object({
+  activities: z.array(backlogFilterOptionSchema),
+  wktypes: z.array(backlogFilterOptionSchema),
+  statuses: z.array(backlogFilterOptionSchema),
+  workcenters: z.array(backlogFilterOptionSchema),
+  teams: z.array(backlogFilterOptionSchema),
+  functionals: z.array(backlogFilterOptionSchema),
+  equipments: z.array(backlogFilterOptionSchema),
+})
+
+export const calendarSearchBodySchema = z.object({
+  year: z.number(),
+  month: z.number(),
+  activity: z.array(z.string()),
+  wktype: z.array(z.string()),
+  status: z.array(z.string()),
+  wkctr: z.array(z.string()),
+  team: z.array(z.string()),
+  functionalloc: z.array(z.string()),
+  equipment: z.array(z.string()),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional(),
+})
+
 export const backlogFilterOptionsResponseSchema = z.object({
   activities: z.array(backlogFilterOptionSchema),
   wktypes: z.array(backlogFilterOptionSchema),
@@ -144,6 +310,64 @@ export const backlogEventsResponseSchema = z.object({
   items: z.array(calendarEventItemSchema),
   year: z.number(),
   month: z.number(),
+})
+
+export const backlogManhourSearchBodySchema = z.object({
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
+export const backlogManhourRowSchema = z.object({
+  wkorder: z.string(),
+  wktype: z.string().nullable().optional(),
+  syst: z.string().nullable().optional(),
+  work: z.number(),
+  actwork: z.number(),
+  unit: z.string(),
+  operationshorttext: z.string().nullable().optional(),
+})
+
+export const backlogManhourResponseSchema = z.object({
+  fromDate: z.string(),
+  toDate: z.string(),
+  plannedMinutes: z.number(),
+  plannedHours: z.number(),
+  actualMinutes: z.number(),
+  actualHours: z.number(),
+  totalOrders: z.number(),
+  completionCount: z.number(),
+  completionPercent: z.number(),
+  byWkzb: z.array(
+    z.object({
+      code: z.string(),
+      label: z.string(),
+      count: z.number(),
+    }),
+  ),
+  rows: z.array(backlogManhourRowSchema),
+})
+
+export const backlogFilterDetailTeamSchema = z.object({
+  count: z.number(),
+  workSumMinutes: z.number(),
+})
+
+export const backlogFilterDetailResponseSchema = z.object({
+  year: z.number(),
+  month: z.number(),
+  totalOrders: z.number(),
+  completionCount: z.number(),
+  completionPercent: z.number(),
+  byWkzb: z.array(
+    z.object({
+      code: z.string(),
+      label: z.string(),
+      count: z.number(),
+    }),
+  ),
+  teamA: backlogFilterDetailTeamSchema,
+  teamB: backlogFilterDetailTeamSchema,
+  teamP: backlogFilterDetailTeamSchema,
 })
 
 export const iw37nBatchItemSchema = z.object({
@@ -329,9 +553,197 @@ export const activityTypeItemSchema = z.object({
   matcheck: z.string(),
 })
 
+/** เทียบ `tbdepartment` — M_department.php */
+export const departmentItemSchema = z.object({
+  id: z.string(),
+  iddepartment: z.string(),
+  department: z.string(),
+})
+
+/** เทียบ `tbequipment` — M_equipment.php */
+export const equipmentItemSchema = z.object({
+  id: z.string(),
+  equipment: z.string(),
+  equdescrip: z.string(),
+  equipmentsub: z.string(),
+  functionalloc: z.string(),
+  equl: z.string(),
+  equ1: z.string(),
+  equea: z.string(),
+})
+
+/** เทียบ `tbfunctional` — M_functional.php */
+export const functionalItemSchema = z.object({
+  id: z.string(),
+  functionalloc: z.string(),
+  funldescrip: z.string(),
+  functionallocsub: z.string(),
+})
+
+export const reasonItemSchema = z.object({
+  id: z.string(),
+  reasoncode: z.string(),
+  reasonname: z.string(),
+})
+
+export const workStatusItemSchema = z.object({
+  id: z.string(),
+  syst: z.string(),
+  wkstreason: z.string(),
+  wkstcolor: z.string(),
+})
+
+export const workTypeItemSchema = z.object({
+  id: z.string(),
+  idwkctrtype: z.string(),
+  wkctrtype: z.string(),
+})
+
+export const zbItemSchema = z.object({
+  id: z.string(),
+  wkzb: z.string(),
+  zbdescrip: z.string(),
+})
+
+export const lineProductItemSchema = z.object({
+  id: z.string(),
+  productline: z.string(),
+  prolinedescrip: z.string(),
+})
+
+export const zoneItemSchema = z.object({
+  id: z.string(),
+  idzone: z.string(),
+  zone: z.string(),
+  zonedescrip: z.string(),
+  idproductline: z.string(),
+  productline: z.string(),
+})
+
+export const machineItemSchema = z.object({
+  id: z.string(),
+  machine: z.string(),
+  idzone: z.string(),
+  zone: z.string(),
+  idwkctrtype: z.string(),
+  wkctrtype: z.string(),
+})
+
+export const materialItemSchema = z.object({
+  id: z.string(),
+  idmaterial: z.number(),
+  wkorder: z.string(),
+  matdoc: z.string(),
+  entrydate: z.string(),
+  matpo: z.string(),
+  pstngdate: z.string(),
+  docdate: z.string(),
+  materialdesc: z.string(),
+  matquantity: z.number(),
+  matbun: z.string(),
+  amountinlc: z.number(),
+  crcy: z.string(),
+  mvt: z.string(),
+  costctr: z.string(),
+  mattime: z.string(),
+  matyr: z.string(),
+  material: z.string(),
+})
+
+export const levelItemSchema = z.object({
+  id: z.string(),
+  idwklevel: z.string(),
+  wklevel: z.string(),
+})
+
+export const positionItemSchema = z.object({
+  id: z.string(),
+  idposition: z.string(),
+  position: z.string(),
+})
+
+export const groupItemSchema = z.object({
+  id: z.string(),
+  idwkctrgroup: z.number(),
+  wkctrgroup: z.string(),
+  wkctrdescription: z.string(),
+})
+
+export const tasklistItemSchema = z.object({
+  id: z.string(),
+  idtasklist: z.number(),
+  idwkctrtype: z.string(),
+  wkctrtype: z.string(),
+  idzone: z.string(),
+  zone: z.string(),
+  idmachine: z.string(),
+  mntplan: z.string(),
+  tasklist: z.string(),
+  legacy: z.string(),
+  machine: z.string(),
+  pmlist: z.string(),
+  pmday: z.number(),
+  machinestatus: z.number(),
+  pmmin: z.number(),
+  pmman: z.number(),
+  manhour: z.number(),
+  mat: z.string(),
+  runhr: z.number(),
+  mpoint: z.string(),
+  bcprunhr: z.number(),
+  gls: z.string(),
+  ment: z.string(),
+  freqhour: z.number(),
+  plan: z.string(),
+})
+
+export const lineSchdulItemSchema = z.object({
+  id: z.string(),
+  idline: z.number(),
+  idproductline: z.string(),
+  productline: z.string(),
+  lineday: z.number(),
+  uptime: z.number(),
+  linereason: z.string(),
+})
+
 export type MasterDataItemGeneric = z.infer<typeof masterDataItemGenericSchema>
 export type ActivityTypeItem = z.infer<typeof activityTypeItemSchema>
-export type MasterDataItem = MasterDataItemGeneric | ActivityTypeItem
+export type DepartmentItem = z.infer<typeof departmentItemSchema>
+export type EquipmentItem = z.infer<typeof equipmentItemSchema>
+export type FunctionalItem = z.infer<typeof functionalItemSchema>
+export type ReasonItem = z.infer<typeof reasonItemSchema>
+export type WorkStatusItem = z.infer<typeof workStatusItemSchema>
+export type WorkTypeItem = z.infer<typeof workTypeItemSchema>
+export type ZbItem = z.infer<typeof zbItemSchema>
+export type LineProductItem = z.infer<typeof lineProductItemSchema>
+export type ZoneItem = z.infer<typeof zoneItemSchema>
+export type MachineItem = z.infer<typeof machineItemSchema>
+export type MaterialItem = z.infer<typeof materialItemSchema>
+export type LevelItem = z.infer<typeof levelItemSchema>
+export type PositionItem = z.infer<typeof positionItemSchema>
+export type GroupItem = z.infer<typeof groupItemSchema>
+export type TasklistItem = z.infer<typeof tasklistItemSchema>
+export type LineSchdulItem = z.infer<typeof lineSchdulItemSchema>
+export type MasterDataItem =
+  | MasterDataItemGeneric
+  | ActivityTypeItem
+  | DepartmentItem
+  | EquipmentItem
+  | FunctionalItem
+  | ReasonItem
+  | WorkStatusItem
+  | WorkTypeItem
+  | ZbItem
+  | LineProductItem
+  | ZoneItem
+  | MachineItem
+  | MaterialItem
+  | LevelItem
+  | PositionItem
+  | GroupItem
+  | TasklistItem
+  | LineSchdulItem
 
 export function isActivityTypeItem(item: MasterDataItem): item is ActivityTypeItem {
   return 'mat' in item && 'matdescrip' in item
@@ -339,7 +751,28 @@ export function isActivityTypeItem(item: MasterDataItem): item is ActivityTypeIt
 
 export const masterDataResponseSchema = z.object({
   entity: z.string(),
-  items: z.array(z.union([activityTypeItemSchema, masterDataItemGenericSchema])),
+  items: z.array(
+    z.union([
+      activityTypeItemSchema,
+      departmentItemSchema,
+      equipmentItemSchema,
+      functionalItemSchema,
+      reasonItemSchema,
+      workStatusItemSchema,
+      workTypeItemSchema,
+      zbItemSchema,
+      lineProductItemSchema,
+      zoneItemSchema,
+      machineItemSchema,
+      materialItemSchema,
+      levelItemSchema,
+      positionItemSchema,
+      groupItemSchema,
+      tasklistItemSchema,
+      lineSchdulItemSchema,
+      masterDataItemGenericSchema,
+    ]),
+  ),
 })
 
 export const kpiResponseSchema = z.object({
@@ -357,4 +790,83 @@ export const usersResponseSchema = z.object({
       active: z.boolean(),
     }),
   ),
+})
+
+export const userLogItemSchema = z.object({
+  id: z.number(),
+  actionTime: z.string(),
+  action: z.string(),
+  userIp: z.string().nullable(),
+  myIp: z.string().nullable(),
+})
+
+export const userLogResponseSchema = z.object({
+  items: z.array(userLogItemSchema),
+})
+
+export const workcenterItemSchema = z.object({
+  wkctr: z.string(),
+  displayName: z.string(),
+})
+
+export const workcentersResponseSchema = z.object({
+  items: z.array(workcenterItemSchema),
+})
+
+export const confirmationCloseItemSchema = z.object({
+  idclose: z.number(),
+  idiw37: z.number(),
+  wkctr: z.string(),
+  displayName: z.string(),
+  stdate: z.number(),
+  endate: z.number(),
+  timewk: z.number(),
+  unitc: z.string(),
+})
+
+export const confirmationByWorkOrderResponseSchema = z.object({
+  idiw37: z.number(),
+  wkorder: z.string(),
+  items: z.array(confirmationCloseItemSchema),
+})
+
+export const confirmationCommentItemSchema = z.object({
+  idcom: z.number(),
+  idiw37: z.number(),
+  comdetail: z.string(),
+  wkctr: z.string(),
+  createdAt: z.string(),
+})
+
+export const confirmationCommentsResponseSchema = z.object({
+  items: z.array(confirmationCommentItemSchema),
+})
+
+export const confirmationCommentBodySchema = z.object({
+  comdetail: z.string().min(1),
+})
+
+export const confirmationCommentResponseSchema = z.object({
+  item: confirmationCommentItemSchema,
+})
+
+export const confirmationImageItemSchema = z.object({
+  idcimg: z.number(),
+  idiw37: z.number(),
+  fileName: z.string(),
+  originalName: z.string(),
+  mime: z.string(),
+  bytes: z.number(),
+  wkctr: z.string(),
+  createdAt: z.string(),
+})
+
+export const confirmationImagesResponseSchema = z.object({
+  items: z.array(confirmationImageItemSchema),
+})
+
+export const confirmationImageDataResponseSchema = z.object({
+  idcimg: z.number(),
+  mime: z.string(),
+  base64: z.string(),
 })

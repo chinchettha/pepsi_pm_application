@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   BarChart3,
   Boxes,
+  BookText,
   CalendarDays,
   ChartGantt,
   ClipboardList,
@@ -35,6 +36,7 @@ const byRoute: Record<string, LucideIcon> = {
   '/manhours-hr': Printer,
   '/summary-weekly': LineChart,
   '/settings': Settings,
+  '/user-log': BookText,
 }
 
 /** แปลง `menuicon` จาก tbmenu หรือใช้ route เป็น fallback */
@@ -46,6 +48,7 @@ export function resolveNavIcon(reactRoute: string, menuicon?: string): LucideIco
   if (icon.includes('home')) return Home
   if (icon.includes('database')) return Database
   if (icon.includes('user')) return Users
+  if (icon.includes('book')) return BookText
   if (icon.includes('chart')) return BarChart3
   if (icon.includes('cog')) return Settings
   return Circle

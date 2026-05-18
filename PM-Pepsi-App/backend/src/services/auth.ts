@@ -170,4 +170,49 @@ export async function insertUserLog(
     [opts.userId, opts.username, opts.userIp, opts.myIp, opts.action],
   )
 }
-
+
+type UserLogRow = {
+  id: number
+  user_ip: string | null
+  my_ip: string | null
+  action: string
+  created_at: Date | string
+}
+
+export type UserLogItem = {
+  id: number
+  actionTime: string
+  action: string
+  userIp: string | null
+  myIp: string | null
+}
+
+function toIsoString(value: Date | string): string {
+  if (value instanceof Date) return value.toISOString()
+  return String(value)
+}
+
+export async function listUserLogs(
+  pool: Pool,
+  opts: { userId: string; accountType: 'workcenter' | 'member'; limit: number; offset: number },
+): Promise<UserLogItem[]> {
+  const table = opts.accountType === 'member' ? 'app.tbl_system_userlog' : 'app.tbworkcenter_userlog'
+
+  const r = await pool.query<UserLogRow>(
+    `SELECT id, user_ip, my_ip, action, created_at
+     FROM ${table}
+     WHERE user_id = $1
+     ORDER BY created_at DESC, id DESC
+     LIMIT $2 OFFSET $3`,
+    [opts.userId, opts.limit, opts.offset],
+  )
+
+  return r.rows.map((row) => ({
+    id: row.id,
+    actionTime: toIsoString(row.created_at),
+    action: row.action,
+    userIp: row.user_ip,
+    myIp: row.my_ip,
+  }))
+}
+
