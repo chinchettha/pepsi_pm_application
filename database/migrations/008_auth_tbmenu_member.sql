@@ -54,7 +54,7 @@ DELETE FROM app.tbmenu;
 
 INSERT INTO app.tbmenu (idmenu, idmenusub, menuon, menu_kind, menuright, menuicon, menutitle, menulink, react_route, end_exact) VALUES
   (1,  '0', 10, 'heading', 'A:U:W', 'fa-chart-line', 'ปฏิทิน & ใบงาน', NULL, NULL, false),
-  (2,  '0', 20, 'item',    'A',     'fa-home',       'หน้าแรก', 'index2.php', '/', true),
+  (2,  '0', 20, 'item',    'A:U:W', 'fa-home',       'Dashboard / หน้าแรก', 'index2.php', '/', true),
   (3,  '0', 30, 'item',    'A:U:W', 'fa-calendar',   'ปฏิทิน (Work scheduling)', 'index.php?module=calendar', '/calendar', false),
   (4,  '0', 40, 'item',    'A:U:W', 'fa-stream',     'ปฏิทินเส้น / Line', 'index.php?module=line_calendar', '/line-calendar', false),
   (5,  '0', 50, 'item',    'A:U:W', 'fa-list',       'Backlog / แผนค้าง', 'index.php?module=backlog', '/backlog', false),

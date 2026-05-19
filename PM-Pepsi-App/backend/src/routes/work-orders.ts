@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { Pool } from 'pg'
 import multer from 'multer'
+import * as XLSX from 'xlsx'
 import { z } from 'zod'
 import { createRequireApiAuth } from '../middleware/require-api-auth.js'
 import {
@@ -15,11 +16,15 @@ import {
   confirmationDeleteCloseResponseSchema,
   confirmationImageDataResponseSchema,
   confirmationImagesResponseSchema,
+  confirmationImportResponseSchema,
+  confirmationExportResponseSchema,
   confirmationOkResponseSchema,
   workcentersResponseSchema,
   workOrderDetailSchema,
   workOrderFilterOptionsResponseSchema,
   workOrderModalDetailResponseSchema,
+  workOrderPlanningBatchBodySchema,
+  workOrderPlanningBatchResponseSchema,
   workOrderPlanningOkResponseSchema,
   workOrderPlanningUpsertBodySchema,
   workOrderSearchBodySchema,
@@ -33,6 +38,7 @@ import {
   enrichWorkOrderDetailForUser,
   getWorkOrderModalDetail,
   listWorkOrderFilterOptions,
+  assignWorkOrderPlanningBatch,
   listWorkOrders,
   searchWorkOrders,
   upsertWorkOrderPlanning,
@@ -48,6 +54,8 @@ import {
   findWorkOrderByWkorder,
   getConfirmationImageMeta,
   getConfirmationByWorkOrder,
+  importConfirmFile,
+  listConfirmationExportRows,
   listConfirmationComments,
   listConfirmationImages,
   listWorkcenters,
@@ -107,6 +115,7 @@ function isSchemaMissing(err: unknown): boolean {
     message.includes('tbmaterial') ||
     message.includes('tbcofirm') ||
     message.includes('view_confirmation') ||
+    message.includes('view_exportconfirm') ||
     message.includes('tbconfirmimg') ||
     message.includes('tbconfirmcom')
   )
@@ -122,6 +131,12 @@ export function registerWorkOrderRoutes(
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 3 * 1024 * 1024 },
+  })
+
+  // multer แยกสำหรับไฟล์ Excel (M_Confirm.php) — ใหญ่กว่ารูปได้
+  const uploadExcel = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 15 * 1024 * 1024 },
   })
 
   const imagesDir = path.resolve(process.cwd(), 'uploads', 'confirm-images')
@@ -329,6 +344,64 @@ export function registerWorkOrderRoutes(
     },
   )
 
+  // Multi-assign แบบ batch — เพิ่มช่างหลายคนในคลิกเดียว (เทียบ M_personel/AddPlan.php loop หลายครั้ง)
+  app.post(
+    '/api/v1/work-orders/:id/planning/batch',
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED' })
+        return
+      }
+      if ((user.userst ?? '').trim() !== 'A') {
+        res.status(403).json({ error: 'FORBIDDEN' })
+        return
+      }
+      const id = String(req.params.id ?? '')
+      const parsed = workOrderPlanningBatchBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Invalid body',
+          issues: parsed.error.issues,
+        })
+        return
+      }
+      try {
+        const result = await assignWorkOrderPlanningBatch(
+          pool,
+          id,
+          parsed.data.wkctrs,
+          parsed.data.comment,
+          user.wkctr || user.username || user.idwkctr,
+        )
+        if (!result) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        res.json(
+          workOrderPlanningBatchResponseSchema.parse({
+            ok: true,
+            assigned: result.assigned,
+            skipped: result.skipped,
+            notFound: result.notFound,
+          }),
+        )
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/007_tbplangingwork_view_planwork.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  // DELETE all assignments ของ WO (back-compat) — เทียบ legacy "clear ทั้ง WO"
   app.delete(
     '/api/v1/work-orders/:id/planning',
     requireAuth,
@@ -355,6 +428,46 @@ export function registerWorkOrderRoutes(
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
             message: 'Run database/migrations/007_tbplangingwork_view_planwork.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  // DELETE assignment เฉพาะ (idiw37, wkctr) — multi-assign — เทียบ AddPlan.php `st=Del`
+  app.delete(
+    '/api/v1/work-orders/:id/planning/:wkctr',
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED' })
+        return
+      }
+      if ((user.userst ?? '').trim() !== 'A') {
+        res.status(403).json({ error: 'FORBIDDEN' })
+        return
+      }
+      const id = String(req.params.id ?? '')
+      const wkctr = String(req.params.wkctr ?? '').trim()
+      if (!wkctr) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'wkctr is required' })
+        return
+      }
+      try {
+        const ok = await deleteWorkOrderPlanning(pool, id, wkctr)
+        if (!ok) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        res.json(workOrderPlanningOkResponseSchema.parse({ ok: true }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/007_tbplangingwork_view_planwork.sql + 038_tbplangingwork_multi_assign.sql',
           })
           return
         }
@@ -549,6 +662,121 @@ export function registerWorkOrderRoutes(
     },
   )
 
+  app.get(
+    '/api/v1/confirmation/export',
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      const actorWkctr = (user.wkctr || user.username || '').trim()
+      const scope: 'ALL' | 'OWN' =
+        actorWkctr === 'PAC007' || actorWkctr === 'PRO005' ? 'ALL' : 'OWN'
+
+      try {
+        const items = await listConfirmationExportRows(pool, actorWkctr)
+        res.json(
+          confirmationExportResponseSchema.parse({
+            scope,
+            actorWkctr,
+            totalRows: items.length,
+            items,
+          }),
+        )
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message:
+              'Run migrations 026_confirmation_tables.sql และ 033_view_exportconfirm.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.get(
+    '/api/v1/confirmation/export.xlsx',
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+
+      try {
+        const rows = await listConfirmationExportRows(pool, user.wkctr || user.username || '')
+        const data = [
+          [
+            '',
+            'Comfirmation',
+            'Order',
+            'Operation',
+            'SubO',
+            'Ca..',
+            'Split',
+            'Wrk Ctr',
+            'Act.Work',
+            'unit',
+            'Start date Exe.',
+            'End Date Exe.',
+            'Start Execute',
+            'End Execute',
+          ],
+          ...rows.map((row) => [
+            row.no,
+            row.confirmation,
+            row.wkorder,
+            row.opac,
+            row.subO,
+            row.ca,
+            row.split,
+            row.wkctr,
+            row.timewk,
+            row.unitc,
+            row.startDateExe,
+            row.endDateExe,
+            row.startExecute,
+            row.endExecute,
+          ]),
+        ]
+
+        const wb = XLSX.utils.book_new()
+        const ws = XLSX.utils.aoa_to_sheet(data)
+        for (const col of Array.from({ length: 14 }, (_, i) => i)) {
+          const letter = XLSX.utils.encode_col(col)
+          ws['!cols'] = ws['!cols'] ?? []
+          ws['!cols'][col] = { wch: Math.max(10, String(data[0][col] ?? '').length + 2) }
+          if (!ws[`${letter}1`]) continue
+        }
+        XLSX.utils.book_append_sheet(wb, ws, 'Export Confirm')
+        const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }) as Buffer
+
+        res.setHeader(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        res.setHeader('Content-Disposition', 'attachment; filename="Export_Confirm.xlsx"')
+        res.status(200).send(buf)
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message:
+              'Run migrations 026_confirmation_tables.sql และ 033_view_exportconfirm.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
   app.post(
     '/api/v1/confirmation/:idiw37/images',
     requireAuth,
@@ -733,6 +961,60 @@ export function registerWorkOrderRoutes(
       }
       await deleteConfirmationClose(pool, parsed.data.idclose)
       res.json(confirmationDeleteCloseResponseSchema.parse({ ok: true }))
+    },
+  )
+
+  // POST /api/v1/confirmation/import (Admin only) — เทียบ M_Confirm.php
+  // skip 2 rows + validate ตาม PHP บรรทัด 76 + insert/update เทียบ PHP บรรทัด 130-165
+  app.post(
+    '/api/v1/confirmation/import',
+    requireAuth,
+    uploadExcel.single('file'),
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      if ((user.userst ?? '').trim() !== 'A') {
+        res.status(403).json({ error: 'FORBIDDEN', message: 'Admin only (M_Confirm)' })
+        return
+      }
+
+      const file = req.file
+      if (!file?.buffer?.length) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Multipart field "file" (.xls, .xlsx, .csv) is required',
+        })
+        return
+      }
+
+      const fileName = file.originalname || 'Confirm.xlsx'
+      const lower = fileName.toLowerCase()
+      if (!lower.endsWith('.xls') && !lower.endsWith('.xlsx') && !lower.endsWith('.csv')) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Only .xls, .xlsx, or .csv files are allowed',
+        })
+        return
+      }
+
+      try {
+        const summary = await importConfirmFile(pool, fileName, file.buffer)
+        res.json(confirmationImportResponseSchema.parse({ fileName, ...summary }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message:
+              'Run migrations 026_confirmation_tables.sql และ 032_tbcofirm_import_uniq.sql',
+          })
+          return
+        }
+        const message = err instanceof Error ? err.message : 'Import failed'
+        res.status(400).json({ error: 'IMPORT_FAILED', message })
+      }
     },
   )
 }

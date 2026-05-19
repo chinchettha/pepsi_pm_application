@@ -1,0 +1,86 @@
+/**
+ * Technician Utilizations — เทียบ `W_summary_weekly_chart.php`, `W_summary_weekly_chart2.php`
+ */
+import type { SummaryWeeklyUtilizationBar } from '@/api/schemas'
+import {
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  Title,
+  Tooltip,
+} from 'chart.js'
+import { Bar } from 'react-chartjs-2'
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
+
+export type SummaryWeeklyChartVariant = 'chart' | 'chart2'
+
+type Props = {
+  items: SummaryWeeklyUtilizationBar[]
+  variant?: SummaryWeeklyChartVariant
+  /** compact = ในหน้าหลัก, fullscreen = ขยายเต็มจอ */
+  layout?: 'compact' | 'fullscreen'
+}
+
+function barColors(count: number, variant: SummaryWeeklyChartVariant): string[] {
+  if (variant === 'chart2') {
+    return Array.from({ length: count }, (_, i) => `hsl(${(i * 47) % 360} 55% 45%)`)
+  }
+  return Array.from({ length: count }, () => 'rgba(24,24,27,0.85)')
+}
+
+export function SummaryWeeklyUtilizationChart({
+  items,
+  variant = 'chart2',
+  layout = 'compact',
+}: Props) {
+  const isFull = layout === 'fullscreen'
+
+  return (
+    <Bar
+      data={{
+        labels: items.map((c) => c.idwkctr),
+        datasets: [
+          {
+            label: 'Summary (ชม.)',
+            data: items.map((c) => c.summaryHours),
+            backgroundColor: barColors(items.length, variant),
+          },
+        ],
+      }}
+      options={{
+        responsive: true,
+        maintainAspectRatio: !isFull,
+        aspectRatio: isFull ? undefined : 2,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Technician Utilizations',
+            font: { size: isFull ? 18 : 14 },
+          },
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y ?? 0} ชม.`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: isFull ? 45 : 0,
+              autoSkip: items.length > 24,
+            },
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'ชั่วโมง (Summary/W)' },
+          },
+        },
+      }}
+      height={isFull ? 500 : undefined}
+    />
+  )
+}

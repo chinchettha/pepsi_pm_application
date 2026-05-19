@@ -78,10 +78,19 @@
 - ปฏิทิน: FullCalendar ใน [`00-cross-cutting.md`](00-cross-cutting.md) = UI แกน — ยังขาด DnD, modal PHP เต็ม, POST filter แบบ `M_filter_iw37.php`
 - เมื่อโมดูลใดถึง **stack เต็ม** ให้ระบุในหัวไฟล์นั้นและอัปเดตคอลัมน์ **Stack เต็ม** ใน [`COMPLETION-MATRIX.md`](COMPLETION-MATRIX.md)
 
+### งานคงค้างเพื่อให้ลำดับ 8 (Dashboard/Planning) ผ่าน stack เต็ม
+
+- FullCalendar DnD ใน `/planning` (ย้ายแผน / drop เปลี่ยน `wkctr`) เทียบ `M_planwork_*`
+- Charts KPI ใน `/` (Dashboard) ตาม §2 (`Highcharts/Chart.js`) — ตอนนี้เป็นการ์ดตัวเลข
+- IndexedDB cache สำหรับ list/queue เพื่อเปิดออฟไลน์
+- Docker compose ส่งมอบ + `web` service สำหรับ frontend production
+- Audit trail การจ่ายงาน (`POST /planning/assign`) + RBAC test ครบทุก endpoint
+
 ---
 
 ## บันทึกการอัปเดต
 
 | วันที่ | สรุป |
 |--------|------|
+| 2026-05-19 | ลำดับ 8 ปิด **แกน** แล้ว — เพิ่มรายการ stack เต็มที่ยังขาด (DnD Planning, charts KPI Dashboard, IndexedDB, Docker compose, audit/RBAC test) |
 | 2026-05-16 | สร้างไฟล์ — ยืนยันว่ายังไม่มีโมดูลใดผ่านเกณฑ์ stack เต็มรูปแบบ |

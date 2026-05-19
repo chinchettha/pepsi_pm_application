@@ -1,0 +1,63 @@
+/**
+ * @vitest-environment jsdom
+ */
+import '@testing-library/jest-dom/vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { PlanningMultiAssign } from './PlanningMultiAssign'
+
+const workcenters = [
+  { wkctr: 'PAC001', displayName: 'Somchai Technician' },
+  { wkctr: 'PAC002', displayName: 'Assigned Person' },
+  { wkctr: 'PAC003', displayName: 'Planner Support' },
+]
+
+describe('PlanningMultiAssign', () => {
+  it('searches, blocks already assigned users, selects visible users, and submits selected codes', async () => {
+    const onAssign = vi.fn().mockResolvedValue({
+      assigned: ['PAC001'],
+      skipped: [],
+      notFound: [],
+    })
+
+    render(
+      <PlanningMultiAssign
+        workcenters={workcenters}
+        assignedCodes={['PAC002']}
+        comment="Batch comment"
+        onCommentChange={vi.fn()}
+        onAssign={onAssign}
+      />,
+    )
+
+    expect(screen.getByText('จ่ายแล้ว')).toBeInTheDocument()
+    expect(screen.getByLabelText(/PAC002/)).toBeDisabled()
+
+    fireEvent.change(screen.getByPlaceholderText('ค้นหา wkctr หรือชื่อ…'), {
+      target: { value: 'Somchai' },
+    })
+    expect(screen.getByText('PAC001')).toBeInTheDocument()
+    expect(screen.queryByText('PAC003')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('เลือกทั้งหมดในมุมมอง'))
+    fireEvent.click(screen.getByRole('button', { name: 'เพิ่ม Assignee (1)' }))
+
+    await waitFor(() => expect(onAssign).toHaveBeenCalledWith(['PAC001']))
+    expect(await screen.findByText(/สรุป — เพิ่ม 1/)).toBeInTheDocument()
+  })
+
+  it('renders uncontrolled comment input when parent does not control comment state', () => {
+    render(
+      <PlanningMultiAssign
+        workcenters={workcenters}
+        assignedCodes={[]}
+        onAssign={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByLabelText('หมายเหตุ (ใช้ร่วมกับทุกคน)')
+    fireEvent.change(input, { target: { value: 'same comment' } })
+
+    expect(input).toHaveValue('same comment')
+  })
+})

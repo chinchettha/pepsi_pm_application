@@ -11,8 +11,20 @@ export const planningItemSchema = z.object({
   wktype: z.string().optional(),
   planDate: z.string().optional(),
   movedDate: z.string().optional(),
+  closedDate: z.string().optional(),
 })
 
 export const planningResponseSchema = z.object({
   items: z.array(planningItemSchema),
+})
+
+export const planningAssignBodySchema = z.object({
+  idiw37: z.coerce.number().int().positive(),
+  mode: z.enum(['P', 'G']).default('P'),
+  code: z.string().min(1).max(64),
+  comment: z.string().max(1000).optional(),
+})
+
+export const planningAssignResponseSchema = z.object({
+  ok: z.literal(true),
 })

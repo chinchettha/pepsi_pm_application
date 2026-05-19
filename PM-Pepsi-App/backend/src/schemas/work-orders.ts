@@ -201,6 +201,52 @@ export const confirmationOkResponseSchema = z.object({
   ok: z.literal(true),
 })
 
+export const confirmationImportRowResultSchema = z.object({
+  rowNo: z.number().int(),
+  action: z.enum(['inserted', 'updated', 'skipped', 'error']),
+  confirmation: z.string(),
+  wkorder: z.string(),
+  wkctr: z.string(),
+  stdate: z.number().nullable(),
+  endate: z.number().nullable(),
+  timewk: z.number().nullable(),
+  message: z.string(),
+})
+
+export const confirmationImportResponseSchema = z.object({
+  fileName: z.string(),
+  totalRows: z.number().int(),
+  inserted: z.number().int(),
+  updated: z.number().int(),
+  skipped: z.number().int(),
+  errors: z.number().int(),
+  rows: z.array(confirmationImportRowResultSchema),
+})
+
+export const confirmationExportRowSchema = z.object({
+  no: z.number().int(),
+  confirmation: z.string(),
+  wkorder: z.string(),
+  opac: z.string(),
+  subO: z.string(),
+  ca: z.string(),
+  split: z.string(),
+  wkctr: z.string(),
+  timewk: z.number(),
+  unitc: z.string(),
+  startDateExe: z.string(),
+  endDateExe: z.string(),
+  startExecute: z.string(),
+  endExecute: z.string(),
+})
+
+export const confirmationExportResponseSchema = z.object({
+  scope: z.enum(['ALL', 'OWN']),
+  actorWkctr: z.string(),
+  totalRows: z.number().int(),
+  items: z.array(confirmationExportRowSchema),
+})
+
 export const workOrderTaskListItemSchema = z.object({
   tasklist: z.string(),
   machine: z.string(),
@@ -250,6 +296,8 @@ export const workOrderPlanningGroupSchema = z.object({
 })
 
 export const workOrderPlanningAssignedSchema = z.object({
+  /** ใหม่: id ของแถว tbplangingwork (ใช้ลบรายตัว) — ค่าเก่าจะเป็น null */
+  idplanw: z.number().int().nullable().optional(),
   kind: z.enum(['person', 'group']),
   code: z.string(),
   displayName: z.string(),
@@ -259,7 +307,10 @@ export const workOrderPlanningAssignedSchema = z.object({
 
 export const workOrderPlanningSchema = z.object({
   canAssign: z.boolean(),
+  /** back-compat: ช่างคนแรก (legacy single-assign) */
   assigned: workOrderPlanningAssignedSchema.nullable(),
+  /** Multi-assign: ช่างทั้งหมดที่ถูกมอบหมายให้ WO นี้ */
+  assignees: z.array(workOrderPlanningAssignedSchema),
   workcenters: z.array(workcenterItemSchema),
   groups: z.array(workOrderPlanningGroupSchema),
 })
@@ -276,6 +327,23 @@ export const workOrderPlanningUpsertBodySchema = z.object({
   mode: z.enum(['P', 'G']),
   code: z.string().min(1),
   comment: z.string().optional(),
+})
+
+export const workOrderPlanningBatchBodySchema = z.object({
+  /** wkctr (รหัส workcenter) หลายคน — backend dedupe + กรอง not-found ให้ */
+  wkctrs: z.array(z.string().min(1)).min(1).max(200),
+  /** หมายเหตุการจ่ายงาน (ใช้ร่วมกันทุกคน) — เทียบ legacy `pwcomment` */
+  comment: z.string().max(255).optional(),
+})
+
+export const workOrderPlanningBatchResponseSchema = z.object({
+  ok: z.literal(true),
+  /** wkctr ที่เพิ่งจ่ายงานสำเร็จในรอบนี้ */
+  assigned: z.array(z.string()),
+  /** wkctr ที่ส่งมา แต่จ่ายไปแล้ว (ข้าม) */
+  skipped: z.array(z.string()),
+  /** wkctr ที่ไม่อยู่ใน tbworkcenter (เช่น พิมพ์ผิด) */
+  notFound: z.array(z.string()),
 })
 
 export const workOrderPlanningOkResponseSchema = z.object({

@@ -16,6 +16,8 @@ import { registerMasterDataRoutes } from './routes/master-data.js'
 import { registerSchedulingRoutes } from './routes/scheduling.js'
 import { registerWorkOrderRoutes } from './routes/work-orders.js'
 import { registerManhoursRoutes } from './routes/manhours.js'
+import { registerPersonnelRoutes } from './routes/personnel.js'
+import { registerReportsRoutes } from './routes/reports.js'
 
 export function createApp(opts: { pool: Pool; corsOrigin?: string; sessionSecret: string }): Express {
   const app = express()
@@ -47,6 +49,8 @@ export function createApp(opts: { pool: Pool; corsOrigin?: string; sessionSecret
   registerIw37nRoutes(app, opts.pool, opts.sessionSecret)
   registerLineCalendarRoutes(app, opts.pool, opts.sessionSecret)
   registerManhoursRoutes(app, opts.pool, opts.sessionSecret)
+  registerPersonnelRoutes(app, opts.pool, opts.sessionSecret)
+  registerReportsRoutes(app, opts.pool, opts.sessionSecret)
 
   return app
 }

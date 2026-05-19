@@ -1,4 +1,5 @@
 import { PageHeader } from '@/components/layout/PageHeader'
+import { ManhourSummaryDialog } from '@/components/scheduling/ManhourSummaryDialog'
 import { MovePlanDialog } from '@/components/scheduling/MovePlanDialog'
 import { MonthFullCalendar } from '@/components/scheduling/MonthFullCalendar'
 import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDialog'
@@ -74,6 +75,9 @@ export function CalendarPage() {
     wkorder: string
     date: string
   } | null>(null)
+  const [mhOpen, setMhOpen] = useState(false)
+  const [mhFrom, setMhFrom] = useState('')
+  const [mhTo, setMhTo] = useState('')
 
   const params = useParams()
   const [sp] = useSearchParams()
@@ -345,17 +349,28 @@ export function CalendarPage() {
         ) : q.isError ? (
           <p className="text-sm text-red-600">{(q.error as Error).message}</p>
         ) : (
-          <MonthFullCalendar
-            year={year}
-            month={month}
-            events={q.data?.items ?? []}
-            onMonthChange={(y, m) => {
-              setYear(y)
-              setMonth(m)
-            }}
-            onEventClick={(e) => setDetailTarget({ id: e.id, date: e.date })}
-            onEventDrop={(e, newDate) => openMove(e, newDate)}
-          />
+          <>
+            <p className="text-xs text-zinc-500">
+              ลากเลือกวันบนปฏิทินเพื่อเปิดสรุป Man Hour — เทียบ `ModalMHshow.php` (backlog.php / W_calendar.php)
+            </p>
+            <MonthFullCalendar
+              year={year}
+              month={month}
+              viewMode="month-week-day"
+              events={q.data?.items ?? []}
+              onMonthChange={(y, m) => {
+                setYear(y)
+                setMonth(m)
+              }}
+              onRangeSelect={(from, to) => {
+                setMhFrom(from)
+                setMhTo(to)
+                setMhOpen(true)
+              }}
+              onEventClick={(e) => setDetailTarget({ id: e.id, date: e.date })}
+              onEventDrop={(e, newDate) => openMove(e, newDate)}
+            />
+          </>
         )}
       </div>
 
@@ -372,6 +387,13 @@ export function CalendarPage() {
         wkorder={moveTarget?.wkorder}
         defaultDate={moveTarget?.date}
         onSuccess={() => void q.refetch()}
+      />
+
+      <ManhourSummaryDialog
+        open={mhOpen}
+        onOpenChange={setMhOpen}
+        fromDate={mhFrom}
+        toDate={mhTo}
       />
     </div>
   )

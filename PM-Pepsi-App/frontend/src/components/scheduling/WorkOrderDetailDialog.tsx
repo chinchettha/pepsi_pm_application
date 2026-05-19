@@ -1,4 +1,5 @@
 import { MovePlanDialog } from '@/components/scheduling/MovePlanDialog'
+import { PlanningMultiAssign } from '@/components/scheduling/PlanningMultiAssign'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -23,9 +24,11 @@ import {
   fetchWorkOrderModalDetail,
   fetchWorkOrderDetail,
   deleteWorkOrderPlanning,
+  deleteWorkOrderPlanningAssignee,
   postConfirmationClose,
   postConfirmationComment,
   postConfirmationImage,
+  postWorkOrderPlanningBatch,
   putWorkOrderPlanning,
   putConfirmationComment,
 } from '@/lib/api-public'
@@ -39,6 +42,7 @@ type WorkOrderDetailDialogProps = {
   orderId: string | null
   onOpenChange: (open: boolean) => void
   contextDate?: string
+  initialTab?: 'work-order' | 'task-list' | 'machine' | 'planning' | 'material' | 'confirm'
 }
 
 function isoToDdMmYyyy(iso: string): string {
@@ -57,7 +61,12 @@ function fmtDateTime(sec: number): string {
   return `${dd}.${mm}.${yyyy} ${hh}:${min}`
 }
 
-export function WorkOrderDetailDialog({ orderId, onOpenChange, contextDate }: WorkOrderDetailDialogProps) {
+export function WorkOrderDetailDialog({
+  orderId,
+  onOpenChange,
+  contextDate,
+  initialTab = 'work-order',
+}: WorkOrderDetailDialogProps) {
   const open = Boolean(orderId)
   const authUser = getStoredAuthUser()
   const canPlan = (authUser?.userst ?? '').trim() === 'A'
@@ -197,6 +206,26 @@ export function WorkOrderDetailDialog({ orderId, onOpenChange, contextDate }: Wo
     },
   })
 
+  const removeAssigneeMut = useMutation({
+    mutationFn: (wkctr: string) => deleteWorkOrderPlanningAssignee(orderId!, wkctr),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['work-order', 'modal-detail', orderId] })
+      await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
+    },
+  })
+
+  const batchAssignMut = useMutation({
+    mutationFn: (codes: string[]) =>
+      postWorkOrderPlanningBatch(orderId!, {
+        wkctrs: codes,
+        comment: planComment.trim() || undefined,
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['work-order', 'modal-detail', orderId] })
+      await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
+    },
+  })
+
   useEffect(() => {
     if (!d) return
     if (!closeWkctr) setCloseWkctr(d.workCenter)
@@ -227,7 +256,7 @@ export function WorkOrderDetailDialog({ orderId, onOpenChange, contextDate }: Wo
           ) : detailQ.isError ? (
             <p className="text-sm text-red-600">{(detailQ.error as Error).message}</p>
           ) : d ? (
-            <Tabs defaultValue="work-order" className="w-full">
+            <Tabs key={`${orderId}-${initialTab}`} defaultValue={initialTab} className="w-full">
               <TabsList className="flex h-auto w-full flex-wrap gap-1">
                 <TabsTrigger value="work-order">Work Order</TabsTrigger>
                 <TabsTrigger value="task-list">Task List</TabsTrigger>
@@ -395,24 +424,13 @@ export function WorkOrderDetailDialog({ orderId, onOpenChange, contextDate }: Wo
                       <>
                         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="font-medium text-emerald-900">ผู้รับผิดชอบ</p>
-                              {modalQ.data.planning.assigned ? (
-                                <>
-                                  <p className="text-sm text-emerald-900/90">
-                                    {modalQ.data.planning.assigned.code} — {modalQ.data.planning.assigned.displayName}
-                                  </p>
-                                  {modalQ.data.planning.assigned.pwcomment ? (
-                                    <p className="mt-1 text-xs text-emerald-900/70">
-                                      {modalQ.data.planning.assigned.pwcomment}
-                                    </p>
-                                  ) : null}
-                                </>
-                              ) : (
-                                <p className="text-sm text-emerald-900/80">ยังไม่ได้จ่ายงาน</p>
-                              )}
-                            </div>
-                            {modalQ.data.planning.assigned ? (
+                            <p className="font-medium text-emerald-900">
+                              ผู้รับผิดชอบ
+                              {modalQ.data.planning.assignees.length > 0
+                                ? ` (${modalQ.data.planning.assignees.length} คน)`
+                                : ''}
+                            </p>
+                            {modalQ.data.planning.assignees.length > 0 ? (
                               <Button
                                 type="button"
                                 size="sm"
@@ -420,14 +438,71 @@ export function WorkOrderDetailDialog({ orderId, onOpenChange, contextDate }: Wo
                                 onClick={() => deletePlanMut.mutate()}
                                 disabled={deletePlanMut.isPending}
                               >
-                                ยกเลิก
+                                ยกเลิกทั้งหมด
                               </Button>
                             ) : null}
                           </div>
+                          {modalQ.data.planning.assignees.length === 0 ? (
+                            <p className="mt-2 text-sm text-emerald-900/80">ยังไม่ได้จ่ายงาน</p>
+                          ) : (
+                            <ul className="mt-2 space-y-1.5">
+                              {modalQ.data.planning.assignees.map((a) => (
+                                <li
+                                  key={`${a.code}-${a.idplanw ?? ''}`}
+                                  className="flex items-center justify-between gap-2 rounded border border-emerald-200/70 bg-white/60 px-2 py-1.5"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="text-sm text-emerald-900">
+                                      <span className="font-mono">{a.code}</span>
+                                      {a.displayName && a.displayName !== a.code ? (
+                                        <span className="ml-1.5 text-emerald-900/80">— {a.displayName}</span>
+                                      ) : null}
+                                      {a.pwteam === 'G' ? (
+                                        <span className="ml-1.5 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium text-amber-800">
+                                          GROUP
+                                        </span>
+                                      ) : null}
+                                    </p>
+                                    {a.pwcomment ? (
+                                      <p className="text-xs text-emerald-900/70">{a.pwcomment}</p>
+                                    ) : null}
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => removeAssigneeMut.mutate(a.code)}
+                                    disabled={removeAssigneeMut.isPending}
+                                    className="text-red-700 hover:bg-red-50"
+                                  >
+                                    ลบ
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
 
-                        <div className="rounded-lg border border-zinc-200 bg-white p-3">
-                          <p className="font-medium text-zinc-900">จ่ายงานรายบุคคล</p>
+                        <PlanningMultiAssign
+                          workcenters={modalQ.data.planning.workcenters}
+                          assignedCodes={modalQ.data.planning.assignees.map((a) => a.code)}
+                          comment={planComment}
+                          onCommentChange={setPlanComment}
+                          submitting={batchAssignMut.isPending}
+                          onAssign={async (codes) => {
+                            const res = await batchAssignMut.mutateAsync(codes)
+                            return {
+                              assigned: res.assigned,
+                              skipped: res.skipped,
+                              notFound: res.notFound,
+                            }
+                          }}
+                        />
+
+                        <details className="rounded-lg border border-zinc-200 bg-white p-3">
+                          <summary className="cursor-pointer text-sm font-medium text-zinc-900">
+                            จ่ายงานรายบุคคล (Quick assign — คลิก 1 ครั้ง/คน)
+                          </summary>
                           <div className="mt-3 flex max-h-60 flex-wrap gap-2 overflow-auto">
                             {modalQ.data.planning.workcenters.map((w) => (
                               <Button
@@ -443,7 +518,7 @@ export function WorkOrderDetailDialog({ orderId, onOpenChange, contextDate }: Wo
                               </Button>
                             ))}
                           </div>
-                        </div>
+                        </details>
 
                         <div className="rounded-lg border border-zinc-200 bg-white p-3">
                           <p className="font-medium text-zinc-900">Planning GROUP</p>

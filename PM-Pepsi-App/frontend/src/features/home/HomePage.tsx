@@ -111,20 +111,43 @@ export function HomePage() {
       {dash.isSuccess ? (
         <div className="mx-auto grid max-w-6xl gap-3 px-4 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
           {[
-            { label: 'ใบงานเปิด/คิว', value: dash.data.openOrders },
-            { label: 'ปิดเดือนนี้', value: dash.data.closedThisMonth },
-            { label: 'รอยืนยันบุคลากร', value: dash.data.pendingPersonnel },
-            { label: 'นำเข้า IW37N ล่าสุด', value: dash.data.iw37nLastImport?.slice(0, 10) ?? '—' },
+            {
+              label: 'ใบงานเปิด/คิว',
+              value: dash.data.openOrders,
+              desc: 'WO สถานะ CRTD/REL',
+              to: '/work-orders',
+            },
+            {
+              label: 'ปิดเดือนนี้',
+              value: dash.data.closedThisMonth,
+              desc: 'นับจากวันที่ปิดจริง',
+              to: '/work-orders',
+            },
+            {
+              label: 'รอจ่ายงาน',
+              value: dash.data.pendingPersonnel,
+              desc: 'WO เปิดที่ยังไม่มีแผนใน tbplangingwork',
+              to: '/planning',
+            },
+            {
+              label: 'นำเข้า IW37N ล่าสุด',
+              value: dash.data.iw37nLastImport?.slice(0, 10) ?? '—',
+              desc: 'วันที่ import batch ล่าสุด',
+              to: '/iw37n',
+            },
           ].map((k) => (
-            <div
+            <Link
               key={k.label}
-              className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+              to={k.to}
+              className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2"
             >
               <div className="text-xs text-zinc-500">{k.label}</div>
               <div className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">
                 {k.value}
               </div>
-            </div>
+              <div className="mt-1 text-xs text-zinc-500">{k.desc}</div>
+              <div className="mt-2 text-xs font-medium text-blue-700">เปิดโมดูล →</div>
+            </Link>
           ))}
         </div>
       ) : dash.isLoading ? (

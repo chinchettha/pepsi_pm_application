@@ -7,6 +7,7 @@ import type {
   backlogManhourSearchBodySchema,
   backlogSearchBodySchema,
 } from '../schemas/backlog.js'
+import { formatUntimeUnit, manhourDateWhereSql } from '../lib/manhour-minutes.js'
 import {
   appendInFilter,
   FACTORY_CODE,
@@ -41,6 +42,17 @@ function parseIsoYyyyMmDdToSec(v: string): number | null {
   if (!Number.isFinite(ms)) return null
   return Math.floor(ms / 1000)
 }
+
+/** เทียบ ModalMHshow.php — แปลง H เป็นนาทีก่อนรวม */
+const MH_WORK_MIN_SQL = `CASE
+  WHEN UPPER(TRIM(COALESCE(untime::text, ''))) = 'H' THEN COALESCE(work, 0) * 60
+  ELSE COALESCE(work, 0)
+END`
+
+const MH_ACT_MIN_SQL = `CASE
+  WHEN UPPER(TRIM(COALESCE(untime::text, ''))) = 'H' THEN COALESCE(actwork, 0) * 60
+  ELSE COALESCE(actwork, 0)
+END`
 
 export async function listBacklogFilterOptions(pool: Pool): Promise<FilterOptions> {
   const factory = `%${FACTORY_CODE}%`
@@ -189,9 +201,12 @@ export async function getBacklogManhourSummary(
     }
   }
 
-  const startSec = Math.min(fromSec, toSec)
-  const endSec = Math.max(fromSec, toSec) + 86400
+  const singleDay = body.fromDate === body.toDate
+  const startSec = singleDay ? fromSec : Math.min(fromSec, toSec)
+  const endSec = singleDay ? fromSec : Math.max(fromSec, toSec) + 86400
   const factory = `%${FACTORY_CODE}%`
+  const dateWhere = manhourDateWhereSql(singleDay)
+  const dateParams = singleDay ? [factory, startSec] : [factory, startSec, endSec]
 
   const aggR = await pool.query<{
     planned_min: string
@@ -200,17 +215,14 @@ export async function getBacklogManhourSummary(
     completion_count: string
   }>(
     `SELECT
-       COALESCE(SUM(COALESCE(work, 0)), 0)::text AS planned_min,
-       COALESCE(SUM(COALESCE(actwork, 0)), 0)::text AS actual_min,
+       COALESCE(SUM(${MH_WORK_MIN_SQL}), 0)::text AS planned_min,
+       COALESCE(SUM(${MH_ACT_MIN_SQL}), 0)::text AS actual_min,
        COUNT(*)::text AS total_orders,
        COUNT(*) FILTER (WHERE syst NOT IN ('CRTD', 'REL'))::text AS completion_count
      FROM app.view_order
      WHERE functionalloc LIKE $1
-       AND (
-         (bscstart IS NOT NULL AND bscstart >= $2 AND bscstart < $3)
-         OR (cday IS NOT NULL AND cday >= $2 AND cday < $3)
-       )`,
-    [factory, startSec, endSec],
+       AND ${dateWhere}`,
+    dateParams,
   )
 
   const plannedMinutes = Number(aggR.rows[0]?.planned_min ?? 0) || 0
@@ -231,14 +243,11 @@ export async function getBacklogManhourSummary(
        SELECT wktype, COUNT(*)::int AS cnt
        FROM app.view_order
        WHERE functionalloc LIKE $1
-         AND (
-           (bscstart IS NOT NULL AND bscstart >= $2 AND bscstart < $3)
-           OR (cday IS NOT NULL AND cday >= $2 AND cday < $3)
-         )
+         AND ${dateWhere}
        GROUP BY wktype
      ) x ON x.wktype = z.wkzb
      ORDER BY z.wkzb`,
-    [factory, startSec, endSec],
+    dateParams,
   )
 
   const rowsR = await pool.query<{
@@ -247,19 +256,17 @@ export async function getBacklogManhourSummary(
     syst: string | null
     work: string | number | null
     actwork: string | number | null
+    untime: string | number | null
     operationshorttext: string | null
     bscstart: string | number | null
   }>(
-    `SELECT wkorder, wktype, syst, work, actwork, operationshorttext, bscstart
+    `SELECT wkorder, wktype, syst, work, actwork, untime, operationshorttext, bscstart
      FROM app.view_order
      WHERE functionalloc LIKE $1
-       AND (
-         (bscstart IS NOT NULL AND bscstart >= $2 AND bscstart < $3)
-         OR (cday IS NOT NULL AND cday >= $2 AND cday < $3)
-       )
+       AND ${dateWhere}
      ORDER BY bscstart DESC NULLS LAST
      LIMIT 2500`,
-    [factory, startSec, endSec],
+    dateParams,
   )
 
   return {
@@ -283,7 +290,7 @@ export async function getBacklogManhourSummary(
       syst: r.syst?.trim() ?? '',
       work: r.work != null && r.work !== '' ? Number(r.work) || 0 : 0,
       actwork: r.actwork != null && r.actwork !== '' ? Number(r.actwork) || 0 : 0,
-      unit: 'MIN',
+      unit: formatUntimeUnit(r.untime),
       operationshorttext: r.operationshorttext,
     })),
   }

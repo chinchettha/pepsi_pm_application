@@ -4,6 +4,13 @@ import type { planningItemSchema } from '../schemas/planning.js'
 
 type PlanningItem = z.infer<typeof planningItemSchema>
 
+type PlanningAssignBody = {
+  idiw37: number
+  mode: 'P' | 'G'
+  code: string
+  comment?: string
+}
+
 type PlanRow = {
   idiw37: number
   wkorder: string
@@ -12,6 +19,7 @@ type PlanRow = {
   functionalloc: string | null
   equdescrip: string | null
   bscstart: string | number | null
+  actfinish: string | number | null
   syst: string | null
   idplanw: number | null
   wkctrpw: string | null
@@ -63,21 +71,112 @@ function mapRow(row: PlanRow): PlanningItem {
     wktype: row.wktype?.trim() ?? '',
     planDate: unixToIsoDate(row.bscstart),
     movedDate: cday ? unixToIsoDate(cday) : undefined,
+    closedDate: unixToIsoDate(row.actfinish) || undefined,
   }
 }
 
 export async function listPlanningForUser(
   pool: Pool,
   idwkctr: string,
+  status: 'open' | 'closed' = 'open',
 ): Promise<PlanningItem[]> {
+  const statusSql =
+    status === 'closed'
+      ? `syst NOT IN ('CRTD', 'REL')`
+      : `syst IN ('CRTD', 'REL')`
   const r = await pool.query<PlanRow>(
     `SELECT idiw37, wkorder, wktype, operationshorttext, functionalloc, equdescrip,
-            bscstart, syst, idplanw, wkctrpw, pwteam, idwkctr, cday
+            bscstart, actfinish, syst, idplanw, wkctrpw, pwteam, idwkctr, cday
      FROM app.view_planwork
-     WHERE idwkctr = $1 AND syst IN ('CRTD', 'REL')
+     WHERE idwkctr = $1 AND ${statusSql}
      ORDER BY bscstart DESC NULLS LAST
      LIMIT 500`,
     [idwkctr],
   )
   return r.rows.map(mapRow)
+}
+
+/**
+ * เพิ่ม assignment (มอบหมายช่าง) สำหรับ WO — รองรับ multi-assign (1 WO หลายคน)
+ * เทียบ `AddPlan.php`:
+ *   - mode='P' → INSERT (idiw37, wkctr) 1 แถว
+ *   - mode='G' → expand `wkctr` (= idwkctrgroup) เป็น INSERT หลายแถวจาก `tbworkcenter.idwkctrgroup`
+ *   - ON CONFLICT (idiw37, wkctr) DO NOTHING (ไม่ทับ comment เดิม)
+ */
+export async function assignPlanningWork(
+  pool: Pool,
+  body: PlanningAssignBody,
+  actorWkctr: string,
+): Promise<boolean> {
+  const code = body.code.trim()
+  if (!code) return false
+
+  const exists = await pool.query<{ idiw37: number }>(
+    `SELECT idiw37
+     FROM app.tbiw37n
+     WHERE idiw37 = $1 AND syst IN ('CRTD', 'REL')
+     LIMIT 1`,
+    [body.idiw37],
+  )
+  if (!exists.rows[0]) return false
+
+  const dayNow = Math.floor(Date.now() / 1000) // เทียบ legacy `mktime(...)`
+
+  if (body.mode === 'G') {
+    // ขยายเป็นช่างทั้งกลุ่ม — เทียบ AddPlan.php $sqlG
+    const members = await pool.query<{ wkctr: string }>(
+      `SELECT wkctr
+       FROM app.tbworkcenter
+       WHERE idwkctrgroup::text = $1
+         AND COALESCE(wkctr, '') <> ''`,
+      [code],
+    )
+    if (members.rowCount === 0) return false
+
+    for (const m of members.rows) {
+      await pool.query(
+        `INSERT INTO app.tbplangingwork (idiw37, wkctr, wkctrpw, pwcomment, pwteam)
+         VALUES ($1, $2, $3, $4, 'G')
+         ON CONFLICT (idiw37, wkctr) DO NOTHING`,
+        [body.idiw37, m.wkctr, actorWkctr, String(dayNow)],
+      )
+    }
+    return true
+  }
+
+  await pool.query(
+    `INSERT INTO app.tbplangingwork (idiw37, wkctr, wkctrpw, pwcomment, pwteam)
+     VALUES ($1, $2, $3, $4, 'P')
+     ON CONFLICT (idiw37, wkctr) DO NOTHING`,
+    [body.idiw37, code, actorWkctr, body.comment?.trim() || String(dayNow)],
+  )
+  return true
+}
+
+/**
+ * ลบ assignment เฉพาะคู่ (idiw37, wkctr) — เทียบ `AddPlan.php` `st=Del`
+ * (PHP รับ idplanw แต่ React API ใช้ key (idiw37, wkctr) เพื่อสอดคล้อง URL)
+ */
+export async function removePlanningAssignment(
+  pool: Pool,
+  idiw37: number,
+  wkctr: string,
+): Promise<boolean> {
+  const r = await pool.query(
+    `DELETE FROM app.tbplangingwork WHERE idiw37 = $1 AND wkctr = $2`,
+    [idiw37, wkctr],
+  )
+  return (r.rowCount ?? 0) > 0
+}
+
+/** ลบ idplanw ตรง ๆ (ใช้ภายในกรณีรู้ idplanw — เทียบ AddPlan.php `SQLdel` ที่ใช้ idplanw) */
+export async function removePlanningAssignmentByIdplanw(
+  pool: Pool,
+  idplanw: number,
+): Promise<boolean> {
+  const r = await pool.query(
+    `DELETE FROM app.tbplangingwork WHERE idplanw = $1`,
+    [idplanw],
+  )
+  return (r.rowCount ?? 0) > 0
 }

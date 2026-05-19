@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 type WorkOrderAutocompleteProps = {
   value: string
   onSelect: (item: { id: string; wkorder: string; label: string }) => void
+  onInputChange?: (value: string) => void
   placeholder?: string
   className?: string
   minLength?: number
@@ -15,6 +16,7 @@ type WorkOrderAutocompleteProps = {
 export function WorkOrderAutocomplete({
   value,
   onSelect,
+  onInputChange,
   placeholder = 'ค้นเลขที่ wkorder…',
   className,
   minLength = 2,
@@ -38,7 +40,9 @@ export function WorkOrderAutocomplete({
         value={q}
         placeholder={placeholder}
         onChange={(e) => {
-          setQ(e.target.value)
+          const next = e.target.value
+          setQ(next)
+          onInputChange?.(next)
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}

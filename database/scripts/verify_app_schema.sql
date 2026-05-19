@@ -89,3 +89,29 @@ ORDER BY tbl;
 \echo ''
 \echo '=== 4) ตัวอย่าง login (work center) ==='
 SELECT idwkctr, wkctr, userst, plnt FROM app.tbworkcenter ORDER BY idwkctr LIMIT 5;
+
+\echo ''
+\echo '=== 5) Planning visibility by login work center ==='
+SELECT
+  wc.idwkctr,
+  wc.wkctr,
+  wc.userst,
+  COUNT(vp.idiw37) FILTER (WHERE vp.syst IN ('CRTD', 'REL')) AS open_planning_orders,
+  COUNT(vp.idiw37) FILTER (WHERE vp.syst NOT IN ('CRTD', 'REL')) AS closed_planning_orders,
+  COUNT(vp.idiw37) AS total_planning_orders
+FROM app.tbworkcenter wc
+LEFT JOIN app.view_planwork vp ON vp.idwkctr = wc.idwkctr
+GROUP BY wc.idwkctr, wc.wkctr, wc.userst
+ORDER BY total_planning_orders DESC, wc.idwkctr
+LIMIT 25;
+
+\echo ''
+\echo '=== 6) Planning rows with wkctr not mapped to tbworkcenter ==='
+SELECT
+  COALESCE(vp.wkctr, '(empty)') AS iw37n_wkctr,
+  COUNT(*) AS rows_without_login_mapping
+FROM app.view_planwork vp
+WHERE vp.idwkctr IS NULL
+GROUP BY COALESCE(vp.wkctr, '(empty)')
+ORDER BY rows_without_login_mapping DESC, iw37n_wkctr
+LIMIT 25;

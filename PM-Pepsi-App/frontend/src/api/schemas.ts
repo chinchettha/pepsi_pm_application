@@ -167,6 +167,7 @@ export const workOrderPlanningGroupSchema = z.object({
 })
 
 export const workOrderPlanningAssignedSchema = z.object({
+  idplanw: z.number().int().nullable().optional(),
   kind: z.enum(['person', 'group']),
   code: z.string(),
   displayName: z.string(),
@@ -177,6 +178,7 @@ export const workOrderPlanningAssignedSchema = z.object({
 export const workOrderPlanningSchema = z.object({
   canAssign: z.boolean(),
   assigned: workOrderPlanningAssignedSchema.nullable(),
+  assignees: z.array(workOrderPlanningAssignedSchema).default([]),
   workcenters: z.array(
     z.object({
       wkctr: z.string(),
@@ -200,7 +202,30 @@ export const workOrderPlanningUpsertBodySchema = z.object({
   comment: z.string().optional(),
 })
 
+export const workOrderPlanningBatchBodySchema = z.object({
+  wkctrs: z.array(z.string().min(1)).min(1).max(200),
+  comment: z.string().max(255).optional(),
+})
+
+export const workOrderPlanningBatchResponseSchema = z.object({
+  ok: z.literal(true),
+  assigned: z.array(z.string()),
+  skipped: z.array(z.string()),
+  notFound: z.array(z.string()),
+})
+
 export const workOrderPlanningOkResponseSchema = z.object({
+  ok: z.literal(true),
+})
+
+export const planningAssignBodySchema = z.object({
+  idiw37: z.number().int().positive(),
+  mode: z.enum(['P', 'G']),
+  code: z.string().min(1),
+  comment: z.string().optional(),
+})
+
+export const planningAssignResponseSchema = z.object({
   ok: z.literal(true),
 })
 
@@ -574,6 +599,7 @@ export const planningItemSchema = z.object({
   wktype: z.string().optional(),
   planDate: z.string().optional(),
   movedDate: z.string().optional(),
+  closedDate: z.string().optional(),
 })
 
 export const planningResponseSchema = z.object({
@@ -591,6 +617,143 @@ export const manhoursResponseSchema = z.object({
   ),
 })
 
+export const manhourChartRangeSchema = z.object({
+  from: z.number().int(),
+  to: z.number().int(),
+  fromDate: z.string(),
+  toDate: z.string(),
+})
+
+export const manhourChartPerformanceResponseSchema = z.object({
+  range: manhourChartRangeSchema,
+  profile: z.object({
+    idwkctr: z.string(),
+    wkctr: z.string(),
+    displayName: z.string(),
+    position: z.string().nullable(),
+    wkctrtype: z.string().nullable(),
+    imgmember: z.string().nullable(),
+  }),
+  totalPlannedOrders: z.number(),
+  utilizationPercent: z.number(),
+  confirmHours: z.number(),
+  manhourTotal: z.number(),
+  zb: z.array(
+    z.object({
+      wktype: z.string(),
+      planned: z.number(),
+      confirmed: z.number(),
+      percent: z.number(),
+    }),
+  ),
+})
+
+export const manhourChartBreakdownResponseSchema = z.object({
+  range: manhourChartRangeSchema,
+  wh: z.number(),
+  ot1: z.number(),
+  ot15: z.number(),
+  ot1hol: z.number(),
+  ot2: z.number(),
+  ot3: z.number(),
+  confirmHours: z.number(),
+})
+
+export const manhourItemSchema = z.object({
+  idmanhour: z.number().int(),
+  idwkctr: z.string(),
+  displayName: z.string().nullable(),
+  position: z.string().nullable().optional(),
+  wkctr: z.string().nullable(),
+  stworkday: z.number().int(),
+  workday: z.number().int(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  wh: z.number(),
+  ot1: z.number(),
+  ot15: z.number(),
+  ot1hol: z.number(),
+  ot2: z.number(),
+  ot3: z.number(),
+  total: z.number(),
+  createdAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+})
+
+export const manhourListResponseSchema = z.object({
+  items: z.array(manhourItemSchema),
+  totalRows: z.number().int(),
+})
+
+export const manhourOkResponseSchema = z.object({
+  ok: z.literal(true),
+  idmanhour: z.number().int(),
+})
+
+export const manhourImportRowResultSchema = z.object({
+  rowNo: z.number().int(),
+  idwkctr: z.string(),
+  action: z.enum(['inserted', 'updated', 'skipped', 'error']),
+  message: z.string().optional(),
+})
+
+export const manhourImportResponseSchema = z.object({
+  fileName: z.string(),
+  totalRows: z.number().int(),
+  inserted: z.number().int(),
+  updated: z.number().int(),
+  skipped: z.number().int(),
+  errors: z.number().int(),
+  rows: z.array(manhourImportRowResultSchema),
+})
+
+export const worktimeDailyItemSchema = z.object({
+  workday: z.number().int(),
+  workDate: z.string().nullable(),
+  wh: z.number(),
+  ot1: z.number(),
+  ot15: z.number(),
+  ot1hol: z.number(),
+  ot2: z.number(),
+  ot3: z.number(),
+  total: z.number(),
+})
+
+export const worktimeMeResponseSchema = z.object({
+  idwkctr: z.string(),
+  total: z
+    .object({
+      wh: z.number(),
+      ot1: z.number(),
+      ot15: z.number(),
+      ot1hol: z.number(),
+      ot2: z.number(),
+      ot3: z.number(),
+      total: z.number(),
+    })
+    .nullable(),
+  items: z.array(worktimeDailyItemSchema),
+})
+
+export const worktimePlanningItemSchema = z.object({
+  idplanw: z.number().int(),
+  idiw37: z.number().int(),
+  mntplan: z.string().nullable(),
+  wkorder: z.string(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  assigner: z.string().nullable(),
+  comment: z.string().nullable(),
+})
+
+export const worktimePlanningResponseSchema = z.object({
+  idwkctr: z.string(),
+  items: z.array(worktimePlanningItemSchema),
+})
+
+export type ManhourItem = z.infer<typeof manhourItemSchema>
+export type ManhourImportResponse = z.infer<typeof manhourImportResponseSchema>
+
 export const personnelResponseSchema = z.object({
   items: z.array(
     z.object({
@@ -602,6 +765,271 @@ export const personnelResponseSchema = z.object({
     }),
   ),
 })
+
+export const personnelRoleSchema = z.enum([
+  'admin',
+  'manager',
+  'planner',
+  'technician',
+])
+
+/** Personal Dashboard — สอดคล้องกับ backend/src/schemas/personnel.ts */
+export const personnelDashboardProfileSchema = z.object({
+  accountType: z.enum(['workcenter', 'member']),
+  idwkctr: z.string(),
+  username: z.string(),
+  displayName: z.string(),
+  wkctr: z.string(),
+  plnt: z.string().nullable().optional(),
+  userst: z.string(),
+  userRole: personnelRoleSchema,
+  position: z.string().nullable().optional(),
+  department: z.string().nullable().optional(),
+  workGroup: z.string().nullable().optional(),
+  workType: z.string().nullable().optional(),
+  workLevel: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  tel: z.string().nullable().optional(),
+  imgMember: z.string().nullable().optional(),
+  birthdayLabel: z.string().nullable().optional(),
+  workAgeLabel: z.string().nullable().optional(),
+  startWorkDate: z.string().nullable().optional(),
+  birthdayDate: z.string().nullable().optional(),
+  lastLogin: z.string().nullable().optional(),
+})
+
+export const personnelPlanningItemSchema = z.object({
+  idiw37: z.number().int(),
+  wkorder: z.string(),
+  wktype: z.string().nullable(),
+  shortText: z.string().nullable(),
+  functionalLoc: z.string().nullable(),
+  equipment: z.string().nullable(),
+  bscStart: z.string().nullable(),
+  syst: z.string().nullable(),
+})
+
+export const personnelConfirmItemSchema = z.object({
+  idclose: z.number().int(),
+  idiw37: z.number().int(),
+  wkorder: z.string(),
+  confirmation: z.string(),
+  wkctr: z.string(),
+  timewk: z.number(),
+  unitc: z.string(),
+  stdate: z.string().nullable(),
+  endate: z.string().nullable(),
+  timeclose: z.string().nullable(),
+})
+
+export const personnelWorktimeBreakdownSchema = z.object({
+  wh: z.number(),
+  ot1: z.number(),
+  ot15: z.number(),
+  ot1hol: z.number(),
+  ot2: z.number(),
+  ot3: z.number(),
+  total: z.number(),
+})
+
+export const personnelTeamMemberSchema = z.object({
+  idwkctr: z.string(),
+  displayName: z.string(),
+  position: z.string().nullable(),
+  workGroup: z.string().nullable(),
+  openCount: z.number().int(),
+  closedCount: z.number().int(),
+  totalMinutes: z.number(),
+})
+
+export const personnelUnassignedWorkOrderSchema = z.object({
+  idiw37: z.number().int(),
+  wkorder: z.string(),
+  wktype: z.string().nullable(),
+  shortText: z.string().nullable(),
+  equipment: z.string().nullable(),
+  functionalLoc: z.string().nullable(),
+  bscStart: z.string().nullable(),
+  syst: z.string().nullable(),
+  wkctr: z.string().nullable(),
+})
+
+export const personnelRoleDataSchema = z.object({
+  team: z
+    .object({
+      groupCode: z.string().nullable(),
+      groupName: z.string().nullable(),
+      totalOpen: z.number().int(),
+      totalClose: z.number().int(),
+      members: z.array(personnelTeamMemberSchema),
+    })
+    .nullable()
+    .optional(),
+  unassigned: z
+    .object({
+      total: z.number().int(),
+      items: z.array(personnelUnassignedWorkOrderSchema),
+    })
+    .nullable()
+    .optional(),
+  global: z
+    .object({
+      openTotal: z.number().int(),
+      closeToday: z.number().int(),
+      assignedTotal: z.number().int(),
+    })
+    .nullable()
+    .optional(),
+})
+
+export const personnelDashboardResponseSchema = z.object({
+  role: personnelRoleSchema,
+  roleLabel: z.string(),
+  profile: personnelDashboardProfileSchema,
+  planning: z.object({
+    openCount: z.number().int(),
+    closedCount: z.number().int(),
+    recent: z.array(personnelPlanningItemSchema),
+  }),
+  confirmation: z.object({
+    totalClose: z.number().int(),
+    totalMinutes: z.number(),
+    recent: z.array(personnelConfirmItemSchema),
+  }),
+  worktime: personnelWorktimeBreakdownSchema.nullable(),
+  roleData: personnelRoleDataSchema,
+})
+
+export type PersonnelRole = z.infer<typeof personnelRoleSchema>
+export type PersonnelDashboardResponse = z.infer<typeof personnelDashboardResponseSchema>
+
+/** Admin CRUD `M_personel.php` — แถวสำหรับตาราง/ฟอร์ม */
+export const personnelAdminItemSchema = z.object({
+  idwkctr: z.string(),
+  titlewkctr: z.string().nullable(),
+  namewkctr: z.string().nullable(),
+  surnamewkctr: z.string().nullable(),
+  titlewkctreng: z.string().nullable(),
+  namewkctreng: z.string().nullable(),
+  surnamewkctreng: z.string().nullable(),
+  startwork: z.number().int().nullable(),
+  wkctrdate: z.number().int().nullable(),
+  iddepartment: z.string().nullable(),
+  department: z.string().nullable(),
+  idposition: z.string().nullable(),
+  position: z.string().nullable(),
+  wkctr: z.string(),
+  plnt: z.string().nullable(),
+  cat: z.string().nullable(),
+  resp: z.string().nullable(),
+  idwkctrgroup: z.string().nullable(),
+  wkctrgroup: z.string().nullable(),
+  idwkctrtype: z.string().nullable(),
+  wkctrtype: z.string().nullable(),
+  idwklevel: z.string().nullable(),
+  wklevel: z.string().nullable(),
+  wkctrtel: z.string().nullable(),
+  wkctrmail: z.string().nullable(),
+  labourcost: z.number(),
+  userst: z.string(),
+  userrole: personnelRoleSchema,
+  workstatus: z.string().nullable(),
+  imgmember: z.string().nullable(),
+  imgmemberMime: z.string(),
+  imgmemberBytes: z.number().int(),
+  hasImage: z.boolean(),
+})
+
+export const personnelAdminListResponseSchema = z.object({
+  items: z.array(personnelAdminItemSchema),
+  totalRows: z.number().int(),
+})
+
+export const personnelAdminOkSchema = z.object({
+  ok: z.literal(true),
+  idwkctr: z.string(),
+})
+
+export const personnelImportRowResultSchema = z.object({
+  rowNo: z.number().int(),
+  idwkctr: z.string(),
+  action: z.enum(['inserted', 'updated', 'skipped', 'error']),
+  message: z.string().optional(),
+})
+
+export const personnelImportResponseSchema = z.object({
+  fileName: z.string(),
+  totalRows: z.number().int(),
+  inserted: z.number().int(),
+  updated: z.number().int(),
+  skipped: z.number().int(),
+  errors: z.number().int(),
+  rows: z.array(personnelImportRowResultSchema),
+})
+
+export const personnelImageUploadResponseSchema = z.object({
+  idwkctr: z.string(),
+  imgmember: z.string(),
+  mime: z.literal('image/webp'),
+  bytes: z.number().int(),
+  width: z.number().int(),
+  height: z.number().int(),
+})
+
+export const personnelWorkstatusOptionSchema = z.object({
+  workstatus: z.string(),
+  wkstatusdes: z.string(),
+  wkstcolor: z.string().nullable(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int(),
+})
+
+export const personnelWorkstatusOptionsResponseSchema = z.object({
+  items: z.array(personnelWorkstatusOptionSchema),
+})
+
+export type PersonnelAdminItem = z.infer<typeof personnelAdminItemSchema>
+export type PersonnelImportResponse = z.infer<typeof personnelImportResponseSchema>
+export type PersonnelWorkstatusOption = z.infer<typeof personnelWorkstatusOptionSchema>
+export type PersonnelImageUploadResponse = z.infer<typeof personnelImageUploadResponseSchema>
+
+/** Personnel Confirmation row (M_personel_confirm.php → view_countpersonelclose) */
+export const personnelConfirmRowSchema = z.object({
+  idiw37: z.number().int(),
+  wkorder: z.string(),
+  mntplan: z.string().nullable(),
+  wktype: z.string().nullable(),
+  mat: z.string().nullable(),
+  equdescrip: z.string().nullable(),
+  functionalloc: z.string().nullable(),
+  shortText: z.string().nullable(),
+  bscStart: z.string().nullable(),
+  cday: z.string().nullable(),
+  syst: z.string().nullable(),
+  systemstatus: z.string().nullable(),
+  wkstcolor: z.string().nullable(),
+  wkctr: z.string().nullable(),
+  plannedCount: z.number().int(),
+  closedCount: z.number().int(),
+  percentClose: z.number().int(),
+  hasConfirm: z.boolean(),
+})
+
+export const personnelConfirmListResponseSchema = z.object({
+  items: z.array(personnelConfirmRowSchema),
+  totalRows: z.number().int(),
+  summary: z.object({
+    totalOpen: z.number().int(),
+    fullyClosed: z.number().int(),
+    inProgress: z.number().int(),
+    notStarted: z.number().int(),
+  }),
+})
+
+export type PersonnelConfirmRow = z.infer<typeof personnelConfirmRowSchema>
+export type PersonnelConfirmListResponse = z.infer<
+  typeof personnelConfirmListResponseSchema
+>
 
 export const masterDataItemGenericSchema = z.object({
   id: z.string(),
@@ -841,10 +1269,51 @@ export const masterDataResponseSchema = z.object({
   ),
 })
 
+export const reportsRangeSchema = z.object({
+  from: z.number().int(),
+  to: z.number().int(),
+  fromDate: z.string(),
+  toDate: z.string(),
+})
+
 export const kpiResponseSchema = z.object({
+  range: reportsRangeSchema,
   utilization: z.array(z.number()),
   backlogHours: z.array(z.number()),
   labels: z.array(z.string()),
+})
+
+export const summaryWeeklyUtilizationBarSchema = z.object({
+  idwkctr: z.string(),
+  wkctr: z.string(),
+  summaryHours: z.number(),
+})
+
+export type SummaryWeeklyUtilizationBar = z.infer<typeof summaryWeeklyUtilizationBarSchema>
+
+export const summaryWeeklyRowSchema = z.object({
+  wkctr: z.string(),
+  idwkctr: z.string(),
+  displayName: z.string().nullable(),
+  pmWork: z.number(),
+  pmUnit: z.string(),
+  reactiveWork: z.number(),
+  reactiveUnit: z.string(),
+  rcaWork: z.number(),
+  rcaUnit: z.string(),
+  woCount: z.number().int(),
+  hrHour: z.number(),
+  otHour: z.number(),
+  percentPm: z.number(),
+  percentReactive: z.number(),
+  percentRca: z.number(),
+  percentTotal: z.number(),
+})
+
+export const summaryWeeklyResponseSchema = z.object({
+  range: reportsRangeSchema,
+  utilizationChart: z.array(summaryWeeklyUtilizationBarSchema),
+  rows: z.array(summaryWeeklyRowSchema),
 })
 
 export const usersResponseSchema = z.object({
@@ -936,3 +1405,55 @@ export const confirmationImageDataResponseSchema = z.object({
   mime: z.string(),
   base64: z.string(),
 })
+
+export const confirmationImportRowResultSchema = z.object({
+  rowNo: z.number().int(),
+  action: z.enum(['inserted', 'updated', 'skipped', 'error']),
+  confirmation: z.string(),
+  wkorder: z.string(),
+  wkctr: z.string(),
+  stdate: z.number().nullable(),
+  endate: z.number().nullable(),
+  timewk: z.number().nullable(),
+  message: z.string(),
+})
+
+export const confirmationImportResponseSchema = z.object({
+  fileName: z.string(),
+  totalRows: z.number().int(),
+  inserted: z.number().int(),
+  updated: z.number().int(),
+  skipped: z.number().int(),
+  errors: z.number().int(),
+  rows: z.array(confirmationImportRowResultSchema),
+})
+
+export type ConfirmationImportRowResult = z.infer<typeof confirmationImportRowResultSchema>
+export type ConfirmationImportResponse = z.infer<typeof confirmationImportResponseSchema>
+
+export const confirmationExportRowSchema = z.object({
+  no: z.number().int(),
+  confirmation: z.string(),
+  wkorder: z.string(),
+  opac: z.string(),
+  subO: z.string(),
+  ca: z.string(),
+  split: z.string(),
+  wkctr: z.string(),
+  timewk: z.number(),
+  unitc: z.string(),
+  startDateExe: z.string(),
+  endDateExe: z.string(),
+  startExecute: z.string(),
+  endExecute: z.string(),
+})
+
+export const confirmationExportResponseSchema = z.object({
+  scope: z.enum(['ALL', 'OWN']),
+  actorWkctr: z.string(),
+  totalRows: z.number().int(),
+  items: z.array(confirmationExportRowSchema),
+})
+
+export type ConfirmationExportRow = z.infer<typeof confirmationExportRowSchema>
+export type ConfirmationExportResponse = z.infer<typeof confirmationExportResponseSchema>

@@ -490,6 +490,7 @@ type MaterialRow = {
 type PlanningGroupRow = { wkctrgroup: string; wkctrdescription: string | null }
 
 type PlanningAssignedRow = {
+  idplanw: number | null
   wkctr: string | null
   pwcomment: string | null
   pwteam: string | null
@@ -603,37 +604,40 @@ export async function getWorkOrderModalDetail(
      ORDER BY wkctr ASC`,
   )
 
+  // Multi-assign — เทียบ legacy `AddPlan.php`: 1 WO มีช่างหลายคนได้
   const assignedR = await pool.query<PlanningAssignedRow>(
-    `SELECT mp.wkctr, mp.pwcomment, mp.pwteam,
+    `SELECT mp.idplanw, mp.wkctr, mp.pwcomment, mp.pwteam,
             wc.titlewkctr, wc.namewkctr, wc.surnamewkctr,
             g.wkctrdescription
      FROM app.tbplangingwork mp
      LEFT JOIN app.tbworkcenter wc ON wc.wkctr = mp.wkctr
      LEFT JOIN app.tbwkctrgroup g ON g.wkctrgroup = mp.wkctr
      WHERE mp.idiw37 = $1
-     LIMIT 1`,
+     ORDER BY mp.idplanw ASC`,
     [row.idiw37],
   )
 
-  const assignedRow = assignedR.rows[0]
-  const assigned =
-    assignedRow?.wkctr
-      ? {
-          kind:
-            assignedRow.titlewkctr || assignedRow.namewkctr || assignedRow.surnamewkctr
-              ? ('person' as const)
-              : assignedRow.wkctrdescription
-                ? ('group' as const)
-                : ('person' as const),
-          code: assignedRow.wkctr,
-          displayName:
-            assignedRow.titlewkctr || assignedRow.namewkctr || assignedRow.surnamewkctr
-              ? `${assignedRow.titlewkctr ?? ''}${assignedRow.namewkctr ?? ''} ${assignedRow.surnamewkctr ?? ''}`.trim()
-              : assignedRow.wkctrdescription?.trim() || assignedRow.wkctr,
-          pwcomment: assignedRow.pwcomment?.trim() ?? '',
-          pwteam: assignedRow.pwteam?.trim() ?? '',
-        }
-      : null
+  const assignees = assignedR.rows
+    .filter((r) => r.wkctr)
+    .map((r) => ({
+      idplanw: r.idplanw != null ? Number(r.idplanw) : null,
+      kind:
+        r.titlewkctr || r.namewkctr || r.surnamewkctr
+          ? ('person' as const)
+          : r.wkctrdescription
+            ? ('group' as const)
+            : ('person' as const),
+      code: r.wkctr as string,
+      displayName:
+        r.titlewkctr || r.namewkctr || r.surnamewkctr
+          ? `${r.titlewkctr ?? ''}${r.namewkctr ?? ''} ${r.surnamewkctr ?? ''}`.trim()
+          : r.wkctrdescription?.trim() || (r.wkctr as string),
+      pwcomment: r.pwcomment?.trim() ?? '',
+      pwteam: r.pwteam?.trim() ?? '',
+    }))
+
+  // back-compat: คงฟิลด์ `assigned` (ช่างคนแรก) สำหรับ client เก่า
+  const assigned = assignees[0] ?? null
 
   const canAssign = (userst ?? '').trim() === 'A'
 
@@ -661,6 +665,7 @@ export async function getWorkOrderModalDetail(
     planning: {
       canAssign,
       assigned,
+      assignees,
       workcenters: wcR.rows.map((w) => ({
         wkctr: w.wkctr,
         displayName: `${w.titlewkctr ?? ''}${w.namewkctr ?? ''} ${w.surnamewkctr ?? ''}`.trim(),
@@ -683,6 +688,12 @@ export async function getWorkOrderModalDetail(
   }
 }
 
+/**
+ * เพิ่ม assignment ของ WO — multi-assign:
+ *   - mode='P' → INSERT (idiw37, wkctr) 1 แถว
+ *   - mode='G' → expand เป็นช่างทั้งกลุ่ม (เทียบ AddPlan.php $sqlG)
+ *   - ON CONFLICT (idiw37, wkctr) DO NOTHING → ไม่ทับ comment เดิม
+ */
 export async function upsertWorkOrderPlanning(
   pool: Pool,
   id: string,
@@ -694,22 +705,126 @@ export async function upsertWorkOrderPlanning(
   const code = body.code.trim()
   if (!code) return false
 
+  const dayNow = Math.floor(Date.now() / 1000)
+
+  if (body.mode === 'G') {
+    const members = await pool.query<{ wkctr: string }>(
+      `SELECT wkctr
+       FROM app.tbworkcenter
+       WHERE idwkctrgroup::text = $1
+         AND COALESCE(wkctr, '') <> ''`,
+      [code],
+    )
+    if (members.rowCount === 0) return false
+    for (const m of members.rows) {
+      await pool.query(
+        `INSERT INTO app.tbplangingwork (idiw37, wkctr, wkctrpw, pwcomment, pwteam)
+         VALUES ($1, $2, $3, $4, 'G')
+         ON CONFLICT (idiw37, wkctr) DO NOTHING`,
+        [row.idiw37, m.wkctr, actorWkctr, String(dayNow)],
+      )
+    }
+    return true
+  }
+
   await pool.query(
     `INSERT INTO app.tbplangingwork (idiw37, wkctr, wkctrpw, pwcomment, pwteam)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (idiw37)
-     DO UPDATE SET wkctr = EXCLUDED.wkctr,
-                   wkctrpw = EXCLUDED.wkctrpw,
-                   pwcomment = EXCLUDED.pwcomment,
-                   pwteam = EXCLUDED.pwteam`,
-    [row.idiw37, code, actorWkctr, body.comment?.trim() ?? '', body.mode],
+     VALUES ($1, $2, $3, $4, 'P')
+     ON CONFLICT (idiw37, wkctr) DO NOTHING`,
+    [row.idiw37, code, actorWkctr, body.comment?.trim() || String(dayNow)],
   )
   return true
 }
 
-export async function deleteWorkOrderPlanning(pool: Pool, id: string): Promise<boolean> {
+/**
+ * Multi-assign แบบ batch — ส่ง wkctr หลายคนในคำขอเดียว
+ *   - ใช้ ON CONFLICT (idiw37, wkctr) DO NOTHING เพื่อข้ามคนที่จ่ายไปแล้ว
+ *   - คืน `assigned[]` (เพิ่มสำเร็จ) และ `skipped[]` (มีอยู่แล้ว)
+ *   - dedupe wkctr ในฝั่ง backend อีกชั้น (กัน frontend ส่งซ้ำ)
+ *   - กรอง wkctr ที่ไม่อยู่ใน tbworkcenter (กันส่ง code มั่ว)
+ */
+export async function assignWorkOrderPlanningBatch(
+  pool: Pool,
+  id: string,
+  wkctrs: string[],
+  comment: string | undefined,
+  actorWkctr: string,
+): Promise<{ assigned: string[]; skipped: string[]; notFound: string[] } | null> {
+  const row = await getWorkOrderViewRow(pool, id)
+  if (!row) return null
+
+  const dedup = Array.from(
+    new Set(
+      wkctrs
+        .map((c) => (c ?? '').trim())
+        .filter((c) => c.length > 0),
+    ),
+  )
+  if (dedup.length === 0) {
+    return { assigned: [], skipped: [], notFound: [] }
+  }
+
+  // ตรวจ wkctr มีจริงไหม
+  const checkRes = await pool.query<{ wkctr: string }>(
+    `SELECT wkctr FROM app.tbworkcenter WHERE wkctr = ANY($1::text[])`,
+    [dedup],
+  )
+  const valid = new Set(checkRes.rows.map((r) => r.wkctr))
+  const notFound = dedup.filter((c) => !valid.has(c))
+  const validCodes = dedup.filter((c) => valid.has(c))
+
+  if (validCodes.length === 0) {
+    return { assigned: [], skipped: [], notFound }
+  }
+
+  // หาว่ามีใครจ่ายไปแล้ว (skip)
+  const existsRes = await pool.query<{ wkctr: string }>(
+    `SELECT wkctr FROM app.tbplangingwork
+     WHERE idiw37 = $1 AND wkctr = ANY($2::text[])`,
+    [row.idiw37, validCodes],
+  )
+  const alreadyAssigned = new Set(existsRes.rows.map((r) => r.wkctr))
+
+  const toAssign = validCodes.filter((c) => !alreadyAssigned.has(c))
+  const skipped = validCodes.filter((c) => alreadyAssigned.has(c))
+
+  const trimmedComment = comment?.trim()
+  const dayNow = Math.floor(Date.now() / 1000)
+  const pwcomment = trimmedComment && trimmedComment.length > 0 ? trimmedComment : String(dayNow)
+
+  if (toAssign.length > 0) {
+    // ใช้ UNNEST เพื่อ insert ทีเดียวหลายแถว — เร็วกว่า loop
+    await pool.query(
+      `INSERT INTO app.tbplangingwork (idiw37, wkctr, wkctrpw, pwcomment, pwteam)
+       SELECT $1, w, $2, $3, 'P'
+       FROM UNNEST($4::text[]) AS w
+       ON CONFLICT (idiw37, wkctr) DO NOTHING`,
+      [row.idiw37, actorWkctr, pwcomment, toAssign],
+    )
+  }
+
+  return { assigned: toAssign, skipped, notFound }
+}
+
+/**
+ * ลบ assignment ของ WO:
+ *   - ถ้าระบุ `wkctr` → ลบเฉพาะคู่ (idiw37, wkctr) — เทียบ AddPlan.php `st=Del`
+ *   - ถ้าไม่ระบุ → ลบทั้งหมดของ WO (รีเซ็ตการมอบหมาย — back-compat)
+ */
+export async function deleteWorkOrderPlanning(
+  pool: Pool,
+  id: string,
+  wkctr?: string,
+): Promise<boolean> {
   const row = await getWorkOrderViewRow(pool, id)
   if (!row) return false
+  if (wkctr && wkctr.trim()) {
+    const r = await pool.query(
+      `DELETE FROM app.tbplangingwork WHERE idiw37 = $1 AND wkctr = $2`,
+      [row.idiw37, wkctr.trim()],
+    )
+    return (r.rowCount ?? 0) > 0
+  }
   const r = await pool.query(`DELETE FROM app.tbplangingwork WHERE idiw37 = $1`, [row.idiw37])
   return (r.rowCount ?? 0) > 0
 }

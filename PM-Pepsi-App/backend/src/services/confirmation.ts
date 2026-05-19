@@ -1,4 +1,5 @@
-import type { Pool } from 'pg'
+import type { Pool, PoolClient } from 'pg'
+import { parseConfirmFile, type ConfirmImportRow } from './confirmation-import.js'
 
 type WorkcenterRow = {
   wkctr: string
@@ -146,19 +147,279 @@ export async function addConfirmationClose(
 
   const timeclose = Math.floor(Date.now() / 1000)
 
+  // unique key หลัง migration 032: (idiw37, wkctr, confirmation, timeclose)
+  // การกดบันทึกซ้ำในวินาทีเดียวกัน + ช่างเดิม + WO เดิม จะถูก upsert
+  // ส่วน confirmation จากหน้าแอป (ไม่ใช่ import) จะเป็น '' เสมอ
   await pool.query(
-    `INSERT INTO app.tbcofirm (idiw37, wkctr, stdate, endate, cwkctr, timeclose, timewk, unitc)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'Min')
-     ON CONFLICT (idiw37, wkctr)
+    `INSERT INTO app.tbcofirm
+       (idiw37, wkctr, confirmation, stdate, endate, cwkctr, timeclose, timewk, unitc)
+     VALUES ($1, $2, '', $3, $4, $5, $6, $7, 'Min')
+     ON CONFLICT (idiw37, wkctr, confirmation, timeclose)
      DO UPDATE SET stdate = EXCLUDED.stdate, endate = EXCLUDED.endate,
-                   cwkctr = EXCLUDED.cwkctr, timeclose = EXCLUDED.timeclose,
-                   timewk = EXCLUDED.timewk, unitc = 'Min'`,
+                   cwkctr = EXCLUDED.cwkctr, timewk = EXCLUDED.timewk, unitc = 'Min'`,
     [opts.idiw37, opts.wkctr, stdate, endate, opts.cwkctr, timeclose, timewk],
   )
 }
 
+// ----- Import (M_Confirm.php) -----
+
+export type ConfirmImportRowResult = {
+  rowNo: number
+  action: 'inserted' | 'updated' | 'skipped' | 'error'
+  confirmation: string
+  wkorder: string
+  wkctr: string
+  stdate: number | null
+  endate: number | null
+  timewk: number | null
+  message: string
+}
+
+export type ConfirmImportSummary = {
+  totalRows: number
+  inserted: number
+  updated: number
+  skipped: number
+  errors: number
+  rows: ConfirmImportRowResult[]
+}
+
+async function findIdiw37ByWkorder(
+  client: PoolClient,
+  wkorder: string,
+): Promise<number | null> {
+  const r = await client.query<{ idiw37: number }>(
+    `SELECT idiw37 FROM app.tbiw37n WHERE wkorder = $1 LIMIT 1`,
+    [wkorder],
+  )
+  return r.rows[0]?.idiw37 ?? null
+}
+
+/**
+ * INSERT ถ้าไม่มี (confirmation, wkorder, timeclose, wkctr) ซ้ำ ไม่งั้น UPDATE
+ * เทียบ M_Confirm.php บรรทัด 130-165
+ */
+async function upsertConfirmImportRow(
+  client: PoolClient,
+  row: ConfirmImportRow,
+  idiw37: number,
+): Promise<'inserted' | 'updated'> {
+  const existing = await client.query<{ idclose: number }>(
+    `SELECT idclose FROM app.tbcofirm
+     WHERE idiw37 = $1 AND wkctr = $2 AND confirmation = $3 AND timeclose = $4
+     LIMIT 1`,
+    [idiw37, row.wkctr, row.confirmation, row.timeclose],
+  )
+  if (existing.rows.length > 0) {
+    await client.query(
+      `UPDATE app.tbcofirm
+       SET stdate = $2, endate = $3, cwkctr = $4, timewk = $5, unitc = 'Min'
+       WHERE idclose = $1`,
+      [existing.rows[0].idclose, row.stdate, row.endate, row.cwkctr, row.timewk],
+    )
+    return 'updated'
+  }
+  await client.query(
+    `INSERT INTO app.tbcofirm
+       (idiw37, confirmation, wkctr, stdate, endate, cwkctr, timeclose, timewk, unitc)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Min')`,
+    [
+      idiw37,
+      row.confirmation,
+      row.wkctr,
+      row.stdate,
+      row.endate,
+      row.cwkctr,
+      row.timeclose,
+      row.timewk,
+    ],
+  )
+  return 'inserted'
+}
+
+export async function importConfirmFile(
+  pool: Pool,
+  fileName: string,
+  buffer: Buffer,
+): Promise<ConfirmImportSummary> {
+  const parsed = parseConfirmFile(buffer, fileName)
+  const rows: ConfirmImportRowResult[] = []
+  let inserted = 0
+  let updated = 0
+  let skipped = 0
+  let errors = 0
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    for (const r of parsed) {
+      if (r.kind === 'error') {
+        rows.push({
+          rowNo: r.rowNo,
+          action: 'error',
+          confirmation: r.raw.confirmation,
+          wkorder: r.raw.wkorder,
+          wkctr: r.raw.wkctr,
+          stdate: null,
+          endate: null,
+          timewk: null,
+          message: r.message,
+        })
+        errors++
+        continue
+      }
+      const row = r.row
+      try {
+        const idiw37 = await findIdiw37ByWkorder(client, row.wkorder)
+        if (idiw37 == null) {
+          rows.push({
+            rowNo: row.rowNo,
+            action: 'skipped',
+            confirmation: row.confirmation,
+            wkorder: row.wkorder,
+            wkctr: row.wkctr,
+            stdate: row.stdate,
+            endate: row.endate,
+            timewk: row.timewk,
+            message: `ไม่พบ WO ใน tbiw37n: ${row.wkorder}`,
+          })
+          skipped++
+          continue
+        }
+        const action = await upsertConfirmImportRow(client, row, idiw37)
+        rows.push({
+          rowNo: row.rowNo,
+          action,
+          confirmation: row.confirmation,
+          wkorder: row.wkorder,
+          wkctr: row.wkctr,
+          stdate: row.stdate,
+          endate: row.endate,
+          timewk: row.timewk,
+          message: action === 'inserted' ? 'New Success' : 'Update Success',
+        })
+        if (action === 'inserted') inserted++
+        else updated++
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown DB error'
+        rows.push({
+          rowNo: row.rowNo,
+          action: 'error',
+          confirmation: row.confirmation,
+          wkorder: row.wkorder,
+          wkctr: row.wkctr,
+          stdate: row.stdate,
+          endate: row.endate,
+          timewk: row.timewk,
+          message: msg,
+        })
+        errors++
+      }
+    }
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw err
+  } finally {
+    client.release()
+  }
+
+  return {
+    totalRows: parsed.length,
+    inserted,
+    updated,
+    skipped,
+    errors,
+    rows,
+  }
+}
+
 export async function deleteConfirmationClose(pool: Pool, idclose: number): Promise<void> {
   await pool.query(`DELETE FROM app.tbcofirm WHERE idclose = $1`, [idclose])
+}
+
+type ConfirmationExportRowDb = {
+  wkorder: string | null
+  opac: string | number | null
+  wkctr: string | null
+  timewk: string | number | null
+  unitc: string | null
+  stdate: string | number | null
+  endate: string | number | null
+}
+
+export type ConfirmationExportRow = {
+  no: number
+  confirmation: string
+  wkorder: string
+  opac: string
+  subO: string
+  ca: string
+  split: string
+  wkctr: string
+  timewk: number
+  unitc: string
+  startDateExe: string
+  endDateExe: string
+  startExecute: string
+  endExecute: string
+}
+
+function formatDdMmYyyyCompact(sec: number): string {
+  if (!Number.isFinite(sec) || sec <= 0) return ''
+  const d = new Date(sec * 1000)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = String(d.getFullYear())
+  return `${dd}${mm}${yyyy}`
+}
+
+function formatHhMm(sec: number): string {
+  if (!Number.isFinite(sec) || sec <= 0) return ''
+  const d = new Date(sec * 1000)
+  const hh = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${hh}:${min}`
+}
+
+export async function listConfirmationExportRows(
+  pool: Pool,
+  actorWkctr: string | undefined,
+): Promise<ConfirmationExportRow[]> {
+  const wkctr = (actorWkctr ?? '').trim()
+  const canExportAll = wkctr === 'PAC007' || wkctr === 'PRO005'
+  const params = canExportAll ? [] : [wkctr]
+  const scopeSql = canExportAll ? '' : 'AND cwkctr = $1'
+
+  const r = await pool.query<ConfirmationExportRowDb>(
+    `SELECT wkorder, opac, wkctr, timewk, unitc, stdate, endate
+     FROM app.view_exportconfirm
+     WHERE syst IN ('CRTD', 'REL')
+       ${scopeSql}
+     ORDER BY wkorder ASC`,
+    params,
+  )
+
+  return r.rows.map((row, idx) => {
+    const stdate = row.stdate != null && row.stdate !== '' ? Number(row.stdate) : 0
+    const endate = row.endate != null && row.endate !== '' ? Number(row.endate) : 0
+    return {
+      no: idx + 1,
+      confirmation: '',
+      wkorder: row.wkorder?.trim() ?? '',
+      opac: row.opac != null ? String(row.opac).trim() : '',
+      subO: '',
+      ca: '',
+      split: '',
+      wkctr: row.wkctr?.trim() ?? '',
+      timewk: row.timewk != null && row.timewk !== '' ? Number(row.timewk) : 0,
+      unitc: row.unitc?.trim() ?? '',
+      startDateExe: formatDdMmYyyyCompact(stdate),
+      endDateExe: formatDdMmYyyyCompact(endate),
+      startExecute: formatHhMm(stdate),
+      endExecute: formatHhMm(endate),
+    }
+  })
 }
 
 export type ConfirmationCommentItem = {

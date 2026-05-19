@@ -1,4 +1,4 @@
-# งานค้าง / สถุบันตามลำดับพัฒนา (1–13)
+# งานค้าง / สถุบันตามลำดับพัฒนา (1–14)
 
 เอกสารชุดนี้แยกรายการออกจาก [`PHP-REACT-PARITY-CHECKLIST.md`](../PHP-REACT-PARITY-CHECKLIST.md) — **อัปเดตคู่กันทุกครั้ง** ที่ปิดงาน
 
@@ -28,6 +28,7 @@
 | 11 | [`11-manhours-worktime.md`](11-manhours-worktime.md) | ยังไม่ทำ | ยังไม่มี |
 | 12 | [`12-reports-summary.md`](12-reports-summary.md) | ยังไม่ทำ | ยังไม่มี |
 | 13 | [`13-deploy-offline.md`](13-deploy-offline.md) | ยังไม่ทำ | ยังไม่มี |
+| **14** | [**`14-administrator.md`**](14-administrator.md) | ยังไม่ทำ (ออกแบบ scope แล้ว) | **เป้าหมาย stack เต็ม** — admin จะเป็นโมดูลแรกที่ผ่านเกณฑ์ skills.md §2–§4 หลัง Phase A–F |
 
 ---
 

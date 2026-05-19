@@ -14,10 +14,27 @@ import {
   iw37nItemResponseSchema,
   iw37nItemsResponseSchema,
   iw37nImportResponseSchema,
+  manhourImportResponseSchema,
+  manhourItemSchema,
+  manhourListResponseSchema,
+  manhourOkResponseSchema,
   kpiResponseSchema,
+  summaryWeeklyResponseSchema,
+  manhourChartBreakdownResponseSchema,
+  manhourChartPerformanceResponseSchema,
   manhoursResponseSchema,
   masterDataResponseSchema,
+  personnelAdminItemSchema,
+  personnelAdminListResponseSchema,
+  personnelAdminOkSchema,
+  personnelConfirmListResponseSchema,
+  personnelDashboardResponseSchema,
+  personnelImageUploadResponseSchema,
+  personnelImportResponseSchema,
+  personnelWorkstatusOptionsResponseSchema,
   personnelResponseSchema,
+  planningAssignBodySchema,
+  planningAssignResponseSchema,
   planningResponseSchema,
   confirmationByWorkOrderResponseSchema,
   confirmationCommentBodySchema,
@@ -25,6 +42,8 @@ import {
   confirmationCommentsResponseSchema,
   confirmationImageDataResponseSchema,
   confirmationImagesResponseSchema,
+  confirmationImportResponseSchema,
+  confirmationExportResponseSchema,
   userLogResponseSchema,
   workcentersResponseSchema,
   usersResponseSchema,
@@ -35,6 +54,8 @@ import {
   workOrderDetailSchema,
   workOrderListItemSchema,
   workOrderModalDetailSchema,
+  workOrderPlanningBatchBodySchema,
+  workOrderPlanningBatchResponseSchema,
   workOrderPlanningOkResponseSchema,
   workOrderPlanningUpsertBodySchema,
   workOrderSearchBodySchema,
@@ -43,6 +64,8 @@ import {
   workOrderTeamPatchResponseSchema,
   workOrderTeamPatchSchema,
   workOrdersResponseSchema,
+  worktimeMeResponseSchema,
+  worktimePlanningResponseSchema,
 } from '@/api/schemas'
 import { fetchApi } from '@/lib/fetch-api'
 import { getAuthToken } from '@/features/auth/login-api'
@@ -91,10 +114,40 @@ export async function putWorkOrderPlanning(id: string, body: z.infer<typeof work
   return workOrderPlanningOkResponseSchema.parse(json)
 }
 
+/**
+ * Multi-assign batch — เพิ่มช่างหลายคนในคลิกเดียว
+ * - dedupe + กรอง not-found ที่ backend อีกชั้น
+ * - คืนรายชื่อที่เพิ่ม / ที่ข้าม / ที่ไม่พบ เพื่อ frontend แสดง toast ละเอียด
+ */
+export async function postWorkOrderPlanningBatch(
+  id: string,
+  body: z.infer<typeof workOrderPlanningBatchBodySchema>,
+) {
+  const payload = workOrderPlanningBatchBodySchema.parse(body)
+  const json = await fetchApi<unknown>(
+    `/api/v1/work-orders/${encodeURIComponent(id)}/planning/batch`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  )
+  return workOrderPlanningBatchResponseSchema.parse(json)
+}
+
 export async function deleteWorkOrderPlanning(id: string) {
   const json = await fetchApi<unknown>(`/api/v1/work-orders/${encodeURIComponent(id)}/planning`, {
     method: 'DELETE',
   })
+  return workOrderPlanningOkResponseSchema.parse(json)
+}
+
+/** ลบ assignment เฉพาะคู่ (idiw37, wkctr) — เทียบ AddPlan.php `st=Del` (multi-assign) */
+export async function deleteWorkOrderPlanningAssignee(id: string, wkctr: string) {
+  const json = await fetchApi<unknown>(
+    `/api/v1/work-orders/${encodeURIComponent(id)}/planning/${encodeURIComponent(wkctr)}`,
+    { method: 'DELETE' },
+  )
   return workOrderPlanningOkResponseSchema.parse(json)
 }
 
@@ -292,14 +345,233 @@ export async function fetchMasterData(entity: string) {
   return masterDataResponseSchema.parse(json).items
 }
 
-export async function fetchPlanning() {
-  const json = await fetchApi<unknown>('/api/v1/planning/orders')
+/**
+ * รวม lookup ทั้ง 5 ตัวที่ใช้ในฟอร์ม Admin Personnel — เทียบ legacy `personel_form_tab2.php`
+ * ส่งคู่ขนานเพื่อให้ TanStack Query cache ง่าย
+ */
+export type PersonnelLookupOption = { value: string; label: string }
+export type PersonnelLookups = {
+  departments: PersonnelLookupOption[]
+  positions: PersonnelLookupOption[]
+  groups: PersonnelLookupOption[]
+  workTypes: PersonnelLookupOption[]
+  levels: PersonnelLookupOption[]
+}
+
+export async function fetchPersonnelLookups(): Promise<PersonnelLookups> {
+  const [department, position, group, worktype, level] = await Promise.all([
+    fetchMasterData('department'),
+    fetchMasterData('position'),
+    fetchMasterData('group'),
+    fetchMasterData('worktype'),
+    fetchMasterData('level'),
+  ])
+
+  const opt = (value: string, label: string): PersonnelLookupOption => ({
+    value,
+    label: label.trim() ? label : value,
+  })
+
+  return {
+    departments: department
+      .filter((d): d is typeof d & { iddepartment: string; department: string } =>
+        'iddepartment' in d && 'department' in d,
+      )
+      .map((d) => opt(d.iddepartment, `${d.iddepartment} — ${d.department}`)),
+    positions: position
+      .filter((p): p is typeof p & { idposition: string; position: string } =>
+        'idposition' in p && 'position' in p,
+      )
+      .map((p) => opt(p.idposition, `${p.idposition} — ${p.position}`)),
+    groups: group
+      .filter(
+        (g): g is typeof g & {
+          idwkctrgroup: number
+          wkctrgroup: string
+          wkctrdescription: string
+        } =>
+          'idwkctrgroup' in g && 'wkctrgroup' in g && 'wkctrdescription' in g,
+      )
+      .map((g) =>
+        opt(
+          String(g.idwkctrgroup),
+          `${g.wkctrgroup}${g.wkctrdescription ? ` — ${g.wkctrdescription}` : ''}`,
+        ),
+      ),
+    workTypes: worktype
+      .filter((t): t is typeof t & { idwkctrtype: string; wkctrtype: string } =>
+        'idwkctrtype' in t && 'wkctrtype' in t,
+      )
+      .map((t) => opt(t.idwkctrtype, `${t.idwkctrtype} — ${t.wkctrtype}`)),
+    levels: level
+      .filter((l): l is typeof l & { idwklevel: string; wklevel: string } =>
+        'idwklevel' in l && 'wklevel' in l,
+      )
+      .map((l) => opt(l.idwklevel, `${l.idwklevel} — ${l.wklevel}`)),
+  }
+}
+
+export async function fetchPlanning(params?: { status?: 'open' | 'closed' }) {
+  const sp = new URLSearchParams()
+  if (params?.status) sp.set('status', params.status)
+  const qs = sp.toString()
+  const json = await fetchApi<unknown>(qs ? `/api/v1/planning/orders?${qs}` : '/api/v1/planning/orders')
   return planningResponseSchema.parse(json).items
+}
+
+export type PlanningAssignInput = z.infer<typeof planningAssignBodySchema>
+export async function postPlanningAssign(body: PlanningAssignInput) {
+  const payload = planningAssignBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/planning/assign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return planningAssignResponseSchema.parse(json)
 }
 
 export async function fetchManhours() {
   const json = await fetchApi<unknown>('/api/v1/manhours/summary')
   return manhoursResponseSchema.parse(json).weeks
+}
+
+export async function fetchManhourChartPerformance(opts: {
+  from?: string
+  to?: string
+  idwkctr?: string
+} = {}) {
+  const qs = new URLSearchParams()
+  if (opts.from) qs.set('from', opts.from)
+  if (opts.to) qs.set('to', opts.to)
+  if (opts.idwkctr) qs.set('idwkctr', opts.idwkctr)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/manhours/chart/performance${suffix}`)
+  return manhourChartPerformanceResponseSchema.parse(json)
+}
+
+export async function fetchManhourChartBreakdown(opts: {
+  from?: string
+  to?: string
+  idwkctr?: string
+} = {}) {
+  const qs = new URLSearchParams()
+  if (opts.from) qs.set('from', opts.from)
+  if (opts.to) qs.set('to', opts.to)
+  if (opts.idwkctr) qs.set('idwkctr', opts.idwkctr)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/manhours/chart/breakdown${suffix}`)
+  return manhourChartBreakdownResponseSchema.parse(json)
+}
+
+export async function fetchManhourHr(
+  opts: {
+    q?: string
+    wkctr?: string
+    from?: string
+    to?: string
+    limit?: number
+    offset?: number
+  } = {},
+) {
+  const qs = new URLSearchParams()
+  if (opts.q) qs.set('q', opts.q)
+  if (opts.wkctr) qs.set('wkctr', opts.wkctr)
+  if (opts.from) qs.set('from', opts.from)
+  if (opts.to) qs.set('to', opts.to)
+  if (opts.limit != null) qs.set('limit', String(opts.limit))
+  if (opts.offset != null) qs.set('offset', String(opts.offset))
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/manhours/hr${suffix}`)
+  return manhourListResponseSchema.parse(json)
+}
+
+export async function fetchManhourList(
+  opts: {
+    q?: string
+    idwkctr?: string
+    from?: string
+    to?: string
+    limit?: number
+    offset?: number
+  } = {},
+) {
+  const qs = new URLSearchParams()
+  if (opts.q) qs.set('q', opts.q)
+  if (opts.idwkctr) qs.set('idwkctr', opts.idwkctr)
+  if (opts.from) qs.set('from', opts.from)
+  if (opts.to) qs.set('to', opts.to)
+  if (opts.limit != null) qs.set('limit', String(opts.limit))
+  if (opts.offset != null) qs.set('offset', String(opts.offset))
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/manhours${suffix}`)
+  return manhourListResponseSchema.parse(json)
+}
+
+export async function fetchManhourOne(idmanhour: number) {
+  const json = await fetchApi<unknown>(`/api/v1/manhours/${idmanhour}`)
+  return manhourItemSchema.parse(json)
+}
+
+export async function upsertManhour(
+  body: {
+    idwkctr: string
+    stworkday: string | number
+    workday: string | number
+    wh?: number
+    ot1?: number
+    ot15?: number
+    ot1hol?: number
+    ot2?: number
+    ot3?: number
+  },
+  idmanhour?: number,
+) {
+  const json = await fetchApi<unknown>(
+    idmanhour ? `/api/v1/manhours/${idmanhour}` : '/api/v1/manhours',
+    {
+      method: idmanhour ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  )
+  return manhourOkResponseSchema.parse(json)
+}
+
+export async function deleteManhour(idmanhour: number) {
+  const json = await fetchApi<unknown>(`/api/v1/manhours/${idmanhour}`, {
+    method: 'DELETE',
+  })
+  return manhourOkResponseSchema.parse(json)
+}
+
+export async function postManhourImport(file: File) {
+  const fd = new FormData()
+  fd.append('file', file)
+  const json = await fetchApi<unknown>('/api/v1/manhours/import', {
+    method: 'POST',
+    body: fd,
+  })
+  return manhourImportResponseSchema.parse(json)
+}
+
+export async function fetchWorktimeMe(opts: { from?: string; to?: string; limit?: number } = {}) {
+  const qs = new URLSearchParams()
+  if (opts.from) qs.set('from', opts.from)
+  if (opts.to) qs.set('to', opts.to)
+  if (opts.limit != null) qs.set('limit', String(opts.limit))
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/worktime/me${suffix}`)
+  return worktimeMeResponseSchema.parse(json)
+}
+
+/** เทียบ `W_worktime_view.php` — ตารางมอบหมายงาน (tbplangingwork) */
+export async function fetchWorktimePlanning(opts: { idwkctr?: string; limit?: number } = {}) {
+  const qs = new URLSearchParams()
+  if (opts.idwkctr) qs.set('idwkctr', opts.idwkctr)
+  if (opts.limit != null) qs.set('limit', String(opts.limit))
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/worktime/planning${suffix}`)
+  return worktimePlanningResponseSchema.parse(json)
 }
 
 export async function fetchPersonnel(tab: 'all' | 'pending') {
@@ -309,9 +581,143 @@ export async function fetchPersonnel(tab: 'all' | 'pending') {
   return personnelResponseSchema.parse(json).items
 }
 
-export async function fetchKpi() {
-  const json = await fetchApi<unknown>('/api/v1/reports/kpi')
+export async function fetchPersonnelDashboard() {
+  const json = await fetchApi<unknown>('/api/v1/personnel/me/dashboard')
+  return personnelDashboardResponseSchema.parse(json)
+}
+
+/** Admin CRUD `M_personel.php` — list + upsert + delete + import + image */
+export async function fetchPersonnelAdminList(
+  opts: {
+    q?: string
+    limit?: number
+    offset?: number
+    /** 'all' | 'active' | 'inactive' | <workstatus code> */
+    status?: string
+  } = {},
+) {
+  const qs = new URLSearchParams()
+  if (opts.q) qs.set('q', opts.q)
+  if (opts.limit != null) qs.set('limit', String(opts.limit))
+  if (opts.offset != null) qs.set('offset', String(opts.offset))
+  if (opts.status && opts.status !== 'all') qs.set('status', opts.status)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/personnel/admin${suffix}`)
+  return personnelAdminListResponseSchema.parse(json)
+}
+
+/**
+ * Lookup ตัวเลือก workstatus สำหรับ Admin form/filter — เทียบ legacy MySQL `tbwkctrstatus`
+ */
+export async function fetchPersonnelWorkstatusOptions() {
+  const json = await fetchApi<unknown>(
+    '/api/v1/personnel/admin/workstatus-options',
+  )
+  return personnelWorkstatusOptionsResponseSchema.parse(json).items
+}
+
+export async function fetchPersonnelAdminOne(idwkctr: string) {
+  const json = await fetchApi<unknown>(
+    `/api/v1/personnel/admin/${encodeURIComponent(idwkctr)}`,
+  )
+  return personnelAdminItemSchema.parse(json)
+}
+
+export async function upsertPersonnelAdmin(body: Record<string, unknown>) {
+  const json = await fetchApi<unknown>('/api/v1/personnel/admin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return personnelAdminOkSchema.parse(json)
+}
+
+export async function deletePersonnelAdmin(idwkctr: string) {
+  const json = await fetchApi<unknown>(
+    `/api/v1/personnel/admin/${encodeURIComponent(idwkctr)}`,
+    { method: 'DELETE' },
+  )
+  return personnelAdminOkSchema.parse(json)
+}
+
+export async function postPersonnelAdminImport(file: File) {
+  const fd = new FormData()
+  fd.append('file', file)
+  const json = await fetchApi<unknown>('/api/v1/personnel/admin/import', {
+    method: 'POST',
+    body: fd,
+  })
+  return personnelImportResponseSchema.parse(json)
+}
+
+export async function postPersonnelAdminImage(idwkctr: string, file: File) {
+  const fd = new FormData()
+  fd.append('file', file)
+  const json = await fetchApi<unknown>(
+    `/api/v1/personnel/admin/${encodeURIComponent(idwkctr)}/image`,
+    { method: 'POST', body: fd },
+  )
+  return personnelImageUploadResponseSchema.parse(json)
+}
+
+export async function deletePersonnelAdminImage(idwkctr: string) {
+  const json = await fetchApi<unknown>(
+    `/api/v1/personnel/admin/${encodeURIComponent(idwkctr)}/image`,
+    { method: 'DELETE' },
+  )
+  return personnelAdminOkSchema.parse(json)
+}
+
+/** URL สำหรับใช้ใน `<img src=...>` — ภาพอยู่ใน DB และส่งเป็น binary WebP */
+export function personnelImageUrl(idwkctr: string, ver?: number | string) {
+  const v = ver != null ? `?v=${encodeURIComponent(String(ver))}` : ''
+  return `/api/v1/personnel/${encodeURIComponent(idwkctr)}/image${v}`
+}
+
+/** Personnel Confirmation dashboard — `M_personel_confirm.php` (Admin) */
+export async function fetchPersonnelConfirm(opts: {
+  q?: string
+  status?: 'all' | 'not_started' | 'in_progress' | 'done'
+  syst?: string[]
+  limit?: number
+  offset?: number
+} = {}) {
+  const qs = new URLSearchParams()
+  if (opts.q) qs.set('q', opts.q)
+  if (opts.status && opts.status !== 'all') qs.set('status', opts.status)
+  if (opts.syst && opts.syst.length > 0) qs.set('syst', opts.syst.join(','))
+  if (opts.limit != null) qs.set('limit', String(opts.limit))
+  if (opts.offset != null) qs.set('offset', String(opts.offset))
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/personnel/admin/confirm${suffix}`)
+  return personnelConfirmListResponseSchema.parse(json)
+}
+
+export type ReportsQuery = {
+  from?: string
+  to?: string
+  weeksBack?: number
+}
+
+function reportsQueryString(opts?: ReportsQuery): string {
+  const qs = new URLSearchParams()
+  if (opts?.from) qs.set('from', opts.from)
+  if (opts?.to) qs.set('to', opts.to)
+  if (opts?.weeksBack != null) qs.set('weeksBack', String(opts.weeksBack))
+  const suffix = qs.toString()
+  return suffix ? `?${suffix}` : ''
+}
+
+export async function fetchKpi(opts?: ReportsQuery) {
+  const json = await fetchApi<unknown>(`/api/v1/reports/kpi${reportsQueryString(opts)}`)
   return kpiResponseSchema.parse(json)
+}
+
+export async function fetchSummaryWeekly(opts?: ReportsQuery) {
+  const json = await fetchApi<unknown>(
+    `/api/v1/reports/summary-weekly${reportsQueryString(opts)}`,
+  )
+  return summaryWeeklyResponseSchema.parse(json)
 }
 
 export async function fetchUsers() {
@@ -339,6 +745,30 @@ export async function fetchConfirmationByWorkOrder(wkorder: string) {
     `/api/v1/confirmation/by-wkorder/${encodeURIComponent(wkorder)}`,
   )
   return confirmationByWorkOrderResponseSchema.parse(json)
+}
+
+export async function fetchConfirmationExport() {
+  const json = await fetchApi<unknown>('/api/v1/confirmation/export')
+  return confirmationExportResponseSchema.parse(json)
+}
+
+export async function fetchConfirmationExportXlsx(): Promise<Blob> {
+  const base = getApiBaseUrl()
+  const p = '/api/v1/confirmation/export.xlsx'
+  const url = base ? `${base}${p}` : p
+  const token = getAuthToken()
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+  return res.blob()
 }
 
 export async function postConfirmationClose(body: {
@@ -372,6 +802,16 @@ export async function deleteConfirmationClose(idclose: number) {
   const ok = z.object({ ok: z.literal(true) }).safeParse(json)
   if (!ok.success) throw new Error('Unexpected response')
   return ok.data
+}
+
+export async function postConfirmationImport(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  const json = await fetchApi<unknown>('/api/v1/confirmation/import', {
+    method: 'POST',
+    body: form,
+  })
+  return confirmationImportResponseSchema.parse(json)
 }
 
 export async function fetchConfirmationComments(idiw37: number) {
