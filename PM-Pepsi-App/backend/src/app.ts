@@ -35,6 +35,7 @@ import { registerBoardActivityRoutes } from './routes/board-activity.js'
 import { registerBoardKioskRoutes } from './routes/board-kiosk.js'
 import { registerSettingsRoutes } from './routes/settings.js'
 import { registerUserPrefRoutes } from './routes/user-pref.js'
+import { registerUsersRoutes } from './routes/users.js'
 import { createMaintenanceMiddleware } from './middleware/maintenance-mode.js'
 import { createUploadSizeGuard } from './middleware/enforce-upload-size.js'
 import { registerBlockedIpGuard } from './middleware/blocked-ip.js'
@@ -74,6 +75,7 @@ export function createApp(opts: {
   registerBoardActivityRoutes(app, opts.pool, opts.sessionSecret)
   registerAuthRoutes(app, opts.pool, opts.sessionSecret)
   registerUserPrefRoutes(app, opts.pool, opts.sessionSecret)
+  registerUsersRoutes(app, opts.pool, opts.sessionSecret)
   registerAdminBrandingRoutes(app, opts.pool, opts.sessionSecret)
   registerAdminSettingsRoutes(app, opts.pool, opts.sessionSecret)
   registerAdminAuditRoutes(app, opts.pool, opts.sessionSecret)

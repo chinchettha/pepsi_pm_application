@@ -48,5 +48,15 @@ export async function fetchApi<T>(
     }
     throw new Error(text || `HTTP ${res.status}`)
   }
-  return res.json() as Promise<T>
+  const text = await res.text()
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    if (text.trimStart().startsWith('<')) {
+      throw new Error(
+        'ได้รับ HTML แทน JSON — ตรวจว่า backend API รันอยู่ (พอร์ต 4000) และ path ถูกต้อง',
+      )
+    }
+    throw new Error(text.slice(0, 200) || 'Invalid JSON response')
+  }
 }
