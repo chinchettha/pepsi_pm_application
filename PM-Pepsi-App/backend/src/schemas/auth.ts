@@ -33,6 +33,16 @@ export const authUserSchema = z.object({
   imgMember: z.string().nullable().optional(),
   accountType: z.enum(['workcenter', 'member']).default('workcenter'),
   memId: z.string().optional(),
+  /** RBAC codes from tbl_role_permission — populated on GET /auth/me */
+  permissions: z.array(z.string()).optional(),
+  passMustChange: z.boolean().optional(),
+  impersonatedBy: z
+    .object({
+      idwkctr: z.string(),
+      username: z.string(),
+      userst: z.string(),
+    })
+    .optional(),
 })
 
 export const loginResponseSchema = z.object({
@@ -46,6 +56,24 @@ export const authSessionResponseSchema = z.object({
 
 export const logoutResponseSchema = z.object({
   ok: z.literal(true),
+})
+
+/** เทียบ member_change_password_process.php */
+export const changePasswordBodySchema = z
+  .object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(1),
+    confirmPassword: z.string().min(1),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: 'ยืนยันรหัสผ่านไม่ตรงกัน',
+    path: ['confirmPassword'],
+  })
+
+export const changePasswordResponseSchema = z.object({
+  ok: z.literal(true),
+  token: z.string(),
+  user: authUserSchema,
 })
 
 export type LoginRequest = z.infer<typeof loginRequestSchema>

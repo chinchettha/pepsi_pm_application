@@ -1,7 +1,8 @@
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
 import { z } from 'zod'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
 import {
   movePlanReasonsResponseSchema,
   movePlanRequestSchema,
@@ -24,11 +25,13 @@ export function registerSchedulingRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const requireCalendarRead = createRequirePermission(pool, sessionSecret)('calendar.read')
+  const requireCalendarWrite = createRequirePermission(pool, sessionSecret)('calendar.write')
+  const requireWoRead = createRequirePermission(pool, sessionSecret)('work-orders.read')
 
   app.get(
     '/api/v1/scheduling/move-reasons',
-    requireAuth,
+    ...requireCalendarRead,
     async (_req: Request, res: Response) => {
       try {
         const items = await listMovePlanReasons(pool)
@@ -49,7 +52,7 @@ export function registerSchedulingRoutes(
 
   app.post(
     '/api/v1/scheduling/move-plan',
-    requireAuth,
+    ...requireCalendarWrite,
     async (req: Request, res: Response) => {
       const parsed = movePlanRequestSchema.safeParse(req.body)
       if (!parsed.success) {
@@ -66,6 +69,12 @@ export function registerSchedulingRoutes(
         const result = await moveWorkOrderPlan(pool, {
           ...parsed.data,
           mwkctr: user.wkctr || user.idwkctr,
+        })
+        voidAudit(pool, req, {
+          action: 'planning.write',
+          resource: 'tbiw37n',
+          resourceId: String(parsed.data.idiw37),
+          after: sanitizeAuditPayload(parsed.data),
         })
         res.json(
           movePlanResponseSchema.parse({
@@ -88,7 +97,7 @@ export function registerSchedulingRoutes(
 
   app.get(
     '/api/v1/work-orders/suggestions',
-    requireAuth,
+    ...requireWoRead,
     async (req: Request, res: Response) => {
       const parsed = suggestionsQuerySchema.safeParse(req.query)
       if (!parsed.success) {

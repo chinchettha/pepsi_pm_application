@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'rounded-xl border border-zinc-200 bg-white text-zinc-950 shadow-sm',
+      'rounded-card border border-app bg-[var(--app-surface)] text-app shadow-app-card',
       className,
     )}
     {...props}
@@ -23,7 +23,10 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex flex-col space-y-1.5 p-6', className)}
+    className={cn(
+      'flex flex-col gap-[var(--app-card-inner-gap)] p-[var(--app-card-padding)]',
+      className,
+    )}
     {...props}
   />
 ))
@@ -45,7 +48,7 @@ const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-sm text-zinc-500', className)} {...props} />
+  <p ref={ref} className={cn('text-body-sm text-app-muted', className)} {...props} />
 ))
 CardDescription.displayName = 'CardDescription'
 
@@ -53,7 +56,11 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
+  <div
+    ref={ref}
+    className={cn('p-[var(--app-card-padding)] pt-0', className)}
+    {...props}
+  />
 ))
 CardContent.displayName = 'CardContent'
 

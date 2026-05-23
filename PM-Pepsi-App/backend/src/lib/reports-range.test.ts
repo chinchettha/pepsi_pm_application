@@ -33,4 +33,22 @@ describe('reports-range', () => {
     const labels = weekLabelsInRange(range)
     expect(labels.length).toBeGreaterThan(0)
   })
+
+  it('uses Pepsi week 1 from 1 January', () => {
+    const jan1 = parseWorkdayForTest('01.01.2026')
+    const jan8 = parseWorkdayForTest('08.01.2026')
+    const labels = weekLabelsInRange({
+      from: jan1,
+      to: jan8,
+      fromDate: '2026-01-01',
+      toDate: '2026-01-08',
+    })
+    expect(labels).toContain('2026-W01')
+    expect(labels).toContain('2026-W02')
+  })
 })
+
+function parseWorkdayForTest(s: string): number {
+  const [d, m, y] = s.split('.').map(Number)
+  return Math.floor(Date.UTC(y!, m! - 1, d!, 5, 0, 0) / 1000)
+}

@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { createRequireKioskOrPermission } from '../middleware/require-kiosk-or-permission.js'
 import { dashboardSummarySchema } from '../schemas/dashboard.js'
 import { getDashboardSummary } from '../services/dashboard.js'
 
@@ -9,11 +9,11 @@ export function registerDashboardRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const requireRead = createRequireKioskOrPermission(pool, sessionSecret, 'dashboard.read')
 
   app.get(
     '/api/v1/dashboard/summary',
-    requireAuth,
+    ...requireRead,
     async (_req: Request, res: Response) => {
       try {
         const summary = await getDashboardSummary(pool)

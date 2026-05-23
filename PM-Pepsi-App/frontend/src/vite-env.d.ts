@@ -2,6 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string
+  /** จาก package.json ตอน build */
+  readonly VITE_APP_VERSION: string
 }
 
 interface ImportMeta {

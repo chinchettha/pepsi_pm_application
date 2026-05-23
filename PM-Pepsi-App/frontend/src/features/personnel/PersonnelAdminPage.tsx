@@ -6,6 +6,10 @@
  *   ใช้ `<img src=/api/v1/personnel/:idwkctr/image>` (ส่ง cookie auth อัตโนมัติ)
  * - Excel import: skip 2 rows แรก (เทียบ PHP `$n > 2`) + แสดงผลทีละแถว
  */
+import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
+import { PersonnelAdminPhotoGoLiveBanner } from '@/features/admin/users/PersonnelAdminPhotoGoLiveBanner'
+import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
+import { PersonnelAvatar } from '@/components/personnel/PersonnelAvatar'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,6 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -29,8 +34,23 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { getStoredAuthUser } from '@/features/auth/login-api'
+import {
+  applyImpersonationSession,
+  getStoredAuthUser,
+  refreshAuthSession,
+} from '@/features/auth/login-api'
+import {
+  bulkAdminUserrole,
+  fetchAdminMembersList,
+  fetchAdminUsersList,
+  impersonateAdminUser,
+  lockAdminUser,
+  resetAdminUserPassword,
+  unlockAdminUser,
+} from '@/lib/admin-users-api'
+import { useAnyPermission, usePermission } from '@/lib/use-permission'
 import type {
+  AdminMemberItem,
   PersonnelAdminItem,
   PersonnelImportResponse,
   PersonnelRole,
@@ -41,17 +61,28 @@ import {
   fetchPersonnelAdminList,
   fetchPersonnelLookups,
   fetchPersonnelWorkstatusOptions,
-  personnelImageUrl,
   postPersonnelAdminImage,
   postPersonnelAdminImport,
   upsertPersonnelAdmin,
   type PersonnelLookupOption,
 } from '@/lib/api-public'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ImageIcon, Pencil, Trash2, Upload, UserPlus } from 'lucide-react'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  AlertCircle,
+  ImageIcon,
+  KeyRound,
+  Lock,
+  LogIn,
+  Pencil,
+  RefreshCcw,
+  Trash2,
+  Unlock,
+  Upload,
+  UserPlus,
+} from 'lucide-react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 function unixToInputDate(sec: number | null | undefined): string {
@@ -65,6 +96,7 @@ function unixToInputDate(sec: number | null | undefined): string {
 
 type FormState = {
   isEdit: boolean
+  hasMemberImage: boolean
   idwkctr: string
   titlewkctr: string
   namewkctr: string
@@ -94,6 +126,7 @@ type FormState = {
 
 const emptyForm: FormState = {
   isEdit: false,
+  hasMemberImage: false,
   idwkctr: '',
   titlewkctr: '',
   namewkctr: '',
@@ -138,6 +171,7 @@ const USERROLE_OPTIONS: Array<{ value: PersonnelRole; label: string }> = [
 function fromItem(it: PersonnelAdminItem): FormState {
   return {
     isEdit: true,
+    hasMemberImage: Boolean(it.hasImage),
     idwkctr: it.idwkctr,
     titlewkctr: it.titlewkctr ?? '',
     namewkctr: it.namewkctr ?? '',
@@ -168,18 +202,54 @@ function fromItem(it: PersonnelAdminItem): FormState {
   }
 }
 
-export function PersonnelAdminPage() {
+export type PersonnelAdminPageProps = {
+  /** `admin` = /admin/users (RBAC admin.users.*); `personnel` = legacy /personnel/admin */
+  variant?: 'personnel' | 'admin'
+}
+
+type AdminDestructiveConfirm = {
+  phrase: string
+  title: string
+  description: string
+  run: () => void | Promise<void>
+}
+
+export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPageProps) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const qc = useQueryClient()
   const authUser = getStoredAuthUser()
-  const isAdmin = authUser?.userst === 'A'
+  const isLegacyAdmin = authUser?.userst === 'A'
+  const canReadUsers = useAnyPermission([
+    'admin.users.read',
+    'admin.users.write',
+    'personnel.write',
+  ])
+  const canWriteUsers = useAnyPermission(['admin.users.write', 'personnel.write'])
+  const canImpersonate = usePermission('admin.users.impersonate')
+  const isAdmin = variant === 'admin' ? canReadUsers : isLegacyAdmin
+  const showAdminActions = variant === 'admin' && canWriteUsers
+  const [accountTab, setAccountTab] = useState<'workcenter' | 'member'>('workcenter')
+  const [adminConfirm, setAdminConfirm] = useState<AdminDestructiveConfirm | null>(null)
+  const [adminConfirmLoading, setAdminConfirmLoading] = useState(false)
 
   useEffect(() => {
     if (!isAdmin) {
-      toast.error('Admin only')
-      navigate('/personnel', { replace: true })
+      toast.error(variant === 'admin' ? 'ไม่มีสิทธิ์ admin.users' : 'Admin only')
+      navigate(variant === 'admin' ? '/' : '/personnel', { replace: true })
     }
-  }, [isAdmin, navigate])
+  }, [isAdmin, navigate, variant])
+
+  useEffect(() => {
+    const initialQ = searchParams.get('q')?.trim()
+    if (initialQ) {
+      setQ(initialQ)
+      setQInput(initialQ)
+    }
+    if (searchParams.get('photo') === 'missing') {
+      setPhotoFilter('missing')
+    }
+  }, [searchParams])
 
   const [q, setQ] = useState('')
   const [qInput, setQInput] = useState('')
@@ -191,17 +261,36 @@ export function PersonnelAdminPage() {
    * - `<code>` = match แม่นยำ เช่น `RESIGNED`
    */
   const [statusFilter, setStatusFilter] = useState<string>('active')
+  const [roleFilter, setRoleFilter] = useState<PersonnelRole | ''>('')
+  const [photoFilter, setPhotoFilter] = useState<'all' | 'missing'>('all')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [bulkRole, setBulkRole] = useState<PersonnelRole>('planner')
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
 
   const listQ = useQuery({
-    queryKey: ['personnel', 'admin', 'list', q, statusFilter],
-    queryFn: () =>
-      fetchPersonnelAdminList({
+    queryKey: ['personnel', 'admin', 'list', variant, q, statusFilter, roleFilter],
+    queryFn: () => {
+      const params = {
         q: q || undefined,
         status: statusFilter,
         limit: 500,
-      }),
-    enabled: isAdmin,
+        ...(variant === 'admin' && roleFilter ? { userrole: roleFilter } : {}),
+      }
+      return variant === 'admin'
+        ? fetchAdminUsersList(params)
+        : fetchPersonnelAdminList(params)
+    },
+    enabled: isAdmin && accountTab === 'workcenter',
     staleTime: 15_000,
+    placeholderData: keepPreviousData,
+  })
+
+  const membersQ = useQuery({
+    queryKey: ['admin', 'users', 'members'],
+    queryFn: fetchAdminMembersList,
+    enabled: isAdmin && variant === 'admin' && accountTab === 'member',
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
   })
 
   // Lookup สำหรับ select ในฟอร์ม — เทียบ legacy `personel_form_tab2.php` ที่ join 5 ตาราง
@@ -250,8 +339,32 @@ export function PersonnelAdminPage() {
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
 
-  const items = listQ.data?.items ?? []
+  const items = useMemo(() => {
+    const raw = listQ.data?.items ?? []
+    if (photoFilter === 'missing') return raw.filter((it) => !it.hasImage)
+    return raw
+  }, [listQ.data?.items, photoFilter])
   const totalRows = listQ.data?.totalRows ?? 0
+  const selectedCount = selectedIds.size
+  const allOnPageSelected =
+    items.length > 0 && items.every((it) => selectedIds.has(it.idwkctr))
+
+  const toggleSelectAll = () => {
+    if (allOnPageSelected) {
+      setSelectedIds(new Set())
+      return
+    }
+    setSelectedIds(new Set(items.map((it) => it.idwkctr)))
+  }
+
+  const toggleSelectRow = (idwkctr: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(idwkctr)) next.delete(idwkctr)
+      else next.add(idwkctr)
+      return next
+    })
+  }
 
   const bumpImageVer = (idwkctr: string) =>
     setImageVersion((m) => ({ ...m, [idwkctr]: (m[idwkctr] ?? 0) + 1 }))
@@ -318,6 +431,9 @@ export function PersonnelAdminPage() {
         `อัปโหลด WebP สำเร็จ ${res.width}×${res.height} (${Math.round(res.bytes / 1024)} KB)`,
       )
       bumpImageVer(vars.idwkctr)
+      setForm((s) =>
+        s.idwkctr === vars.idwkctr ? { ...s, hasMemberImage: true } : s,
+      )
       qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
     },
     onError: (err: unknown) => {
@@ -330,6 +446,9 @@ export function PersonnelAdminPage() {
     onSuccess: (_d, idwkctr) => {
       toast.message(`ลบรูปของ ${idwkctr}`)
       bumpImageVer(idwkctr)
+      setForm((s) =>
+        s.idwkctr === idwkctr ? { ...s, hasMemberImage: false } : s,
+      )
       qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
     },
   })
@@ -390,49 +509,116 @@ export function PersonnelAdminPage() {
 
   if (!isAdmin) {
     return (
-      <div className="px-6 py-10 text-sm text-zinc-600">
+      <div className="px-6 py-8 text-caption">
         Admin only — กำลังย้อนกลับ…
       </div>
     )
   }
 
-  return (
-    <div>
-      <PageHeader
-        title="จัดการบุคลากร (Admin)"
-        description="เทียบ M_personel.php / M_personel_form.php / M_personel_imports.php — ตาราง tbworkcenter ทั้งหมด"
-      >
-        <Badge variant="secondary">รวม {totalRows} คน</Badge>
+  const headerActions = (
+    <>
+      <Badge variant="secondary">รวม {totalRows} คน</Badge>
+      {variant === 'admin' ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="admin-toolbar-btn"
+          onClick={() => {
+            if (accountTab === 'member') void membersQ.refetch()
+            else void listQ.refetch()
+          }}
+          disabled={accountTab === 'member' ? membersQ.isFetching : listQ.isFetching}
+        >
+          <RefreshCcw
+            className={`mr-1 size-3.5 ${(accountTab === 'member' ? membersQ.isFetching : listQ.isFetching) ? 'animate-spin' : ''}`}
+            aria-hidden
+          />
+          รีเฟรช
+        </Button>
+      ) : null}
+      {variant === 'admin' ? (
+        <Button asChild variant="outline" size="sm">
+          <Link to="/admin/settings">ตั้งค่าระบบ</Link>
+        </Button>
+      ) : (
         <Button asChild variant="outline" size="sm">
           <Link to="/personnel">กลับ Dashboard</Link>
         </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/personnel/confirm">Personnel Confirmation</Link>
-        </Button>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".xls,.xlsx,.csv"
-          className="hidden"
-          onChange={onPickImportFile}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={importing}
-          onClick={() => importInputRef.current?.click()}
-        >
-          <Upload className="mr-1 size-4" />
-          {importing ? 'Importing…' : 'นำเข้า Excel'}
-        </Button>
-        <Button type="button" size="sm" onClick={openCreate}>
-          <UserPlus className="mr-1 size-4" />
-          เพิ่มบุคลากร
-        </Button>
-      </PageHeader>
+      )}
+      <Button asChild variant="outline" size="sm">
+        <Link to="/personnel/confirm">Personnel Confirmation</Link>
+      </Button>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".xls,.xlsx,.csv"
+        className="hidden"
+        onChange={onPickImportFile}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={importing}
+        onClick={() => importInputRef.current?.click()}
+      >
+        <Upload className="mr-1 size-4" />
+        {importing ? 'Importing…' : 'นำเข้า Excel'}
+      </Button>
+      <Button type="button" size="sm" onClick={openCreate}>
+        <UserPlus className="mr-1 size-4" />
+        เพิ่มบุคลากร
+      </Button>
+    </>
+  )
 
-      <div className="space-y-4 px-4 py-6 sm:px-6">
+  return (
+    <div>
+      {variant === 'admin' ? (
+        <AdminPageHeader
+          title="จัดการผู้ใช้"
+          description="รูปช่าง thumbnail · เลือกหลายแถวเปลี่ยนบทบาท (bulk) · reset / lock / impersonate"
+        >
+          {headerActions}
+        </AdminPageHeader>
+      ) : (
+        <PageHeader
+          title="จัดการบุคลากร (Admin)"
+          description="เทียบ M_personel.php / M_personel_form.php / M_personel_imports.php — ตาราง tbworkcenter ทั้งหมด"
+        >
+          {headerActions}
+        </PageHeader>
+      )}
+
+      <div
+        className={
+          variant === 'admin' ? 'admin-page-content space-y-4' : 'app-page-content space-y-4'
+        }
+      >
+        {variant === 'admin' ? (
+          <Tabs
+            value={accountTab}
+            onValueChange={(v) => setAccountTab(v as 'workcenter' | 'member')}
+          >
+            <TabsList>
+              <TabsTrigger value="workcenter">Work center (HR)</TabsTrigger>
+              <TabsTrigger value="member">สมาชิก (Member)</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ) : null}
+
+        {(variant !== 'admin' || accountTab === 'workcenter') && (
+        <>
+        {variant === 'admin' && accountTab === 'workcenter' ? (
+          <PersonnelAdminPhotoGoLiveBanner
+            canWrite={showAdminActions}
+            onShowMissingPhotos={() => {
+              setStatusFilter('active')
+              setPhotoFilter('missing')
+            }}
+          />
+        ) : null}
         <div className="flex flex-wrap items-center gap-3">
           <Input
             placeholder="ค้นหา รหัส / ชื่อ / WC…"
@@ -466,13 +652,13 @@ export function PersonnelAdminPage() {
           ) : null}
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Label className="text-xs text-zinc-600">สถานะใช้งาน</Label>
+            <Label className="text-xs text-app-muted">สถานะใช้งาน</Label>
             {/* Quick filter chips — เทียบ PersonnelConfirmPage pattern */}
             <div className="flex flex-wrap gap-1">
               {(
                 [
                   { value: 'active', label: 'ใช้งาน', tone: 'emerald' },
-                  { value: 'inactive', label: 'ไม่ใช้งาน', tone: 'zinc' },
+                  { value: 'inactive', label: 'ไม่ใช้งาน', tone: 'neutral' },
                   { value: 'all', label: 'ทั้งหมด', tone: 'blue' },
                 ] as const
               ).map((opt) => (
@@ -486,6 +672,15 @@ export function PersonnelAdminPage() {
                   {opt.label}
                 </Button>
               ))}
+              <Button
+                type="button"
+                size="sm"
+                variant={photoFilter === 'missing' ? 'default' : 'outline'}
+                className={photoFilter === 'missing' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+                onClick={() => setPhotoFilter((p) => (p === 'missing' ? 'all' : 'missing'))}
+              >
+                ไม่มีรูป
+              </Button>
             </div>
             {/* Dropdown สถานะรายตัว (ACTIVE/INACTIVE/LEAVE/RESIGNED/RETIRED/TERMINATED) */}
             <select
@@ -501,7 +696,7 @@ export function PersonnelAdminPage() {
                 const v = e.target.value
                 setStatusFilter(v || 'all')
               }}
-              className="h-9 rounded-md border border-zinc-300 bg-white px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-9 rounded-button border border-app bg-[var(--app-surface)] px-2 text-body-sm focus-app-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               title="เลือกสถานะรายตัวสำหรับ filter"
             >
               <option value="">— เจาะจง code —</option>
@@ -511,29 +706,94 @@ export function PersonnelAdminPage() {
                 </option>
               ))}
             </select>
+            {variant === 'admin' ? (
+              <>
+                <Label className="text-xs text-app-muted">บทบาท (userrole)</Label>
+                <select
+                  value={roleFilter}
+                  onChange={(e) =>
+                    setRoleFilter((e.target.value || '') as PersonnelRole | '')
+                  }
+                  className="h-9 rounded-button border border-app bg-[var(--app-surface)] px-2 text-body-sm"
+                  title="กรองตาม userrole"
+                >
+                  <option value="">ทุกบทบาท</option>
+                  {USERROLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : null}
           </div>
         </div>
+
+        {variant === 'admin' && showAdminActions && selectedCount > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-card border border-[var(--admin-primary)]/25 bg-[var(--admin-surface)] px-3 py-2">
+            <span className="text-body-sm font-medium text-[var(--admin-text)]">
+              เลือก {selectedCount} แถว
+            </span>
+            <select
+              value={bulkRole}
+              onChange={(e) => setBulkRole(e.target.value as PersonnelRole)}
+              className="h-9 rounded-button border border-app bg-[var(--app-surface)] px-2 text-body-sm"
+            >
+              {USERROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <Button type="button" size="sm" onClick={() => setBulkConfirmOpen(true)}>
+              เปลี่ยนบทบาทหลายแถว
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              ยกเลิกการเลือก
+            </Button>
+          </div>
+        ) : null}
 
         {importResult ? (
           <ImportResultBlock data={importResult} />
         ) : null}
 
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-          {listQ.isLoading ? (
+        <div className="overflow-hidden app-table-shell">
+          {listQ.isLoading && !listQ.data ? (
             <div className="p-4">
               <Skeleton className="h-48 w-full rounded" />
             </div>
           ) : listQ.isError ? (
-            <div className="p-4 text-sm text-red-600">
-              {listQ.error instanceof Error
-                ? listQ.error.message
-                : String(listQ.error)}
-            </div>
+            <EmptyState
+              icon={AlertCircle}
+              className="m-4"
+              title="โหลดรายชื่อไม่สำเร็จ"
+              description={
+                listQ.error instanceof Error ? listQ.error.message : String(listQ.error)
+              }
+              action={{ label: 'ลองใหม่', onClick: () => void listQ.refetch() }}
+            />
           ) : (
-            <Table>
+            <Table embedded={variant === 'admin'} stickyHeader={variant === 'admin'} zebra={variant === 'admin'}>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">รูป</TableHead>
+                  {variant === 'admin' && showAdminActions ? (
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        aria-label="เลือกทั้งหมดในหน้านี้"
+                        checked={allOnPageSelected}
+                        onChange={toggleSelectAll}
+                        className="size-4 rounded border-app"
+                      />
+                    </TableHead>
+                  ) : null}
+                  <TableHead className="w-[4.5rem]">รูป</TableHead>
                   <TableHead>รหัส</TableHead>
                   <TableHead>ชื่อ-สกุล</TableHead>
                   <TableHead>WC</TableHead>
@@ -548,8 +808,8 @@ export function PersonnelAdminPage() {
                 {items.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
-                      className="py-10 text-center text-sm text-zinc-500"
+                      colSpan={variant === 'admin' && showAdminActions ? 10 : 9}
+                      className="py-8 text-center text-caption"
                     >
                       ไม่มีข้อมูล
                     </TableCell>
@@ -563,13 +823,111 @@ export function PersonnelAdminPage() {
                       workstatusInfo={
                         it.workstatus ? workstatusMap.get(it.workstatus) : undefined
                       }
+                      showBulkSelect={variant === 'admin' && showAdminActions}
+                      photoSize={variant === 'admin' ? 'md' : 'sm'}
+                      selected={selectedIds.has(it.idwkctr)}
+                      onToggleSelect={() => toggleSelectRow(it.idwkctr)}
+                      showAdminActions={showAdminActions}
+                      canImpersonate={canImpersonate}
                       onEdit={() => openEdit(it)}
                       onDelete={() => {
-                        if (
-                          window.confirm(`Confirm delete ${it.idwkctr}?`)
-                        ) {
+                        if (showAdminActions) {
+                          setAdminConfirm({
+                            phrase: it.idwkctr,
+                            title: `ลบ ${it.idwkctr}`,
+                            description: `ลบบันทึก ${it.wkctr} — ไม่สามารถย้อนกลับได้`,
+                            run: () => deleteMut.mutate(it.idwkctr),
+                          })
+                          return
+                        }
+                        if (window.confirm(`Confirm delete ${it.idwkctr}?`)) {
                           deleteMut.mutate(it.idwkctr)
                         }
+                      }}
+                      onResetPassword={() => {
+                        const run = async () => {
+                          const res = await resetAdminUserPassword(it.idwkctr, 'workcenter')
+                          toast.success(`รหัสชั่วคราว: ${res.temporaryPassword}`, {
+                            duration: 20_000,
+                          })
+                        }
+                        if (showAdminActions) {
+                          setAdminConfirm({
+                            phrase: it.idwkctr,
+                            title: 'รีเซ็ตรหัสผ่าน',
+                            description: `${it.idwkctr} (${it.wkctr})`,
+                            run,
+                          })
+                          return
+                        }
+                        void (async () => {
+                          if (!window.confirm(`รีเซ็ตรหัสผ่านของ ${it.idwkctr}?`)) return
+                          try {
+                            await run()
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : 'รีเซ็ตไม่สำเร็จ')
+                          }
+                        })()
+                      }}
+                      onLock={() => {
+                        const run = async () => {
+                          await lockAdminUser(it.idwkctr, 'workcenter')
+                          toast.success(`ล็อก ${it.idwkctr} แล้ว`)
+                          void listQ.refetch()
+                        }
+                        if (showAdminActions) {
+                          setAdminConfirm({
+                            phrase: it.idwkctr,
+                            title: `ล็อก ${it.idwkctr}`,
+                            description: 'ผู้ใช้จะไม่สามารถเข้าสู่ระบบได้จนกว่าจะปลดล็อก',
+                            run,
+                          })
+                          return
+                        }
+                        void run().catch((e: unknown) =>
+                          toast.error(e instanceof Error ? e.message : 'ล็อกไม่สำเร็จ'),
+                        )
+                      }}
+                      onUnlock={async () => {
+                        try {
+                          await unlockAdminUser(it.idwkctr, 'workcenter')
+                          toast.success(`ปลดล็อก ${it.idwkctr} แล้ว`)
+                          void listQ.refetch()
+                        } catch (e) {
+                          toast.error(e instanceof Error ? e.message : 'ปลดล็อกไม่สำเร็จ')
+                        }
+                      }}
+                      onImpersonate={() => {
+                        const run = async () => {
+                          const res = await impersonateAdminUser(it.idwkctr, 'workcenter')
+                          applyImpersonationSession(res)
+                          await refreshAuthSession()
+                          toast.success(`เข้าสู่ระบบเป็น ${res.user.username}`)
+                          navigate('/')
+                        }
+                        if (showAdminActions) {
+                          setAdminConfirm({
+                            phrase: it.idwkctr,
+                            title: 'สวมสิทธิ์ผู้ใช้',
+                            description: `สวมสิทธิ์เป็น ${it.idwkctr} (${it.wkctr}) — ออกจากบัญชี admin ชั่วคราว`,
+                            run,
+                          })
+                          return
+                        }
+                        void (async () => {
+                          if (
+                            !window.confirm(
+                              `สวมสิทธิ์เป็น ${it.idwkctr} (${it.wkctr})? จะออกจากบัญชี admin ชั่วคราว`,
+                            )
+                          ) {
+                            return
+                          }
+                          try {
+                            await run()
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : 'สวมสิทธิ์ไม่สำเร็จ')
+                          }
+                        })()
                       }}
                     />
                   ))
@@ -578,7 +936,126 @@ export function PersonnelAdminPage() {
             </Table>
           )}
         </div>
+        </>
+        )}
+
+        {variant === 'admin' && accountTab === 'member' ? (
+          <div className="overflow-hidden app-table-shell">
+            {membersQ.isLoading && !membersQ.data ? (
+              <div className="p-4">
+                <Skeleton className="h-48 w-full rounded" />
+              </div>
+            ) : membersQ.isError ? (
+              <EmptyState
+                icon={AlertCircle}
+                className="m-4"
+                title="โหลดสมาชิกไม่สำเร็จ"
+                description={(membersQ.error as Error).message}
+                action={{ label: 'ลองใหม่', onClick: () => void membersQ.refetch() }}
+              />
+            ) : (
+              <Table embedded stickyHeader zebra>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>ชื่อ</TableHead>
+                    <TableHead>สถานะ</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(membersQ.data ?? []).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-caption">
+                        ไม่มีสมาชิก
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    (membersQ.data ?? []).map((m) => (
+                      <TableRow key={m.id}>
+                        <TableCell className="font-mono text-xs">{m.id}</TableCell>
+                        <TableCell>{m.username}</TableCell>
+                        <TableCell>{m.fullname ?? '—'}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span>{m.status ?? '—'}</span>
+                            {m.passMustChange ? (
+                              <Badge variant="outline" className="border-amber-400 text-amber-800">
+                                ต้องเปลี่ยนรหัส
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {showAdminActions ? (
+                            <MemberAdminActions
+                              member={m}
+                              canImpersonate={canImpersonate}
+                              onDone={() => void membersQ.refetch()}
+                              onImpersonate={() => navigate('/')}
+                              onRequestConfirm={setAdminConfirm}
+                            />
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        ) : null}
       </div>
+
+      {adminConfirm ? (
+        <ConfirmPhraseDialog
+          open
+          onOpenChange={(open) => !open && setAdminConfirm(null)}
+          title={adminConfirm.title}
+          description={adminConfirm.description}
+          phrase={adminConfirm.phrase}
+          loading={adminConfirmLoading}
+          onConfirm={async () => {
+            setAdminConfirmLoading(true)
+            try {
+              await adminConfirm.run()
+              setAdminConfirm(null)
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : 'ดำเนินการไม่สำเร็จ')
+            } finally {
+              setAdminConfirmLoading(false)
+            }
+          }}
+        />
+      ) : null}
+
+      {bulkConfirmOpen ? (
+        <ConfirmPhraseDialog
+          open
+          onOpenChange={(open) => !open && setBulkConfirmOpen(false)}
+          title="เปลี่ยนบทบาทหลายแถว"
+          description={`ตั้ง userrole เป็น "${bulkRole}" สำหรับ ${selectedCount} รายการ`}
+          phrase={String(selectedCount)}
+          phraseLabel="พิมพ์จำนวนแถวที่เลือกเพื่อยืนยัน"
+          confirmLabel="เปลี่ยนบทบาท"
+          loading={adminConfirmLoading}
+          onConfirm={async () => {
+            setAdminConfirmLoading(true)
+            try {
+              const res = await bulkAdminUserrole([...selectedIds], bulkRole)
+              toast.success(`อัปเดตบทบาท ${res.updated} แถว`)
+              setSelectedIds(new Set())
+              setBulkConfirmOpen(false)
+              void listQ.refetch()
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : 'เปลี่ยนบทบาทไม่สำเร็จ')
+            } finally {
+              setAdminConfirmLoading(false)
+            }
+          }}
+        />
+      ) : null}
 
       <Dialog open={open} onOpenChange={(v) => !upsertMut.isPending && setOpen(v)}>
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
@@ -818,7 +1295,7 @@ export function PersonnelAdminPage() {
                 <FormGrid>
                   <Field label="สิทธิ์ระบบ (userst)">
                     <select
-                      className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 py-1 text-sm shadow-sm"
+                      className="flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm shadow-sm"
                       value={form.userst}
                       onChange={(e) =>
                         setForm((s) => ({
@@ -833,13 +1310,13 @@ export function PersonnelAdminPage() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="mt-1 text-xs text-app-muted">
                       ใช้กับเมนู legacy `menuright` เช่น A:U:W
                     </p>
                   </Field>
                   <Field label="บทบาท Dashboard/RBAC (userrole)">
                     <select
-                      className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 py-1 text-sm shadow-sm"
+                      className="flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm shadow-sm"
                       value={form.userrole}
                       onChange={(e) =>
                         setForm((s) => ({
@@ -854,7 +1331,7 @@ export function PersonnelAdminPage() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="mt-1 text-xs text-app-muted">
                       เป็น source of truth ใหม่สำหรับ Personal Dashboard และสิทธิ์ในอนาคต
                     </p>
                   </Field>
@@ -879,6 +1356,7 @@ export function PersonnelAdminPage() {
                 <ImagePanel
                   idwkctr={form.idwkctr}
                   isEdit={form.isEdit}
+                  hasImage={form.hasMemberImage || Boolean(imageVersion[form.idwkctr])}
                   ver={imageVersion[form.idwkctr]}
                   pickRef={imageInputRef}
                   onPick={onPickImage}
@@ -930,9 +1408,138 @@ function UserroleBadge({ role }: { role: PersonnelRole }) {
           ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
           : 'bg-blue-50 text-blue-700 ring-blue-200'
   return (
-    <span className={`inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${tone}`}>
+    <span className={`inline-flex w-fit rounded-full px-2 py-1 text-xs font-medium ring-1 ${tone}`}>
       {opt?.label.split(' — ')[0] ?? role}
     </span>
+  )
+}
+
+function MemberAdminActions({
+  member,
+  canImpersonate,
+  onDone,
+  onImpersonate,
+  onRequestConfirm,
+}: {
+  member: AdminMemberItem
+  canImpersonate: boolean
+  onDone: () => void
+  onImpersonate: () => void
+  onRequestConfirm?: (req: AdminDestructiveConfirm) => void
+}) {
+  const id = String(member.id)
+  const phrase = member.username
+  return (
+    <div className="flex flex-wrap justify-end gap-1">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        title="Reset password"
+        onClick={() => {
+          const run = async () => {
+            const res = await resetAdminUserPassword(id, 'member')
+            toast.success(`รหัสชั่วคราว: ${res.temporaryPassword}`, { duration: 20_000 })
+          }
+          if (onRequestConfirm) {
+            onRequestConfirm({
+              phrase,
+              title: 'รีเซ็ตรหัสผ่าน',
+              description: member.username,
+              run,
+            })
+            return
+          }
+          void (async () => {
+            if (!window.confirm(`รีเซ็ตรหัสผ่าน ${member.username}?`)) return
+            try {
+              await run()
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : 'รีเซ็ตไม่สำเร็จ')
+            }
+          })()
+        }}
+      >
+        <KeyRound className="size-3.5" />
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          const run = async () => {
+            await lockAdminUser(id, 'member')
+            toast.success('ล็อกแล้ว')
+            onDone()
+          }
+          if (onRequestConfirm) {
+            onRequestConfirm({
+              phrase,
+              title: `ล็อก ${member.username}`,
+              description: 'สมาชิกจะไม่สามารถเข้าสู่ระบบได้',
+              run,
+            })
+            return
+          }
+          void run().catch((e: unknown) =>
+            toast.error(e instanceof Error ? e.message : 'ล็อกไม่สำเร็จ'),
+          )
+        }}
+      >
+        <Lock className="size-3.5" />
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={async () => {
+          try {
+            await unlockAdminUser(id, 'member')
+            toast.success('ปลดล็อกแล้ว')
+            onDone()
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'ปลดล็อกไม่สำเร็จ')
+          }
+        }}
+      >
+        <Unlock className="size-3.5" />
+      </Button>
+      {canImpersonate ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const run = async () => {
+              const res = await impersonateAdminUser(id, 'member')
+              applyImpersonationSession(res)
+              await refreshAuthSession()
+              toast.success(`เข้าสู่ระบบเป็น ${res.user.username}`)
+              onImpersonate()
+            }
+            if (onRequestConfirm) {
+              onRequestConfirm({
+                phrase,
+                title: 'สวมสิทธิ์สมาชิก',
+                description: `สวมสิทธิ์เป็น ${member.username}`,
+                run,
+              })
+              return
+            }
+            void (async () => {
+              if (!window.confirm(`สวมสิทธิ์เป็น ${member.username}?`)) return
+              try {
+                await run()
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'สวมสิทธิ์ไม่สำเร็จ')
+              }
+            })()
+          }}
+        >
+          <LogIn className="size-3.5" />
+        </Button>
+      ) : null}
+    </div>
   )
 }
 
@@ -940,8 +1547,18 @@ function PersonnelRow({
   it,
   ver,
   workstatusInfo,
+  showBulkSelect,
+  photoSize = 'sm',
+  selected,
+  onToggleSelect,
+  showAdminActions,
+  canImpersonate,
   onEdit,
   onDelete,
+  onResetPassword,
+  onLock,
+  onUnlock,
+  onImpersonate,
 }: {
   it: PersonnelAdminItem
   ver?: number
@@ -951,8 +1568,18 @@ function PersonnelRow({
     wkstcolor: string | null
     isActive: boolean
   }
+  showBulkSelect?: boolean
+  photoSize?: 'sm' | 'md'
+  selected?: boolean
+  onToggleSelect?: () => void
+  showAdminActions?: boolean
+  canImpersonate?: boolean
   onEdit: () => void
   onDelete: () => void
+  onResetPassword?: () => void
+  onLock?: () => void
+  onUnlock?: () => void
+  onImpersonate?: () => void
 }) {
   const fullName = useMemo(() => {
     const parts = [it.titlewkctr ?? '', it.namewkctr ?? '', it.surnamewkctr ?? '']
@@ -962,46 +1589,90 @@ function PersonnelRow({
   }, [it])
   return (
     <TableRow>
-      <TableCell>
-        {it.hasImage ? (
-          <img
-            src={personnelImageUrl(it.idwkctr, ver)}
-            alt={it.idwkctr}
-            className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200"
+      {showBulkSelect ? (
+        <TableCell>
+          <input
+            type="checkbox"
+            aria-label={`เลือก ${it.idwkctr}`}
+            checked={selected}
+            onChange={onToggleSelect}
+            className="size-4 rounded border-app"
           />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
-            <ImageIcon className="size-4" />
-          </div>
-        )}
+        </TableCell>
+      ) : null}
+      <TableCell>
+        <PersonnelAvatar
+          idwkctr={it.idwkctr}
+          displayName={fullName !== '—' ? fullName : it.idwkctr}
+          hasImage={it.hasImage}
+          ver={ver}
+          size={photoSize === 'md' ? 'md' : 'sm'}
+        />
       </TableCell>
       <TableCell className="font-mono text-xs">{it.idwkctr}</TableCell>
       <TableCell>{fullName}</TableCell>
       <TableCell className="tabular-nums">{it.wkctr}</TableCell>
-      <TableCell className="text-sm">{it.position ?? '—'}</TableCell>
-      <TableCell className="text-sm">{it.department ?? '—'}</TableCell>
+      <TableCell className="text-body-sm">{it.position ?? '—'}</TableCell>
+      <TableCell className="text-body-sm">{it.department ?? '—'}</TableCell>
       <TableCell>
         <div className="flex flex-col gap-1">
           <UserroleBadge role={it.userrole} />
-          <span className="text-[11px] text-zinc-500">UserST: {it.userst}</span>
+          <span className="text-caption">UserST: {it.userst}</span>
+          {it.passMustChange ? (
+            <Badge variant="outline" className="w-fit border-amber-400 text-amber-800">
+              ต้องเปลี่ยนรหัส
+            </Badge>
+          ) : null}
         </div>
       </TableCell>
       <TableCell>
         <WorkstatusBadge code={it.workstatus} info={workstatusInfo} />
       </TableCell>
       <TableCell className="text-right">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={onEdit}
-          className="mr-2"
-        >
-          <Pencil className="mr-1 size-3.5" /> แก้ไข
-        </Button>
-        <Button type="button" size="sm" variant="destructive" onClick={onDelete}>
-          <Trash2 className="mr-1 size-3.5" /> ลบ
-        </Button>
+        <div className="flex flex-wrap justify-end gap-1">
+          {showAdminActions ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                title="Reset password"
+                onClick={onResetPassword}
+              >
+                <KeyRound className="size-3.5" />
+              </Button>
+              <Button type="button" size="sm" variant="outline" title="Lock" onClick={onLock}>
+                <Lock className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                title="Unlock"
+                onClick={onUnlock}
+              >
+                <Unlock className="size-3.5" />
+              </Button>
+              {canImpersonate ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  title="Impersonate"
+                  onClick={onImpersonate}
+                >
+                  <LogIn className="size-3.5" />
+                </Button>
+              ) : null}
+            </>
+          ) : null}
+          <Button type="button" size="sm" variant="outline" onClick={onEdit}>
+            <Pencil className="mr-1 size-3.5" /> แก้ไข
+          </Button>
+          <Button type="button" size="sm" variant="destructive" onClick={onDelete}>
+            <Trash2 className="mr-1 size-3.5" /> ลบ
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   )
@@ -1026,14 +1697,14 @@ function WorkstatusBadge({
 }) {
   if (!code) {
     return (
-      <span className="text-xs text-zinc-400" title="ยังไม่กำหนดสถานะ">
+      <span className="text-xs text-app-muted" title="ยังไม่กำหนดสถานะ">
         —
       </span>
     )
   }
   if (!info) {
     return (
-      <Badge variant="outline" className="font-mono text-[10px]" title="ไม่อยู่ใน tbwkctrstatus">
+      <Badge variant="outline" className="font-mono text-badge" title="ไม่อยู่ใน tbwkctrstatus">
         {code}
       </Badge>
     )
@@ -1041,7 +1712,7 @@ function WorkstatusBadge({
   const color = info.wkstcolor ?? '#71717a'
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+      className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-medium"
       style={{
         backgroundColor: `${color}1a`, /* 10% alpha */
         color,
@@ -1061,6 +1732,7 @@ function WorkstatusBadge({
 function ImagePanel({
   idwkctr,
   isEdit,
+  hasImage,
   ver,
   pickRef,
   onPick,
@@ -1070,6 +1742,7 @@ function ImagePanel({
 }: {
   idwkctr: string
   isEdit: boolean
+  hasImage: boolean
   ver?: number
   pickRef: React.RefObject<HTMLInputElement | null>
   onPick: (e: ChangeEvent<HTMLInputElement>) => void
@@ -1078,25 +1751,25 @@ function ImagePanel({
   clearing: boolean
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-      <div className="text-sm font-medium text-zinc-800">รูปประจำตัว</div>
-      <p className="mt-1 text-xs text-zinc-500">
+    <div className="rounded-card border border-app bg-app-subtle p-4">
+      <div className="text-body-sm font-medium text-app">รูปประจำตัว</div>
+      <p className="mt-1 text-xs text-app-muted">
         ระบบจะรับภาพประเภทใดก็ได้ แล้ว <b>แปลงเป็น WebP</b> + ย่อกว้างสูงสุด 600px
         ก่อนเก็บลง DB (`imgmember_data` BYTEA) เพื่อประหยัด storage
       </p>
       <div className="mt-3 flex items-start gap-4">
         {idwkctr ? (
-          <img
-            src={personnelImageUrl(idwkctr, ver ?? 'noimg')}
-            alt={idwkctr}
-            className="h-32 w-32 rounded-md object-cover ring-1 ring-zinc-200"
-            onError={(e) => {
-              ;(e.currentTarget as HTMLImageElement).style.display = 'none'
-            }}
+          <PersonnelAvatar
+            idwkctr={idwkctr}
+            displayName={idwkctr}
+            hasImage={hasImage}
+            ver={ver}
+            size="lg"
+            className="rounded-button"
           />
         ) : (
-          <div className="flex h-32 w-32 items-center justify-center rounded-md bg-zinc-200 text-zinc-500">
-            <ImageIcon className="size-8" />
+          <div className="flex size-24 items-center justify-center rounded-button bg-app-muted text-app-muted">
+            <ImageIcon className="size-8" aria-hidden />
           </div>
         )}
         <div className="flex-1 space-y-2">
@@ -1141,9 +1814,9 @@ function ImagePanel({
 
 function ImportResultBlock({ data }: { data: PersonnelImportResponse }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <div className="app-card app-card-pad-compact">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="text-sm font-medium text-zinc-800">
+        <div className="text-body-sm font-medium text-app">
           ผลการนำเข้า: {data.fileName}
         </div>
         <Badge variant="outline">total: {data.totalRows}</Badge>
@@ -1157,7 +1830,7 @@ function ImportResultBlock({ data }: { data: PersonnelImportResponse }) {
         </Badge>
       </div>
       {data.rows.length > 0 ? (
-        <div className="mt-3 overflow-hidden rounded-lg border border-zinc-200">
+        <div className="mt-3 app-table-shell overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1185,7 +1858,7 @@ function ImportResultBlock({ data }: { data: PersonnelImportResponse }) {
                     </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-xs">{r.idwkctr}</TableCell>
-                  <TableCell className="text-xs text-zinc-600">
+                  <TableCell className="text-xs text-app-muted">
                     {r.message ?? ''}
                   </TableCell>
                 </TableRow>
@@ -1213,7 +1886,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-zinc-600">
+      <Label className="text-xs text-app-muted">
         {label}
         {required ? <span className="ml-1 text-red-600">*</span> : null}
       </Label>
@@ -1248,7 +1921,7 @@ function LookupSelect({
       value={value}
       disabled={loading}
       onChange={(e) => onChange(e.target.value)}
-      className="flex h-10 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex h-10 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body-sm text-app focus-app-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
     >
       <option value="">{loading ? 'กำลังโหลด…' : placeholder}</option>
       {!hasCurrent ? (

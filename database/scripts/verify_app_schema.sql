@@ -84,6 +84,11 @@ UNION ALL SELECT 'tbwklevel', COUNT(*)::text FROM app.tbwklevel
 UNION ALL SELECT 'tbposition', COUNT(*)::text FROM app.tbposition
 UNION ALL SELECT 'tbwkctrgroup', COUNT(*)::text FROM app.tbwkctrgroup
 UNION ALL SELECT 'tbtasklist', COUNT(*)::text FROM app.tbtasklist
+UNION ALL SELECT 'tbl_role', COUNT(*)::text FROM app.tbl_role
+UNION ALL SELECT 'tbl_permission', COUNT(*)::text FROM app.tbl_permission
+UNION ALL SELECT 'tbl_role_permission', COUNT(*)::text FROM app.tbl_role_permission
+UNION ALL SELECT 'tbl_setting', COUNT(*)::text FROM app.tbl_setting
+UNION ALL SELECT 'tbl_audit_log', COUNT(*)::text FROM app.tbl_audit_log
 ORDER BY tbl;
 
 \echo ''

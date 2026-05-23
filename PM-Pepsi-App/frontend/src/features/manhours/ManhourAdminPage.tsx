@@ -2,8 +2,10 @@
  * Admin CRUD + import — เทียบ `M_manhour.php`, `M_manhour_form.php`, `M_manhour_imports.php`
  */
 import type { ManhourImportResponse, ManhourItem } from '@/api/schemas'
-import { PageHeader } from '@/components/layout/PageHeader'
+import { AppCard } from '@/components/layout/AppCard'
+import { AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
@@ -33,8 +35,9 @@ import {
   postManhourImport,
   upsertManhour,
 } from '@/lib/api-public'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { usePermission } from '@/lib/use-permission'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, Download, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -93,25 +96,25 @@ function parseHour(s: string): number {
 
 function ImportResultBlock({ data }: { data: ManhourImportResponse }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <AppCard pad="compact">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-sm font-medium text-zinc-800">ผลการนำเข้า: {data.fileName}</p>
-        <Badge variant="outline">total: {data.totalRows}</Badge>
+        <p className="text-body-sm font-medium text-app">ผลการนำเข้า: {data.fileName}</p>
+        <Badge variant="outline">รวม {data.totalRows}</Badge>
         <Badge variant="secondary">+{data.inserted}</Badge>
         <Badge variant="secondary">↻{data.updated}</Badge>
         {data.errors > 0 ? (
-          <Badge variant="destructive">errors: {data.errors}</Badge>
+          <Badge variant="destructive">ผิดพลาด {data.errors}</Badge>
         ) : null}
       </div>
       {data.rows.length > 0 ? (
-        <div className="mt-3 overflow-auto rounded-lg border border-zinc-200">
-          <Table>
+        <div className="mt-3 app-table-shell overflow-auto">
+          <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-14">Row</TableHead>
-                <TableHead className="w-24">Status</TableHead>
-                <TableHead>idwkctr</TableHead>
-                <TableHead>Message</TableHead>
+                <TableHead className="w-14">แถว</TableHead>
+                <TableHead className="w-24">สถานะ</TableHead>
+                <TableHead>รหัส HR</TableHead>
+                <TableHead>ข้อความ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -130,14 +133,14 @@ function ImportResultBlock({ data }: { data: ManhourImportResponse }) {
                     </Badge>
                   </TableCell>
                   <TableCell>{r.idwkctr}</TableCell>
-                  <TableCell className="text-xs text-zinc-600">{r.message ?? '—'}</TableCell>
+                  <TableCell className="text-xs text-app-muted">{r.message ?? '—'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       ) : null}
-    </div>
+    </AppCard>
   )
 }
 
@@ -145,7 +148,7 @@ export function ManhourAdminPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const authUser = getStoredAuthUser()
-  const isAdmin = authUser?.userst === 'A'
+  const canAdmin = usePermission('manhours.admin') || authUser?.userst === 'A'
 
   const [search, setSearch] = useState('')
   const [submittedQ, setSubmittedQ] = useState('')
@@ -156,16 +159,17 @@ export function ManhourAdminPage() {
   const importInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
-    if (!isAdmin) {
-      toast.error('Admin only')
+    if (!canAdmin) {
+      toast.error('เฉพาะผู้ดูแลระบบ')
       navigate('/manhours', { replace: true })
     }
-  }, [isAdmin, navigate])
+  }, [canAdmin, navigate])
 
   const listQ = useQuery({
     queryKey: ['manhours', 'admin', 'list', submittedQ],
     queryFn: () => fetchManhourList({ q: submittedQ || undefined, limit: 500 }),
-    enabled: isAdmin,
+    enabled: canAdmin,
+    placeholderData: keepPreviousData,
   })
 
   const saveMut = useMutation({
@@ -269,61 +273,79 @@ export function ManhourAdminPage() {
       .finally(() => setImporting(false))
   }
 
-  if (!isAdmin) return null
+  if (!canAdmin) {
+    return (
+      <AppPageShell title="จัดการ Man Hour" description="CRUD และนำเข้า tbmanhours">
+        <EmptyState
+          icon={AlertCircle}
+          title="ไม่มีสิทธิ์เข้าถึง"
+          description={
+            <>
+              ต้องมีสิทธิ์ <code className="text-xs">manhours.admin</code>
+            </>
+          }
+        />
+      </AppPageShell>
+    )
+  }
 
   const items = listQ.data?.items ?? []
   const totalRows = listQ.data?.totalRows ?? 0
 
   return (
-    <div>
-      <PageHeader
-        title="ข้อมูลนำเข้า Man Hour"
-        description="เทียบ M_manhour.php — ตาราง tbmanhours + ฟอร์ม + นำเข้า Excel (ManHours.xlsx)"
-      >
-        <Badge variant="secondary">{totalRows} แถว</Badge>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/manhours">สรุปรายสัปดาห์</Link>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            toast.message(
-              'คอลัมน์ ManHours.xlsx: idwkctr, StartDate, EndDate, WH, OT1, OT1.5, OT1HOL, OT2, OT3 (skip 2 แถวแรก)',
-            )
-          }
-        >
-          <Download className="mr-1 size-4" />
-          รูปแบบไฟล์นำเข้า
-        </Button>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".xls,.xlsx,.csv"
-          className="hidden"
-          onChange={onPickImport}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={importing}
-          onClick={() => importInputRef.current?.click()}
-        >
-          <Upload className="mr-1 size-4" />
-          {importing ? 'กำลังนำเข้า…' : 'นำเข้าไฟล์'}
-        </Button>
-        <Button type="button" size="sm" onClick={openCreate}>
-          <Plus className="mr-1 size-4" />
-          สร้างใหม่
-        </Button>
-      </PageHeader>
-
-      <div className="space-y-4 px-4 py-6 sm:px-6">
+    <AppPageShell
+      title="จัดการ Man Hour"
+      description="ตาราง tbmanhours · ฟอร์ม · นำเข้า Excel (เทียบ M_manhour.php)"
+      contentClassName="space-y-4"
+      headerActions={
+        <>
+          <Badge variant="secondary" className="text-xs">
+            {totalRows} แถว
+          </Badge>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/manhours">สรุป Manhours</Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              toast.message(
+                'คอลัมน์ ManHours.xlsx: idwkctr, StartDate, EndDate, WH, OT1, OT1.5, OT1HOL, OT2, OT3 (ข้าม 2 แถวแรก)',
+              )
+            }
+          >
+            <Download className="mr-1 size-4" aria-hidden />
+            รูปแบบไฟล์
+          </Button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".xls,.xlsx,.csv"
+            className="hidden"
+            onChange={onPickImport}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={importing}
+            onClick={() => importInputRef.current?.click()}
+          >
+            <Upload className="mr-1 size-4" aria-hidden />
+            {importing ? 'กำลังนำเข้า…' : 'นำเข้าไฟล์'}
+          </Button>
+          <Button type="button" size="sm" onClick={openCreate}>
+            <Plus className="mr-1 size-4" aria-hidden />
+            เพิ่มรายการ
+          </Button>
+        </>
+      }
+    >
+        <AppCard pad="compact">
         <form
           onSubmit={onSearch}
-          className="flex flex-wrap items-end gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+          className="flex flex-wrap items-end gap-3"
         >
           <div className="min-w-[12rem] flex-1 space-y-1">
             <Label htmlFor="mh-search">ค้นหา (รหัส HR / ชื่อ)</Label>
@@ -336,25 +358,32 @@ export function ManhourAdminPage() {
           </div>
           <Button type="submit">ค้นหา</Button>
         </form>
+        </AppCard>
 
         {importResult ? <ImportResultBlock data={importResult} /> : null}
 
-        {listQ.isLoading ? (
-          <Skeleton className="h-64 w-full rounded-xl" />
+        {listQ.isLoading && !listQ.data ? (
+          <Skeleton className="h-64 w-full rounded-card" />
         ) : listQ.isError ? (
-          <p className="text-sm text-red-600">{(listQ.error as Error).message}</p>
+          <EmptyState
+            icon={AlertCircle}
+            title="โหลดรายการไม่สำเร็จ"
+            description={(listQ.error as Error).message}
+            action={{ label: 'ลองใหม่', onClick: () => void listQ.refetch() }}
+          />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-            <Table>
+          <AppCard pad="compact">
+          <div className="app-table-shell overflow-x-auto">
+            <Table embedded stickyHeader zebra>
               <TableHeader>
-                <TableRow className="bg-zinc-800 hover:bg-zinc-800">
-                  <TableHead className="text-zinc-50">ช่วงวันที่</TableHead>
-                  <TableHead className="text-zinc-50">รหัส HR</TableHead>
-                  <TableHead className="text-zinc-50">ชื่อ</TableHead>
-                  <TableHead className="text-right text-zinc-50">WH</TableHead>
-                  <TableHead className="text-right text-zinc-50">OT1</TableHead>
-                  <TableHead className="text-right text-zinc-50">รวม</TableHead>
-                  <TableHead className="text-zinc-50">action</TableHead>
+                <TableRow>
+                  <TableHead>ช่วงวันที่</TableHead>
+                  <TableHead>รหัส HR</TableHead>
+                  <TableHead>ชื่อ</TableHead>
+                  <TableHead className="text-right">WH</TableHead>
+                  <TableHead className="text-right">OT1</TableHead>
+                  <TableHead className="text-right">รวม</TableHead>
+                  <TableHead className="w-36" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -365,7 +394,7 @@ export function ManhourAdminPage() {
                         {formatManhourDate(row.startDate, row.stworkday)} –{' '}
                         {formatManhourDate(row.endDate, row.workday)}
                       </TableCell>
-                      <TableCell className="font-mono text-sm">{row.idwkctr}</TableCell>
+                      <TableCell className="font-mono text-body-sm">{row.idwkctr}</TableCell>
                       <TableCell>{row.displayName?.trim() || '—'}</TableCell>
                       <TableCell className="text-right tabular-nums">{row.wh}</TableCell>
                       <TableCell className="text-right tabular-nums">{row.ot1}</TableCell>
@@ -396,16 +425,20 @@ export function ManhourAdminPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-sm text-zinc-500">
-                      ยังไม่มีข้อมูล
+                    <TableCell colSpan={7} className="p-0">
+                      <EmptyState
+                        className="border-0 bg-transparent py-10"
+                        title="ยังไม่มีข้อมูล"
+                        description="เพิ่มรายการใหม่หรือนำเข้าไฟล์ ManHours.xlsx"
+                      />
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
+          </AppCard>
         )}
-      </div>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg">
@@ -426,7 +459,7 @@ export function ManhourAdminPage() {
             </DialogHeader>
 
             {form.mode === 'delete' ? (
-              <p className="py-4 text-sm text-zinc-700">
+              <p className="py-4 text-body-sm text-app">
                 ช่วง {formatManhourDate(form.stworkday)} – {formatManhourDate(form.workday)}
               </p>
             ) : (
@@ -501,6 +534,6 @@ export function ManhourAdminPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </AppPageShell>
   )
 }

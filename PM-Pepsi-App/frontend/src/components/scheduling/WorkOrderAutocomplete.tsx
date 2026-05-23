@@ -52,19 +52,19 @@ export function WorkOrderAutocomplete({
         autoComplete="off"
       />
       {open && q.trim().length >= minLength ? (
-        <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-zinc-200 bg-white py-1 text-sm shadow-md">
+        <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-button border border-app bg-[var(--app-surface)] py-1 text-body-sm shadow-md">
           {suggestionsQ.isLoading ? (
-            <li className="px-3 py-2 text-zinc-500">กำลังค้น…</li>
+            <li className="px-3 py-2 text-app-muted">กำลังค้น…</li>
           ) : suggestionsQ.isError ? (
             <li className="px-3 py-2 text-red-600">{(suggestionsQ.error as Error).message}</li>
           ) : (suggestionsQ.data?.length ?? 0) === 0 ? (
-            <li className="px-3 py-2 text-zinc-500">ไม่พบ</li>
+            <li className="px-3 py-2 text-app-muted">ไม่พบ</li>
           ) : (
             suggestionsQ.data?.map((item) => (
               <li key={item.id}>
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left hover:bg-zinc-100"
+                  className="block w-full px-3 py-2 text-left hover:bg-app-muted"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setQ(item.wkorder)

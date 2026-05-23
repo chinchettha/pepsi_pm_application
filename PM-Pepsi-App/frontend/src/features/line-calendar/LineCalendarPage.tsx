@@ -1,6 +1,7 @@
-import { PageHeader } from '@/components/layout/PageHeader'
+import { CanPermission } from '@/components/auth/CanPermission'
+import { AppCard } from '@/components/layout/AppCard'
+import { AppPageShell } from '@/components/layout/AppPageShell'
 import { MonthFullCalendar } from '@/components/scheduling/MonthFullCalendar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,13 +10,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { fetchLineCalendarEvents, fetchMasterData } from '@/lib/api-public'
+import { toastError, toastSaved } from '@/lib/app-toast'
 import { createLineSchdul, updateLineSchdul } from '@/lib/master-data-api'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { usePermission } from '@/lib/use-permission'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -44,23 +49,25 @@ export function LineCalendarPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const qc = useQueryClient()
+  const canWrite = usePermission('master-data.write')
 
   const q = useQuery({
     queryKey: ['line-calendar', year, month],
     queryFn: () => fetchLineCalendarEvents(year, month),
+    placeholderData: keepPreviousData,
   })
 
   const moveMut = useMutation({
     mutationFn: async (opts: { idline: number; newDate: string }) => {
       const lineday = dateStringToEpochSeconds(opts.newDate)
-      if (!lineday) throw new Error('Invalid date')
+      if (!lineday) throw new Error('วันที่ไม่ถูกต้อง')
       await updateLineSchdul(opts.idline, { lineday })
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['line-calendar', year, month] })
-      toast.success('Saved')
+      toastSaved()
     },
-    onError: (err) => toast.error((err as Error).message),
+    onError: (err) => toastError('ย้ายวันไม่สำเร็จ', (err as Error).message),
   })
 
   const lineschdulQ = useQuery({
@@ -111,9 +118,14 @@ export function LineCalendarPage() {
   )
 
   const createMut = useMutation({
-    mutationFn: async (opts: { date: string; idproductline: string; uptime: number; linereason: string }) => {
+    mutationFn: async (opts: {
+      date: string
+      idproductline: string
+      uptime: number
+      linereason: string
+    }) => {
       const lineday = dateStringToEpochSeconds(opts.date)
-      if (!lineday) throw new Error('Invalid date')
+      if (!lineday) throw new Error('วันที่ไม่ถูกต้อง')
       await createLineSchdul({
         idproductline: opts.idproductline,
         lineday,
@@ -126,10 +138,10 @@ export function LineCalendarPage() {
         qc.invalidateQueries({ queryKey: ['line-calendar', year, month] }),
         qc.invalidateQueries({ queryKey: ['master-data', 'lineschdul'] }),
       ])
-      toast.success('Created')
+      toast.success('สร้างตารางเส้นแล้ว')
       setDialogOpen(false)
     },
-    onError: (err) => toast.error((err as Error).message),
+    onError: (err) => toastError('สร้างไม่สำเร็จ', (err as Error).message),
   })
 
   const editMut = useMutation({
@@ -141,13 +153,17 @@ export function LineCalendarPage() {
         qc.invalidateQueries({ queryKey: ['line-calendar', year, month] }),
         qc.invalidateQueries({ queryKey: ['master-data', 'lineschdul'] }),
       ])
-      toast.success('Saved')
+      toastSaved()
       setDialogOpen(false)
     },
-    onError: (err) => toast.error((err as Error).message),
+    onError: (err) => toastError('บันทึกไม่สำเร็จ', (err as Error).message),
   })
 
   const openCreateDialog = (date: string) => {
+    if (!canWrite) {
+      toast.message('โหมดอ่านอย่างเดียว — ต้องมีสิทธิ์ master-data.write')
+      return
+    }
     setDialogMode('create')
     setSelectedDate(date)
     setSelectedIdline(null)
@@ -168,150 +184,191 @@ export function LineCalendarPage() {
     setDialogOpen(true)
   }
 
-  return (
-    <div>
-      <PageHeader
-        title="ปฏิทินเส้น / Line scheduling"
-        description="Product Line Scheduling — เทียบ line_calendar.php + FullCalendar"
-      >
-        <Badge variant="secondary">Line calendar</Badge>
-        <Badge className="bg-emerald-700">API + DB</Badge>
-      </PageHeader>
+  const eventCount = q.data?.items?.length ?? 0
 
-      <div className="space-y-4 px-4 py-6 sm:px-6">
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="outline" size="sm" asChild>
-            <Link to="/calendar">ปฏิทินรายเดือน (work order)</Link>
-          </Button>
-        </div>
+  return (
+    <>
+      <AppPageShell
+        title="ปฏิทินเส้น (Product line)"
+        description="ตาราง Product line รายวัน — คลิกวันว่างเพื่อเพิ่ม · คลิกรายการเพื่อแก้ไข · ลากเพื่อย้ายวัน"
+        contentClassName="space-y-4"
+        headerActions={
+          <CanPermission permission="calendar.read">
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link to="/calendar">ปฏิทิน Work scheduling</Link>
+            </Button>
+          </CanPermission>
+        }
+      >
+        {!canWrite ? (
+          <p className="text-caption rounded-button border border-dashed border-app bg-app-subtle/50 px-3 py-2">
+            โหมดอ่านอย่างเดียว — ต้องมีสิทธิ์ <code className="text-xs">master-data.write</code>{' '}
+            เพื่อเพิ่ม/แก้/ลากย้าย
+          </p>
+        ) : null}
 
         {q.isLoading ? (
-          <Skeleton className="h-96 w-full rounded-xl" />
+          <Skeleton className="h-[28rem] w-full rounded-card" aria-label="กำลังโหลดปฏิทินเส้น" />
         ) : q.isError ? (
-          <p className="text-sm text-red-600">{(q.error as Error).message}</p>
-        ) : (
-          <MonthFullCalendar
-            year={year}
-            month={month}
-            events={q.data?.items ?? []}
-            onMonthChange={(y, m) => {
-              setYear(y)
-              setMonth(m)
-            }}
-            onDateClick={(date) => openCreateDialog(date)}
-            onEventClick={(event) => {
-              const idline = Number(event.id)
-              if (!Number.isFinite(idline) || idline <= 0) {
-                toast.error('Invalid event id')
-                return
-              }
-              openEditDialog(idline, event.date)
-            }}
-            onEventDrop={(event, newDate) => {
-              const idline = Number(event.id)
-              if (!Number.isFinite(idline) || idline <= 0) {
-                toast.error('Invalid event id')
-                return
-              }
-              moveMut.mutate({ idline, newDate })
-            }}
+          <EmptyState
+            icon={AlertCircle}
+            title="โหลดปฏิทินเส้นไม่สำเร็จ"
+            description={
+              <>
+                ตรวจการเชื่อมต่อ API หรือสิทธิ์{' '}
+                <code className="text-xs">calendar.read</code>
+                {q.error instanceof Error ? ` — ${q.error.message}` : null}
+              </>
+            }
+            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
           />
+        ) : (
+          <AppCard pad="compact" className="space-y-3">
+            {eventCount === 0 ? (
+              <p className="text-caption rounded-button border border-dashed border-app bg-app-subtle/50 px-3 py-2">
+                ไม่มีตารางเส้นในเดือนนี้
+                {canWrite ? ' — คลิกวันบนปฏิทินเพื่อเพิ่ม' : ''}
+              </p>
+            ) : (
+              <p className="text-caption">
+                แสดง {eventCount.toLocaleString('th-TH')} รายการในเดือนที่เลือก
+              </p>
+            )}
+            <MonthFullCalendar
+              year={year}
+              month={month}
+              events={q.data?.items ?? []}
+              onMonthChange={(y, m) => {
+                setYear(y)
+                setMonth(m)
+              }}
+              onDateClick={canWrite ? (date) => openCreateDialog(date) : undefined}
+              onEventClick={(event) => {
+                const idline = Number(event.id)
+                if (!Number.isFinite(idline) || idline <= 0) {
+                  toastError('รหัสรายการไม่ถูกต้อง')
+                  return
+                }
+                openEditDialog(idline, event.date)
+              }}
+              onEventDrop={
+                canWrite
+                  ? (event, newDate) => {
+                      const idline = Number(event.id)
+                      if (!Number.isFinite(idline) || idline <= 0) {
+                        toastError('รหัสรายการไม่ถูกต้อง')
+                        return
+                      }
+                      moveMut.mutate({ idline, newDate })
+                    }
+                  : undefined
+              }
+            />
+          </AppCard>
         )}
+      </AppPageShell>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{dialogMode === 'create' ? 'Create schedule' : 'Edit schedule'}</DialogTitle>
-            </DialogHeader>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {dialogMode === 'create' ? 'เพิ่มตารางเส้น' : 'แก้ไขตารางเส้น'}
+            </DialogTitle>
+          </DialogHeader>
 
-            <div className="grid gap-4">
-              <div>
-                <Label>Date</Label>
-                <Input value={formatYyyyMmDdToDdMmYyyy(selectedDate)} disabled />
-              </div>
-
-              <div>
-                <Label>Product line</Label>
-                {dialogMode === 'edit' ? (
-                  <Input value={formIdproductline} disabled />
-                ) : (
-                  <>
-                    <Input
-                      value={formIdproductline}
-                      onChange={(e) => setFormIdproductline(e.target.value)}
-                      list="lineproduct-options"
-                      placeholder="Product line"
-                    />
-                    <datalist id="lineproduct-options">
-                      {productlines.map((p) => (
-                        <option key={p.productline} value={p.productline}>
-                          {p.prolinedescrip}
-                        </option>
-                      ))}
-                    </datalist>
-                  </>
-                )}
-              </div>
-
-              <div>
-                <Label>Uptime</Label>
-                <Input
-                  inputMode="numeric"
-                  value={formUptime}
-                  onChange={(e) => setFormUptime(e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <Label>Reason</Label>
-                <Textarea value={formLinereason} onChange={(e) => setFormLinereason(e.target.value)} />
-              </div>
+          <div className="grid gap-4">
+            <div>
+              <Label>วันที่</Label>
+              <Input value={formatYyyyMmDdToDdMmYyyy(selectedDate)} disabled />
             </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                disabled={createMut.isPending || editMut.isPending}
-                onClick={() => {
-                  const uptime = Number(formUptime)
-                  if (!Number.isFinite(uptime) || uptime < 0) {
-                    toast.error('Uptime must be a number')
+            <div>
+              <Label>Product line</Label>
+              {dialogMode === 'edit' ? (
+                <Input value={formIdproductline} disabled />
+              ) : (
+                <>
+                  <Input
+                    value={formIdproductline}
+                    onChange={(e) => setFormIdproductline(e.target.value)}
+                    list="lineproduct-options"
+                    placeholder="รหัส product line"
+                    disabled={!canWrite}
+                  />
+                  <datalist id="lineproduct-options">
+                    {productlines.map((p) => (
+                      <option key={p.productline} value={p.productline}>
+                        {p.prolinedescrip}
+                      </option>
+                    ))}
+                  </datalist>
+                </>
+              )}
+            </div>
+
+            <div>
+              <Label>Uptime (ชม.)</Label>
+              <Input
+                inputMode="numeric"
+                value={formUptime}
+                onChange={(e) => setFormUptime(e.target.value)}
+                placeholder="0"
+                disabled={!canWrite}
+              />
+            </div>
+
+            <div>
+              <Label>เหตุผล / หมายเหตุ</Label>
+              <Textarea
+                value={formLinereason}
+                onChange={(e) => setFormLinereason(e.target.value)}
+                disabled={!canWrite}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button
+              type="button"
+              disabled={!canWrite || createMut.isPending || editMut.isPending}
+              onClick={() => {
+                const uptime = Number(formUptime)
+                if (!Number.isFinite(uptime) || uptime < 0) {
+                  toastError('Uptime ต้องเป็นตัวเลขที่ไม่ติดลบ')
+                  return
+                }
+                if (dialogMode === 'create') {
+                  if (!formIdproductline.trim()) {
+                    toastError('กรุณาระบุ Product line')
                     return
                   }
-                  if (dialogMode === 'create') {
-                    if (!formIdproductline.trim()) {
-                      toast.error('Product line is required')
-                      return
-                    }
-                    createMut.mutate({
-                      date: selectedDate,
-                      idproductline: formIdproductline.trim(),
-                      uptime,
-                      linereason: formLinereason,
-                    })
-                    return
-                  }
-                  if (!selectedIdline) {
-                    toast.error('Invalid schedule id')
-                    return
-                  }
-                  editMut.mutate({
-                    idline: selectedIdline,
+                  createMut.mutate({
+                    date: selectedDate,
+                    idproductline: formIdproductline.trim(),
                     uptime,
                     linereason: formLinereason,
                   })
-                }}
-              >
-                Save
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
+                  return
+                }
+                if (!selectedIdline) {
+                  toastError('รหัสตารางไม่ถูกต้อง')
+                  return
+                }
+                editMut.mutate({
+                  idline: selectedIdline,
+                  uptime,
+                  linereason: formLinereason,
+                })
+              }}
+            >
+              บันทึก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

@@ -36,6 +36,36 @@ export const manhourListResponseSchema = z.object({
   totalRows: z.number().int(),
 })
 
+export const manhourChartRangeSchema = z.object({
+  from: z.number().int(),
+  to: z.number().int(),
+  fromDate: z.string(),
+  toDate: z.string(),
+})
+
+export const manhourHrUtilPersonSchema = z.object({
+  idwkctr: z.string(),
+  wkctr: z.string(),
+  displayName: z.string().nullable(),
+  confirmHours: z.number(),
+  manhourHours: z.number(),
+  utilizationPercent: z.number(),
+})
+
+export const manhourHrListResponseSchema = manhourListResponseSchema.extend({
+  range: manhourChartRangeSchema,
+  utilization: z.object({
+    team: z.object({
+      confirmHours: z.number(),
+      manhourHours: z.number(),
+      utilizationPercent: z.number(),
+    }),
+    byPerson: z.array(manhourHrUtilPersonSchema),
+    manhourWorkdayFrom: z.string().nullable(),
+    manhourWorkdayTo: z.string().nullable(),
+  }),
+})
+
 export const manhourUpsertBodySchema = z.object({
   idwkctr: z.string().min(1).max(64),
   /** รับ dd.mm.yyyy / yyyy-mm-dd / unix seconds */
@@ -115,13 +145,6 @@ export const manhoursSummaryResponseSchema = z.object({
       backlog: z.number(),
     }),
   ),
-})
-
-export const manhourChartRangeSchema = z.object({
-  from: z.number().int(),
-  to: z.number().int(),
-  fromDate: z.string(),
-  toDate: z.string(),
 })
 
 export const manhourChartProfileSchema = z.object({

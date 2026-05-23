@@ -1,12 +1,16 @@
+import { getMulterFileSizeLimit } from '../lib/upload-settings.js'
 import type { Express, Request, Response } from 'express'
 import multer from 'multer'
 import type { Pool } from 'pg'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { hasPermission } from '../lib/has-permission.js'
+import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
 import {
   manhourChartBreakdownResponseSchema,
   manhourChartPerformanceResponseSchema,
   manhourImportResponseSchema,
   manhourItemSchema,
+  manhourHrListResponseSchema,
   manhourListResponseSchema,
   manhourOkResponseSchema,
   manhourUpsertBodySchema,
@@ -19,6 +23,7 @@ import {
   getManhourChartPerformance,
   resolveManhourChartRange,
 } from '../services/manhour-chart.js'
+import { getManhoursHrUtilization } from '../services/manhours-hr-utilization.js'
 import {
   deleteManhour,
   getManhour,
@@ -33,7 +38,7 @@ import { listWorktimePlanningAssignments } from '../services/worktime-planning.j
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 },
+  limits: { fileSize: getMulterFileSizeLimit() },
 })
 
 function isSchemaMissing(err: unknown): boolean {
@@ -48,18 +53,6 @@ function isSchemaMissing(err: unknown): boolean {
   )
 }
 
-function isAdmin(req: Request): boolean {
-  return (req.authUser?.userst ?? '').trim() === 'A'
-}
-
-function requireAdmin(req: Request, res: Response): boolean {
-  if (!isAdmin(req)) {
-    res.status(403).json({ error: 'FORBIDDEN' })
-    return false
-  }
-  return true
-}
-
 function resolveIdwkctr(auth: {
   accountType: string
   idwkctr?: string
@@ -70,17 +63,26 @@ function resolveIdwkctr(auth: {
 }
 
 export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: string) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const perm = createRequirePermission(pool, sessionSecret)
+  const requireManhoursRead = perm('manhours.read')
+  const requireManhoursAdmin = perm('manhours.admin')
+  const requireManhoursImport = perm('manhours.import')
   const schemaHint = 'Run migrations 010_tbmanhours.sql and 042_tbmanhours_full_api.sql'
 
-  function resolveChartIdwkctr(req: Request): string | null {
+  async function isManhoursAdmin(req: Request): Promise<boolean> {
+    const user = req.authUser
+    if (!user) return false
+    return hasPermission(pool, user.userst, 'manhours.admin')
+  }
+
+  async function resolveChartIdwkctr(req: Request): Promise<string | null> {
     const requested = typeof req.query.idwkctr === 'string' ? req.query.idwkctr.trim() : ''
-    if (isAdmin(req) && requested) return requested
+    if (requested && (await isManhoursAdmin(req))) return requested
     return resolveIdwkctr(req.authUser!)
   }
 
-  app.get('/api/v1/manhours/chart/performance', requireAuth, async (req, res: Response) => {
-    const idwkctr = resolveChartIdwkctr(req)
+  app.get('/api/v1/manhours/chart/performance', ...requireManhoursRead, async (req, res: Response) => {
+    const idwkctr = await resolveChartIdwkctr(req)
     if (!idwkctr) {
       res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Workcenter session required' })
       return
@@ -105,8 +107,8 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.get('/api/v1/manhours/chart/breakdown', requireAuth, async (req, res: Response) => {
-    const idwkctr = resolveChartIdwkctr(req)
+  app.get('/api/v1/manhours/chart/breakdown', ...requireManhoursRead, async (req, res: Response) => {
+    const idwkctr = await resolveChartIdwkctr(req)
     if (!idwkctr) {
       res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Workcenter session required' })
       return
@@ -131,9 +133,10 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.get('/api/v1/manhours/summary', requireAuth, async (req, res: Response) => {
+  app.get('/api/v1/manhours/summary', ...requireManhoursRead, async (req, res: Response) => {
     const requestedId = typeof req.query.idwkctr === 'string' ? req.query.idwkctr.trim() : ''
-    const idwkctr = isAdmin(req) && requestedId ? requestedId : resolveIdwkctr(req.authUser!)
+    const idwkctr =
+      (await isManhoursAdmin(req)) && requestedId ? requestedId : resolveIdwkctr(req.authUser!)
     if (!idwkctr) {
       res.json(manhoursSummaryResponseSchema.parse({ weeks: [] }))
       return
@@ -156,26 +159,57 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.get('/api/v1/manhours/hr', requireAuth, async (req, res: Response) => {
+  app.get('/api/v1/manhours/hr', ...requireManhoursRead, async (req, res: Response) => {
     const sessionWkctr = (req.authUser?.wkctr ?? '').trim()
     const wkctr =
-      isAdmin(req) && typeof req.query.wkctr === 'string' && req.query.wkctr.trim()
+      (await isManhoursAdmin(req)) &&
+      typeof req.query.wkctr === 'string' &&
+      req.query.wkctr.trim()
         ? req.query.wkctr.trim()
         : sessionWkctr
+    const from = typeof req.query.from === 'string' ? req.query.from : undefined
+    const to = typeof req.query.to === 'string' ? req.query.to : undefined
     if (!wkctr) {
-      res.json(manhourListResponseSchema.parse({ items: [], totalRows: 0 }))
+      const emptyRange = resolveManhourChartRange(from, to)
+      res.json(
+        manhourHrListResponseSchema.parse({
+          items: [],
+          totalRows: 0,
+          range: emptyRange,
+          utilization: {
+            team: { confirmHours: 0, manhourHours: 0, utilizationPercent: 0 },
+            byPerson: [],
+            manhourWorkdayFrom: null,
+            manhourWorkdayTo: null,
+          },
+        }),
+      )
       return
     }
     try {
-      const data = await listManhours(pool, {
-        q: typeof req.query.q === 'string' ? req.query.q : undefined,
-        filterWkctr: wkctr,
-        from: typeof req.query.from === 'string' ? req.query.from : undefined,
-        to: typeof req.query.to === 'string' ? req.query.to : undefined,
-        limit: Number(req.query.limit ?? 500),
-        offset: Number(req.query.offset ?? 0),
-      })
-      res.json(manhourListResponseSchema.parse(data))
+      const [data, util] = await Promise.all([
+        listManhours(pool, {
+          q: typeof req.query.q === 'string' ? req.query.q : undefined,
+          filterWkctr: wkctr,
+          from,
+          to,
+          limit: Number(req.query.limit ?? 500),
+          offset: Number(req.query.offset ?? 0),
+        }),
+        getManhoursHrUtilization(pool, wkctr, { fromInput: from, toInput: to }),
+      ])
+      res.json(
+        manhourHrListResponseSchema.parse({
+          ...data,
+          range: util.range,
+          utilization: {
+            team: util.team,
+            byPerson: util.byPerson,
+            manhourWorkdayFrom: util.manhourWorkdayFrom,
+            manhourWorkdayTo: util.manhourWorkdayTo,
+          },
+        }),
+      )
     } catch (err) {
       if (isSchemaMissing(err)) {
         res.status(503).json({ error: 'SCHEMA_NOT_READY', message: schemaHint })
@@ -185,10 +219,10 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.get('/api/v1/manhours', requireAuth, async (req, res: Response) => {
+  app.get('/api/v1/manhours', ...requireManhoursRead, async (req, res: Response) => {
     const ownId = resolveIdwkctr(req.authUser!)
     const idwkctr =
-      isAdmin(req) && typeof req.query.idwkctr === 'string'
+      (await isManhoursAdmin(req)) && typeof req.query.idwkctr === 'string'
         ? req.query.idwkctr.trim()
         : (ownId ?? '')
     try {
@@ -210,7 +244,7 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.get('/api/v1/manhours/:idmanhour', requireAuth, async (req, res: Response) => {
+  app.get('/api/v1/manhours/:idmanhour', ...requireManhoursRead, async (req, res: Response) => {
     const id = Number(req.params.idmanhour)
     if (!Number.isInteger(id) || id <= 0) {
       res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid idmanhour' })
@@ -222,7 +256,7 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
         res.status(404).json({ error: 'NOT_FOUND' })
         return
       }
-      if (!isAdmin(req) && item.idwkctr !== resolveIdwkctr(req.authUser!)) {
+      if (!(await isManhoursAdmin(req)) && item.idwkctr !== resolveIdwkctr(req.authUser!)) {
         res.status(403).json({ error: 'FORBIDDEN' })
         return
       }
@@ -236,8 +270,7 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.post('/api/v1/manhours', requireAuth, async (req, res: Response) => {
-    if (!requireAdmin(req, res)) return
+  app.post('/api/v1/manhours', ...requireManhoursAdmin, async (req, res: Response) => {
     const parsed = manhourUpsertBodySchema.safeParse(req.body)
     if (!parsed.success) {
       res.status(400).json({ error: 'VALIDATION_ERROR', message: parsed.error.message })
@@ -245,6 +278,12 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
     try {
       const out = await upsertManhour(pool, parsed.data)
+      voidAudit(pool, req, {
+        action: 'manhours.write',
+        resource: 'tbmanhours',
+        resourceId: String(out.idmanhour),
+        after: sanitizeAuditPayload(parsed.data),
+      })
       res.json(manhourOkResponseSchema.parse({ ok: true, idmanhour: out.idmanhour }))
     } catch (err) {
       if (isSchemaMissing(err)) {
@@ -255,8 +294,7 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.put('/api/v1/manhours/:idmanhour', requireAuth, async (req, res: Response) => {
-    if (!requireAdmin(req, res)) return
+  app.put('/api/v1/manhours/:idmanhour', ...requireManhoursAdmin, async (req, res: Response) => {
     const id = Number(req.params.idmanhour)
     const parsed = manhourUpsertBodySchema.safeParse(req.body)
     if (!Number.isInteger(id) || id <= 0 || !parsed.success) {
@@ -265,6 +303,12 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
     try {
       const out = await upsertManhour(pool, parsed.data, id)
+      voidAudit(pool, req, {
+        action: 'manhours.write',
+        resource: 'tbmanhours',
+        resourceId: String(out.idmanhour),
+        after: sanitizeAuditPayload(parsed.data),
+      })
       res.json(manhourOkResponseSchema.parse({ ok: true, idmanhour: out.idmanhour }))
     } catch (err) {
       if (isSchemaMissing(err)) {
@@ -279,8 +323,7 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.delete('/api/v1/manhours/:idmanhour', requireAuth, async (req, res: Response) => {
-    if (!requireAdmin(req, res)) return
+  app.delete('/api/v1/manhours/:idmanhour', ...requireManhoursAdmin, async (req, res: Response) => {
     const id = Number(req.params.idmanhour)
     if (!Number.isInteger(id) || id <= 0) {
       res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid idmanhour' })
@@ -292,6 +335,11 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
         res.status(404).json({ error: 'NOT_FOUND' })
         return
       }
+      voidAudit(pool, req, {
+        action: 'manhours.delete',
+        resource: 'tbmanhours',
+        resourceId: String(id),
+      })
       res.json(manhourOkResponseSchema.parse({ ok: true, idmanhour: id }))
     } catch (err) {
       if (isSchemaMissing(err)) {
@@ -302,8 +350,7 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.post('/api/v1/manhours/import', requireAuth, upload.single('file'), async (req, res: Response) => {
-    if (!requireAdmin(req, res)) return
+  app.post('/api/v1/manhours/import', ...requireManhoursImport, upload.single('file'), async (req, res: Response) => {
     if (!req.file) {
       res.status(400).json({ error: 'VALIDATION_ERROR', message: 'file is required' })
       return
@@ -312,6 +359,11 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
       const result = await importManhoursFile(pool, {
         fileName: req.file.originalname,
         buffer: req.file.buffer,
+      })
+      voidAudit(pool, req, {
+        action: 'manhours.import',
+        resource: 'tbmanhours',
+        after: { fileName: req.file.originalname, ...result },
       })
       res.json(manhourImportResponseSchema.parse(result))
     } catch (err) {
@@ -323,10 +375,10 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.get('/api/v1/worktime/planning', requireAuth, async (req, res: Response) => {
+  app.get('/api/v1/worktime/planning', ...requireManhoursRead, async (req, res: Response) => {
     const requested = typeof req.query.idwkctr === 'string' ? req.query.idwkctr.trim() : ''
     const idwkctr =
-      isAdmin(req) && requested ? requested : resolveIdwkctr(req.authUser!)
+      (await isManhoursAdmin(req)) && requested ? requested : resolveIdwkctr(req.authUser!)
     if (!idwkctr) {
       res.json(worktimePlanningResponseSchema.parse({ idwkctr: '', items: [] }))
       return
@@ -358,7 +410,7 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
     }
   })
 
-  app.get('/api/v1/worktime/me', requireAuth, async (req, res: Response) => {
+  app.get('/api/v1/worktime/me', ...requireManhoursRead, async (req, res: Response) => {
     const idwkctr = resolveIdwkctr(req.authUser!)
     if (!idwkctr) {
       res.json(worktimeMeResponseSchema.parse({ idwkctr: '', total: null, items: [] }))

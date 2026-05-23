@@ -22,6 +22,8 @@ type Props = {
   variant?: SummaryWeeklyChartVariant
   /** compact = ในหน้าหลัก, fullscreen = ขยายเต็มจอ */
   layout?: 'compact' | 'fullscreen'
+  /** ป้าย/แกนสีอ่อนสำหรับ Engineering Board (พื้นหลังเข้ม) */
+  kioskDark?: boolean
 }
 
 function barColors(count: number, variant: SummaryWeeklyChartVariant): string[] {
@@ -35,8 +37,12 @@ export function SummaryWeeklyUtilizationChart({
   items,
   variant = 'chart2',
   layout = 'compact',
+  kioskDark = false,
 }: Props) {
   const isFull = layout === 'fullscreen'
+  const tickColor = kioskDark ? 'rgba(248, 250, 252, 0.7)' : undefined
+  const titleColor = kioskDark ? '#f8fafc' : undefined
+  const gridColor = kioskDark ? 'rgba(255, 255, 255, 0.08)' : undefined
 
   return (
     <Bar
@@ -59,6 +65,7 @@ export function SummaryWeeklyUtilizationChart({
             display: true,
             text: 'Technician Utilizations',
             font: { size: isFull ? 18 : 14 },
+            color: titleColor,
           },
           legend: { display: false },
           tooltip: {
@@ -72,11 +79,19 @@ export function SummaryWeeklyUtilizationChart({
             ticks: {
               maxRotation: isFull ? 45 : 0,
               autoSkip: items.length > 24,
+              color: tickColor,
             },
+            grid: { color: gridColor },
           },
           y: {
             beginAtZero: true,
-            title: { display: true, text: 'ชั่วโมง (Summary/W)' },
+            title: {
+              display: true,
+              text: 'ชั่วโมง (Summary/W)',
+              color: tickColor,
+            },
+            ticks: { color: tickColor },
+            grid: { color: gridColor },
           },
         },
       }}

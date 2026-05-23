@@ -1,4 +1,10 @@
+import { AppCard } from '@/components/layout/AppCard'
+import {
+  FilterDateDrawer,
+  FilterDateDrawerTrigger,
+} from '@/components/layout/FilterDateDrawer'
 import { Button } from '@/components/ui/button'
+import { PEPSI_WORK_WEEK_HELP } from '@/lib/pepsi-work-week'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,14 +33,31 @@ type Props = {
   onSearch: (value: ReportsDateFilterValue) => void
 }
 
+function formatSummary(from: string, to: string): string {
+  if (from && to) return `${from} → ${to}`
+  if (from || to) return from || to
+  return 'เลือกช่วงวันที่'
+}
+
 export function ReportsDateFilter({ initial, showWeeksBack, onSearch }: Props) {
   const base = initial ?? defaultReportsDateRange()
   const [fromDate, setFromDate] = useState(base.from)
   const [toDate, setToDate] = useState(base.to)
   const [weeksBack, setWeeksBack] = useState(String(base.weeksBack ?? 8))
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
-  return (
-    <div className="flex flex-wrap items-end gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+  const applyDisabled = !fromDate || !toDate
+
+  const apply = () => {
+    onSearch({
+      from: fromDate,
+      to: toDate,
+      weeksBack: showWeeksBack ? Number(weeksBack) || 8 : undefined,
+    })
+  }
+
+  const fields = (
+    <>
       <div className="space-y-1">
         <Label htmlFor="reports-from">เริ่มวันที่</Label>
         <DatePicker id="reports-from" value={fromDate} onChange={setFromDate} />
@@ -51,26 +74,49 @@ export function ReportsDateFilter({ initial, showWeeksBack, onSearch }: Props) {
             type="number"
             min={4}
             max={16}
-            className="w-24"
+            className="w-full sm:w-24"
             value={weeksBack}
             onChange={(e) => setWeeksBack(e.target.value)}
           />
         </div>
       ) : null}
-      <Button
-        type="button"
-        onClick={() =>
-          onSearch({
-            from: fromDate,
-            to: toDate,
-            weeksBack: showWeeksBack ? Number(weeksBack) || 8 : undefined,
-          })
-        }
-        disabled={!fromDate || !toDate}
+    </>
+  )
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-app-muted">{PEPSI_WORK_WEEK_HELP}</p>
+
+      <FilterDateDrawerTrigger
+        summary={formatSummary(fromDate, toDate)}
+        onOpen={() => setDrawerOpen(true)}
+      />
+
+      <FilterDateDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        title="ช่วงวันที่รายงาน"
+        summary={formatSummary(fromDate, toDate)}
+        applyDisabled={applyDisabled}
+        applyLabel="นำไปใช้"
+        onApply={apply}
       >
-        <Search className="mr-2 size-4" />
-        ค้นหา
-      </Button>
+        <div className="space-y-4">{fields}</div>
+      </FilterDateDrawer>
+
+      <AppCard pad="compact" className="hidden flex-wrap items-end gap-3 lg:flex">
+        {fields}
+        <Button
+          type="button"
+          data-testid="reports-date-apply"
+          disabled={applyDisabled}
+          onClick={apply}
+        >
+          <Search className="mr-2 size-4" aria-hidden />
+          นำไปใช้
+        </Button>
+      </AppCard>
+
     </div>
   )
 }

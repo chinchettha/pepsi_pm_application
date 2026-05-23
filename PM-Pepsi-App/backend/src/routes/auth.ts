@@ -8,9 +8,19 @@ import { clearCookieHeader, serializeCookie } from '../lib/cookies.js'
 
 import { getClientIp, getServerHostname } from '../lib/request-ip.js'
 
+import {
+  clearLoginAttempts,
+  isLoginLocked,
+  recordFailedLogin,
+} from '../lib/login-lockout.js'
+import { getSessionTtlMs, sessionTtlMaxAgeSec } from '../lib/session-ttl.js'
 import { SESSION_COOKIE_NAME, signSessionToken, verifySessionToken } from '../lib/session-token.js'
 
+import { voidAudit } from '../lib/audit-mutation.js'
+import { auditActorFromUser, auditLog, auditMetaFromRequest } from '../lib/audit-log.js'
+import { listPermissionsForUserst } from '../lib/has-permission.js'
 import { createRequireApiAuth, getTokenFromRequest } from '../middleware/require-api-auth.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
 
 import { validateBody } from '../middleware/validate-body.js'
 
@@ -44,8 +54,6 @@ import {
 
 
 
-const SESSION_MAX_AGE_SEC = 8 * 60 * 60
-
 const userLogQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
   offset: z.coerce.number().int().min(0).max(1_000_000).optional().default(0),
@@ -53,27 +61,16 @@ const userLogQuerySchema = z.object({
 
 
 
-function setSessionCookie(res: Response, token: string) {
-
-
+function setSessionCookie(res: Response, token: string, maxAgeSec: number) {
   res.setHeader(
-
     'Set-Cookie',
-
     serializeCookie(SESSION_COOKIE_NAME, token, {
-
       httpOnly: true,
-
       sameSite: 'Lax',
-
-      maxAgeSec: SESSION_MAX_AGE_SEC,
-
+      maxAgeSec,
       path: '/',
-
     }),
-
   )
-
 }
 
 
@@ -96,8 +93,9 @@ function accountTypeOf(user: AuthUser): 'workcenter' | 'member' {
 
 export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: string) {
   const requireAuth = createRequireApiAuth(sessionSecret)
+  const requireUserLogRead = createRequirePermission(pool, sessionSecret)('user-log.read')
 
-  app.get('/api/v1/auth/me', (req, res: Response) => {
+  app.get('/api/v1/auth/me', async (req, res: Response) => {
 
     const token = getTokenFromRequest(req)
 
@@ -119,11 +117,31 @@ export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: stri
 
     }
 
-    res.json(authSessionResponseSchema.parse({ user }))
+    const permissions = await listPermissionsForUserst(pool, user.userst)
+    res.json(authSessionResponseSchema.parse({ user: { ...user, permissions } }))
 
   })
 
-
+  app.post('/api/v1/auth/impersonate/end', requireAuth, async (req: Request, res: Response) => {
+    const user = req.authUser
+    if (!user?.impersonatedBy) {
+      res.status(400).json({
+        error: 'NOT_IMPERSONATING',
+        message: 'ไม่ได้อยู่ในโหมดสวมสิทธิ์',
+      })
+      return
+    }
+    voidAudit(pool, req, {
+      action: 'auth.impersonate.end',
+      resource: 'auth',
+      resourceId: user.idwkctr,
+      after: {
+        targetUsername: user.username,
+        adminId: user.impersonatedBy.idwkctr,
+      },
+    })
+    res.json({ ok: true as const })
+  })
 
   app.post(
 
@@ -145,17 +163,48 @@ export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: stri
 
 
 
+      const clientIp = getClientIp(req)
+
+      const lock = await isLoginLocked(pool, clientIp, username)
+      if (lock.locked) {
+        void auditLog(
+          pool,
+          { actorId: username.trim(), actorRole: null },
+          {
+            action: 'auth.login',
+            resource: 'auth',
+            resourceId: username.trim(),
+            status: 'denied',
+            message: 'lockout',
+            ...auditMetaFromRequest(req),
+          },
+        )
+        res.status(429).json({
+          error: 'LOGIN_LOCKED',
+          message: lock.message ?? 'เข้าสู่ระบบถูกระงับชั่วคราว',
+        })
+        return
+      }
+
       const user =
-
         mode === 'member'
-
           ? await findMemberByCredentials(pool, username, password)
-
           : await findWorkcenterByCredentials(pool, username, password)
 
-
-
       if (!user) {
+        recordFailedLogin(clientIp, username)
+        void auditLog(
+          pool,
+          { actorId: username.trim(), actorRole: null },
+          {
+            action: 'auth.login',
+            resource: 'auth',
+            resourceId: username.trim(),
+            status: 'denied',
+            message: `mode=${mode}`,
+            ...auditMetaFromRequest(req),
+          },
+        )
 
         res.status(401).json({
 
@@ -189,11 +238,22 @@ export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: stri
 
       })
 
+      void auditLog(pool, auditActorFromUser(user), {
+        action: 'auth.login',
+        resource: 'auth',
+        resourceId: user.memId ?? user.idwkctr,
+        status: 'ok',
+        after: { accountType: acct, mode, userst: user.userst },
+        ...auditMetaFromRequest(req),
+      })
 
 
-      const token = signSessionToken(user, sessionSecret)
 
-      setSessionCookie(res, token)
+      clearLoginAttempts(clientIp, username)
+
+      const ttlMs = await getSessionTtlMs(pool)
+      const token = signSessionToken(user, sessionSecret, { ttlMs })
+      setSessionCookie(res, token, sessionTtlMaxAgeSec(ttlMs))
 
 
 
@@ -247,6 +307,14 @@ export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: stri
 
       })
 
+      void auditLog(pool, auditActorFromUser(fromToken), {
+        action: 'auth.logout',
+        resource: 'auth',
+        resourceId: body.userId,
+        status: 'ok',
+        ...auditMetaFromRequest(req),
+      })
+
 
 
       clearSessionCookie(res)
@@ -283,13 +351,21 @@ export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: stri
 
     })
 
+    void auditLog(pool, auditActorFromUser(user), {
+      action: 'auth.logout',
+      resource: 'auth',
+      resourceId: user.memId ?? user.idwkctr,
+      status: 'ok',
+      ...auditMetaFromRequest(req),
+    })
+
     clearSessionCookie(res)
 
     res.json(logoutResponseSchema.parse({ ok: true }))
 
   })
 
-  app.get('/api/v1/user-log', requireAuth, async (req: Request, res: Response) => {
+  app.get('/api/v1/user-log', ...requireUserLogRead, async (req: Request, res: Response) => {
     const user = req.authUser
     if (!user) {
       res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })

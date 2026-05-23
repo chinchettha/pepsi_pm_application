@@ -1,4 +1,5 @@
 import type { Pool } from 'pg'
+import { resolveWoPmPhase } from '../lib/wo-pm-phase.js'
 import type { calendarEventSchema } from '../schemas/calendar.js'
 import type { z } from 'zod'
 
@@ -6,6 +7,20 @@ export type CalendarEvent = z.infer<typeof calendarEventSchema>
 
 /** เทียบ $Factory_code ใน sap/include/define.php */
 export const FACTORY_CODE = '7151'
+
+/** เงื่อนไขโรงงาน — PHP ใช้ functionalloc; รองรับ ALV ที่มี 7151 ใน funcdescrip หรือ prefix ตอน import */
+export function sqlFactoryScope(columnPrefix = '', paramRef: string): string {
+  const c = columnPrefix ? `${columnPrefix}.` : ''
+  return `(${c}functionalloc ILIKE ${paramRef} OR ${c}funcdescrip ILIKE ${paramRef})`
+}
+
+/** แผนเขียว (TECO/ปิดแล้ว) ห้าม Move — เทียบ Details Rev.1 + LEGACY A.1 */
+const PLAN_MOVABLE_SYST = new Set(['CRTD', 'REL'])
+
+export function isPlanMovableStatus(syst: string | null | undefined): boolean {
+  const s = (syst ?? '').trim().toUpperCase()
+  return PLAN_MOVABLE_SYST.has(s)
+}
 
 export type OrderRow = {
   idiw37: number
@@ -39,7 +54,11 @@ export function pickDisplayUnix(row: OrderRow): number | null {
   return null
 }
 
-export function mapOrderRowToEvent(row: OrderRow, moveColor: string): CalendarEvent | null {
+export function mapOrderRowToEvent(
+  row: OrderRow,
+  moveColor: string,
+  workflowSuffix?: string,
+): CalendarEvent | null {
   const bscstart =
     row.bscstart != null && row.bscstart !== '' ? Number(row.bscstart) : null
   if (bscstart == null || !Number.isFinite(bscstart) || bscstart <= 0) {
@@ -58,7 +77,9 @@ export function mapOrderRowToEvent(row: OrderRow, moveColor: string): CalendarEv
   const color = hasMove ? moveColor : (row.wkstcolor ?? '#6b7280')
 
   const wktype = row.wktype?.trim() ?? ''
-  const title = wktype ? `${row.wkorder} / ${wktype}` : row.wkorder
+  let title = wktype ? `${row.wkorder} / ${wktype}` : row.wkorder
+  const suffix = workflowSuffix?.trim()
+  if (suffix) title = `${title}/${suffix}`
 
   return {
     id: String(row.idiw37),
@@ -67,6 +88,9 @@ export function mapOrderRowToEvent(row: OrderRow, moveColor: string): CalendarEv
     orderId: row.wkorder,
     color,
     description: row.operationshorttext?.trim() || undefined,
+    canMovePlan: isPlanMovableStatus(syst),
+    syst,
+    pmPhase: resolveWoPmPhase(syst),
   }
 }
 

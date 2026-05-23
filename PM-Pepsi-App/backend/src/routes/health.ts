@@ -1,5 +1,9 @@
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
+import { readPackageVersion } from '../lib/read-package-version.js'
+
+const API_VERSION = readPackageVersion('../package.json')
+const WEB_VERSION = readPackageVersion('../../../frontend/package.json')
 
 export function registerHealthRoutes(app: Express, pool: Pool) {
   app.get('/api/v1/health', async (_req: Request, res: Response) => {
@@ -19,6 +23,8 @@ export function registerHealthRoutes(app: Express, pool: Pool) {
       service: 'pm-api',
       time,
       db,
+      apiVersion: API_VERSION,
+      webVersion: WEB_VERSION,
     })
   })
 }

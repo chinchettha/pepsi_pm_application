@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
 import {
   backlogEventsResponseSchema,
   backlogFilterOptionsResponseSchema,
@@ -31,11 +31,11 @@ export function registerBacklogRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const requireRead = createRequirePermission(pool, sessionSecret)('backlog.read')
 
   app.get(
     '/api/v1/backlog/filter-options',
-    requireAuth,
+    ...requireRead,
     async (_req: Request, res: Response) => {
       try {
         const data = await listBacklogFilterOptions(pool)
@@ -56,7 +56,7 @@ export function registerBacklogRoutes(
 
   app.post(
     '/api/v1/backlog/events',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const parsed = backlogSearchBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -93,7 +93,7 @@ export function registerBacklogRoutes(
 
   app.post(
     '/api/v1/backlog/filter-detail',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const parsed = backlogSearchBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -124,7 +124,7 @@ export function registerBacklogRoutes(
 
   app.post(
     '/api/v1/backlog/manhour-summary',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const parsed = backlogManhourSearchBodySchema.safeParse(req.body)
       if (!parsed.success) {

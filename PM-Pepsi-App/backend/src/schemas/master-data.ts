@@ -195,6 +195,13 @@ export const masterDataResponseSchema = z.object({
   ),
 })
 
+export const masterDataMetaResponseSchema = z.object({
+  entity: z.string(),
+  count: z.number().int().min(0),
+  /** ISO string (timestamptz) of latest successful mutation; null when audit missing/empty */
+  lastUpdatedAt: z.string().nullable(),
+})
+
 export const SUPPORTED_MASTER_ENTITIES = [
   'activitytype',
   'department',

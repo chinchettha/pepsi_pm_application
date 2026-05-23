@@ -1,19 +1,30 @@
-import { getStoredAuthUser } from '@/features/auth/login-api'
 import {
   apiNavItemsToEntries,
   collectNavPaths,
   fetchNavMenu,
   getFallbackNav,
+  supplementNavFromFallback,
 } from '@/lib/nav-menu-api'
+import { effectivePermissions } from '@/lib/permissions'
 import { filterNavForUser } from '@/lib/nav-rbac'
+import { getRbacPreviewSnapshot, subscribeRbacPreview } from '@/lib/rbac-preview'
+import { useAuthUser } from '@/lib/use-permission'
 import type { NavEntry } from '@/components/layout/nav-config'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
+
+function useRbacPreview() {
+  return useSyncExternalStore(subscribeRbacPreview, getRbacPreviewSnapshot, () => null)
+}
 
 export function useAppNav() {
-  const authUser = getStoredAuthUser()
+  const authUser = useAuthUser()
+  const preview = useRbacPreview()
+  const navPerms = effectivePermissions(authUser)
+  const permissionKey = `${preview?.roleCode ?? ''}|${navPerms?.join('|') ?? ''}`
+
   const q = useQuery({
-    queryKey: ['nav-menu', authUser?.userst],
+    queryKey: ['nav-menu', authUser?.userst, permissionKey],
     queryFn: fetchNavMenu,
     enabled: Boolean(authUser),
     staleTime: 5 * 60 * 1000,
@@ -22,12 +33,15 @@ export function useAppNav() {
 
   const entries: NavEntry[] = useMemo(() => {
     if (!authUser) return []
-    if (q.data && q.data.items.length > 0) {
-      // เซิร์ฟเวอร์กรอง menuright แล้วใน listNavMenuForUser — ไม่กรองซ้ำฝั่ง client
-      return apiNavItemsToEntries(q.data.items)
-    }
-    return filterNavForUser(authUser.userst, getFallbackNav())
-  }, [authUser, q.data])
+    const base =
+      q.data && q.data.items.length > 0
+        ? supplementNavFromFallback(apiNavItemsToEntries(q.data.items), getFallbackNav())
+        : getFallbackNav()
+    const navUserst = preview?.roleCode ?? authUser.userst
+    return filterNavForUser(navUserst, base, navPerms, {
+      rbacStrict: (navPerms?.length ?? 0) > 0,
+    })
+  }, [authUser, permissionKey, q.data])
 
   const allowedPaths = useMemo(() => collectNavPaths(entries), [entries])
 

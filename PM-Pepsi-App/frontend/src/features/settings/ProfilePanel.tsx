@@ -1,89 +1,108 @@
+import { AppCard } from '@/components/layout/AppCard'
+import { ChangePasswordForm } from '@/features/settings/ChangePasswordForm'
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import { useProfileQuery } from '@/features/profile/profile-api'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AlertCircle } from 'lucide-react'
 
 export function ProfilePanel() {
   const authUser = getStoredAuthUser()
   const q = useProfileQuery(Boolean(authUser))
 
   if (!authUser) {
-    return <p className="text-sm text-zinc-600">กรุณาเข้าสู่ระบบ</p>
+    return (
+      <EmptyState title="กรุณาเข้าสู่ระบบ" description="เข้าสู่ระบบเพื่อดูโปรไฟล์" />
+    )
   }
 
-  if (q.isLoading) return <Skeleton className="h-40 w-full rounded-xl" />
+  if (q.isLoading && !q.data) return <Skeleton className="h-40 w-full rounded-card" />
   if (q.isError) {
-    return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="โหลดโปรไฟล์ไม่สำเร็จ"
+        description={(q.error as Error).message}
+        action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+      />
+    )
   }
 
   const p = q.data!
   const isMember = p.accountType === 'member'
 
   return (
-    <div className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <div>
-        <h3 className="text-sm font-semibold text-zinc-900">โปรไฟล์ผู้ใช้</h3>
-        <p className="mt-1 text-xs text-zinc-500">
-          เทียบ session จาก {isMember ? 'login-bk.php / tbl_member' : 'login.php / tbworkcenter'} + calc_birthday / calc_worktime
-        </p>
-      </div>
-      <dl className="grid gap-3 sm:grid-cols-2">
+    <div className="space-y-4">
+      <AppCard pad="compact" className="space-y-4">
         <div>
-          <dt className="text-xs text-zinc-500">ชื่อแสดง</dt>
-          <dd className="text-sm font-medium text-zinc-900">{p.displayName}</dd>
+          <h3 className="text-body-sm font-semibold text-app">โปรไฟล์ผู้ใช้</h3>
+          <p className="mt-1 text-xs text-app-muted">
+            ข้อมูลจาก session (
+            {isMember ? 'สมาชิก / tbl_member' : 'work center / tbworkcenter'})
+          </p>
         </div>
-        <div>
-          <dt className="text-xs text-zinc-500">สถานะ</dt>
-          <dd className="text-sm text-zinc-900">{p.sysstatus}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-zinc-500">{isMember ? 'Username' : 'รหัส WC'}</dt>
-          <dd className="font-mono text-sm text-zinc-900">{p.username}</dd>
-        </div>
-        {!isMember && p.plnt ? (
+        <dl className="grid gap-3 sm:grid-cols-2">
           <div>
-            <dt className="text-xs text-zinc-500">Plant</dt>
-            <dd className="text-sm text-zinc-900">{p.plnt}</dd>
+            <dt className="text-xs text-app-muted">ชื่อแสดง</dt>
+            <dd className="text-body-sm font-medium text-app">{p.displayName}</dd>
           </div>
-        ) : null}
-        {!isMember && p.birthdayLabel ? (
           <div>
-            <dt className="text-xs text-zinc-500">อายุ (เทียบ calc_birthday)</dt>
-            <dd className="text-sm text-zinc-900">{p.birthdayLabel}</dd>
+            <dt className="text-xs text-app-muted">สถานะ</dt>
+            <dd className="text-body-sm text-app">{p.sysstatus}</dd>
           </div>
-        ) : null}
-        {!isMember && p.workAgeLabel ? (
           <div>
-            <dt className="text-xs text-zinc-500">อายุการทำงาน (calc_worktime)</dt>
-            <dd className="text-sm text-zinc-900">{p.workAgeLabel}</dd>
+            <dt className="text-xs text-app-muted">{isMember ? 'ชื่อผู้ใช้' : 'รหัส WC'}</dt>
+            <dd className="font-mono text-body-sm text-app">{p.username}</dd>
           </div>
-        ) : null}
-        {!isMember && p.worktimeTotalHours != null ? (
-          <div>
-            <dt className="text-xs text-zinc-500">ชั่วโมงรวม (worktime_count)</dt>
-            <dd className="text-sm text-zinc-900">{p.worktimeTotalHours} ชม.</dd>
-          </div>
-        ) : null}
-        {isMember && p.idcard ? (
-          <div>
-            <dt className="text-xs text-zinc-500">เลขบัตร</dt>
-            <dd className="text-sm text-zinc-900">{p.idcard}</dd>
-          </div>
-        ) : null}
-        {isMember && p.bank ? (
-          <div className="sm:col-span-2">
-            <dt className="text-xs text-zinc-500">ธนาคาร</dt>
-            <dd className="text-sm text-zinc-900">
-              {p.bank} {p.bankNo ? `· ${p.bankNo}` : ''} {p.branch ? `· ${p.branch}` : ''}
-            </dd>
-          </div>
-        ) : null}
-        {p.lastLogin ? (
-          <div>
-            <dt className="text-xs text-zinc-500">เข้าใช้ล่าสุด</dt>
-            <dd className="text-sm text-zinc-900">{p.lastLogin.slice(0, 19).replace('T', ' ')}</dd>
-          </div>
-        ) : null}
-      </dl>
+          {!isMember && p.plnt ? (
+            <div>
+              <dt className="text-xs text-app-muted">Plant</dt>
+              <dd className="text-body-sm text-app">{p.plnt}</dd>
+            </div>
+          ) : null}
+          {!isMember && p.birthdayLabel ? (
+            <div>
+              <dt className="text-xs text-app-muted">อายุ</dt>
+              <dd className="text-body-sm text-app">{p.birthdayLabel}</dd>
+            </div>
+          ) : null}
+          {!isMember && p.workAgeLabel ? (
+            <div>
+              <dt className="text-xs text-app-muted">อายุการทำงาน</dt>
+              <dd className="text-body-sm text-app">{p.workAgeLabel}</dd>
+            </div>
+          ) : null}
+          {!isMember && p.worktimeTotalHours != null ? (
+            <div>
+              <dt className="text-xs text-app-muted">ชั่วโมงรวม (worktime)</dt>
+              <dd className="text-body-sm text-app">{p.worktimeTotalHours} ชม.</dd>
+            </div>
+          ) : null}
+          {isMember && p.idcard ? (
+            <div>
+              <dt className="text-xs text-app-muted">เลขบัตร</dt>
+              <dd className="text-body-sm text-app">{p.idcard}</dd>
+            </div>
+          ) : null}
+          {isMember && p.bank ? (
+            <div className="sm:col-span-2">
+              <dt className="text-xs text-app-muted">ธนาคาร</dt>
+              <dd className="text-body-sm text-app">
+                {p.bank} {p.bankNo ? `· ${p.bankNo}` : ''} {p.branch ? `· ${p.branch}` : ''}
+              </dd>
+            </div>
+          ) : null}
+          {p.lastLogin ? (
+            <div>
+              <dt className="text-xs text-app-muted">เข้าใช้ล่าสุด</dt>
+              <dd className="text-body-sm tabular-nums text-app">
+                {new Date(p.lastLogin).toLocaleString('th-TH')}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      </AppCard>
+      <ChangePasswordForm />
     </div>
   )
 }

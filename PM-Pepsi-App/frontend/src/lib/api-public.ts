@@ -13,17 +13,25 @@ import {
   iw37nBatchRowsResponseSchema,
   iw37nItemResponseSchema,
   iw37nItemsResponseSchema,
+  iw37nImportPreviewResponseSchema,
   iw37nImportResponseSchema,
+  integrationJobsResponseSchema,
+  integrationRunResponseSchema,
+  integrationStatusResponseSchema,
   manhourImportResponseSchema,
   manhourItemSchema,
+  manhourHrListResponseSchema,
   manhourListResponseSchema,
   manhourOkResponseSchema,
+  activityLogListResponseSchema,
+  auditHubResponseSchema,
   kpiResponseSchema,
   summaryWeeklyResponseSchema,
   manhourChartBreakdownResponseSchema,
   manhourChartPerformanceResponseSchema,
   manhoursResponseSchema,
   masterDataResponseSchema,
+  masterDataMetaResponseSchema,
   personnelAdminItemSchema,
   personnelAdminListResponseSchema,
   personnelAdminOkSchema,
@@ -37,13 +45,20 @@ import {
   planningAssignResponseSchema,
   planningResponseSchema,
   confirmationByWorkOrderResponseSchema,
+  personnelClosesResponseSchema,
   confirmationCommentBodySchema,
   confirmationCommentResponseSchema,
   confirmationCommentsResponseSchema,
   confirmationImageDataResponseSchema,
   confirmationImagesResponseSchema,
   confirmationImportResponseSchema,
+  confirmationMassCloseBodySchema,
+  confirmationMassCloseResponseSchema,
+  massConfirmExportSummarySchema,
+  qcApproveBatchResponseSchema,
   confirmationExportResponseSchema,
+  confirmQcPendingItemSchema,
+  confirmQcSnapshotSchema,
   userLogResponseSchema,
   workcentersResponseSchema,
   usersResponseSchema,
@@ -58,9 +73,12 @@ import {
   workOrderPlanningBatchResponseSchema,
   workOrderPlanningOkResponseSchema,
   workOrderPlanningUpsertBodySchema,
+  workOrderFilterDetailResponseSchema,
   workOrderSearchBodySchema,
   workOrderSearchResponseSchema,
   workOrderSuggestionsResponseSchema,
+  workOrderTeamBulkBodySchema,
+  workOrderTeamBulkResponseSchema,
   workOrderTeamPatchResponseSchema,
   workOrderTeamPatchSchema,
   workOrdersResponseSchema,
@@ -167,6 +185,16 @@ export async function postWorkOrdersSearch(body: WorkOrderSearchInput) {
   return workOrderSearchResponseSchema.parse(json).items
 }
 
+export async function postWorkOrderFilterDetail(body: WorkOrderSearchInput) {
+  const payload = workOrderSearchBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/work-orders/filter-detail', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return workOrderFilterDetailResponseSchema.parse(json)
+}
+
 export async function putWorkOrderTeam(id: string, team: z.infer<typeof workOrderTeamPatchSchema>['team']) {
   const payload = workOrderTeamPatchSchema.parse({ team })
   const json = await fetchApi<unknown>(`/api/v1/work-orders/${encodeURIComponent(id)}/team`, {
@@ -175,6 +203,19 @@ export async function putWorkOrderTeam(id: string, team: z.infer<typeof workOrde
     body: JSON.stringify(payload),
   })
   return workOrderTeamPatchResponseSchema.parse(json)
+}
+
+/** Phase 3 — ตั้ง Team A/B/P หลาย `idiw37n` ครั้งเดียว (สูงสุด 100 รายการ) */
+export async function patchWorkOrderTeamBatch(
+  body: z.infer<typeof workOrderTeamBulkBodySchema>,
+) {
+  const payload = workOrderTeamBulkBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/work-orders/team/batch', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return workOrderTeamBulkResponseSchema.parse(json)
 }
 
 export async function fetchMovePlanReasons() {
@@ -224,9 +265,27 @@ export async function postCalendarEvents(body: CalendarSearchInput) {
   return calendarEventsResponseSchema.parse(json)
 }
 
+export async function postCalendarFilterDetail(body: CalendarSearchInput) {
+  const payload = calendarSearchBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/calendar/filter-detail', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return workOrderFilterDetailResponseSchema.parse(json)
+}
+
 export async function fetchLineCalendarEvents(year: number, month: number) {
   const json = await fetchApi<unknown>(
     `/api/v1/line-calendar/events?year=${year}&month=${month}`,
+  )
+  return calendarEventsResponseSchema.parse(json)
+}
+
+/** เทียบ `M_plan_calendar.php` — events จาก `view_planwork` ตาม idwkctr */
+export async function fetchPlanCalendarEvents(year: number, month: number) {
+  const json = await fetchApi<unknown>(
+    `/api/v1/plan-calendar/events?year=${year}&month=${month}`,
   )
   return calendarEventsResponseSchema.parse(json)
 }
@@ -270,6 +329,33 @@ export async function postBacklogManhourSummary(body: BacklogManhourInput) {
 export async function fetchIw37nBatches() {
   const json = await fetchApi<unknown>('/api/v1/iw37n/batches')
   return iw37nBatchesResponseSchema.parse(json).items
+}
+
+export async function fetchIntegrationStatus() {
+  const json = await fetchApi<unknown>('/api/v1/integration/status')
+  return integrationStatusResponseSchema.parse(json)
+}
+
+export async function postIntegrationJobsRun() {
+  const json = await fetchApi<unknown>('/api/v1/integration/jobs/run', { method: 'POST' })
+  return integrationRunResponseSchema.parse(json)
+}
+
+export async function fetchIntegrationJobs(limit = 50) {
+  const json = await fetchApi<unknown>(
+    `/api/v1/integration/jobs?limit=${encodeURIComponent(String(limit))}`,
+  )
+  return integrationJobsResponseSchema.parse(json).items
+}
+
+export async function postIw37nImportPreview(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  const json = await fetchApi<unknown>('/api/v1/iw37n/import/preview', {
+    method: 'POST',
+    body: form,
+  })
+  return iw37nImportPreviewResponseSchema.parse(json)
 }
 
 export async function postIw37nImport(file: File) {
@@ -343,6 +429,17 @@ export async function fetchMasterData(entity: string) {
     `/api/v1/master-data/${encodeURIComponent(entity)}`,
   )
   return masterDataResponseSchema.parse(json).items
+}
+
+export async function fetchMasterDataMeta(entity: string): Promise<{
+  entity: string
+  count: number
+  lastUpdatedAt: string | null
+}> {
+  const json = await fetchApi<unknown>(
+    `/api/v1/master-data/${encodeURIComponent(entity)}/meta`,
+  )
+  return masterDataMetaResponseSchema.parse(json)
 }
 
 /**
@@ -482,7 +579,7 @@ export async function fetchManhourHr(
   if (opts.offset != null) qs.set('offset', String(opts.offset))
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
   const json = await fetchApi<unknown>(`/api/v1/manhours/hr${suffix}`)
-  return manhourListResponseSchema.parse(json)
+  return manhourHrListResponseSchema.parse(json)
 }
 
 export async function fetchManhourList(
@@ -671,13 +768,15 @@ export async function deletePersonnelAdminImage(idwkctr: string) {
 /** URL สำหรับใช้ใน `<img src=...>` — ภาพอยู่ใน DB และส่งเป็น binary WebP */
 export function personnelImageUrl(idwkctr: string, ver?: number | string) {
   const v = ver != null ? `?v=${encodeURIComponent(String(ver))}` : ''
-  return `/api/v1/personnel/${encodeURIComponent(idwkctr)}/image${v}`
+  const path = `/api/v1/personnel/${encodeURIComponent(idwkctr)}/image${v}`
+  const base = getApiBaseUrl()
+  return base ? `${base}${path}` : path
 }
 
 /** Personnel Confirmation dashboard — `M_personel_confirm.php` (Admin) */
 export async function fetchPersonnelConfirm(opts: {
   q?: string
-  status?: 'all' | 'not_started' | 'in_progress' | 'done'
+  status?: 'all' | 'not_started' | 'in_progress' | 'done' | 'qc_pending'
   syst?: string[]
   limit?: number
   offset?: number
@@ -713,11 +812,36 @@ export async function fetchKpi(opts?: ReportsQuery) {
   return kpiResponseSchema.parse(json)
 }
 
+export async function fetchAuditHub() {
+  const json = await fetchApi<unknown>('/api/v1/reports/audit-hub')
+  return auditHubResponseSchema.parse(json)
+}
+
 export async function fetchSummaryWeekly(opts?: ReportsQuery) {
   const json = await fetchApi<unknown>(
     `/api/v1/reports/summary-weekly${reportsQueryString(opts)}`,
   )
   return summaryWeeklyResponseSchema.parse(json)
+}
+
+export type ActivityLogQuery = ReportsQuery & {
+  q?: string
+  limit?: number
+  offset?: number
+}
+
+export async function fetchActivityLog(opts?: ActivityLogQuery) {
+  const qs = new URLSearchParams()
+  if (opts?.from) qs.set('from', opts.from)
+  if (opts?.to) qs.set('to', opts.to)
+  if (opts?.q) qs.set('q', opts.q)
+  if (opts?.limit != null) qs.set('limit', String(opts.limit))
+  if (opts?.offset != null) qs.set('offset', String(opts.offset))
+  const suffix = qs.toString()
+  const json = await fetchApi<unknown>(
+    `/api/v1/reports/activity-log${suffix ? `?${suffix}` : ''}`,
+  )
+  return activityLogListResponseSchema.parse(json)
 }
 
 export async function fetchUsers() {
@@ -752,9 +876,14 @@ export async function fetchConfirmationExport() {
   return confirmationExportResponseSchema.parse(json)
 }
 
-export async function fetchConfirmationExportXlsx(): Promise<Blob> {
+function confirmExportQuery(idiw37n?: number[]): string {
+  if (!idiw37n?.length) return ''
+  return `?idiw37n=${encodeURIComponent(idiw37n.join(','))}`
+}
+
+export async function fetchConfirmationExportXlsx(idiw37n?: number[]): Promise<Blob> {
   const base = getApiBaseUrl()
-  const p = '/api/v1/confirmation/export.xlsx'
+  const p = `/api/v1/confirmation/export.xlsx${confirmExportQuery(idiw37n)}`
   const url = base ? `${base}${p}` : p
   const token = getAuthToken()
   const res = await fetch(url, {
@@ -769,6 +898,37 @@ export async function fetchConfirmationExportXlsx(): Promise<Blob> {
     throw new Error(text || `HTTP ${res.status}`)
   }
   return res.blob()
+}
+
+/** SAP outbound CSV — same columns as `export.xlsx` / `M_Export_confirm_excel.php`. */
+export async function fetchConfirmationExportCsv(idiw37n?: number[]): Promise<Blob> {
+  const base = getApiBaseUrl()
+  const p = `/api/v1/confirmation/export.csv${confirmExportQuery(idiw37n)}`
+  const url = base ? `${base}${p}` : p
+  const token = getAuthToken()
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      Accept: 'text/csv',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+  return res.blob()
+}
+
+export function confirmationSapCsvFilename(now = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const y = now.getFullYear()
+  const m = pad(now.getMonth() + 1)
+  const d = pad(now.getDate())
+  const h = pad(now.getHours())
+  const min = pad(now.getMinutes())
+  const s = pad(now.getSeconds())
+  return `CONFIRM_OUT_${y}${m}${d}_${h}${min}${s}.csv`
 }
 
 export async function postConfirmationClose(body: {
@@ -795,8 +955,77 @@ export async function postConfirmationClose(body: {
   return ok.data
 }
 
+/** Mass Confirm — สูงสุด 44 WO ต่อ batch (SAP) */
+export async function postConfirmationMassClose(
+  body: z.infer<typeof confirmationMassCloseBodySchema>,
+) {
+  const payload = confirmationMassCloseBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/confirmation/closes/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return confirmationMassCloseResponseSchema.parse(json)
+}
+
+export async function fetchMassConfirmExportSummary(idiw37n: number[]) {
+  const json = await fetchApi<unknown>('/api/v1/confirmation/export/mass-summary', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idiw37n }),
+  })
+  return massConfirmExportSummarySchema.parse(json)
+}
+
+export async function postConfirmQcApproveBatch(idiw37n: number[]) {
+  const json = await fetchApi<unknown>('/api/v1/confirmation/qc/approve-batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idiw37n }),
+  })
+  return qcApproveBatchResponseSchema.parse(json)
+}
+
 export async function deleteConfirmationClose(idclose: number) {
   const json = await fetchApi<unknown>(`/api/v1/confirmation/close/${idclose}`, {
+    method: 'DELETE',
+  })
+  const ok = z.object({ ok: z.literal(true) }).safeParse(json)
+  if (!ok.success) throw new Error('Unexpected response')
+  return ok.data
+}
+
+export async function fetchPersonnelCloses(idiw37: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/personnel-closes`)
+  return personnelClosesResponseSchema.parse(json).items
+}
+
+export async function postPersonnelClose(body: {
+  idiw37: number
+  wkctr: string
+  startD: string
+  startT: string
+  endD: string
+  endT: string
+}) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${body.idiw37}/personnel-close`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      wkctr: body.wkctr,
+      startD: body.startD,
+      startT: body.startT,
+      endD: body.endD,
+      endT: body.endT,
+    }),
+  })
+  const ok = z.object({ ok: z.literal(true) }).safeParse(json)
+  if (!ok.success) throw new Error('Unexpected response')
+  return ok.data
+}
+
+export async function deletePersonnelClose(idwrkclose: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/personnel-close/${idwrkclose}`, {
     method: 'DELETE',
   })
   const ok = z.object({ ok: z.literal(true) }).safeParse(json)
@@ -853,9 +1082,17 @@ export async function fetchConfirmationImages(idiw37: number) {
   return confirmationImagesResponseSchema.parse(json).items
 }
 
-export async function postConfirmationImage(idiw37: number, file: File) {
+export type ConfirmationImagePhase = 'before' | 'after'
+
+export async function postConfirmationImage(
+  idiw37: number,
+  file: File,
+  opts: { phase: ConfirmationImagePhase; caption?: string },
+) {
   const form = new FormData()
   form.append('file', file)
+  form.append('phase', opts.phase)
+  if (opts.caption?.trim()) form.append('caption', opts.caption.trim())
   const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/images`, {
     method: 'POST',
     body: form,
@@ -875,4 +1112,32 @@ export async function deleteConfirmationImage(idcimg: number) {
 export async function fetchConfirmationImageData(idcimg: number) {
   const json = await fetchApi<unknown>(`/api/v1/confirmation/images/${idcimg}/data`)
   return confirmationImageDataResponseSchema.parse(json)
+}
+
+export async function fetchConfirmQc(idiw37: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/qc`)
+  return z.object({ qc: confirmQcSnapshotSchema }).parse(json).qc
+}
+
+export async function fetchConfirmQcPending(limit = 50) {
+  const json = await fetchApi<unknown>(
+    `/api/v1/confirmation/qc/pending?limit=${encodeURIComponent(String(limit))}`,
+  )
+  return z.object({ items: z.array(confirmQcPendingItemSchema) }).parse(json).items
+}
+
+export async function postConfirmQcApprove(idiw37: number) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/qc/approve`, {
+    method: 'POST',
+  })
+  return z.object({ qc: confirmQcSnapshotSchema }).parse(json).qc
+}
+
+export async function postConfirmQcReject(idiw37: number, note?: string) {
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/qc/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note: note ?? '' }),
+  })
+  return z.object({ qc: confirmQcSnapshotSchema }).parse(json).qc
 }

@@ -5,20 +5,22 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-button text-body-sm font-medium shadow-app-button transition-[background-color,box-shadow,transform] duration-150 ease-out focus-app-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        default: 'bg-zinc-900 text-zinc-50 hover:bg-zinc-800',
+        default:
+          'bg-[var(--app-text)] text-[var(--app-surface)] hover:bg-[color-mix(in_srgb,var(--app-text)_90%,white)] active:bg-[color-mix(in_srgb,var(--app-text)_94%,black)]',
         outline:
-          'border border-zinc-300 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50',
-        ghost: 'text-zinc-900 hover:bg-zinc-100',
-        destructive: 'bg-red-600 text-white hover:bg-red-700',
+          'border border-app bg-[var(--app-surface)] text-app shadow-app-button hover:bg-app-subtle active:bg-app-muted',
+        ghost: 'text-app hover:bg-app-muted active:bg-app-subtle',
+        destructive:
+          'bg-red-600 text-white hover:bg-red-700 active:bg-red-800',
       },
       size: {
         default: 'h-10 px-4 py-2',
-        sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-11 rounded-md px-8',
+        sm: 'h-8 rounded-button px-3 text-xs',
+        lg: 'h-11 rounded-button px-8',
         icon: 'size-10',
       },
     },

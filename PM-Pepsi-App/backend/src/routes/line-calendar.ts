@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
 import { z } from 'zod'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
 import { lineCalendarEventsResponseSchema } from '../schemas/line-calendar.js'
 import { listLineCalendarEvents } from '../services/line-calendar.js'
 
@@ -15,11 +15,11 @@ export function registerLineCalendarRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const requireRead = createRequirePermission(pool, sessionSecret)('calendar.read')
 
   app.get(
     '/api/v1/line-calendar/events',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const parsed = querySchema.safeParse(req.query)
       if (!parsed.success) {

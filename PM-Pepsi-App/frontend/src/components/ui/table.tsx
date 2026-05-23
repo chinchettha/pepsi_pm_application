@@ -2,18 +2,36 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn('w-full caption-bottom text-sm', className)}
-      {...props}
-    />
-  </div>
-))
+/** Sticky leading column(s) inside `.app-table-shell` horizontal scroll */
+export function tableStickyClass(col: 1 | 2 | 3 | 4 = 1) {
+  return cn('app-table-sticky', col > 1 && `app-table-sticky--col-${col}`)
+}
+
+type TableProps = React.HTMLAttributes<HTMLTableElement> & {
+  /** ไม่ห่อ overflow — ให้ `.app-table-shell` เป็นตัว scroll (sticky header ทำงาน) */
+  embedded?: boolean
+  stickyHeader?: boolean
+  zebra?: boolean
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, embedded, stickyHeader, zebra, ...props }, ref) => {
+    const table = (
+      <table
+        ref={ref}
+        className={cn(
+          'w-full caption-bottom text-body-sm',
+          stickyHeader && 'app-data-table-sticky',
+          zebra && 'app-data-table-zebra',
+          className,
+        )}
+        {...props}
+      />
+    )
+    if (embedded) return table
+    return <div className="relative w-full overflow-auto">{table}</div>
+  },
+)
 Table.displayName = 'Table'
 
 const TableHeader = React.forwardRef<
@@ -43,7 +61,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      'border-b border-zinc-200 transition-colors hover:bg-zinc-50/80 data-[state=selected]:bg-zinc-100',
+      'border-b border-app transition-colors hover:bg-app-subtle/80 data-[state=selected]:bg-app-muted',
       className,
     )}
     {...props}
@@ -58,7 +76,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'h-10 px-4 text-left align-middle text-xs font-medium text-zinc-500 [&:has([role=checkbox])]:pr-0',
+      'h-10 px-4 text-left align-middle text-xs font-medium text-app-muted [&:has([role=checkbox])]:pr-0',
       className,
     )}
     {...props}
@@ -72,7 +90,7 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn('p-4 align-middle text-sm [&:has([role=checkbox])]:pr-0', className)}
+    className={cn('p-4 align-middle text-body-sm [&:has([role=checkbox])]:pr-0', className)}
     {...props}
   />
 ))

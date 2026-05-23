@@ -1,7 +1,7 @@
 import type { LoginMode } from '@/features/auth/login-api'
 
-/** หลัง login work center — เทียบ redirect ไป `line_calendar.php` */
-export const POST_LOGIN_PATH_WORKCENTER = '/line-calendar'
+/** หลัง login work center — เทียบ `login.php` → `M_plan_calendar` */
+export const POST_LOGIN_PATH_WORKCENTER = '/plan-calendar'
 
 /** หลัง login สมาชิก (login-bk) — เทียบ `?module=info` → หน้าแรก React */
 export const POST_LOGIN_PATH_MEMBER = '/'

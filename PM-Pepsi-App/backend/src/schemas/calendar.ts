@@ -1,5 +1,6 @@
 /** รูปแบบเดียวกับ frontend calendarEventsResponseSchema */
 import { z } from 'zod'
+import { woPmPhaseSchema } from '../lib/wo-pm-phase.js'
 
 export const calendarEventSchema = z.object({
   id: z.string(),
@@ -8,6 +9,10 @@ export const calendarEventSchema = z.object({
   orderId: z.string(),
   color: z.string(),
   description: z.string().optional(),
+  /** false เมื่อ syst ไม่ใช่ CRTD/REL (แผนเขียว TECO ห้าม drag) */
+  canMovePlan: z.boolean(),
+  syst: z.string().optional(),
+  pmPhase: z.enum(woPmPhaseSchema),
 })
 
 export const calendarEventsResponseSchema = z.object({
@@ -45,4 +50,28 @@ export const calendarSearchBodySchema = z.object({
   equipment: z.array(z.string()),
   fromDate: isoDateSchema.optional(),
   toDate: isoDateSchema.optional(),
+})
+
+/** เทียบ `FilterDetail.php` + `FilterDetail_AddTeam.php` บน W_calendar.php */
+export const calendarFilterDetailTeamSchema = z.object({
+  count: z.number(),
+  workSumMinutes: z.number(),
+})
+
+export const calendarFilterDetailResponseSchema = z.object({
+  year: z.number(),
+  month: z.number(),
+  totalOrders: z.number(),
+  completionCount: z.number(),
+  completionPercent: z.number(),
+  byWkzb: z.array(
+    z.object({
+      code: z.string(),
+      label: z.string(),
+      count: z.number(),
+    }),
+  ),
+  teamA: calendarFilterDetailTeamSchema,
+  teamB: calendarFilterDetailTeamSchema,
+  teamP: calendarFilterDetailTeamSchema,
 })

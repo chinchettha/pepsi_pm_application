@@ -1,6 +1,6 @@
 /**
  * สัญญา API ฝั่ง client — ล็อก shape ให้ตรงกับ Express backend
- * เพิ่ม endpoint ใหม่: ประกาศ schema ที่นี่ก่อนหรือพร้อมกับ handler mock
+ * เพิ่ม endpoint ใหม่: ประกาศ schema ที่นี่ก่อนหรือพร้อมกับ route handler บน backend
  */
 import { z } from 'zod'
 
@@ -53,6 +53,8 @@ export const workOrderSearchBodySchema = z.object({
   toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
+export const woPmPhaseSchema = z.enum(['create', 'rel', 'confirm'])
+
 export const workOrderSearchRowSchema = z.object({
   id: z.string(),
   wkorder: z.string(),
@@ -67,10 +69,33 @@ export const workOrderSearchRowSchema = z.object({
   team: z.string(),
   wkstcolor: z.string(),
   operationshorttext: z.string(),
+  syst: z.string(),
+  pmPhase: woPmPhaseSchema,
 })
 
 export const workOrderSearchResponseSchema = z.object({
   items: z.array(workOrderSearchRowSchema),
+})
+
+export const workOrderFilterDetailTeamSchema = z.object({
+  count: z.number(),
+  workSumMinutes: z.number(),
+})
+
+export const workOrderFilterDetailResponseSchema = z.object({
+  totalOrders: z.number(),
+  completionCount: z.number(),
+  completionPercent: z.number(),
+  byWkzb: z.array(
+    z.object({
+      code: z.string(),
+      label: z.string(),
+      count: z.number(),
+    }),
+  ),
+  teamA: workOrderFilterDetailTeamSchema,
+  teamB: workOrderFilterDetailTeamSchema,
+  teamP: workOrderFilterDetailTeamSchema,
 })
 
 export const workOrderTeamPatchSchema = z.object({
@@ -79,6 +104,45 @@ export const workOrderTeamPatchSchema = z.object({
 
 export const workOrderTeamPatchResponseSchema = z.object({
   ok: z.literal(true),
+})
+
+export const workOrderTeamBulkBodySchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(100),
+  team: z.enum(['', 'A', 'B', 'P']),
+})
+
+export const workOrderTeamBulkResponseSchema = z.object({
+  ok: z.literal(true),
+  team: z.enum(['', 'A', 'B', 'P']),
+  updated: z.array(z.string()),
+  notFound: z.array(z.string()),
+})
+
+export const workOrderWorkflowStepSchema = z.object({
+  step: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  key: z.enum(['team', 'assign', 'worktime', 'confirm']),
+  label: z.string(),
+  done: z.boolean(),
+})
+
+export const workOrderWorkflowSchema = z.object({
+  steps: z.array(workOrderWorkflowStepSchema),
+  suffix: z.string(),
+})
+
+export const workOrderConfirmQcSchema = z.object({
+  status: z.enum(['pending', 'approved', 'rejected']).nullable(),
+  statusLabel: z.string(),
+  reviewedAt: z.string().nullable(),
+  reviewedBy: z.string().nullable(),
+  note: z.string().nullable(),
+  imageCount: z.number().int(),
+  imageBefore: z.number().int(),
+  imageAfter: z.number().int(),
+  closeCount: z.number().int(),
+  worktimeCount: z.number().int(),
+  readyForReview: z.boolean(),
+  approved: z.boolean(),
 })
 
 export const workOrderMovePlanSchema = z.object({
@@ -92,14 +156,23 @@ export const workOrderMovePlanSchema = z.object({
 
 export const workOrderDetailSchema = z.object({
   item: workOrderListItemSchema.extend({
+    pmPhase: woPmPhaseSchema,
     wkorder: z.string(),
     team: z.string(),
     mat: z.string(),
+    mntplan: z.string(),
+    opac: z.string(),
+    work: z.number(),
+    actwork: z.number(),
+    untime: z.string(),
+    resourcesLabel: z.string(),
     plannedDate: z.string(),
     finishDate: z.string(),
     statusColor: z.string(),
     canMovePlan: z.boolean(),
     movePlan: workOrderMovePlanSchema.nullable(),
+    workflow: workOrderWorkflowSchema,
+    confirmQc: workOrderConfirmQcSchema,
     operations: z.array(
       z.object({
         no: z.string(),
@@ -171,6 +244,8 @@ export const workOrderPlanningAssignedSchema = z.object({
   kind: z.enum(['person', 'group']),
   code: z.string(),
   displayName: z.string(),
+  wkctrtype: z.string().optional(),
+  position: z.string().optional(),
   pwcomment: z.string(),
   pwteam: z.string(),
 })
@@ -262,11 +337,19 @@ export const workOrderSuggestionsResponseSchema = z.object({
   items: z.array(workOrderSuggestionSchema),
 })
 
+export const dashboardTrendSeriesSchema = z.array(z.number()).length(7)
+
 export const dashboardSummarySchema = z.object({
   openOrders: z.number(),
   closedThisMonth: z.number(),
   pendingPersonnel: z.number(),
   iw37nLastImport: z.string().nullable(),
+  trends: z.object({
+    openDaily: dashboardTrendSeriesSchema,
+    closedDaily: dashboardTrendSeriesSchema,
+    pendingDaily: dashboardTrendSeriesSchema,
+    importDaily: dashboardTrendSeriesSchema,
+  }),
 })
 
 export const calendarEventItemSchema = z.object({
@@ -276,6 +359,9 @@ export const calendarEventItemSchema = z.object({
   orderId: z.string(),
   color: z.string(),
   description: z.string().optional(),
+  canMovePlan: z.boolean().default(true),
+  syst: z.string().optional(),
+  pmPhase: woPmPhaseSchema.optional(),
 })
 
 export const calendarEventsResponseSchema = z.object({
@@ -410,21 +496,90 @@ export const iw37nBatchesResponseSchema = z.object({
   items: z.array(iw37nBatchItemSchema),
 })
 
+export const integrationJobTypeSchema = z.enum([
+  'iw37n_in_scan',
+  'confirm_in_scan',
+  'inbound_scan',
+])
+
+export const integrationJobItemSchema = z.object({
+  id: z.string(),
+  jobType: integrationJobTypeSchema,
+  status: z.enum(['running', 'success', 'failed', 'partial']),
+  trigger: z.enum(['manual', 'schedule']),
+  fileName: z.string().nullable(),
+  sha256: z.string().nullable(),
+  batchId: z.string().nullable(),
+  summary: z.record(z.unknown()),
+  errorText: z.string().nullable(),
+  startedBy: z.string().nullable(),
+  startedAt: z.string(),
+  finishedAt: z.string().nullable(),
+})
+
+export const integrationPendingFileSchema = z.object({
+  name: z.string(),
+  sizeBytes: z.number(),
+})
+
+export const integrationStatusResponseSchema = z.object({
+  rootDir: z.string(),
+  inboundIw37nDir: z.string(),
+  inboundConfirmDir: z.string(),
+  watchEnabled: z.boolean(),
+  watchIntervalMinutes: z.number(),
+  pendingIw37nFiles: z.array(integrationPendingFileSchema),
+  pendingConfirmFiles: z.array(integrationPendingFileSchema),
+  lastJob: integrationJobItemSchema.nullable(),
+})
+
+export const integrationRunResponseSchema = z.object({
+  job: integrationJobItemSchema,
+})
+
+export const integrationJobsResponseSchema = z.object({
+  items: z.array(integrationJobItemSchema),
+})
+
+const iw37nImportRowSchema = z.object({
+  rowNo: z.number(),
+  action: z.enum(['inserted', 'updated', 'skipped', 'error']),
+  wkorder: z.string(),
+  opac: z.string(),
+  mntplan: z.string(),
+  wktype: z.string(),
+  mat: z.string(),
+  syst: z.string(),
+  message: z.string(),
+})
+
+export const iw37nImportSummarySchema = z.object({
+  fileName: z.string(),
+  sha256: z.string(),
+  totalRows: z.number(),
+  inserted: z.number(),
+  updated: z.number(),
+  skipped: z.number(),
+  errors: z.number(),
+  isDuplicate: z.boolean(),
+  duplicateOfBatchId: z.string().nullable(),
+  wouldStatus: z.enum(['OK', 'PARTIAL', 'ERR']),
+  errorGroups: z.array(z.object({ message: z.string(), count: z.number() })),
+})
+
+export type Iw37nImportSummary = z.infer<typeof iw37nImportSummarySchema>
+
+export const iw37nImportPreviewResponseSchema = z.object({
+  preview: z.literal(true),
+  summary: iw37nImportSummarySchema,
+  rows: z.array(iw37nImportRowSchema),
+})
+
+export type Iw37nImportPreviewResponse = z.infer<typeof iw37nImportPreviewResponseSchema>
+
 export const iw37nImportResponseSchema = z.object({
   batch: iw37nBatchItemSchema,
-  rows: z.array(
-    z.object({
-      rowNo: z.number(),
-      action: z.enum(['inserted', 'updated', 'skipped', 'error']),
-      wkorder: z.string(),
-      opac: z.string(),
-      mntplan: z.string(),
-      wktype: z.string(),
-      mat: z.string(),
-      syst: z.string(),
-      message: z.string(),
-    }),
-  ),
+  rows: z.array(iw37nImportRowSchema),
 })
 
 export const iw37nBatchRowsResponseSchema = z.object({
@@ -510,9 +665,51 @@ export const authUserSchema = z.object({
   imgMember: z.string().nullable().optional(),
   accountType: z.enum(['workcenter', 'member']).optional(),
   memId: z.string().optional(),
+  permissions: z.array(z.string()).optional(),
+  passMustChange: z.boolean().optional(),
+  impersonatedBy: z
+    .object({
+      idwkctr: z.string(),
+      username: z.string(),
+      userst: z.string(),
+    })
+    .optional(),
 })
 
 export type AuthUser = z.infer<typeof authUserSchema>
+
+export const adminMemberItemSchema = z.object({
+  id: z.number().int(),
+  username: z.string(),
+  fullname: z.string().nullable(),
+  status: z.string().nullable(),
+  lastLogin: z.string().nullable(),
+  passMustChange: z.boolean(),
+})
+
+export type AdminMemberItem = z.infer<typeof adminMemberItemSchema>
+
+export const adminMembersListResponseSchema = z.object({
+  items: z.array(adminMemberItemSchema),
+  total: z.number().int(),
+})
+
+export const adminResetPasswordResponseSchema = z.object({
+  ok: z.literal(true),
+  temporaryPassword: z.string(),
+  passMustChange: z.literal(true),
+})
+
+export const adminLockResponseSchema = z.object({
+  ok: z.literal(true),
+  workstatus: z.string().optional(),
+  status: z.string().optional(),
+})
+
+export const adminImpersonateResponseSchema = z.object({
+  token: z.string(),
+  user: authUserSchema,
+})
 
 export const loginResponseSchema = z.object({
   token: z.string(),
@@ -551,6 +748,23 @@ export const logoutResponseSchema = z.object({
   ok: z.literal(true),
 })
 
+export const changePasswordBodySchema = z
+  .object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(1),
+    confirmPassword: z.string().min(1),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: 'ยืนยันรหัสผ่านไม่ตรงกัน',
+    path: ['confirmPassword'],
+  })
+
+export const changePasswordResponseSchema = z.object({
+  ok: z.literal(true),
+  token: z.string(),
+  user: authUserSchema,
+})
+
 export const authSessionResponseSchema = z.object({
   user: authUserSchema,
 })
@@ -567,6 +781,7 @@ export const userProfileSchema = z.object({
   fullnameTh: z.string().optional(),
   fullnameEng: z.string().optional(),
   imgMember: z.string().nullable().optional(),
+  hasImage: z.boolean().optional(),
   birthdayLabel: z.string().optional(),
   workAgeLabel: z.string().optional(),
   worktimeTotalHours: z.number().optional(),
@@ -684,6 +899,31 @@ export const manhourListResponseSchema = z.object({
   items: z.array(manhourItemSchema),
   totalRows: z.number().int(),
 })
+
+export const manhourHrUtilPersonSchema = z.object({
+  idwkctr: z.string(),
+  wkctr: z.string(),
+  displayName: z.string().nullable(),
+  confirmHours: z.number(),
+  manhourHours: z.number(),
+  utilizationPercent: z.number(),
+})
+
+export const manhourHrListResponseSchema = manhourListResponseSchema.extend({
+  range: manhourChartRangeSchema,
+  utilization: z.object({
+    team: z.object({
+      confirmHours: z.number(),
+      manhourHours: z.number(),
+      utilizationPercent: z.number(),
+    }),
+    byPerson: z.array(manhourHrUtilPersonSchema),
+    manhourWorkdayFrom: z.string().nullable(),
+    manhourWorkdayTo: z.string().nullable(),
+  }),
+})
+
+export type ManhourHrListResponse = z.infer<typeof manhourHrListResponseSchema>
 
 export const manhourOkResponseSchema = z.object({
   ok: z.literal(true),
@@ -938,7 +1178,41 @@ export const personnelAdminItemSchema = z.object({
   imgmemberMime: z.string(),
   imgmemberBytes: z.number().int(),
   hasImage: z.boolean(),
+  passMustChange: z.boolean().optional(),
 })
+
+export const adminBulkUserroleBodySchema = z.object({
+  idwkctrs: z.array(z.string().min(1)).min(1).max(500),
+  userrole: personnelRoleSchema,
+})
+
+export const adminBulkUserroleResponseSchema = z.object({
+  ok: z.literal(true),
+  updated: z.number().int(),
+  userrole: personnelRoleSchema,
+})
+
+export const adminPhotoGoLiveItemSchema = z.object({
+  idwkctr: z.string(),
+  wkctr: z.string(),
+  displayName: z.string().nullable(),
+  workstatus: z.string().nullable(),
+  manhourHours: z.number(),
+})
+
+export const adminPhotoGoLiveResponseSchema = z.object({
+  range: z.object({ from: z.string(), to: z.string() }),
+  items: z.array(adminPhotoGoLiveItemSchema),
+})
+
+export const adminDeactivateWithoutPhotoResponseSchema = z.object({
+  ok: z.literal(true),
+  updated: z.number().int(),
+  workstatus: z.string(),
+  skipped: z.array(z.string()),
+})
+
+export type AdminPhotoGoLiveItem = z.infer<typeof adminPhotoGoLiveItemSchema>
 
 export const personnelAdminListResponseSchema = z.object({
   items: z.array(personnelAdminItemSchema),
@@ -1013,6 +1287,35 @@ export const personnelConfirmRowSchema = z.object({
   closedCount: z.number().int(),
   percentClose: z.number().int(),
   hasConfirm: z.boolean(),
+  qcStatus: z.enum(['pending', 'approved', 'rejected']).nullable(),
+})
+
+export const confirmQcSnapshotSchema = z.object({
+  idiw37: z.number().int(),
+  wkorder: z.string(),
+  status: z.enum(['pending', 'approved', 'rejected']).nullable(),
+  statusLabel: z.string(),
+  reviewedAt: z.string().nullable(),
+  reviewedBy: z.string().nullable(),
+  note: z.string().nullable(),
+  imageCount: z.number().int(),
+  imageBefore: z.number().int(),
+  imageAfter: z.number().int(),
+  closeCount: z.number().int(),
+  worktimeCount: z.number().int(),
+  readyForReview: z.boolean(),
+  approved: z.boolean(),
+})
+
+export const confirmQcPendingItemSchema = z.object({
+  idiw37: z.number().int(),
+  wkorder: z.string(),
+  wkctr: z.string().nullable(),
+  syst: z.string().nullable(),
+  systemstatus: z.string().nullable(),
+  imageCount: z.number().int(),
+  closeCount: z.number().int(),
+  submittedAt: z.string().nullable(),
 })
 
 export const personnelConfirmListResponseSchema = z.object({
@@ -1269,6 +1572,12 @@ export const masterDataResponseSchema = z.object({
   ),
 })
 
+export const masterDataMetaResponseSchema = z.object({
+  entity: z.string(),
+  count: z.number().int(),
+  lastUpdatedAt: z.string().nullable(),
+})
+
 export const reportsRangeSchema = z.object({
   from: z.number().int(),
   to: z.number().int(),
@@ -1276,11 +1585,51 @@ export const reportsRangeSchema = z.object({
   toDate: z.string(),
 })
 
+export const weekToWeekRowSchema = z.object({
+  weekLabel: z.string(),
+  prevWeekLabel: z.string(),
+  utilization: z.number(),
+  utilizationPrev: z.number(),
+  utilizationDelta: z.number(),
+  backlogHours: z.number(),
+  backlogHoursPrev: z.number(),
+  backlogDelta: z.number(),
+})
+
+export type WeekToWeekRow = z.infer<typeof weekToWeekRowSchema>
+
 export const kpiResponseSchema = z.object({
   range: reportsRangeSchema,
   utilization: z.array(z.number()),
   backlogHours: z.array(z.number()),
   labels: z.array(z.string()),
+  weekToWeek: z.array(weekToWeekRowSchema),
+})
+
+export const activityLogItemSchema = z.object({
+  id: z.string(),
+  source: z.enum(['audit', 'userlog']),
+  actorId: z.string().nullable(),
+  actorRole: z.string().nullable(),
+  actorDisplayName: z.string().nullable(),
+  productLine: z.string().nullable(),
+  workOrder: z.string().nullable(),
+  action: z.string(),
+  actionLabel: z.string(),
+  resource: z.string().nullable(),
+  resourceId: z.string().nullable(),
+  status: z.enum(['ok', 'denied', 'error']),
+  message: z.string().nullable(),
+  createdAt: z.string(),
+})
+
+export type ActivityLogItem = z.infer<typeof activityLogItemSchema>
+
+export const activityLogListResponseSchema = z.object({
+  items: z.array(activityLogItemSchema),
+  total: z.number().int(),
+  limit: z.number().int(),
+  offset: z.number().int(),
 })
 
 export const summaryWeeklyUtilizationBarSchema = z.object({
@@ -1295,6 +1644,7 @@ export const summaryWeeklyRowSchema = z.object({
   wkctr: z.string(),
   idwkctr: z.string(),
   displayName: z.string().nullable(),
+  hasImage: z.boolean(),
   pmWork: z.number(),
   pmUnit: z.string(),
   reactiveWork: z.number(),
@@ -1302,6 +1652,8 @@ export const summaryWeeklyRowSchema = z.object({
   rcaWork: z.number(),
   rcaUnit: z.string(),
   woCount: z.number().int(),
+  pmHours: z.number(),
+  reactiveHours: z.number(),
   hrHour: z.number(),
   otHour: z.number(),
   percentPm: z.number(),
@@ -1310,11 +1662,502 @@ export const summaryWeeklyRowSchema = z.object({
   percentTotal: z.number(),
 })
 
+export type SummaryWeeklyRow = z.infer<typeof summaryWeeklyRowSchema>
+
+export const reportsImportCoverageSchema = z.object({
+  iw37nCount: z.number().int(),
+  iw37nBscstartFrom: z.string().nullable(),
+  iw37nBscstartTo: z.string().nullable(),
+  manhourCount: z.number().int(),
+  manhourWorkdayFrom: z.string().nullable(),
+  manhourWorkdayTo: z.string().nullable(),
+  workOrdersInRange: z.number().int(),
+  confirmationsInRange: z.number().int(),
+  suggestedSapRange: z
+    .object({
+      from: z.string(),
+      to: z.string(),
+    })
+    .nullable(),
+  rangeOverlapsSap: z.boolean(),
+})
+
+export type ReportsImportCoverage = z.infer<typeof reportsImportCoverageSchema>
+
 export const summaryWeeklyResponseSchema = z.object({
   range: reportsRangeSchema,
   utilizationChart: z.array(summaryWeeklyUtilizationBarSchema),
   rows: z.array(summaryWeeklyRowSchema),
+  importCoverage: reportsImportCoverageSchema,
 })
+
+export const themeModeSchema = z.enum(['light', 'dark', 'system'])
+
+export const navShellModeSchema = z.enum(['sidebar', 'navbar', 'hamburger'])
+
+export type NavShellMode = z.infer<typeof navShellModeSchema>
+
+export const publicSettingsResponseSchema = z.object({
+  appName: z.string(),
+  footerText: z.string(),
+  primaryColor: z.string(),
+  accentColor: z.string(),
+  successColor: z.string(),
+  warningColor: z.string(),
+  dangerColor: z.string(),
+  infoColor: z.string(),
+  themeMode: themeModeSchema,
+  navShellMode: navShellModeSchema,
+  logoMime: z.string().nullable(),
+  hasLogo: z.boolean(),
+  hasFavicon: z.boolean(),
+  hasLoginBackground: z.boolean(),
+  maintenance: z.object({
+    enabled: z.boolean(),
+    message: z.string(),
+  }),
+  featureIndexeddbOffline: z.boolean(),
+  featureDashboardCharts: z.boolean(),
+  fontFamily: z.enum(['system', 'macos', 'sarabun', 'noto-sans-thai', 'inter', 'ibm-plex-sans-thai']),
+  fontSizePreset: z.enum(['compact', 'comfortable', 'large']),
+  fontSizeBasePx: z.number().int().min(12).max(22).nullable(),
+  fontColor: z.string().nullable(),
+  fontHeadingColor: z.string().nullable(),
+  fontMutedColor: z.string().nullable(),
+  logoNavHeightPx: z.number().int(),
+  logoLoginHeightPx: z.number().int(),
+  faviconSizePx: z.number().int(),
+})
+
+export type PublicSettings = z.infer<typeof publicSettingsResponseSchema>
+
+export const adminBrandingResponseSchema = z.object({
+  appName: z.string(),
+  footerText: z.string(),
+  primaryColor: z.string(),
+  accentColor: z.string(),
+  successColor: z.string(),
+  warningColor: z.string(),
+  dangerColor: z.string(),
+  infoColor: z.string(),
+  themeMode: themeModeSchema,
+  logoMime: z.string().nullable(),
+  hasLogo: z.boolean(),
+  hasFavicon: z.boolean(),
+  hasLoginBackground: z.boolean(),
+  fontFamily: z.enum(['system', 'macos', 'sarabun', 'noto-sans-thai', 'inter', 'ibm-plex-sans-thai']),
+  fontSizePreset: z.enum(['compact', 'comfortable', 'large']),
+  fontSizeBasePx: z.number().int().min(12).max(22).nullable(),
+  fontColor: z.string().nullable(),
+  fontHeadingColor: z.string().nullable(),
+  fontMutedColor: z.string().nullable(),
+  logoNavHeightPx: z.number().int(),
+  logoLoginHeightPx: z.number().int(),
+  faviconSizePx: z.number().int(),
+})
+
+export type AdminBranding = z.infer<typeof adminBrandingResponseSchema>
+
+export const patchAdminBrandingBodySchema = z.object({
+  appName: z.string().trim().min(1).max(120).optional(),
+  footerText: z.string().trim().max(500).optional(),
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  accentColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  successColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  warningColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  dangerColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  infoColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  themeMode: themeModeSchema.optional(),
+  fontFamily: z
+    .enum(['system', 'macos', 'sarabun', 'noto-sans-thai', 'inter', 'ibm-plex-sans-thai'])
+    .optional(),
+  fontSizePreset: z.enum(['compact', 'comfortable', 'large']).optional(),
+  fontSizeBasePx: z.number().int().min(12).max(22).nullable().optional(),
+  fontColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullable()
+    .optional(),
+  fontHeadingColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullable()
+    .optional(),
+  fontMutedColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullable()
+    .optional(),
+  logoNavHeightPx: z.number().int().min(24).max(72).optional(),
+  logoLoginHeightPx: z.number().int().min(40).max(128).optional(),
+  faviconSizePx: z.number().int().min(16).max(48).optional(),
+})
+
+export type PatchAdminBrandingBody = z.infer<typeof patchAdminBrandingBodySchema>
+
+export const localeSchema = z.enum(['th-TH', 'en-US'])
+export const yearFormatSchema = z.enum(['BE', 'AD'])
+export const dateFormatSchema = z.enum(['dd/MM/yyyy', 'dd-MM-yyyy', 'yyyy-MM-dd'])
+
+export const settingsResetSectionSchema = z.enum(['locale', 'limits', 'features', 'maintenance'])
+
+export type SettingsResetSection = z.infer<typeof settingsResetSectionSchema>
+
+export const adminSettingsResponseSchema = z.object({
+  locale: localeSchema,
+  timezone: z.string(),
+  yearFormat: yearFormatSchema,
+  dateFormat: dateFormatSchema,
+  uploadMaxMb: z.number().int(),
+  sessionTtlMin: z.number().int(),
+  passwordMinLength: z.number().int(),
+  maxLoginAttempts: z.number().int(),
+  featureIndexeddbOffline: z.boolean(),
+  featureDashboardCharts: z.boolean(),
+  maintenanceEnabled: z.boolean(),
+  maintenanceMessage: z.string(),
+})
+
+export type AdminSettings = z.infer<typeof adminSettingsResponseSchema>
+
+export const patchAdminSettingsBodySchema = z.object({
+  locale: localeSchema.optional(),
+  timezone: z.string().trim().min(1).max(64).optional(),
+  yearFormat: yearFormatSchema.optional(),
+  dateFormat: dateFormatSchema.optional(),
+  uploadMaxMb: z.number().int().min(1).max(500).optional(),
+  sessionTtlMin: z.number().int().min(15).max(1440).optional(),
+  passwordMinLength: z.number().int().min(8).max(128).optional(),
+  maxLoginAttempts: z.number().int().min(3).max(50).optional(),
+  featureIndexeddbOffline: z.boolean().optional(),
+  featureDashboardCharts: z.boolean().optional(),
+  maintenanceEnabled: z.boolean().optional(),
+  maintenanceMessage: z.string().max(2000).optional(),
+})
+
+export type PatchAdminSettingsBody = z.infer<typeof patchAdminSettingsBodySchema>
+
+export const adminSecretSettingSchema = z.object({
+  settingKey: z.string(),
+  category: z.string(),
+  description: z.string().nullable(),
+  hasValue: z.boolean(),
+  maskedValue: z.string(),
+})
+
+export const adminSecretSettingsResponseSchema = z.object({
+  items: z.array(adminSecretSettingSchema),
+})
+
+export const auditStatusSchema = z.enum(['ok', 'denied', 'error'])
+
+export const auditLogItemSchema = z.object({
+  id: z.number(),
+  actorId: z.string().nullable(),
+  actorRole: z.string().nullable(),
+  action: z.string(),
+  resource: z.string().nullable(),
+  resourceId: z.string().nullable(),
+  before: z.unknown().nullable(),
+  after: z.unknown().nullable(),
+  ip: z.string().nullable(),
+  userAgent: z.string().nullable(),
+  status: auditStatusSchema,
+  message: z.string().nullable(),
+  createdAt: z.string(),
+})
+
+export type AuditLogItem = z.infer<typeof auditLogItemSchema>
+
+export const auditListResponseSchema = z.object({
+  items: z.array(auditLogItemSchema),
+  total: z.number().int(),
+  limit: z.number().int(),
+  offset: z.number().int(),
+})
+
+export type AuditListResponse = z.infer<typeof auditListResponseSchema>
+
+export const auditMetaResponseSchema = z.object({
+  actions: z.array(z.string()),
+  actors: z.array(z.object({ actorId: z.string(), count: z.number().int() })),
+  retentionDays: z.number().int(),
+  retentionCutoffDate: z.string(),
+})
+
+export type AuditMetaResponse = z.infer<typeof auditMetaResponseSchema>
+
+export const auditHubResponseSchema = z.object({
+  retentionDays: z.number().int(),
+  retentionCutoffDate: z.string(),
+  range: z.object({ from: z.string(), to: z.string() }),
+  totals: z.object({
+    events: z.number().int(),
+    denied: z.number().int(),
+    imports: z.number().int(),
+    planning: z.number().int(),
+    confirmations: z.number().int(),
+    workOrders: z.number().int(),
+  }),
+  byPrefix: z.array(
+    z.object({
+      prefix: z.string(),
+      label: z.string(),
+      count: z.number().int(),
+    }),
+  ),
+})
+
+export type AuditHubResponse = z.infer<typeof auditHubResponseSchema>
+
+export const auditDeleteResponseSchema = z.object({
+  ok: z.literal(true),
+  deleted: z.number().int(),
+})
+
+export type AuditFilters = {
+  from?: string
+  to?: string
+  actorId?: string
+  actionPrefix?: string[]
+  resource?: string
+  status?: 'ok' | 'denied' | 'error' | 'all'
+  q?: string
+}
+
+export const healthStatusSchema = z.enum(['ok', 'warning', 'error', 'unknown'])
+
+export const adminHealthResponseSchema = z.object({
+  time: z.string(),
+  service: z.string(),
+  version: z.string(),
+  db: z.object({
+    status: healthStatusSchema,
+    latencyMs: z.number().nullable(),
+    pool: z.object({
+      total: z.number().int(),
+      idle: z.number().int(),
+      waiting: z.number().int(),
+    }),
+    message: z.string().nullable().optional(),
+  }),
+  disk: z.object({
+    status: healthStatusSchema,
+    path: z.string(),
+    totalBytes: z.number().nullable(),
+    freeBytes: z.number().nullable(),
+    usedBytes: z.number().nullable(),
+    usedPercent: z.number().nullable(),
+    message: z.string().nullable().optional(),
+  }),
+  process: z.object({
+    status: healthStatusSchema,
+    nodeVersion: z.string(),
+    platform: z.string(),
+    uptimeSec: z.number(),
+    memoryRssMb: z.number(),
+    memoryHeapUsedMb: z.number(),
+  }),
+  migration: z.object({
+    status: healthStatusSchema,
+    migrationsDir: z.string().nullable(),
+    totalFiles: z.number().int(),
+    appliedCount: z.number().int(),
+    pendingCount: z.number().int(),
+    unverifiedCount: z.number().int(),
+    latestAppliedId: z.string().nullable(),
+    latestFile: z.string().nullable(),
+    probes: z.array(
+      z.object({
+        id: z.string(),
+        file: z.string(),
+        label: z.string(),
+        status: z.enum(['applied', 'pending', 'unverified']),
+      }),
+    ),
+  }),
+})
+
+export type AdminHealthResponse = z.infer<typeof adminHealthResponseSchema>
+
+export const healthErrorLogItemSchema = z.object({
+  id: z.number(),
+  actorId: z.string().nullable(),
+  action: z.string(),
+  resource: z.string().nullable(),
+  resourceId: z.string().nullable(),
+  message: z.string().nullable(),
+  createdAt: z.string(),
+})
+
+export const healthErrorLogResponseSchema = z.object({
+  items: z.array(healthErrorLogItemSchema),
+})
+
+export type HealthErrorLogItem = z.infer<typeof healthErrorLogItemSchema>
+
+export const slowApiMetricSchema = z.object({
+  route: z.string(),
+  count: z.number().int(),
+  p50Ms: z.number(),
+  p95Ms: z.number(),
+  maxMs: z.number(),
+})
+
+export const healthSlowApiResponseSchema = z.object({
+  thresholdMs: z.number().int(),
+  items: z.array(slowApiMetricSchema),
+})
+
+export const healthMigrateResultSchema = z.object({
+  applied: z.array(
+    z.object({
+      id: z.string(),
+      file: z.string(),
+      label: z.string(),
+    }),
+  ),
+  pendingRemaining: z.number().int(),
+  stoppedAt: z
+    .object({
+      file: z.string(),
+      message: z.string(),
+    })
+    .nullable(),
+})
+
+export type HealthMigrateResult = z.infer<typeof healthMigrateResultSchema>
+
+export const adminRoleSchema = z.object({
+  roleCode: z.string(),
+  roleName: z.string(),
+  roleColor: z.string(),
+  isSystem: z.boolean(),
+  description: z.string().nullable(),
+  userCount: z.number().int(),
+  permissionCount: z.number().int(),
+})
+
+export type AdminRole = z.infer<typeof adminRoleSchema>
+
+export const adminRolesListResponseSchema = z.object({
+  items: z.array(adminRoleSchema),
+})
+
+export const adminRoleMatrixResponseSchema = z.object({
+  roles: z.array(adminRoleSchema),
+  groups: z.array(
+    z.object({
+      group: z.string(),
+      permissions: z.array(
+        z.object({
+          permCode: z.string(),
+          permGroup: z.string(),
+          permName: z.string(),
+          description: z.string().nullable(),
+          grants: z.record(z.string(), z.boolean()),
+        }),
+      ),
+    }),
+  ),
+})
+
+export type AdminRoleMatrixResponse = z.infer<typeof adminRoleMatrixResponseSchema>
+
+export const createAdminRoleBodySchema = z.object({
+  roleCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z][A-Z0-9_]{0,15}$/),
+  roleName: z.string().trim().min(1).max(120),
+  roleColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .default('#0A84FF'),
+  description: z.string().max(500).nullable().optional(),
+})
+
+export const updateAdminRoleBodySchema = z.object({
+  roleName: z.string().trim().min(1).max(120).optional(),
+  roleColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  description: z.string().max(500).nullable().optional(),
+})
+
+export const simulateRoleResponseSchema = z.object({
+  roleCode: z.string(),
+  permissions: z.array(z.string()),
+})
+
+export const roleOkSchema = z.object({ ok: z.literal(true) })
+
+export type CreateAdminRoleBody = z.infer<typeof createAdminRoleBodySchema>
+export type UpdateAdminRoleBody = z.infer<typeof updateAdminRoleBodySchema>
+
+export const menuKindSchema = z.enum(['heading', 'item'])
+
+export const adminMenuRowSchema = z.object({
+  idmenu: z.number().int(),
+  idmenusub: z.string(),
+  menuon: z.number().int(),
+  menuKind: menuKindSchema,
+  menuright: z.string(),
+  menuicon: z.string().nullable(),
+  menutitle: z.string(),
+  menulink: z.string().nullable(),
+  reactRoute: z.string().nullable(),
+  menuname: z.string().nullable(),
+  menulavel: z.number().int(),
+  endExact: z.boolean(),
+})
+
+export type AdminMenuRow = z.infer<typeof adminMenuRowSchema>
+
+export const adminMenuListResponseSchema = z.object({
+  items: z.array(adminMenuRowSchema),
+})
+
+export const createAdminMenuBodySchema = z.object({
+  menuKind: menuKindSchema,
+  menutitle: z.string().trim().min(1).max(200),
+  menuright: z.string().trim().min(1).max(32),
+  menuicon: z.string().max(64).nullable().optional(),
+  menulink: z.string().max(500).nullable().optional(),
+  reactRoute: z.string().max(200).nullable().optional(),
+  menuname: z.string().max(64).nullable().optional(),
+  idmenusub: z.string().max(16).optional(),
+  menulavel: z.number().int().min(0).max(9).optional(),
+  endExact: z.boolean().optional(),
+  menuon: z.number().int().optional(),
+})
+
+export const updateAdminMenuBodySchema = createAdminMenuBodySchema.partial()
+
+export type CreateAdminMenuBody = z.infer<typeof createAdminMenuBodySchema>
+export type UpdateAdminMenuBody = z.infer<typeof updateAdminMenuBodySchema>
+
+export const menuOkSchema = z.object({ ok: z.literal(true) })
 
 export const usersResponseSchema = z.object({
   items: z.array(
@@ -1328,7 +2171,7 @@ export const usersResponseSchema = z.object({
 })
 
 export const userLogItemSchema = z.object({
-  id: z.number(),
+  id: z.coerce.number(),
   actionTime: z.string(),
   action: z.string(),
   userIp: z.string().nullable(),
@@ -1365,6 +2208,21 @@ export const confirmationByWorkOrderResponseSchema = z.object({
   items: z.array(confirmationCloseItemSchema),
 })
 
+export const personnelCloseItemSchema = z.object({
+  idwrkclose: z.number(),
+  idiw37: z.number(),
+  wkctr: z.string(),
+  displayName: z.string(),
+  cstdate: z.number(),
+  cendate: z.number(),
+  wktimewk: z.number(),
+  wkunit: z.string(),
+})
+
+export const personnelClosesResponseSchema = z.object({
+  items: z.array(personnelCloseItemSchema),
+})
+
 export const confirmationCommentItemSchema = z.object({
   idcom: z.number(),
   idiw37: z.number(),
@@ -1385,6 +2243,8 @@ export const confirmationCommentResponseSchema = z.object({
   item: confirmationCommentItemSchema,
 })
 
+export const confirmationImagePhaseSchema = z.enum(['before', 'after'])
+
 export const confirmationImageItemSchema = z.object({
   idcimg: z.number(),
   idiw37: z.number(),
@@ -1393,6 +2253,8 @@ export const confirmationImageItemSchema = z.object({
   mime: z.string(),
   bytes: z.number(),
   wkctr: z.string(),
+  phase: z.union([confirmationImagePhaseSchema, z.literal('')]),
+  comment: z.string(),
   createdAt: z.string(),
 })
 
@@ -1431,6 +2293,61 @@ export const confirmationImportResponseSchema = z.object({
 export type ConfirmationImportRowResult = z.infer<typeof confirmationImportRowResultSchema>
 export type ConfirmationImportResponse = z.infer<typeof confirmationImportResponseSchema>
 
+export const MASS_CONFIRM_MAX_ITEMS = 44
+
+export const confirmationMassCloseBodySchema = z.object({
+  idiw37n: z.array(z.coerce.number().int().positive()).min(1).max(MASS_CONFIRM_MAX_ITEMS),
+  wkctr: z.string().min(1),
+  startD: z.string().min(1),
+  startT: z.string().min(1),
+  endD: z.string().min(1),
+  endT: z.string().min(1),
+})
+
+export const confirmationMassCloseResponseSchema = z.object({
+  ok: z.literal(true),
+  succeeded: z.array(z.number().int()),
+  failed: z.array(
+    z.object({
+      idiw37: z.number().int(),
+      message: z.string(),
+    }),
+  ),
+  maxItems: z.literal(MASS_CONFIRM_MAX_ITEMS),
+})
+
+export const massConfirmExportItemSchema = z.object({
+  idiw37: z.number().int(),
+  wkorder: z.string(),
+  qcStatus: z.enum(['pending', 'approved', 'rejected']).nullable(),
+  hasConfirm: z.boolean(),
+  exportable: z.boolean(),
+})
+
+export const massConfirmExportSummarySchema = z.object({
+  total: z.number().int(),
+  complete: z.boolean(),
+  hasConfirm: z.number().int(),
+  qcApproved: z.number().int(),
+  qcPending: z.number().int(),
+  qcRejected: z.number().int(),
+  exportable: z.number().int(),
+  items: z.array(massConfirmExportItemSchema),
+})
+
+export type MassConfirmExportSummary = z.infer<typeof massConfirmExportSummarySchema>
+
+export const qcApproveBatchResponseSchema = z.object({
+  approved: z.array(z.number().int()),
+  skipped: z.array(
+    z.object({
+      idiw37: z.number().int(),
+      wkorder: z.string(),
+      reason: z.string(),
+    }),
+  ),
+})
+
 export const confirmationExportRowSchema = z.object({
   no: z.number().int(),
   confirmation: z.string(),
@@ -1457,3 +2374,245 @@ export const confirmationExportResponseSchema = z.object({
 
 export type ConfirmationExportRow = z.infer<typeof confirmationExportRowSchema>
 export type ConfirmationExportResponse = z.infer<typeof confirmationExportResponseSchema>
+
+export const backupTriggerSchema = z.enum(['manual', 'schedule'])
+export const backupStatusSchema = z.enum(['running', 'success', 'failed'])
+
+export const backupHistoryItemSchema = z.object({
+  id: z.number(),
+  trigger: backupTriggerSchema,
+  status: backupStatusSchema,
+  sizeBytes: z.number().nullable(),
+  filePath: z.string().nullable(),
+  sha256: z.string().nullable(),
+  durationMs: z.number().nullable(),
+  startedBy: z.string().nullable(),
+  startedAt: z.string(),
+  finishedAt: z.string().nullable(),
+  errorText: z.string().nullable(),
+})
+
+export type BackupHistoryItem = z.infer<typeof backupHistoryItemSchema>
+
+export const backupListResponseSchema = z.object({
+  items: z.array(backupHistoryItemSchema),
+  total: z.number().int(),
+  limit: z.number().int(),
+  offset: z.number().int(),
+})
+
+export type BackupListResponse = z.infer<typeof backupListResponseSchema>
+
+export const backupScheduleResponseSchema = z.object({
+  scheduleCron: z.string(),
+  retentionDays: z.number().int(),
+  targetDir: z.string(),
+  pgDumpAvailable: z.boolean(),
+  psqlAvailable: z.boolean(),
+  pgDumpBin: z.string(),
+  psqlBin: z.string(),
+  lastSuccess: backupHistoryItemSchema.nullable().optional(),
+})
+
+export type BackupScheduleResponse = z.infer<typeof backupScheduleResponseSchema>
+
+export const patchBackupScheduleBodySchema = z.object({
+  scheduleCron: z.string().trim().min(9).max(64).optional(),
+  retentionDays: z.number().int().min(1).max(365).optional(),
+  targetDir: z.string().trim().min(3).max(500).optional(),
+})
+
+export type PatchBackupScheduleBody = z.infer<typeof patchBackupScheduleBodySchema>
+
+export const startBackupResponseSchema = z.object({
+  item: backupHistoryItemSchema,
+})
+
+export const restoreBackupResponseSchema = z.object({
+  ok: z.literal(true),
+  durationMs: z.number().int(),
+  source: z.enum(['upload', 'history']),
+  backupId: z.number().optional(),
+})
+
+export type RestoreBackupResponse = z.infer<typeof restoreBackupResponseSchema>
+
+export const announcementLevelSchema = z.enum(['info', 'warn', 'error', 'maintenance'])
+
+export const announcementItemSchema = z.object({
+  id: z.number(),
+  level: announcementLevelSchema,
+  title: z.string(),
+  body: z.string().nullable(),
+  startsAt: z.string(),
+  endsAt: z.string().nullable(),
+  dismissable: z.boolean(),
+  active: z.boolean(),
+  createdBy: z.string().nullable(),
+  createdAt: z.string(),
+})
+
+export type AnnouncementItem = z.infer<typeof announcementItemSchema>
+
+export const announcementListResponseSchema = z.object({
+  items: z.array(announcementItemSchema),
+})
+
+export type AnnouncementListResponse = z.infer<typeof announcementListResponseSchema>
+
+export const activeAnnouncementsResponseSchema = z.object({
+  items: z.array(
+    announcementItemSchema.pick({
+      id: true,
+      level: true,
+      title: true,
+      body: true,
+      startsAt: true,
+      endsAt: true,
+      dismissable: true,
+    }),
+  ),
+})
+
+export type ActiveAnnouncement = z.infer<
+  typeof activeAnnouncementsResponseSchema
+>['items'][number]
+
+export const createAnnouncementBodySchema = z.object({
+  level: announcementLevelSchema.optional(),
+  title: z.string().trim().min(1).max(500),
+  body: z.string().max(10000).optional().nullable(),
+  startsAt: z.string().datetime().optional(),
+  endsAt: z.string().datetime().optional().nullable(),
+  dismissable: z.boolean().optional(),
+  active: z.boolean().optional(),
+})
+
+export type CreateAnnouncementBody = z.infer<typeof createAnnouncementBodySchema>
+
+export const patchAnnouncementBodySchema = createAnnouncementBodySchema.partial()
+
+export type PatchAnnouncementBody = z.infer<typeof patchAnnouncementBodySchema>
+
+export const failedLoginDaySchema = z.object({
+  date: z.string(),
+  count: z.number().int(),
+})
+
+export const securityOverviewResponseSchema = z.object({
+  failedLogin: z.object({
+    days: z.number().int(),
+    total: z.number().int(),
+    series: z.array(failedLoginDaySchema),
+  }),
+  denied: z.object({
+    items: z.array(auditLogItemSchema),
+    total: z.number().int(),
+    limit: z.number().int(),
+    offset: z.number().int(),
+  }),
+  rateLimitedIps: z.array(
+    z.object({
+      ip: z.string(),
+      hits: z.number().int(),
+      lastAt: z.string(),
+    }),
+  ),
+  rateLimitHits: z.number().int(),
+  suspiciousIps: z.array(
+    z.object({
+      ip: z.string(),
+      hits: z.number().int(),
+      lastAt: z.string(),
+    }),
+  ),
+  blockedIps: z.object({
+    items: z.array(
+      z.object({
+        id: z.number().int(),
+        ip: z.string(),
+        reason: z.string().nullable(),
+        blockedBy: z.string(),
+        createdAt: z.string(),
+        expiresAt: z.string().nullable(),
+      }),
+    ),
+  }),
+  rateLimitNote: z.string(),
+})
+
+export type SecurityOverviewResponse = z.infer<typeof securityOverviewResponseSchema>
+
+export const blockedIpItemSchema = z.object({
+  id: z.number().int(),
+  ip: z.string(),
+  reason: z.string().nullable(),
+  blockedBy: z.string(),
+  createdAt: z.string(),
+  expiresAt: z.string().nullable(),
+})
+
+export type BlockedIpItem = z.infer<typeof blockedIpItemSchema>
+
+export const createBlockedIpBodySchema = z.object({
+  ip: z.string().trim().min(1),
+  reason: z.string().trim().max(500).optional().nullable(),
+  expiresAt: z.string().datetime().optional().nullable(),
+})
+
+export type CreateBlockedIpBody = z.infer<typeof createBlockedIpBodySchema>
+
+export const adminAboutResponseSchema = z.object({
+  time: z.string(),
+  apiVersion: z.string(),
+  webVersion: z.string(),
+  buildCommit: z.string().nullable(),
+  buildTime: z.string().nullable(),
+  vendor: z.string(),
+  client: z.string(),
+  license: z.object({
+    status: z.string(),
+    expiresAt: z.string().nullable(),
+  }),
+  server: z.object({
+    platform: z.string(),
+    platformLabel: z.string(),
+    nodeVersion: z.string(),
+    uptimeSec: z.number(),
+    disk: adminHealthResponseSchema.shape.disk,
+  }),
+  migration: z.object({
+    status: healthStatusSchema,
+    totalFiles: z.number().int(),
+    appliedCount: z.number().int(),
+    pendingCount: z.number().int(),
+    unverifiedCount: z.number().int(),
+    latestAppliedId: z.string().nullable(),
+    latestFile: z.string().nullable(),
+  }),
+})
+
+export type AdminAboutResponse = z.infer<typeof adminAboutResponseSchema>
+
+export const themeModePrefSchema = z.enum(['light', 'dark', 'system'])
+export const densityPrefSchema = z.enum(['comfortable', 'compact'])
+
+export const userPrefSchema = z.object({
+  userId: z.string(),
+  themeMode: themeModePrefSchema.nullable(),
+  language: z.string().nullable(),
+  density: densityPrefSchema.nullable(),
+  seenTours: z.record(z.string(), z.boolean()),
+  updatedAt: z.string(),
+})
+
+export type UserPref = z.infer<typeof userPrefSchema>
+
+export const patchUserPrefBodySchema = z.object({
+  themeMode: themeModePrefSchema.optional(),
+  language: z.string().trim().max(16).optional().nullable(),
+  density: densityPrefSchema.optional(),
+  seenTours: z.record(z.string(), z.boolean()).optional(),
+})
+
+export type PatchUserPrefBody = z.infer<typeof patchUserPrefBodySchema>

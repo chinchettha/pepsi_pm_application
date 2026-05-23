@@ -2,10 +2,13 @@
  * Personnel routes — Personal Dashboard ของ user ปัจจุบัน + Admin CRUD (`M_personel*.php`)
  * รวมถึง upload ภาพ (แปลงเป็น WebP เก็บใน DB) และ Excel import
  */
+import { getMulterFileSizeLimit } from '../lib/upload-settings.js'
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
 import multer from 'multer'
+import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
 import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
 import { personnelDashboardResponseSchema } from '../schemas/personnel.js'
 import {
   personnelAdminItemSchema,
@@ -56,7 +59,12 @@ export function registerPersonnelRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const perm = createRequirePermission(pool, sessionSecret)
+  const requirePersonnelRead = perm('personnel.read')
+  const requirePersonnelWrite = perm('personnel.write')
+  const requirePersonnelImport = perm('personnel.import')
+  const requirePersonnelConfirmRead = perm('personnel.confirm.read')
+  const requireAuthOnly = createRequireApiAuth(sessionSecret)
 
   // multer สำหรับภาพประจำตัว (ต้นฉบับก่อนแปลงเป็น WebP) — รองรับ jpeg/png/webp/gif/avif/heif
   const uploadImage = multer({
@@ -66,25 +74,12 @@ export function registerPersonnelRoutes(
   // multer สำหรับ Excel/CSV นำเข้า (Personel.xlsx)
   const uploadExcel = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 15 * 1024 * 1024 },
+    limits: { fileSize: getMulterFileSizeLimit() },
   })
-
-  function requireAdmin(req: Request, res: Response): boolean {
-    const user = req.authUser
-    if (!user) {
-      res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
-      return false
-    }
-    if (user.userst !== 'A') {
-      res.status(403).json({ error: 'FORBIDDEN', message: 'Admin only' })
-      return false
-    }
-    return true
-  }
 
   app.get(
     '/api/v1/personnel/me/dashboard',
-    requireAuth,
+    ...requirePersonnelRead,
     async (req: Request, res: Response) => {
       const user = req.authUser
       if (!user) {
@@ -109,9 +104,8 @@ export function registerPersonnelRoutes(
 
   app.get(
     '/api/v1/personnel/admin',
-    requireAuth,
+    ...requirePersonnelWrite,
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       const q = typeof req.query.q === 'string' ? req.query.q : undefined
       const limit = req.query.limit ? Number(req.query.limit) : undefined
       const offset = req.query.offset ? Number(req.query.offset) : undefined
@@ -135,9 +129,8 @@ export function registerPersonnelRoutes(
   // ลำดับสำคัญ: ต้องวางก่อน `/personnel/admin/:idwkctr` เพื่อกัน Express match `:idwkctr=workstatus-options`
   app.get(
     '/api/v1/personnel/admin/workstatus-options',
-    requireAuth,
+    ...requirePersonnelWrite,
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       try {
         const items = await listPersonnelWorkstatuses(pool)
         res.json(personnelWorkstatusOptionsResponseSchema.parse({ items }))
@@ -155,14 +148,20 @@ export function registerPersonnelRoutes(
 
   app.get(
     '/api/v1/personnel/admin/confirm',
-    requireAuth,
+    ...requirePersonnelConfirmRead,
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       const q = typeof req.query.q === 'string' ? req.query.q : undefined
       const status =
         typeof req.query.status === 'string' &&
-        ['all', 'not_started', 'in_progress', 'done'].includes(req.query.status)
-          ? (req.query.status as 'all' | 'not_started' | 'in_progress' | 'done')
+        ['all', 'not_started', 'in_progress', 'done', 'qc_pending'].includes(
+          req.query.status,
+        )
+          ? (req.query.status as
+              | 'all'
+              | 'not_started'
+              | 'in_progress'
+              | 'done'
+              | 'qc_pending')
           : 'all'
       const systRaw = req.query.syst
       const syst =
@@ -194,9 +193,8 @@ export function registerPersonnelRoutes(
 
   app.get(
     '/api/v1/personnel/admin/:idwkctr',
-    requireAuth,
+    ...requirePersonnelWrite,
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       try {
         const item = await getPersonnelAdminOne(pool, req.params.idwkctr)
         if (!item) {
@@ -216,9 +214,8 @@ export function registerPersonnelRoutes(
 
   app.post(
     '/api/v1/personnel/admin',
-    requireAuth,
+    ...requirePersonnelWrite,
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       const parsed = personnelAdminUpsertBodySchema.safeParse(req.body)
       if (!parsed.success) {
         res
@@ -228,6 +225,12 @@ export function registerPersonnelRoutes(
       }
       try {
         const out = await upsertPersonnelAdmin(pool, parsed.data)
+        voidAudit(pool, req, {
+          action: out.mode === 'inserted' ? 'admin.users.create' : 'admin.users.update',
+          resource: 'tbworkcenter',
+          resourceId: out.idwkctr,
+          after: sanitizeAuditPayload(parsed.data),
+        })
         res
           .status(out.mode === 'inserted' ? 201 : 200)
           .json(personnelAdminOkSchema.parse({ ok: true, idwkctr: out.idwkctr }))
@@ -243,9 +246,8 @@ export function registerPersonnelRoutes(
 
   app.put(
     '/api/v1/personnel/admin/:idwkctr',
-    requireAuth,
+    ...requirePersonnelWrite,
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       const body = { ...req.body, idwkctr: req.params.idwkctr }
       const parsed = personnelAdminUpsertBodySchema.safeParse(body)
       if (!parsed.success) {
@@ -256,6 +258,12 @@ export function registerPersonnelRoutes(
       }
       try {
         const out = await upsertPersonnelAdmin(pool, parsed.data)
+        voidAudit(pool, req, {
+          action: 'admin.users.update',
+          resource: 'tbworkcenter',
+          resourceId: out.idwkctr,
+          after: sanitizeAuditPayload(parsed.data),
+        })
         res.json(personnelAdminOkSchema.parse({ ok: true, idwkctr: out.idwkctr }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -269,9 +277,8 @@ export function registerPersonnelRoutes(
 
   app.delete(
     '/api/v1/personnel/admin/:idwkctr',
-    requireAuth,
+    ...requirePersonnelWrite,
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       const ok = await deletePersonnelAdmin(pool, req.params.idwkctr).catch(
         (err) => {
           if (isSchemaMissing(err)) return null
@@ -286,6 +293,11 @@ export function registerPersonnelRoutes(
         res.status(404).json({ error: 'NOT_FOUND' })
         return
       }
+      voidAudit(pool, req, {
+        action: 'admin.users.delete',
+        resource: 'tbworkcenter',
+        resourceId: req.params.idwkctr,
+      })
       res.json(personnelAdminOkSchema.parse({ ok: true, idwkctr: req.params.idwkctr }))
     },
   )
@@ -294,10 +306,9 @@ export function registerPersonnelRoutes(
 
   app.post(
     '/api/v1/personnel/admin/import',
-    requireAuth,
+    ...requirePersonnelImport,
     uploadExcel.single('file'),
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       const file = req.file
       if (!file) {
         res.status(400).json({ error: 'VALIDATION_ERROR', message: 'file is required' })
@@ -317,6 +328,11 @@ export function registerPersonnelRoutes(
           fileName: file.originalname || 'Personel.xlsx',
           buffer: file.buffer,
         })
+        voidAudit(pool, req, {
+          action: 'admin.users.import',
+          resource: 'tbworkcenter',
+          after: { fileName: file.originalname, totalRows: result.totalRows },
+        })
         res.json(personnelImportResponseSchema.parse(result))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -332,10 +348,9 @@ export function registerPersonnelRoutes(
 
   app.post(
     '/api/v1/personnel/admin/:idwkctr/image',
-    requireAuth,
+    ...requirePersonnelWrite,
     uploadImage.single('file'),
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       const file = req.file
       if (!file) {
         res.status(400).json({ error: 'VALIDATION_ERROR', message: 'file is required' })
@@ -354,6 +369,13 @@ export function registerPersonnelRoutes(
           res.status(404).json({ error: 'NOT_FOUND', message: 'idwkctr not found' })
           return
         }
+        voidAudit(pool, req, {
+          action: 'admin.users.update',
+          resource: 'tbworkcenter',
+          resourceId: req.params.idwkctr,
+          message: 'image_upload',
+          after: { imgmember: out.fileName, bytes: out.bytes },
+        })
         res.json(
           personnelImageUploadResponseSchema.parse({
             idwkctr: req.params.idwkctr,
@@ -377,9 +399,8 @@ export function registerPersonnelRoutes(
 
   app.delete(
     '/api/v1/personnel/admin/:idwkctr/image',
-    requireAuth,
+    ...requirePersonnelWrite,
     async (req: Request, res: Response) => {
-      if (!requireAdmin(req, res)) return
       const ok = await clearPersonnelImage(pool, req.params.idwkctr).catch(
         (err) => {
           if (isSchemaMissing(err)) return null
@@ -394,6 +415,12 @@ export function registerPersonnelRoutes(
         res.status(404).json({ error: 'NOT_FOUND' })
         return
       }
+      voidAudit(pool, req, {
+        action: 'admin.users.update',
+        resource: 'tbworkcenter',
+        resourceId: req.params.idwkctr,
+        message: 'image_delete',
+      })
       res.json(personnelAdminOkSchema.parse({ ok: true, idwkctr: req.params.idwkctr }))
     },
   )
@@ -401,7 +428,7 @@ export function registerPersonnelRoutes(
   // เปิดให้ทุก user ที่ login แล้วโหลดภาพได้ (เห็นกันได้ในระบบ) — เทียบ <img src="imgMember/..."> ของ PHP
   app.get(
     '/api/v1/personnel/:idwkctr/image',
-    requireAuth,
+    requireAuthOnly,
     async (req: Request, res: Response) => {
       try {
         const out = await getPersonnelImage(pool, req.params.idwkctr)

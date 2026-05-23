@@ -1,7 +1,12 @@
+import { getMulterFileSizeLimit } from '../lib/upload-settings.js'
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
 import multer from 'multer'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
+import {
+  createRequireAnyPermission,
+  createRequirePermission,
+} from '../middleware/require-permission.js'
 import {
   iw37nBatchRowsQuerySchema,
   iw37nBatchRowsResponseSchema,
@@ -9,6 +14,7 @@ import {
   iw37nItemResponseSchema,
   iw37nItemsQuerySchema,
   iw37nItemsResponseSchema,
+  iw37nImportPreviewResponseSchema,
   iw37nImportResponseSchema,
   iw37nOkResponseSchema,
   iw37nUpdateItemBodySchema,
@@ -17,6 +23,7 @@ import {
   deleteIw37nItem,
   getIw37nItem,
   importIw37nFile,
+  previewIw37nFile,
   listIw37nBatchRows,
   listIw37nBatches,
   listIw37nItems,
@@ -25,7 +32,7 @@ import {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 },
+  limits: { fileSize: getMulterFileSizeLimit() },
 })
 
 function isSchemaMissing(err: unknown): boolean {
@@ -42,7 +49,12 @@ export function registerIw37nRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const requireRead = createRequirePermission(pool, sessionSecret)('iw37n.read')
+  const requireWrite = createRequirePermission(pool, sessionSecret)('iw37n.write')
+  const requireImport = createRequireAnyPermission(pool, sessionSecret)([
+    'iw37n.import',
+    'iw37n.write',
+  ])
 
   function escapeCsvCell(value: unknown): string {
     const raw = value == null ? '' : String(value)
@@ -53,7 +65,7 @@ export function registerIw37nRoutes(
 
   app.get(
     '/api/v1/iw37n/batches',
-    requireAuth,
+    ...requireRead,
     async (_req: Request, res: Response) => {
       try {
         const items = await listIw37nBatches(pool)
@@ -74,7 +86,7 @@ export function registerIw37nRoutes(
 
   app.get(
     '/api/v1/iw37n/batches/:id/export.csv',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const batchId = String(req.params.id ?? '')
       const idNum = Number(batchId)
@@ -157,7 +169,7 @@ export function registerIw37nRoutes(
 
   app.get(
     '/api/v1/iw37n/batches/:id/rows',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const batchId = String(req.params.id ?? '')
       const parsed = iw37nBatchRowsQuerySchema.safeParse(req.query)
@@ -184,7 +196,7 @@ export function registerIw37nRoutes(
 
   app.get(
     '/api/v1/iw37n/items',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const parsed = iw37nItemsQuerySchema.safeParse(req.query)
       if (!parsed.success) {
@@ -209,7 +221,7 @@ export function registerIw37nRoutes(
 
   app.get(
     '/api/v1/iw37n/items/:id',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const id = String(req.params.id ?? '')
       try {
@@ -234,7 +246,7 @@ export function registerIw37nRoutes(
 
   app.put(
     '/api/v1/iw37n/items/:id',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const id = String(req.params.id ?? '')
       const parsed = iw37nUpdateItemBodySchema.safeParse(req.body)
@@ -256,6 +268,12 @@ export function registerIw37nRoutes(
           res.status(409).json({ error: 'DUPLICATE_KEY', message: out.message })
           return
         }
+        voidAudit(pool, req, {
+          action: 'iw37n.write',
+          resource: 'tbiw37n',
+          resourceId: id,
+          after: sanitizeAuditPayload(parsed.data),
+        })
         res.json(iw37nItemResponseSchema.parse({ item: out.item }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -272,7 +290,7 @@ export function registerIw37nRoutes(
 
   app.delete(
     '/api/v1/iw37n/items/:id',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const id = String(req.params.id ?? '')
       const idNum = Number(id)
@@ -286,6 +304,11 @@ export function registerIw37nRoutes(
           res.status(404).json({ error: 'NOT_FOUND', message: 'IW37N item not found' })
           return
         }
+        voidAudit(pool, req, {
+          action: 'iw37n.delete',
+          resource: 'tbiw37n',
+          resourceId: id,
+        })
         res.json(iw37nOkResponseSchema.parse({ ok: true }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -300,16 +323,13 @@ export function registerIw37nRoutes(
     },
   )
 
-  app.post(
-    '/api/v1/iw37n/import',
-    requireAuth,
-    upload.single('file'),
-    async (req: Request, res: Response) => {
+  const handleImportUpload = (req: Request, res: Response, mode: 'preview' | 'commit') => {
+    void (async () => {
       const file = req.file
       if (!file?.buffer?.length) {
         res.status(400).json({
           error: 'VALIDATION_ERROR',
-          message: 'Multipart field "file" (.xls, .xlsx, .csv) is required',
+          message: 'Multipart field "file" (.xls, .xlsx, .xlsm, .csv) is required',
         })
         return
       }
@@ -319,17 +339,28 @@ export function registerIw37nRoutes(
       if (
         !lower.endsWith('.xls') &&
         !lower.endsWith('.xlsx') &&
+        !lower.endsWith('.xlsm') &&
         !lower.endsWith('.csv')
       ) {
         res.status(400).json({
           error: 'VALIDATION_ERROR',
-          message: 'Only .xls, .xlsx, or .csv files are allowed',
+          message: 'Only .xls, .xlsx, .xlsm, or .csv files are allowed',
         })
         return
       }
 
       try {
+        if (mode === 'preview') {
+          const result = await previewIw37nFile(pool, fileName, file.buffer)
+          res.json(iw37nImportPreviewResponseSchema.parse({ preview: true, ...result }))
+          return
+        }
         const result = await importIw37nFile(pool, fileName, file.buffer)
+        voidAudit(pool, req, {
+          action: 'iw37n.import',
+          resource: 'tbiw37n',
+          after: { fileName, ...result },
+        })
         res.json(iw37nImportResponseSchema.parse(result))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -343,6 +374,20 @@ export function registerIw37nRoutes(
         const message = err instanceof Error ? err.message : 'Import failed'
         res.status(400).json({ error: 'IMPORT_FAILED', message })
       }
-    },
+    })()
+  }
+
+  app.post(
+    '/api/v1/iw37n/import/preview',
+    ...requireImport,
+    upload.single('file'),
+    (req, res) => handleImportUpload(req, res, 'preview'),
+  )
+
+  app.post(
+    '/api/v1/iw37n/import',
+    ...requireImport,
+    upload.single('file'),
+    (req, res) => handleImportUpload(req, res, 'commit'),
   )
 }

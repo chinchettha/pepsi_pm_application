@@ -1,13 +1,15 @@
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
 import { z } from 'zod'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
 import {
   calendarEventsResponseSchema,
+  calendarFilterDetailResponseSchema,
   calendarFilterOptionsResponseSchema,
   calendarSearchBodySchema,
 } from '../schemas/calendar.js'
 import {
+  getCalendarFilterDetail,
   listCalendarEvents,
   listCalendarEventsFiltered,
   listCalendarFilterOptions,
@@ -37,11 +39,11 @@ export function registerCalendarRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const requireRead = createRequirePermission(pool, sessionSecret)('calendar.read')
 
   app.get(
     '/api/v1/calendar/filter-options',
-    requireAuth,
+    ...requireRead,
     async (_req: Request, res: Response) => {
       try {
         const data = await listCalendarFilterOptions(pool)
@@ -62,7 +64,7 @@ export function registerCalendarRoutes(
 
   app.get(
     '/api/v1/calendar/events',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const parsed = querySchema.safeParse(req.query)
       if (!parsed.success) {
@@ -92,8 +94,38 @@ export function registerCalendarRoutes(
   )
 
   app.post(
+    '/api/v1/calendar/filter-detail',
+    ...requireRead,
+    async (req: Request, res: Response) => {
+      const parsed = calendarSearchBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Invalid calendar filter detail body',
+          issues: parsed.error.issues,
+        })
+        return
+      }
+      try {
+        const detail = await getCalendarFilterDetail(pool, parsed.data)
+        res.json(calendarFilterDetailResponseSchema.parse(detail))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message:
+              'Run migrations 004_tbiw37n_calendar.sql (and dependencies for filter options if used)',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.post(
     '/api/v1/calendar/events',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const parsed = calendarSearchBodySchema.safeParse(req.body)
       if (!parsed.success) {

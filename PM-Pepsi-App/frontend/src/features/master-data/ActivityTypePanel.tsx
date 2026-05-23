@@ -9,7 +9,11 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/skeleton'
+import {
+  MasterDataPanelEmpty,
+  MasterDataPanelError,
+  MasterDataPanelSkeleton,
+} from '@/features/master-data/master-data-panel-ui'
 import {
   Table,
   TableBody,
@@ -28,7 +32,7 @@ import {
   parseActivityTypeFile,
   updateActivityType,
 } from '@/lib/master-data-api'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { useState } from 'react'
 
@@ -43,6 +47,7 @@ export function ActivityTypePanel() {
   const q = useQuery({
     queryKey: ['master-data', 'activitytype'],
     queryFn: () => fetchMasterData('activitytype'),
+    placeholderData: keepPreviousData,
   })
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -180,8 +185,8 @@ export function ActivityTypePanel() {
     setDialogOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is ActivityTypeItem => 'mat' in r && typeof r.mat === 'string',
@@ -192,19 +197,19 @@ export function ActivityTypePanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          Create
+          เพิ่ม
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
-          Import file
+          นำเข้าไฟล์
         </Button>
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-zinc-600">ไม่มีข้อมูล — รัน migration 002 หรือเพิ่มรายการใหม่</p>
+        <MasterDataPanelEmpty description="รัน migration 002 หรือเพิ่มรายการใหม่" />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200">
-          <Table>
+        <div className="app-table-shell overflow-x-auto">
+          <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
                 <TableHead>Mat</TableHead>
@@ -216,7 +221,7 @@ export function ActivityTypePanel() {
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.mat}>
-                  <TableCell className="font-mono text-sm">{row.mat}</TableCell>
+                  <TableCell className="font-mono text-body-sm">{row.mat}</TableCell>
                   <TableCell>{row.matdescrip}</TableCell>
                   <TableCell>{row.matcheck}</TableCell>
                   <TableCell>
@@ -261,10 +266,10 @@ export function ActivityTypePanel() {
           <DialogHeader>
             <DialogTitle>
               {formMode === 'create'
-                ? 'Create Activity type'
+                ? 'เพิ่ม Activity type'
                 : formMode === 'edit'
-                  ? 'Edit Activity type'
-                  : 'Delete Activity type'}
+                  ? 'แก้ไข Activity type'
+                  : 'ลบ Activity type'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -306,19 +311,19 @@ export function ActivityTypePanel() {
             </div>
           </div>
           {formMode === 'delete' ? (
-            <p className="text-sm text-red-600">
+            <p className="text-body-sm text-red-600">
               This action cannot be undone. Delete {form.mat}?
             </p>
           ) : null}
           {formErrorSummary && formMode !== 'delete' ? (
-            <p className="text-sm text-red-600">{formErrorSummary}</p>
+            <p className="text-body-sm text-red-600">{formErrorSummary}</p>
           ) : null}
           {formMut.isError ? (
-            <p className="text-sm text-red-600">{(formMut.error as Error).message}</p>
+            <p className="text-body-sm text-red-600">{(formMut.error as Error).message}</p>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeFormDialog}>
-              Cancel
+              ยกเลิก
             </Button>
             <Button
               type="button"
@@ -327,10 +332,10 @@ export function ActivityTypePanel() {
               onClick={() => formMut.mutate()}
             >
               {formMode === 'create'
-                ? 'Create'
+                ? 'เพิ่ม'
                 : formMode === 'edit'
-                  ? 'Update'
-                  : 'Delete'}
+                  ? 'บันทึก'
+                  : 'ลบ'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -345,9 +350,9 @@ export function ActivityTypePanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Activity type (CSV/Excel)</DialogTitle>
+            <DialogTitle>นำเข้า Activity type (CSV/Excel)</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             Upload file export: mat, description, check. For Excel files, the first 2 rows are skipped (PHP parity).
             Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
@@ -361,7 +366,7 @@ export function ActivityTypePanel() {
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
               />
             </div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-app-muted">
               Or paste CSV: mat,description,check
             </div>
           </div>
@@ -372,24 +377,24 @@ export function ActivityTypePanel() {
             placeholder={'PM01,Preventive Maintenance,Y\nCM01,Corrective Maintenance,Y'}
           />
           {importMut.isSuccess ? (
-            <p className="text-sm text-emerald-700">
+            <p className="text-body-sm text-emerald-700">
               เพิ่ม {importMut.data.inserted} · อัปเดต {importMut.data.updated} · ข้าม{' '}
               {importMut.data.skipped}
             </p>
           ) : null}
           {importMut.isError ? (
-            <p className="text-sm text-red-600">{(importMut.error as Error).message}</p>
+            <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImportDialog}>
-              Close
+              ปิด
             </Button>
             <Button
               type="button"
               disabled={importMut.isPending}
               onClick={() => importMut.mutate()}
             >
-              Import
+              นำเข้า
             </Button>
           </DialogFooter>
         </DialogContent>

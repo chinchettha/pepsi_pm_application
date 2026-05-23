@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { auditMasterDataMutations } from '../middleware/audit-master-data.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
 import {
   activityTypeBodySchema,
   activityTypeImportBodySchema,
@@ -73,6 +74,7 @@ import {
   lineSchdulImportResultSchema,
   isSupportedMasterEntity,
   masterDataResponseSchema,
+  masterDataMetaResponseSchema,
 } from '../schemas/master-data.js'
 import {
   createActivityType,
@@ -152,6 +154,7 @@ import {
   updateLineSchdul,
   updateDepartment,
   updateActivityType,
+  getMasterDataMeta,
 } from '../services/master-data.js'
 
 export function registerMasterDataRoutes(
@@ -159,9 +162,34 @@ export function registerMasterDataRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const perm = createRequirePermission(pool, sessionSecret)
+  const requireRead = perm('master-data.read')
+  const requireWrite = perm('master-data.write')
+  const requireDelete = perm('master-data.delete')
+  const requireImport = perm('master-data.import')
 
-  app.get('/api/v1/master-data/:entity', requireAuth, async (req: Request, res: Response) => {
+  app.use('/api/v1/master-data', auditMasterDataMutations(pool))
+
+  app.get(
+    '/api/v1/master-data/:entity/meta',
+    ...requireRead,
+    async (req: Request, res: Response) => {
+      const entity = String(req.params.entity ?? '').toLowerCase()
+
+      if (!isSupportedMasterEntity(entity)) {
+        res.status(501).json({
+          error: 'NOT_IMPLEMENTED',
+          message: `Master entity "${entity}" ยังไม่มีตารางใน PostgreSQL — รองรับ: activitytype, department, equipment, functional, reason, workstatus, worktype, zb, lineproduct, zone, machine, material, level, position, group, tasklist, lineschdul`,
+        })
+        return
+      }
+
+      const meta = await getMasterDataMeta(pool, entity)
+      res.json(masterDataMetaResponseSchema.parse(meta))
+    },
+  )
+
+  app.get('/api/v1/master-data/:entity', ...requireRead, async (req: Request, res: Response) => {
     const entity = String(req.params.entity ?? '').toLowerCase()
 
     if (!isSupportedMasterEntity(entity)) {
@@ -213,7 +241,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/activitytype',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = activityTypeBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -236,7 +264,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/activitytype/:mat',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const mat = String(req.params.mat ?? '')
       const parsed = activityTypePatchSchema.safeParse(req.body)
@@ -255,7 +283,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/activitytype/:mat',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const mat = String(req.params.mat ?? '')
       const ok = await deleteActivityType(pool, mat)
@@ -269,7 +297,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/activitytype/import',
-    requireAuth,
+    ...requireImport,
     async (req: Request, res: Response) => {
       const parsed = activityTypeImportBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -283,7 +311,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/department',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = departmentBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -306,7 +334,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/department/:iddepartment',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const iddepartment = String(req.params.iddepartment ?? '')
       const parsed = departmentPatchSchema.safeParse(req.body)
@@ -325,7 +353,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/department/:iddepartment',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const iddepartment = String(req.params.iddepartment ?? '')
       const ok = await deleteDepartment(pool, iddepartment)
@@ -339,7 +367,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/equipment',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = equipmentBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -362,7 +390,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/equipment/:equipment',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const equipment = String(req.params.equipment ?? '')
       const parsed = equipmentPatchSchema.safeParse(req.body)
@@ -381,7 +409,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/equipment/:equipment',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const equipment = String(req.params.equipment ?? '')
       const ok = await deleteEquipment(pool, equipment)
@@ -395,7 +423,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/equipment/import',
-    requireAuth,
+    ...requireImport,
     async (req: Request, res: Response) => {
       const parsed = equipmentImportBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -409,7 +437,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/functional',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = functionalBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -432,7 +460,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/functional/:functionalloc',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const functionalloc = String(req.params.functionalloc ?? '')
       const parsed = functionalPatchSchema.safeParse(req.body)
@@ -451,7 +479,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/functional/:functionalloc',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const functionalloc = String(req.params.functionalloc ?? '')
       const ok = await deleteFunctional(pool, functionalloc)
@@ -465,7 +493,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/functional/import',
-    requireAuth,
+    ...requireImport,
     async (req: Request, res: Response) => {
       const parsed = functionalImportBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -479,7 +507,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/reason',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = reasonBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -502,7 +530,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/reason/:reasoncode',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const reasoncode = String(req.params.reasoncode ?? '')
       const parsed = reasonPatchSchema.safeParse(req.body)
@@ -521,7 +549,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/reason/:reasoncode',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const reasoncode = String(req.params.reasoncode ?? '')
       const ok = await deleteReason(pool, reasoncode)
@@ -535,7 +563,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/workstatus',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = workStatusBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -558,7 +586,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/workstatus/:syst',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const syst = String(req.params.syst ?? '')
       const parsed = workStatusPatchSchema.safeParse(req.body)
@@ -577,7 +605,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/workstatus/:syst',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const syst = String(req.params.syst ?? '')
       const ok = await deleteWorkStatus(pool, syst)
@@ -591,7 +619,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/worktype',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = workTypeBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -614,7 +642,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/worktype/:idwkctrtype',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const idwkctrtype = String(req.params.idwkctrtype ?? '')
       const parsed = workTypePatchSchema.safeParse(req.body)
@@ -633,7 +661,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/worktype/:idwkctrtype',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const idwkctrtype = String(req.params.idwkctrtype ?? '')
       const ok = await deleteWorkType(pool, idwkctrtype)
@@ -647,7 +675,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/zb',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = zbBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -670,7 +698,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/zb/:wkzb',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const wkzb = String(req.params.wkzb ?? '')
       const parsed = zbPatchSchema.safeParse(req.body)
@@ -689,7 +717,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/zb/:wkzb',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const wkzb = String(req.params.wkzb ?? '')
       const ok = await deleteZb(pool, wkzb)
@@ -703,7 +731,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/lineproduct',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = lineProductBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -726,7 +754,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/lineproduct/:productline',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const productline = String(req.params.productline ?? '')
       const parsed = lineProductPatchSchema.safeParse(req.body)
@@ -745,7 +773,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/lineproduct/:productline',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const productline = String(req.params.productline ?? '')
       const ok = await deleteLineProduct(pool, productline)
@@ -759,7 +787,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/lineproduct/import',
-    requireAuth,
+    ...requireImport,
     async (req: Request, res: Response) => {
       const parsed = lineProductImportBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -773,7 +801,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/zone',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = zoneBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -796,7 +824,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/zone/:idzone',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const idzone = String(req.params.idzone ?? '')
       const parsed = zonePatchSchema.safeParse(req.body)
@@ -815,7 +843,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/zone/:idzone',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const idzone = String(req.params.idzone ?? '')
       const ok = await deleteZone(pool, idzone)
@@ -829,7 +857,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/zone/import',
-    requireAuth,
+    ...requireImport,
     async (req: Request, res: Response) => {
       const parsed = zoneImportBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -843,7 +871,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/machine',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = machineBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -866,7 +894,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/machine/:machine',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const machine = String(req.params.machine ?? '')
       const parsed = machinePatchSchema.safeParse(req.body)
@@ -885,7 +913,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/machine/:machine',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const machine = String(req.params.machine ?? '')
       const ok = await deleteMachine(pool, machine)
@@ -899,7 +927,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/machine/import',
-    requireAuth,
+    ...requireImport,
     async (req: Request, res: Response) => {
       const parsed = machineImportBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -913,7 +941,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/material',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = materialBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -927,7 +955,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/material/:idmaterial',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const idmaterial = Number(req.params.idmaterial)
       if (!Number.isFinite(idmaterial)) {
@@ -950,7 +978,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/material/:idmaterial',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const idmaterial = Number(req.params.idmaterial)
       if (!Number.isFinite(idmaterial)) {
@@ -968,7 +996,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/material/import',
-    requireAuth,
+    ...requireImport,
     async (req: Request, res: Response) => {
       const parsed = materialImportBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -982,7 +1010,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/level',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = levelBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -1005,7 +1033,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/level/:idwklevel',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const idwklevel = String(req.params.idwklevel ?? '')
       const parsed = levelPatchSchema.safeParse(req.body)
@@ -1024,7 +1052,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/level/:idwklevel',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const idwklevel = String(req.params.idwklevel ?? '')
       const ok = await deleteLevel(pool, idwklevel)
@@ -1038,7 +1066,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/position',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = positionBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -1061,7 +1089,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/position/:idposition',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const idposition = String(req.params.idposition ?? '')
       const parsed = positionPatchSchema.safeParse(req.body)
@@ -1080,7 +1108,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/position/:idposition',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const idposition = String(req.params.idposition ?? '')
       const ok = await deletePosition(pool, idposition)
@@ -1094,7 +1122,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/group',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = groupBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -1117,7 +1145,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/group/:idwkctrgroup',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const idwkctrgroup = Number(req.params.idwkctrgroup)
       if (!Number.isFinite(idwkctrgroup)) {
@@ -1140,7 +1168,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/group/:idwkctrgroup',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const idwkctrgroup = Number(req.params.idwkctrgroup)
       if (!Number.isFinite(idwkctrgroup)) {
@@ -1158,7 +1186,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/tasklist',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = tasklistBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -1181,7 +1209,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/tasklist/:idtasklist',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const idtasklist = Number(req.params.idtasklist)
       if (!Number.isFinite(idtasklist)) {
@@ -1204,7 +1232,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/tasklist/:idtasklist',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const idtasklist = Number(req.params.idtasklist)
       if (!Number.isFinite(idtasklist)) {
@@ -1222,7 +1250,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/tasklist/import',
-    requireAuth,
+    ...requireImport,
     async (req: Request, res: Response) => {
       const parsed = tasklistImportBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -1236,7 +1264,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/lineschdul',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const parsed = lineSchdulBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -1259,7 +1287,7 @@ export function registerMasterDataRoutes(
 
   app.put(
     '/api/v1/master-data/lineschdul/:idline',
-    requireAuth,
+    ...requireWrite,
     async (req: Request, res: Response) => {
       const idline = Number(req.params.idline)
       if (!Number.isFinite(idline)) {
@@ -1291,7 +1319,7 @@ export function registerMasterDataRoutes(
 
   app.delete(
     '/api/v1/master-data/lineschdul/:idline',
-    requireAuth,
+    ...requireDelete,
     async (req: Request, res: Response) => {
       const idline = Number(req.params.idline)
       if (!Number.isFinite(idline)) {
@@ -1309,7 +1337,7 @@ export function registerMasterDataRoutes(
 
   app.post(
     '/api/v1/master-data/lineschdul/import',
-    requireAuth,
+    ...requireImport,
     async (req: Request, res: Response) => {
       const parsed = lineSchdulImportBodySchema.safeParse(req.body)
       if (!parsed.success) {

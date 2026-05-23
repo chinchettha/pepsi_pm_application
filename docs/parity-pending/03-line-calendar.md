@@ -1,6 +1,6 @@
 # ลำดับที่ 3 — Line calendar
 
-**สถานะรวม:** กำลังทำ  
+**สถานะรวม:** แกนเสร็จ ✅ · UAT ขั้น 5 ⏳  
 **Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ยังไม่มี — ดู [00-stack-target.md](00-stack-target.md)
 **Checklist หลัก:** `line_calendar.php`, `M_lineschdul*`  
 **Migration:** [`003_tblineschdul.sql`](../../database/migrations/003_tblineschdul.sql) + [`023_tblineschdul_unique.sql`](../../database/migrations/023_tblineschdul_unique.sql) (รองรับ upsert import) + [`027_view_lineschdul.sql`](../../database/migrations/027_view_lineschdul.sql) (parity legacy view) · dependency: [`015_tbproductline.sql`](../../database/migrations/015_tbproductline.sql) (lookup ชื่อเส้น/รายละเอียด)
@@ -12,7 +12,7 @@
 
 - [x] `GET /api/v1/line-calendar/events?year=&month=`
 - [x] [`LineCalendarPage.tsx`](../../PM-Pepsi-App/frontend/src/features/line-calendar/LineCalendarPage.tsx) — ปฏิทินรายเดือน + badge API+DB
-- [x] ค่าเริ่มต้นหลัง login ชี้มาที่ route นี้
+- [x] Route `/line-calendar` ในเมนู A:U:W (`calendar.read`) — redirect หลัง login ใช้ **0A** → `/plan-calendar` (ไม่ใช่หน้านี้; ทางเลือก **0B** ค่อยชี้มาที่นี่)
 - [x] CRUD/import `tblineschdul` ผ่าน `/master-data` + API `POST/PUT/DELETE /api/v1/master-data/lineschdul` + `POST /api/v1/master-data/lineschdul/import`
 
 ---
@@ -33,7 +33,7 @@
 
 ---
 
-## ยังไม่ทำ
+## ยังไม่ทำ (UAT / stack)
 
 ### UI / ปฏิทิน
 
@@ -67,3 +67,4 @@
 | 2026-05-18 | ไล่โค้ดครบเส้นทาง FE→BE→DB (line-calendar + master-data lineschdul) และอัปเดต checklist ให้ sync กับสถานะในโค้ด |
 | 2026-05-18 | เพิ่ม migration `027_view_lineschdul.sql` สร้าง `app.view_lineschdul` เพื่อ parity กับ legacy query |
 | 2026-05-18 | ปิดงาน cross-cutting FullCalendar สำหรับลำดับที่ 3 (อ้างอิง `00-cross-cutting.md`) |
+| 2026-05-21 | ปิดแกน parity — อัปเดต [`PLAN.md`](PLAN.md) §3.1 ลำดับ 3 → ✅; คง UAT ขั้น 5 ตาม [`CHECKLIST-ORDER.md`](CHECKLIST-ORDER.md) |

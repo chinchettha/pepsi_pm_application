@@ -1,3 +1,4 @@
+import { pepsiWorkWeekFromUnix } from './pepsi-work-week.js'
 import { parseWorkday } from '../services/manhours.js'
 
 export type ReportsDateRange = {
@@ -42,26 +43,21 @@ export function resolveReportsRange(opts: {
   return defaultRange(weeks)
 }
 
+/** ป้ายสัปดาห์ในช่วงรายงาน — Pepsi: สัปดาห์ 1 = 1 ม.ค. */
 export function weekLabelsInRange(range: ReportsDateRange): string[] {
   const labels: string[] = []
-  const cursor = new Date(range.from * 1000)
-  cursor.setHours(12, 0, 0, 0)
-  const end = new Date(range.to * 1000)
   const seen = new Set<string>()
+  const cursor = new Date(range.from * 1000)
+  const end = new Date(range.to * 1000)
   while (cursor <= end) {
-    const y = cursor.getFullYear()
-    const oneJan = new Date(y, 0, 1)
-    const week = Math.ceil(
-      ((cursor.getTime() - oneJan.getTime()) / 86400000 + oneJan.getDay() + 1) / 7,
-    )
-    const label = `${y}-W${String(week).padStart(2, '0')}`
+    const label = pepsiWorkWeekFromUnix(Math.floor(cursor.getTime() / 1000)).label
     if (!seen.has(label)) {
       seen.add(label)
       labels.push(label)
     }
-    cursor.setDate(cursor.getDate() + 7)
+    cursor.setDate(cursor.getDate() + 1)
   }
-  return labels.length ? labels : [defaultRange(1).fromDate.slice(0, 7)]
+  return labels.length ? labels : [pepsiWorkWeekFromUnix(range.from).label]
 }
 
 export function safeRatio(numerator: number, denominator: number): number {

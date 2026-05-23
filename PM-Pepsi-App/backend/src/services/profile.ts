@@ -55,13 +55,16 @@ export async function getProfileForUser(pool: Pool, user: AuthUser): Promise<Pro
     surnamewkctreng: string | null
     userst: string
     imgmember: string | null
+    has_image: boolean
     last_login: Date | null
   }>(
     `SELECT idwkctr, wkctr, plnt, wkctrdate, startwork,
             titlewkctr, namewkctr, surnamewkctr,
             titlewkctreng, namewkctreng, surnamewkctreng,
-            userst, imgmember, last_login
-     FROM app.tbworkcenter WHERE idwkctr = $1`,
+            userst, imgmember,
+            (octet_length(wc.imgmember_data) > 0) AS has_image,
+            last_login
+     FROM app.tbworkcenter wc WHERE idwkctr = $1`,
     [user.idwkctr],
   )
   const row = r.rows[0]
@@ -93,6 +96,7 @@ export async function getProfileForUser(pool: Pool, user: AuthUser): Promise<Pro
     fullnameTh: user.fullnameTh,
     fullnameEng: user.fullnameEng,
     imgMember: row?.imgmember,
+    hasImage: Boolean(row?.has_image),
     birthdayLabel: bday > 0 ? timespanThai(bday) : undefined,
     workAgeLabel: start > 0 ? timespanThai(start) : undefined,
     worktimeTotalHours: worktimeBreakdown?.total,

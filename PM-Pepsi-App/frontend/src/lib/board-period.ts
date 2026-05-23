@@ -1,0 +1,77 @@
+import { endOfWeek, format, startOfDay, startOfWeek, subDays } from 'date-fns'
+
+const STORAGE_KEY = 'pm_board_period'
+
+/** ช่วงเวลา Board Phase 2 (B0) — สอดคล้อง `period=today|7d|week` ใน API อนาคต */
+export type BoardPeriodId = 'today' | '7d' | 'week'
+
+export type BoardPeriodOption = {
+  id: BoardPeriodId
+  label: string
+  shortHint: string
+}
+
+export const BOARD_PERIOD_OPTIONS: readonly BoardPeriodOption[] = [
+  { id: 'today', label: 'วันนี้', shortHint: 'วันนี้' },
+  { id: '7d', label: '7 วัน', shortHint: '7 วันล่าสุด' },
+  { id: 'week', label: 'สัปดาห์นี้', shortHint: 'จ–อา สัปดาห์ปัจจุบัน' },
+] as const
+
+export function isBoardPeriodId(v: string): v is BoardPeriodId {
+  return v === 'today' || v === '7d' || v === 'week'
+}
+
+export function readBoardPeriod(): BoardPeriodId {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    if (raw && isBoardPeriodId(raw)) return raw
+  } catch {
+    /* ignore */
+  }
+  return '7d'
+}
+
+export function writeBoardPeriod(id: BoardPeriodId): void {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, id)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function resolveBoardPeriodDateRange(
+  periodId: BoardPeriodId,
+  refDate: Date = new Date(),
+): { from: string; to: string } {
+  const today = startOfDay(refDate)
+  switch (periodId) {
+    case 'today':
+      return {
+        from: format(today, 'yyyy-MM-dd'),
+        to: format(today, 'yyyy-MM-dd'),
+      }
+    case '7d':
+      return {
+        from: format(subDays(today, 6), 'yyyy-MM-dd'),
+        to: format(today, 'yyyy-MM-dd'),
+      }
+    case 'week': {
+      const from = startOfWeek(today, { weekStartsOn: 1 })
+      const to = endOfWeek(today, { weekStartsOn: 1 })
+      return {
+        from: format(from, 'yyyy-MM-dd'),
+        to: format(to, 'yyyy-MM-dd'),
+      }
+    }
+  }
+}
+
+export function formatBoardPeriodRangeLabel(
+  periodId: BoardPeriodId,
+  range: { from: string; to: string },
+): string {
+  const opt = BOARD_PERIOD_OPTIONS.find((p) => p.id === periodId)
+  if (periodId === 'today') return `${opt?.label ?? 'วันนี้'} (${range.from})`
+  if (range.from === range.to) return `${opt?.label ?? periodId} (${range.from})`
+  return `${opt?.label ?? periodId} (${range.from} – ${range.to})`
+}

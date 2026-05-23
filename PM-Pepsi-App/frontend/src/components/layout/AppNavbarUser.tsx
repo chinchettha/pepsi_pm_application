@@ -1,3 +1,4 @@
+import { ProfileAvatar } from '@/components/profile/ProfileAvatar'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
@@ -6,24 +7,12 @@ import { useProfileQuery } from '@/features/profile/profile-api'
 import { BarChart3, CalendarDays, ChevronDown, Clock, LogOut, Settings } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 
-function ProfileAvatar({ displayName }: { displayName: string }) {
-  const initial = displayName.trim().charAt(0).toUpperCase() || '?'
-  return (
-    <span
-      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-semibold text-white ring-2 ring-zinc-200"
-      aria-hidden
-    >
-      {initial}
-    </span>
-  )
-}
-
 export function AppNavbarUser() {
   const navigate = useNavigate()
   const q = useProfileQuery()
 
   if (q.isLoading) {
-    return <Skeleton className="h-9 w-28 rounded-lg" />
+    return <Skeleton className="h-9 w-28 rounded-card" />
   }
 
   if (q.isError || !q.data) {
@@ -32,6 +21,12 @@ export function AppNavbarUser() {
 
   const p = q.data
   const isWc = p.accountType === 'workcenter'
+  const avatarProps = {
+    displayName: p.displayName,
+    idwkctr: isWc ? p.userId : undefined,
+    hasImage: p.hasImage,
+    imgMember: p.imgMember,
+  }
 
   return (
     <Popover>
@@ -39,53 +34,53 @@ export function AppNavbarUser() {
         <Button
           type="button"
           variant="ghost"
-          className="h-auto max-w-[min(100%,14rem)] gap-2 px-2 py-1.5 text-zinc-900 hover:bg-zinc-100"
+          className="h-auto max-w-[min(100%,14rem)] gap-2 px-2 py-2 text-app hover:bg-app-muted"
           aria-label="เมนูโปรไฟล์"
         >
-          <ProfileAvatar displayName={p.displayName} />
+          <ProfileAvatar {...avatarProps} />
           <span className="hidden min-w-0 flex-col items-start text-left sm:flex">
-            <span className="truncate text-sm font-medium leading-tight">{p.displayName}</span>
-            <span className="truncate text-[11px] text-zinc-500">
+            <span className="truncate text-body-sm font-medium leading-tight">{p.displayName}</span>
+            <span className="truncate text-caption">
               {p.userst ? `${p.userst} · ` : ''}
               {p.sysstatus}
             </span>
           </span>
-          <ChevronDown className="hidden size-4 shrink-0 text-zinc-400 sm:block" aria-hidden />
+          <ChevronDown className="hidden size-4 shrink-0 text-app-muted sm:block" aria-hidden />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-0">
         <div className="p-4">
           <div className="flex items-start gap-3">
-            <ProfileAvatar displayName={p.displayName} />
+            <ProfileAvatar {...avatarProps} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-zinc-900">{p.displayName}</p>
-              <p className="mt-0.5 text-xs text-zinc-600">
+              <p className="truncate text-body-sm font-semibold text-app">{p.displayName}</p>
+              <p className="mt-1 text-xs text-app-muted">
                 สถานะ {p.userst ?? '—'} : {p.sysstatus}
               </p>
               {!isWc && p.username ? (
-                <p className="mt-1 font-mono text-[11px] text-zinc-500">{p.username}</p>
+                <p className="mt-1 font-mono text-caption">{p.username}</p>
               ) : null}
             </div>
           </div>
 
           {isWc && (p.birthdayLabel || p.workAgeLabel || p.worktimeTotalHours != null) ? (
-            <dl className="mt-3 space-y-1.5 rounded-lg bg-zinc-50 px-3 py-2 text-xs">
+            <dl className="mt-3 space-y-2 rounded-card bg-app-subtle px-3 py-2 text-xs">
               {p.birthdayLabel ? (
                 <div className="flex justify-between gap-2">
-                  <dt className="text-zinc-500">ปัจจุบันอายุ</dt>
-                  <dd className="text-right font-medium text-zinc-900">{p.birthdayLabel}</dd>
+                  <dt className="text-app-muted">ปัจจุบันอายุ</dt>
+                  <dd className="text-right font-medium text-app">{p.birthdayLabel}</dd>
                 </div>
               ) : null}
               {p.workAgeLabel ? (
                 <div className="flex justify-between gap-2">
-                  <dt className="text-zinc-500">อายุการทำงาน</dt>
-                  <dd className="text-right font-medium text-zinc-900">{p.workAgeLabel}</dd>
+                  <dt className="text-app-muted">อายุการทำงาน</dt>
+                  <dd className="text-right font-medium text-app">{p.workAgeLabel}</dd>
                 </div>
               ) : null}
               {p.worktimeTotalHours != null ? (
                 <div className="flex justify-between gap-2">
-                  <dt className="text-zinc-500">ชั่วโมงรวม</dt>
-                  <dd className="text-right font-medium text-zinc-900">
+                  <dt className="text-app-muted">ชั่วโมงรวม</dt>
+                  <dd className="text-right font-medium text-app">
                     <Link to="/worktime" className="hover:underline">
                       {p.worktimeTotalHours} ชม.
                     </Link>
@@ -103,24 +98,24 @@ export function AppNavbarUser() {
             <>
               <Link
                 to="/manhours"
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                className="flex items-center gap-2 rounded-button px-3 py-2 text-body-sm text-app hover:bg-app-muted"
               >
                 <BarChart3 className="size-4 shrink-0 opacity-70" aria-hidden />
                 View Performance
                 {p.worktimeTotalHours != null ? (
-                  <span className="ml-auto text-xs text-zinc-500">{p.worktimeTotalHours} ชม.</span>
+                  <span className="ml-auto text-xs text-app-muted">{p.worktimeTotalHours} ชม.</span>
                 ) : null}
               </Link>
               <Link
                 to="/worktime"
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                className="flex items-center gap-2 rounded-button px-3 py-2 text-body-sm text-app hover:bg-app-muted"
               >
                 <Clock className="size-4 shrink-0 opacity-70" aria-hidden />
                 ชั่วโมงทำงาน
               </Link>
               <Link
                 to="/planning"
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                className="flex items-center gap-2 rounded-button px-3 py-2 text-body-sm text-app hover:bg-app-muted"
               >
                 <CalendarDays className="size-4 shrink-0 opacity-70" aria-hidden />
                 Plan Work View
@@ -130,14 +125,14 @@ export function AppNavbarUser() {
           ) : null}
           <Link
             to="/settings"
-            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+            className="flex items-center gap-2 rounded-button px-3 py-2 text-body-sm text-app hover:bg-app-muted"
           >
             <Settings className="size-4 shrink-0 opacity-70" aria-hidden />
             โปรไฟล์
           </Link>
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100"
+            className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-left text-body-sm text-app hover:bg-app-muted"
             onClick={() => navigate('/logout')}
           >
             <LogOut className="size-4 shrink-0 opacity-70" aria-hidden />

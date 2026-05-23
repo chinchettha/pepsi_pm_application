@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { woPmPhaseSchema } from '../lib/wo-pm-phase.js'
+import { SAP_MASS_CONFIRM_MAX } from '../lib/mass-confirm-limit.js'
 
 export const workOrderListItemSchema = z.object({
   id: z.string(),
@@ -30,6 +32,33 @@ export const workOrderComponentSchema = z.object({
   unit: z.string(),
 })
 
+export const workOrderWorkflowStepSchema = z.object({
+  step: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  key: z.enum(['team', 'assign', 'worktime', 'confirm']),
+  label: z.string(),
+  done: z.boolean(),
+})
+
+export const workOrderWorkflowSchema = z.object({
+  steps: z.array(workOrderWorkflowStepSchema),
+  suffix: z.string(),
+})
+
+export const workOrderConfirmQcSchema = z.object({
+  status: z.enum(['pending', 'approved', 'rejected']).nullable(),
+  statusLabel: z.string(),
+  reviewedAt: z.string().nullable(),
+  reviewedBy: z.string().nullable(),
+  note: z.string().nullable(),
+  imageCount: z.number().int(),
+  imageBefore: z.number().int(),
+  imageAfter: z.number().int(),
+  closeCount: z.number().int(),
+  worktimeCount: z.number().int(),
+  readyForReview: z.boolean(),
+  approved: z.boolean(),
+})
+
 export const workOrderMovePlanSchema = z.object({
   movedDate: z.string(),
   moveCount: z.number(),
@@ -41,14 +70,23 @@ export const workOrderMovePlanSchema = z.object({
 
 export const workOrderDetailSchema = z.object({
   item: workOrderListItemSchema.extend({
+    pmPhase: z.enum(woPmPhaseSchema),
     wkorder: z.string(),
     team: z.string(),
     mat: z.string(),
+    mntplan: z.string(),
+    opac: z.string(),
+    work: z.number(),
+    actwork: z.number(),
+    untime: z.string(),
+    resourcesLabel: z.string(),
     plannedDate: z.string(),
     finishDate: z.string(),
     statusColor: z.string(),
     canMovePlan: z.boolean(),
     movePlan: workOrderMovePlanSchema.nullable(),
+    workflow: workOrderWorkflowSchema,
+    confirmQc: workOrderConfirmQcSchema,
     operations: z.array(workOrderOperationSchema),
     components: z.array(workOrderComponentSchema),
   }),
@@ -100,10 +138,34 @@ export const workOrderSearchRowSchema = z.object({
   team: z.string(),
   wkstcolor: z.string(),
   operationshorttext: z.string(),
+  syst: z.string(),
+  pmPhase: z.enum(woPmPhaseSchema),
 })
 
 export const workOrderSearchResponseSchema = z.object({
   items: z.array(workOrderSearchRowSchema),
+})
+
+export const workOrderFilterDetailTeamSchema = z.object({
+  count: z.number(),
+  workSumMinutes: z.number(),
+})
+
+/** เทียบ `FilterDetail_AddTeam.php` (+ ส่วน team ใน `FilterDetail.php`) */
+export const workOrderFilterDetailResponseSchema = z.object({
+  totalOrders: z.number(),
+  completionCount: z.number(),
+  completionPercent: z.number(),
+  byWkzb: z.array(
+    z.object({
+      code: z.string(),
+      label: z.string(),
+      count: z.number(),
+    }),
+  ),
+  teamA: workOrderFilterDetailTeamSchema,
+  teamB: workOrderFilterDetailTeamSchema,
+  teamP: workOrderFilterDetailTeamSchema,
 })
 
 export const workOrderTeamPatchSchema = z.object({
@@ -112,6 +174,19 @@ export const workOrderTeamPatchSchema = z.object({
 
 export const workOrderTeamPatchResponseSchema = z.object({
   ok: z.literal(true),
+})
+
+/** Bulk assign Team A/B/P — เทียบ save ทั้งหน้าใน workorder.php / LEGACY B.4b */
+export const workOrderTeamBulkBodySchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(100),
+  team: z.enum(['', 'A', 'B', 'P']),
+})
+
+export const workOrderTeamBulkResponseSchema = z.object({
+  ok: z.literal(true),
+  team: z.enum(['', 'A', 'B', 'P']),
+  updated: z.array(z.string()),
+  notFound: z.array(z.string()),
 })
 
 export const workcenterItemSchema = z.object({
@@ -152,8 +227,51 @@ export const confirmationAddCloseResponseSchema = z.object({
   ok: z.literal(true),
 })
 
+/** SAP mass confirmation limit (ประชุมลูกค้า ครั้งที่ 2) */
+export const MASS_CONFIRM_MAX_ITEMS = SAP_MASS_CONFIRM_MAX
+
+export const confirmationMassCloseBodySchema = z.object({
+  idiw37n: z.array(z.coerce.number().int().positive()).min(1).max(MASS_CONFIRM_MAX_ITEMS),
+  wkctr: z.string().min(1),
+  startD: z.string().min(1),
+  startT: z.string().min(1),
+  endD: z.string().min(1),
+  endT: z.string().min(1),
+})
+
+export const confirmationMassCloseFailItemSchema = z.object({
+  idiw37: z.number().int(),
+  message: z.string(),
+})
+
+export const confirmationMassCloseResponseSchema = z.object({
+  ok: z.literal(true),
+  succeeded: z.array(z.number().int()),
+  failed: z.array(confirmationMassCloseFailItemSchema),
+  maxItems: z.literal(MASS_CONFIRM_MAX_ITEMS),
+})
+
 export const confirmationDeleteCloseResponseSchema = z.object({
   ok: z.literal(true),
+})
+
+export const personnelCloseItemSchema = z.object({
+  idwrkclose: z.number(),
+  idiw37: z.number(),
+  wkctr: z.string(),
+  displayName: z.string(),
+  cstdate: z.number(),
+  cendate: z.number(),
+  wktimewk: z.number(),
+  wkunit: z.string(),
+})
+
+export const personnelClosesResponseSchema = z.object({
+  items: z.array(personnelCloseItemSchema),
+})
+
+export const personnelCloseIdParamSchema = z.object({
+  idwrkclose: z.coerce.number().int().positive(),
 })
 
 export const confirmationCommentItemSchema = z.object({
@@ -176,6 +294,8 @@ export const confirmationCommentResponseSchema = z.object({
   item: confirmationCommentItemSchema,
 })
 
+export const confirmationImagePhaseSchema = z.enum(['before', 'after'])
+
 export const confirmationImageItemSchema = z.object({
   idcimg: z.number(),
   idiw37: z.number(),
@@ -184,6 +304,8 @@ export const confirmationImageItemSchema = z.object({
   mime: z.string(),
   bytes: z.number(),
   wkctr: z.string(),
+  phase: z.union([confirmationImagePhaseSchema, z.literal('')]),
+  comment: z.string(),
   createdAt: z.string(),
 })
 
@@ -301,6 +423,8 @@ export const workOrderPlanningAssignedSchema = z.object({
   kind: z.enum(['person', 'group']),
   code: z.string(),
   displayName: z.string(),
+  wkctrtype: z.string().optional(),
+  position: z.string().optional(),
   pwcomment: z.string(),
   pwteam: z.string(),
 })

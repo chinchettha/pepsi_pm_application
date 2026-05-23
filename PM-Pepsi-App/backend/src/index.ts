@@ -3,6 +3,9 @@ import { createServer } from 'node:http'
 import { loadEnv } from './config/env.js'
 import { createApp } from './app.js'
 import { createPool } from './db/pool.js'
+import { refreshUploadLimitFromDb } from './lib/upload-settings.js'
+import { startBackupScheduler } from './services/admin-backup.js'
+import { startIntegrationWatchScheduler } from './services/integration-scheduler.js'
 
 const env = loadEnv()
 const pool = createPool(env.DATABASE_URL)
@@ -10,7 +13,21 @@ const app = createApp({
   pool,
   corsOrigin: env.CORS_ORIGIN,
   sessionSecret: env.SESSION_SECRET,
+  databaseUrl: env.DATABASE_URL,
 })
+
+void refreshUploadLimitFromDb(pool).catch(() => {})
+setInterval(() => {
+  void refreshUploadLimitFromDb(pool).catch(() => {})
+}, 60_000)
+
+if (process.env.BACKUP_SCHEDULER !== '0') {
+  startBackupScheduler(pool, env.DATABASE_URL)
+}
+
+if (process.env.INTEGRATION_WATCH_SCHEDULER !== '0') {
+  startIntegrationWatchScheduler(pool)
+}
 
 const server = createServer(app)
 

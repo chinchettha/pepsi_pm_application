@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 describe('ReportsDateFilter', () => {
   afterEach(() => cleanup())
-  it('calls onSearch with from/to when ค้นหา is clicked', () => {
+  it('calls onSearch with from/to when นำไปใช้ is clicked', () => {
     const onSearch = vi.fn()
     render(
       <ReportsDateFilter
@@ -17,7 +17,8 @@ describe('ReportsDateFilter', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /ค้นหา/i }))
+    fireEvent.click(screen.getByRole('button', { name: /2026-04-01/i }))
+    fireEvent.click(screen.getByTestId('filter-date-apply'))
 
     expect(onSearch).toHaveBeenCalledWith({
       from: '2026-04-01',
@@ -36,7 +37,8 @@ describe('ReportsDateFilter', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /ค้นหา/i }))
+    fireEvent.click(screen.getByRole('button', { name: /2026-04-01/i }))
+    fireEvent.click(screen.getByTestId('filter-date-apply'))
 
     expect(onSearch).toHaveBeenCalledWith({
       from: '2026-04-01',

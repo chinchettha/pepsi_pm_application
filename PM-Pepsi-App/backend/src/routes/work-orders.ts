@@ -1,19 +1,32 @@
+import {
+  parseConfirmImagePhase,
+  normalizeConfirmImageCaption,
+} from '../lib/confirm-image-phase.js'
+import { getMulterFileSizeLimit } from '../lib/upload-settings.js'
 import type { Express, Request, Response } from 'express'
-import fs from 'node:fs'
-import path from 'node:path'
 import type { Pool } from 'pg'
 import multer from 'multer'
 import * as XLSX from 'xlsx'
 import { z } from 'zod'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import {
+  bulkTeamAuditFields,
+  massConfirmAuditFields,
+} from '../lib/audit-bulk-payload.js'
+import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
 import {
   confirmationAddCloseBodySchema,
   confirmationAddCloseResponseSchema,
+  confirmationMassCloseBodySchema,
+  confirmationMassCloseResponseSchema,
+  MASS_CONFIRM_MAX_ITEMS,
   confirmationByWorkOrderResponseSchema,
   confirmationCommentBodySchema,
   confirmationCommentResponseSchema,
   confirmationCommentsResponseSchema,
   confirmationDeleteCloseResponseSchema,
+  personnelClosesResponseSchema,
+  personnelCloseIdParamSchema,
   confirmationImageDataResponseSchema,
   confirmationImagesResponseSchema,
   confirmationImportResponseSchema,
@@ -27,8 +40,11 @@ import {
   workOrderPlanningBatchResponseSchema,
   workOrderPlanningOkResponseSchema,
   workOrderPlanningUpsertBodySchema,
+  workOrderFilterDetailResponseSchema,
   workOrderSearchBodySchema,
   workOrderSearchResponseSchema,
+  workOrderTeamBulkBodySchema,
+  workOrderTeamBulkResponseSchema,
   workOrderTeamPatchResponseSchema,
   workOrderTeamPatchSchema,
   workOrdersResponseSchema,
@@ -40,20 +56,24 @@ import {
   listWorkOrderFilterOptions,
   assignWorkOrderPlanningBatch,
   listWorkOrders,
+  getWorkOrderFilterDetail,
   searchWorkOrders,
   upsertWorkOrderPlanning,
   updateWorkOrderTeam,
+  updateWorkOrderTeamBatch,
 } from '../services/work-orders.js'
 import {
   addConfirmationClose,
+  addConfirmationCloseBatch,
   createConfirmationComment,
   createConfirmationImageRecord,
   deleteConfirmationComment,
   deleteConfirmationClose,
   deleteConfirmationImageRecord,
   findWorkOrderByWkorder,
-  getConfirmationImageMeta,
   getConfirmationByWorkOrder,
+  readConfirmationImageBuffer,
+  unlinkLegacyConfirmationImageFile,
   importConfirmFile,
   listConfirmationExportRows,
   listConfirmationComments,
@@ -61,6 +81,37 @@ import {
   listWorkcenters,
   updateConfirmationComment,
 } from '../services/confirmation.js'
+import {
+  buildConfirmationExportSapCsv,
+  confirmationSapCsvFilename,
+} from '../services/confirmation-export-csv.js'
+import {
+  addPersonnelClose,
+  deletePersonnelClose,
+  listPersonnelCloses,
+} from '../services/personnel-close.js'
+import { convertConfirmImageToWebp } from '../services/confirm-image.js'
+import {
+  confirmQcPendingResponseSchema,
+  confirmQcRejectBodySchema,
+  confirmQcSnapshotResponseSchema,
+} from '../schemas/confirm-qc.js'
+import {
+  getConfirmQcSnapshot,
+  listConfirmQcPending,
+  setConfirmQcStatus,
+} from '../services/confirm-qc.js'
+import {
+  confirmationMassExportBodySchema,
+  massConfirmExportSummarySchema,
+  qcApproveBatchBodySchema,
+  qcApproveBatchResponseSchema,
+} from '../schemas/confirmation-mass-export.js'
+import {
+  approveConfirmQcBatch,
+  getMassConfirmExportSummary,
+  listConfirmationExportRowsForBatch,
+} from '../services/confirmation-mass-export.js'
 
 const listQuerySchema = z.object({
   q: z.string().optional(),
@@ -95,6 +146,15 @@ const modalDetailQuerySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
+function parseIdiw37nQuery(raw: unknown): number[] | undefined {
+  if (typeof raw !== 'string' || !raw.trim()) return undefined
+  const ids = raw
+    .split(',')
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0)
+  return ids.length ? [...new Set(ids)] : undefined
+}
+
 function isSchemaMissing(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err)
   return (
@@ -117,7 +177,11 @@ function isSchemaMissing(err: unknown): boolean {
     message.includes('view_confirmation') ||
     message.includes('view_exportconfirm') ||
     message.includes('tbconfirmimg') ||
-    message.includes('tbconfirmcom')
+    message.includes('img_data') ||
+    message.includes('tbconfirmcom') ||
+    message.includes('tbwrkclose') ||
+    message.includes('view_personelclose') ||
+    message.includes('confirm_qc')
   )
 }
 
@@ -126,25 +190,35 @@ export function registerWorkOrderRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const perm = createRequirePermission(pool, sessionSecret)
+  const requireWoRead = perm('work-orders.read')
+  const requireWoWrite = perm('work-orders.write')
+  const requirePlanningWrite = perm('planning.write')
+  const requirePlanningAssign = perm('planning.assign')
+  const requirePlanningDelete = perm('planning.delete')
+  const requireConfirmRead = perm('confirmation.read')
+  const requireConfirmWrite = perm('confirmation.write')
+  const requireConfirmImport = perm('confirmation.import')
 
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 3 * 1024 * 1024 },
   })
 
+  /** รูปจากมือถือ — ไม่จำกัดขนาดไฟล์ (ย่อเป็น WebP ก่อนเก็บ DB) */
+  const uploadConfirmImage = multer({
+    storage: multer.memoryStorage(),
+  })
+
   // multer แยกสำหรับไฟล์ Excel (M_Confirm.php) — ใหญ่กว่ารูปได้
   const uploadExcel = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 15 * 1024 * 1024 },
+    limits: { fileSize: getMulterFileSizeLimit() },
   })
-
-  const imagesDir = path.resolve(process.cwd(), 'uploads', 'confirm-images')
-  fs.mkdirSync(imagesDir, { recursive: true })
 
   app.get(
     '/api/v1/work-orders/filter-options',
-    requireAuth,
+    ...requireWoRead,
     async (_req: Request, res: Response) => {
       try {
         const data = await listWorkOrderFilterOptions(pool)
@@ -165,7 +239,7 @@ export function registerWorkOrderRoutes(
 
   app.post(
     '/api/v1/work-orders/search',
-    requireAuth,
+    ...requireWoRead,
     async (req: Request, res: Response) => {
       const parsed = workOrderSearchBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -193,9 +267,89 @@ export function registerWorkOrderRoutes(
     },
   )
 
+  app.post(
+    '/api/v1/work-orders/filter-detail',
+    ...requireWoRead,
+    async (req: Request, res: Response) => {
+      const parsed = workOrderSearchBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Invalid work orders filter-detail body',
+          issues: parsed.error.issues,
+        })
+        return
+      }
+      try {
+        const detail = await getWorkOrderFilterDetail(pool, parsed.data)
+        res.json(workOrderFilterDetailResponseSchema.parse(detail))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message:
+              'Run database/migrations/004_tbiw37n_calendar.sql and 005_tbwkzb_tbfunctional.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.patch(
+    '/api/v1/work-orders/team/batch',
+    ...requireWoWrite,
+    async (req: Request, res: Response) => {
+      const parsed = workOrderTeamBulkBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Invalid bulk team payload',
+          issues: parsed.error.issues,
+        })
+        return
+      }
+      try {
+        const result = await updateWorkOrderTeamBatch(
+          pool,
+          parsed.data.ids,
+          parsed.data.team,
+        )
+        if (result.updated.length === 0 && parsed.data.ids.length > 0) {
+          res.status(404).json({
+            error: 'NOT_FOUND',
+            message: 'No work orders updated',
+            notFound: result.notFound,
+          })
+          return
+        }
+        const teamAudit = bulkTeamAuditFields(result)
+        voidAudit(pool, req, {
+          action: 'work-orders.team.batch',
+          resource: 'tbiw37n',
+          resourceId: teamAudit.resourceId,
+          message: teamAudit.message,
+          before: sanitizeAuditPayload(teamAudit.before),
+          after: sanitizeAuditPayload(teamAudit.after),
+        })
+        res.json(workOrderTeamBulkResponseSchema.parse({ ok: true, ...result }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/004_tbiw37n_calendar.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
   app.put(
     '/api/v1/work-orders/:id/team',
-    requireAuth,
+    ...requireWoWrite,
     async (req: Request, res: Response) => {
       const id = String(req.params.id ?? '')
       const parsed = workOrderTeamPatchSchema.safeParse(req.body)
@@ -213,6 +367,12 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND', message: 'Work order not found' })
           return
         }
+        voidAudit(pool, req, {
+          action: 'work-orders.write',
+          resource: 'tbiw37n',
+          resourceId: id,
+          after: { team: parsed.data.team },
+        })
         res.json(workOrderTeamPatchResponseSchema.parse({ ok: true }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -229,7 +389,7 @@ export function registerWorkOrderRoutes(
 
   app.get(
     '/api/v1/work-orders',
-    requireAuth,
+    ...requireWoRead,
     async (req: Request, res: Response) => {
       const parsed = listQuerySchema.safeParse(req.query)
       const opts = parsed.success ? parsed.data : {}
@@ -251,7 +411,7 @@ export function registerWorkOrderRoutes(
 
   app.get(
     '/api/v1/work-orders/:id',
-    requireAuth,
+    ...requireWoRead,
     async (req: Request, res: Response) => {
       const id = String(req.params.id ?? '')
       try {
@@ -276,7 +436,7 @@ export function registerWorkOrderRoutes(
 
   app.get(
     '/api/v1/work-orders/:id/modal-detail',
-    requireAuth,
+    ...requireWoRead,
     async (req: Request, res: Response) => {
       const id = String(req.params.id ?? '')
       const parsed = modalDetailQuerySchema.safeParse(req.query)
@@ -307,17 +467,8 @@ export function registerWorkOrderRoutes(
 
   app.put(
     '/api/v1/work-orders/:id/planning',
-    requireAuth,
+    ...requirePlanningWrite,
     async (req: Request, res: Response) => {
-      const user = req.authUser
-      if (!user) {
-        res.status(401).json({ error: 'UNAUTHORIZED' })
-        return
-      }
-      if ((user.userst ?? '').trim() !== 'A') {
-        res.status(403).json({ error: 'FORBIDDEN' })
-        return
-      }
       const id = String(req.params.id ?? '')
       const parsed = workOrderPlanningUpsertBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -330,6 +481,12 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND' })
           return
         }
+        voidAudit(pool, req, {
+          action: 'planning.write',
+          resource: 'tbplangingwork',
+          resourceId: id,
+          after: sanitizeAuditPayload(parsed.data),
+        })
         res.json(workOrderPlanningOkResponseSchema.parse({ ok: true }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -347,17 +504,8 @@ export function registerWorkOrderRoutes(
   // Multi-assign แบบ batch — เพิ่มช่างหลายคนในคลิกเดียว (เทียบ M_personel/AddPlan.php loop หลายครั้ง)
   app.post(
     '/api/v1/work-orders/:id/planning/batch',
-    requireAuth,
+    ...requirePlanningAssign,
     async (req: Request, res: Response) => {
-      const user = req.authUser
-      if (!user) {
-        res.status(401).json({ error: 'UNAUTHORIZED' })
-        return
-      }
-      if ((user.userst ?? '').trim() !== 'A') {
-        res.status(403).json({ error: 'FORBIDDEN' })
-        return
-      }
       const id = String(req.params.id ?? '')
       const parsed = workOrderPlanningBatchBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -380,6 +528,12 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND' })
           return
         }
+        voidAudit(pool, req, {
+          action: 'planning.assign',
+          resource: 'tbplangingwork',
+          resourceId: id,
+          after: sanitizeAuditPayload(parsed.data),
+        })
         res.json(
           workOrderPlanningBatchResponseSchema.parse({
             ok: true,
@@ -404,17 +558,8 @@ export function registerWorkOrderRoutes(
   // DELETE all assignments ของ WO (back-compat) — เทียบ legacy "clear ทั้ง WO"
   app.delete(
     '/api/v1/work-orders/:id/planning',
-    requireAuth,
+    ...requirePlanningDelete,
     async (req: Request, res: Response) => {
-      const user = req.authUser
-      if (!user) {
-        res.status(401).json({ error: 'UNAUTHORIZED' })
-        return
-      }
-      if ((user.userst ?? '').trim() !== 'A') {
-        res.status(403).json({ error: 'FORBIDDEN' })
-        return
-      }
       const id = String(req.params.id ?? '')
       try {
         const ok = await deleteWorkOrderPlanning(pool, id)
@@ -422,6 +567,11 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND' })
           return
         }
+        voidAudit(pool, req, {
+          action: 'planning.delete',
+          resource: 'tbplangingwork',
+          resourceId: id,
+        })
         res.json(workOrderPlanningOkResponseSchema.parse({ ok: true }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -439,17 +589,8 @@ export function registerWorkOrderRoutes(
   // DELETE assignment เฉพาะ (idiw37, wkctr) — multi-assign — เทียบ AddPlan.php `st=Del`
   app.delete(
     '/api/v1/work-orders/:id/planning/:wkctr',
-    requireAuth,
+    ...requirePlanningDelete,
     async (req: Request, res: Response) => {
-      const user = req.authUser
-      if (!user) {
-        res.status(401).json({ error: 'UNAUTHORIZED' })
-        return
-      }
-      if ((user.userst ?? '').trim() !== 'A') {
-        res.status(403).json({ error: 'FORBIDDEN' })
-        return
-      }
       const id = String(req.params.id ?? '')
       const wkctr = String(req.params.wkctr ?? '').trim()
       if (!wkctr) {
@@ -462,6 +603,11 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND' })
           return
         }
+        voidAudit(pool, req, {
+          action: 'planning.delete',
+          resource: 'tbplangingwork',
+          resourceId: `${id}:${wkctr}`,
+        })
         res.json(workOrderPlanningOkResponseSchema.parse({ ok: true }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -476,14 +622,14 @@ export function registerWorkOrderRoutes(
     },
   )
 
-  app.get('/api/v1/workcenters', requireAuth, async (_req: Request, res: Response) => {
+  app.get('/api/v1/workcenters', ...requireWoRead, async (_req: Request, res: Response) => {
     const items = await listWorkcenters(pool)
     res.json(workcentersResponseSchema.parse({ items }))
   })
 
   app.get(
     '/api/v1/confirmation/by-wkorder/:wkorder',
-    requireAuth,
+    ...requireConfirmRead,
     async (req: Request, res: Response) => {
       const parsed = confirmationWkorderParamSchema.safeParse(req.params)
       if (!parsed.success) {
@@ -512,7 +658,7 @@ export function registerWorkOrderRoutes(
 
   app.get(
     '/api/v1/confirmation/:idiw37/comments',
-    requireAuth,
+    ...requireConfirmRead,
     async (req: Request, res: Response) => {
       const parsed = confirmationIwiwParamSchema.safeParse(req.params)
       if (!parsed.success) {
@@ -537,7 +683,7 @@ export function registerWorkOrderRoutes(
 
   app.post(
     '/api/v1/confirmation/:idiw37/comments',
-    requireAuth,
+    ...requireConfirmWrite,
     async (req: Request, res: Response) => {
       const user = req.authUser
       if (!user) {
@@ -560,6 +706,12 @@ export function registerWorkOrderRoutes(
           comdetail: bodyParsed.data.comdetail,
           wkctr: user.wkctr || user.username || '',
         })
+        voidAudit(pool, req, {
+          action: 'confirmation.write',
+          resource: 'tbconfirm_comment',
+          resourceId: String(item.idcom),
+          after: sanitizeAuditPayload(bodyParsed.data),
+        })
         res.status(201).json(confirmationCommentResponseSchema.parse({ item }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -576,7 +728,7 @@ export function registerWorkOrderRoutes(
 
   app.put(
     '/api/v1/confirmation/comments/:idcom',
-    requireAuth,
+    ...requireConfirmWrite,
     async (req: Request, res: Response) => {
       const idParsed = confirmationCommentIdParamSchema.safeParse(req.params)
       if (!idParsed.success) {
@@ -594,6 +746,12 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND' })
           return
         }
+        voidAudit(pool, req, {
+          action: 'confirmation.write',
+          resource: 'tbconfirm_comment',
+          resourceId: String(idParsed.data.idcom),
+          after: sanitizeAuditPayload(bodyParsed.data),
+        })
         res.json(confirmationCommentResponseSchema.parse({ item }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -610,7 +768,7 @@ export function registerWorkOrderRoutes(
 
   app.delete(
     '/api/v1/confirmation/comments/:idcom',
-    requireAuth,
+    ...requireConfirmWrite,
     async (req: Request, res: Response) => {
       const idParsed = confirmationCommentIdParamSchema.safeParse(req.params)
       if (!idParsed.success) {
@@ -623,6 +781,11 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND' })
           return
         }
+        voidAudit(pool, req, {
+          action: 'confirmation.delete',
+          resource: 'tbconfirm_comment',
+          resourceId: String(idParsed.data.idcom),
+        })
         res.json(confirmationOkResponseSchema.parse({ ok: true }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -639,7 +802,7 @@ export function registerWorkOrderRoutes(
 
   app.get(
     '/api/v1/confirmation/:idiw37/images',
-    requireAuth,
+    ...requireConfirmRead,
     async (req: Request, res: Response) => {
       const parsed = confirmationIwiwParamSchema.safeParse(req.params)
       if (!parsed.success) {
@@ -663,8 +826,237 @@ export function registerWorkOrderRoutes(
   )
 
   app.get(
+    '/api/v1/confirmation/qc/pending',
+    ...requireConfirmImport,
+    async (req: Request, res: Response) => {
+      try {
+        const limit = Math.min(Number(req.query.limit) || 50, 200)
+        const items = await listConfirmQcPending(pool, limit)
+        res.json(confirmQcPendingResponseSchema.parse({ items }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run migration 080_tbiw37n_confirm_qc.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.get(
+    '/api/v1/confirmation/:idiw37/qc',
+    ...requireConfirmRead,
+    async (req: Request, res: Response) => {
+      const parsed = confirmationIwiwParamSchema.safeParse(req.params)
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid idiw37' })
+        return
+      }
+      try {
+        const qc = await getConfirmQcSnapshot(pool, parsed.data.idiw37)
+        if (!qc) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        res.json(confirmQcSnapshotResponseSchema.parse({ qc }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run migration 080_tbiw37n_confirm_qc.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.post(
+    '/api/v1/confirmation/:idiw37/qc/approve',
+    ...requireConfirmImport,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      const parsed = confirmationIwiwParamSchema.safeParse(req.params)
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid idiw37' })
+        return
+      }
+      try {
+        const qc = await getConfirmQcSnapshot(pool, parsed.data.idiw37)
+        if (!qc) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        if (!qc.readyForReview) {
+          res.status(409).json({
+            error: 'CONFIRM_QC_NOT_READY',
+            message: 'ยังไม่มีรูป/เวลาปิดงานให้ตรวจ',
+          })
+          return
+        }
+        const out = await setConfirmQcStatus(
+          pool,
+          parsed.data.idiw37,
+          'approved',
+          user.wkctr || user.username || '',
+        )
+        voidAudit(pool, req, {
+          action: 'confirmation.qc.approve',
+          resource: 'tbiw37n',
+          resourceId: String(parsed.data.idiw37),
+          after: { wkorder: qc.wkorder },
+        })
+        res.json(confirmQcSnapshotResponseSchema.parse({ qc: out }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run migration 080_tbiw37n_confirm_qc.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.post(
+    '/api/v1/confirmation/:idiw37/qc/reject',
+    ...requireConfirmImport,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      const parsed = confirmationIwiwParamSchema.safeParse(req.params)
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid idiw37' })
+        return
+      }
+      const body = confirmQcRejectBodySchema.safeParse(req.body ?? {})
+      if (!body.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid body' })
+        return
+      }
+      try {
+        const qc = await getConfirmQcSnapshot(pool, parsed.data.idiw37)
+        if (!qc) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        const out = await setConfirmQcStatus(
+          pool,
+          parsed.data.idiw37,
+          'rejected',
+          user.wkctr || user.username || '',
+          body.data.note,
+        )
+        voidAudit(pool, req, {
+          action: 'confirmation.qc.reject',
+          resource: 'tbiw37n',
+          resourceId: String(parsed.data.idiw37),
+          after: { wkorder: qc.wkorder, note: body.data.note },
+        })
+        res.json(confirmQcSnapshotResponseSchema.parse({ qc: out }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run migration 080_tbiw37n_confirm_qc.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.post(
+    '/api/v1/confirmation/export/mass-summary',
+    ...requireConfirmRead,
+    async (req: Request, res: Response) => {
+      const parsed = confirmationMassExportBodySchema.safeParse(req.body ?? {})
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid body' })
+        return
+      }
+      try {
+        const summary = await getMassConfirmExportSummary(pool, parsed.data.idiw37n)
+        res.json(massConfirmExportSummarySchema.parse(summary))
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('Maximum')) {
+          res.status(400).json({ error: 'VALIDATION_ERROR', message: msg })
+          return
+        }
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run migrations 080_tbiw37n_confirm_qc.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.post(
+    '/api/v1/confirmation/qc/approve-batch',
+    ...requireConfirmImport,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      const parsed = qcApproveBatchBodySchema.safeParse(req.body ?? {})
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid body' })
+        return
+      }
+      try {
+        const out = await approveConfirmQcBatch(
+          pool,
+          parsed.data.idiw37n,
+          user.wkctr || user.username || '',
+        )
+        voidAudit(pool, req, {
+          action: 'confirmation.qc.approve_batch',
+          resource: 'tbiw37n',
+          after: { count: out.approved.length },
+        })
+        res.json(qcApproveBatchResponseSchema.parse(out))
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('Maximum')) {
+          res.status(400).json({ error: 'VALIDATION_ERROR', message: msg })
+          return
+        }
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run migration 080_tbiw37n_confirm_qc.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.get(
     '/api/v1/confirmation/export',
-    requireAuth,
+    ...requireConfirmRead,
     async (req: Request, res: Response) => {
       const user = req.authUser
       if (!user) {
@@ -674,9 +1066,12 @@ export function registerWorkOrderRoutes(
       const actorWkctr = (user.wkctr || user.username || '').trim()
       const scope: 'ALL' | 'OWN' =
         actorWkctr === 'PAC007' || actorWkctr === 'PRO005' ? 'ALL' : 'OWN'
+      const batchIds = parseIdiw37nQuery(req.query.idiw37n)
 
       try {
-        const items = await listConfirmationExportRows(pool, actorWkctr)
+        const items = batchIds?.length
+          ? await listConfirmationExportRowsForBatch(pool, actorWkctr, batchIds)
+          : await listConfirmationExportRows(pool, actorWkctr)
         res.json(
           confirmationExportResponseSchema.parse({
             scope,
@@ -701,7 +1096,7 @@ export function registerWorkOrderRoutes(
 
   app.get(
     '/api/v1/confirmation/export.xlsx',
-    requireAuth,
+    ...requireConfirmRead,
     async (req: Request, res: Response) => {
       const user = req.authUser
       if (!user) {
@@ -709,8 +1104,13 @@ export function registerWorkOrderRoutes(
         return
       }
 
+      const batchIds = parseIdiw37nQuery(req.query.idiw37n)
+      const actor = user.wkctr || user.username || ''
+
       try {
-        const rows = await listConfirmationExportRows(pool, user.wkctr || user.username || '')
+        const rows = batchIds?.length
+          ? await listConfirmationExportRowsForBatch(pool, actor, batchIds)
+          : await listConfirmationExportRows(pool, actor)
         const data = [
           [
             '',
@@ -777,10 +1177,51 @@ export function registerWorkOrderRoutes(
     },
   )
 
+  app.get(
+    '/api/v1/confirmation/export.csv',
+    ...requireConfirmRead,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+
+      const batchIds = parseIdiw37nQuery(req.query.idiw37n)
+      const actor = user.wkctr || user.username || ''
+
+      try {
+        const rows = batchIds?.length
+          ? await listConfirmationExportRowsForBatch(pool, actor, batchIds)
+          : await listConfirmationExportRows(pool, actor)
+        const csv = buildConfirmationExportSapCsv(rows)
+        const filename = confirmationSapCsvFilename()
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+        res.status(200).send(csv)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('Maximum')) {
+          res.status(400).json({ error: 'VALIDATION_ERROR', message: msg })
+          return
+        }
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message:
+              'Run migrations 026_confirmation_tables.sql และ 033_view_exportconfirm.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
   app.post(
     '/api/v1/confirmation/:idiw37/images',
-    requireAuth,
-    upload.single('file'),
+    ...requireConfirmWrite,
+    uploadConfirmImage.single('file'),
     async (req: Request, res: Response) => {
       const user = req.authUser
       if (!user) {
@@ -799,33 +1240,61 @@ export function registerWorkOrderRoutes(
         return
       }
 
-      const mime = file.mimetype || 'application/octet-stream'
-      if (mime !== 'image/jpeg' && mime !== 'image/jpg') {
-        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Only JPEG images are allowed' })
+      const mime = file.mimetype || ''
+      if (!mime.startsWith('image/')) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Only image files are allowed' })
         return
       }
 
-      const safeExt = '.jpg'
-      const fileName = `${idParsed.data.idiw37}_${Date.now()}_${Math.random().toString(16).slice(2)}${safeExt}`
-      const abs = path.join(imagesDir, fileName)
-      await fs.promises.writeFile(abs, file.buffer)
+      const phase = parseConfirmImagePhase(req.body?.phase ?? req.body?.imgPhase)
+      if (!phase) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Field "phase" is required (before | after)',
+        })
+        return
+      }
+      const comment = normalizeConfirmImageCaption(req.body?.caption ?? req.body?.imgComment)
+
+      let webp
+      try {
+        webp = await convertConfirmImageToWebp(file.buffer, idParsed.data.idiw37)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Invalid image'
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: msg })
+        return
+      }
 
       try {
         const item = await createConfirmationImageRecord(pool, {
           idiw37: idParsed.data.idiw37,
-          fileName,
+          fileName: webp.fileName,
           originalName: file.originalname || '',
-          mime: 'image/jpeg',
-          bytes: file.buffer.length,
+          mime: webp.mime,
+          bytes: webp.bytes,
+          imageData: webp.data,
           wkctr: user.wkctr || user.username || '',
+          phase,
+          comment,
+        })
+        voidAudit(pool, req, {
+          action: 'confirmation.write',
+          resource: 'tbconfirm_image',
+          resourceId: String(item.idcimg),
+          after: {
+            idiw37: idParsed.data.idiw37,
+            fileName: webp.fileName,
+            phase,
+            comment: comment || undefined,
+          },
         })
         res.status(201).json(confirmationImagesResponseSchema.parse({ items: [item] }))
       } catch (err) {
-        await fs.promises.unlink(abs).catch(() => {})
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
-            message: 'Run migration 029_confirmation_comments_images.sql',
+            message:
+              'Run migrations 029_confirmation_comments_images.sql, 077_tbconfirmimg_before_after.sql, 079_tbconfirmimg_img_data.sql',
           })
           return
         }
@@ -836,7 +1305,7 @@ export function registerWorkOrderRoutes(
 
   app.get(
     '/api/v1/confirmation/images/:idcimg/data',
-    requireAuth,
+    ...requireConfirmRead,
     async (req: Request, res: Response) => {
       const parsed = confirmationImageIdParamSchema.safeParse(req.params)
       if (!parsed.success) {
@@ -844,30 +1313,24 @@ export function registerWorkOrderRoutes(
         return
       }
       try {
-        const meta = await getConfirmationImageMeta(pool, parsed.data.idcimg)
-        if (!meta) {
-          res.status(404).json({ error: 'NOT_FOUND' })
+        const payload = await readConfirmationImageBuffer(pool, parsed.data.idcimg)
+        if (!payload) {
+          res.status(404).json({ error: 'NOT_FOUND', message: 'Image data missing' })
           return
         }
-        const abs = path.join(imagesDir, meta.fileName)
-        const buf = await fs.promises.readFile(abs)
         res.json(
           confirmationImageDataResponseSchema.parse({
-            idcimg: meta.idcimg,
-            mime: meta.mime,
-            base64: buf.toString('base64'),
+            idcimg: payload.idcimg,
+            mime: payload.mime,
+            base64: payload.data.toString('base64'),
           }),
         )
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        if (msg.includes('ENOENT')) {
-          res.status(404).json({ error: 'NOT_FOUND', message: 'File missing' })
-          return
-        }
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
-            message: 'Run migration 029_confirmation_comments_images.sql',
+            message:
+              'Run migrations 029_confirmation_comments_images.sql and 079_tbconfirmimg_img_data.sql',
           })
           return
         }
@@ -878,7 +1341,7 @@ export function registerWorkOrderRoutes(
 
   app.delete(
     '/api/v1/confirmation/images/:idcimg',
-    requireAuth,
+    ...requireConfirmWrite,
     async (req: Request, res: Response) => {
       const parsed = confirmationImageIdParamSchema.safeParse(req.params)
       if (!parsed.success) {
@@ -894,12 +1357,100 @@ export function registerWorkOrderRoutes(
         if (out.fileName) {
           await fs.promises.unlink(path.join(imagesDir, out.fileName)).catch(() => {})
         }
+        voidAudit(pool, req, {
+          action: 'confirmation.delete',
+          resource: 'tbconfirm_image',
+          resourceId: String(parsed.data.idcimg),
+        })
         res.json(confirmationOkResponseSchema.parse({ ok: true }))
       } catch (err) {
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
-            message: 'Run migration 029_confirmation_comments_images.sql',
+            message:
+              'Run migrations 029_confirmation_comments_images.sql and 079_tbconfirmimg_img_data.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.post(
+    '/api/v1/confirmation/closes/batch',
+    ...requireConfirmWrite,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+
+      const parsed = confirmationMassCloseBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        const tooMany = parsed.error.issues.some(
+          (i) => i.path[0] === 'idiw37n' && i.code === 'too_big',
+        )
+        res.status(400).json({
+          error: tooMany ? 'BATCH_SIZE_EXCEEDED' : 'VALIDATION_ERROR',
+          message: tooMany
+            ? `สูงสุด ${MASS_CONFIRM_MAX_ITEMS} รายการต่อ batch (SAP mass confirm)`
+            : 'Invalid mass confirm body',
+          maxItems: MASS_CONFIRM_MAX_ITEMS,
+          issues: parsed.error.issues,
+        })
+        return
+      }
+
+      try {
+        const result = await addConfirmationCloseBatch(pool, {
+          idiw37n: parsed.data.idiw37n,
+          wkctr: parsed.data.wkctr,
+          startD: parsed.data.startD,
+          startT: parsed.data.startT,
+          endD: parsed.data.endD,
+          endT: parsed.data.endT,
+          cwkctr: user.wkctr || user.username || null,
+        })
+
+        if (result.succeeded.length === 0) {
+          res.status(400).json({
+            error: 'MASS_CONFIRM_FAILED',
+            message: 'No work orders confirmed',
+            failed: result.failed,
+          })
+          return
+        }
+
+        const confirmAudit = massConfirmAuditFields(parsed.data, result)
+        voidAudit(pool, req, {
+          action: 'confirmation.mass_close',
+          resource: 'tbcofirm',
+          resourceId: confirmAudit.resourceId,
+          message: confirmAudit.message,
+          before: sanitizeAuditPayload(confirmAudit.before),
+          after: sanitizeAuditPayload(confirmAudit.after),
+        })
+
+        res.json(
+          confirmationMassCloseResponseSchema.parse({
+            ok: true,
+            succeeded: result.succeeded,
+            failed: result.failed,
+            maxItems: MASS_CONFIRM_MAX_ITEMS,
+          }),
+        )
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        if (message.includes(`Maximum ${MASS_CONFIRM_MAX_ITEMS}`)) {
+          res.status(400).json({ error: 'VALIDATION_ERROR', message })
+          return
+        }
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run migration 026_confirmation_tables.sql',
           })
           return
         }
@@ -910,7 +1461,7 @@ export function registerWorkOrderRoutes(
 
   app.post(
     '/api/v1/confirmation/:idiw37/close',
-    requireAuth,
+    ...requireConfirmWrite,
     async (req: Request, res: Response) => {
       const user = req.authUser
       if (!user) {
@@ -946,13 +1497,19 @@ export function registerWorkOrderRoutes(
         return
       }
 
+      voidAudit(pool, req, {
+        action: 'confirmation.close',
+        resource: 'tbcofirm',
+        resourceId: String(idParsed.data.idiw37),
+        after: sanitizeAuditPayload(bodyParsed.data),
+      })
       res.json(confirmationAddCloseResponseSchema.parse({ ok: true }))
     },
   )
 
   app.delete(
     '/api/v1/confirmation/close/:idclose',
-    requireAuth,
+    ...requireConfirmWrite,
     async (req: Request, res: Response) => {
       const parsed = confirmationCloseIdParamSchema.safeParse(req.params)
       if (!parsed.success) {
@@ -960,6 +1517,110 @@ export function registerWorkOrderRoutes(
         return
       }
       await deleteConfirmationClose(pool, parsed.data.idclose)
+      voidAudit(pool, req, {
+        action: 'confirmation.close',
+        resource: 'tbcofirm',
+        resourceId: String(parsed.data.idclose),
+        message: 'delete',
+      })
+      res.json(confirmationDeleteCloseResponseSchema.parse({ ok: true }))
+    },
+  )
+
+  app.get(
+    '/api/v1/confirmation/:idiw37/personnel-closes',
+    ...requireConfirmRead,
+    async (req: Request, res: Response) => {
+      const parsed = confirmationIdParamSchema.safeParse(req.params)
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid idiw37' })
+        return
+      }
+      try {
+        const items = await listPersonnelCloses(pool, parsed.data.idiw37)
+        res.json(personnelClosesResponseSchema.parse({ items }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/073_tbwrkclose.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.post(
+    '/api/v1/confirmation/:idiw37/personnel-close',
+    ...requireConfirmWrite,
+    async (req: Request, res: Response) => {
+      const idParsed = confirmationIdParamSchema.safeParse(req.params)
+      if (!idParsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid idiw37' })
+        return
+      }
+      const bodyParsed = confirmationAddCloseBodySchema.safeParse(req.body)
+      if (!bodyParsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid body' })
+        return
+      }
+      try {
+        await addPersonnelClose(pool, {
+          idiw37: idParsed.data.idiw37,
+          wkctr: bodyParsed.data.wkctr,
+          startD: bodyParsed.data.startD,
+          startT: bodyParsed.data.startT,
+          endD: bodyParsed.data.endD,
+          endT: bodyParsed.data.endT,
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        const isDup = message.includes('ปิดงานไปแล้ว')
+        res.status(isDup ? 409 : 400).json({
+          error: isDup ? 'DUPLICATE' : 'VALIDATION_ERROR',
+          message,
+        })
+        return
+      }
+      voidAudit(pool, req, {
+        action: 'confirmation.personnel_close',
+        resource: 'tbwrkclose',
+        resourceId: String(idParsed.data.idiw37),
+        after: sanitizeAuditPayload(bodyParsed.data),
+      })
+      res.json(confirmationAddCloseResponseSchema.parse({ ok: true }))
+    },
+  )
+
+  app.delete(
+    '/api/v1/confirmation/personnel-close/:idwrkclose',
+    ...requireConfirmWrite,
+    async (req: Request, res: Response) => {
+      const parsed = personnelCloseIdParamSchema.safeParse(req.params)
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid idwrkclose' })
+        return
+      }
+      try {
+        await deletePersonnelClose(pool, parsed.data.idwrkclose)
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/073_tbwrkclose.sql',
+          })
+          return
+        }
+        throw err
+      }
+      voidAudit(pool, req, {
+        action: 'confirmation.personnel_close',
+        resource: 'tbwrkclose',
+        resourceId: String(parsed.data.idwrkclose),
+        message: 'delete',
+      })
       res.json(confirmationDeleteCloseResponseSchema.parse({ ok: true }))
     },
   )
@@ -968,16 +1629,12 @@ export function registerWorkOrderRoutes(
   // skip 2 rows + validate ตาม PHP บรรทัด 76 + insert/update เทียบ PHP บรรทัด 130-165
   app.post(
     '/api/v1/confirmation/import',
-    requireAuth,
+    ...requireConfirmImport,
     uploadExcel.single('file'),
     async (req: Request, res: Response) => {
       const user = req.authUser
       if (!user) {
         res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
-        return
-      }
-      if ((user.userst ?? '').trim() !== 'A') {
-        res.status(403).json({ error: 'FORBIDDEN', message: 'Admin only (M_Confirm)' })
         return
       }
 
@@ -1002,6 +1659,11 @@ export function registerWorkOrderRoutes(
 
       try {
         const summary = await importConfirmFile(pool, fileName, file.buffer)
+        voidAudit(pool, req, {
+          action: 'confirmation.import',
+          resource: 'tbcofirm',
+          after: { fileName, ...summary },
+        })
         res.json(confirmationImportResponseSchema.parse({ fileName, ...summary }))
       } catch (err) {
         if (isSchemaMissing(err)) {

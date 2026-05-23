@@ -8,15 +8,18 @@ import type {
   backlogSearchBodySchema,
 } from '../schemas/backlog.js'
 import { formatUntimeUnit, manhourDateWhereSql } from '../lib/manhour-minutes.js'
+import { buildWktypeFilterOptions } from '../lib/wktype-zd-mapping.js'
 import {
   appendInFilter,
   FACTORY_CODE,
+  sqlFactoryScope,
   getMoveOverColor,
   mapOrderRowToEvent,
   monthRangeSec,
   type CalendarEvent,
   type OrderRow,
 } from './scheduling-shared.js'
+import { loadWorkflowSuffixMap } from './work-order-workflow.js'
 
 type BacklogSearch = z.infer<typeof backlogSearchBodySchema>
 type FilterOptions = z.infer<typeof backlogFilterOptionsResponseSchema>
@@ -66,7 +69,7 @@ export async function listBacklogFilterOptions(pool: Pool): Promise<FilterOption
        FROM app.tbiw37n
        WHERE wktype IS NOT NULL AND wktype <> ''
          AND syst IN ('CRTD', 'REL')
-         AND functionalloc LIKE $1
+         AND ${sqlFactoryScope('', '$1')}
        ORDER BY wktype`,
       [factory],
     ),
@@ -80,7 +83,7 @@ export async function listBacklogFilterOptions(pool: Pool): Promise<FilterOption
       `SELECT DISTINCT functionalloc, funcdescrip
        FROM app.tbiw37n
        WHERE functionalloc IS NOT NULL AND functionalloc <> ''
-         AND functionalloc LIKE $1
+         AND ${sqlFactoryScope('', '$1')}
        ORDER BY functionalloc`,
       [factory],
     ),
@@ -102,16 +105,7 @@ export async function listBacklogFilterOptions(pool: Pool): Promise<FilterOption
       code: r.mat,
       label: padMatLabel(r.mat, r.matdescrip),
     })),
-    wktypes:
-      wktypesMasterR.rows.length > 0
-        ? wktypesMasterR.rows.map((r) => ({
-            code: r.wkzb,
-            label: r.zbdescrip ? `${r.wkzb} = ${r.zbdescrip}` : r.wkzb,
-          }))
-        : wktypesR.rows.map((r) => ({
-            code: r.wktype,
-            label: r.wktype,
-          })),
+    wktypes: buildWktypeFilterOptions(wktypesMasterR.rows, wktypesR.rows),
     workcenters: wcR.rows.map((r) => {
       const name = [r.namewkctr, r.surnamewkctr].filter(Boolean).join(' ').trim()
       return {
@@ -152,7 +146,7 @@ export async function listBacklogEvents(
   let sql = `
     SELECT idiw37, wkorder, wktype, bscstart, actfinish, cday, syst, operationshorttext, wkstcolor
     FROM app.view_order
-    WHERE functionalloc LIKE $3
+    WHERE ${sqlFactoryScope('', '$3')}
       AND syst IN ('CRTD', 'REL')
       AND bscstart IS NOT NULL
       AND bscstart > 0
@@ -176,7 +170,15 @@ export async function listBacklogEvents(
     const ev = mapOrderRowToEvent(row, moveColor)
     if (ev && ev.date.startsWith(prefix)) items.push(ev)
   }
-  return items
+  const suffixMap = await loadWorkflowSuffixMap(
+    pool,
+    items.map((e) => Number(e.id)).filter((n) => Number.isFinite(n)),
+  )
+  return items.map((ev) => {
+    const suffix = suffixMap.get(Number(ev.id))
+    if (!suffix) return ev
+    return { ...ev, title: `${ev.title}/${suffix}` }
+  })
 }
 
 export async function getBacklogManhourSummary(
@@ -220,7 +222,7 @@ export async function getBacklogManhourSummary(
        COUNT(*)::text AS total_orders,
        COUNT(*) FILTER (WHERE syst NOT IN ('CRTD', 'REL'))::text AS completion_count
      FROM app.view_order
-     WHERE functionalloc LIKE $1
+     WHERE ${sqlFactoryScope('', '$1')}
        AND ${dateWhere}`,
     dateParams,
   )
@@ -242,7 +244,7 @@ export async function getBacklogManhourSummary(
      LEFT JOIN (
        SELECT wktype, COUNT(*)::int AS cnt
        FROM app.view_order
-       WHERE functionalloc LIKE $1
+       WHERE ${sqlFactoryScope('', '$1')}
          AND ${dateWhere}
        GROUP BY wktype
      ) x ON x.wktype = z.wkzb
@@ -262,7 +264,7 @@ export async function getBacklogManhourSummary(
   }>(
     `SELECT wkorder, wktype, syst, work, actwork, untime, operationshorttext, bscstart
      FROM app.view_order
-     WHERE functionalloc LIKE $1
+     WHERE ${sqlFactoryScope('', '$1')}
        AND ${dateWhere}
      ORDER BY bscstart DESC NULLS LAST
      LIMIT 2500`,
@@ -308,7 +310,7 @@ export async function getBacklogFilterDetail(
     const params: unknown[] = [startSec, endSec, factory]
     let where = `
       FROM app.view_order
-      WHERE functionalloc LIKE $3
+      WHERE ${sqlFactoryScope('', '$3')}
         AND syst IN ('CRTD', 'REL')
         AND bscstart IS NOT NULL
         AND bscstart > 0

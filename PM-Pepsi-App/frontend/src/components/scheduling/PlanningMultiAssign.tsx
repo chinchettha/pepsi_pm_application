@@ -132,7 +132,7 @@ export function PlanningMultiAssign({
   const selectedCount = selectedArr.length
 
   return (
-    <div className={`rounded-lg border border-indigo-200 bg-indigo-50/40 p-3 ${className ?? ''}`}>
+    <div className={`rounded-card border border-indigo-200 bg-indigo-50/40 p-3 ${className ?? ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-medium text-indigo-900">จ่ายงานหลายคน (Multi-assign)</p>
@@ -140,7 +140,7 @@ export function PlanningMultiAssign({
             ติ๊กช่างที่ต้องการ แล้วกด "เพิ่ม Assignee" เพื่อจ่ายงานพร้อมกันหลายคนในคลิกเดียว
           </p>
         </div>
-        <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-medium text-white tabular-nums">
+        <span className="rounded-full bg-indigo-600 px-2 py-1 text-xs font-medium text-white tabular-nums">
           {selectedCount} เลือก
         </span>
       </div>
@@ -181,7 +181,7 @@ export function PlanningMultiAssign({
       </div>
 
       {selectedCount > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {selectedArr.map((c) => {
             const w = workcenters.find((x) => x.wkctr === c)
             return (
@@ -189,7 +189,7 @@ export function PlanningMultiAssign({
                 key={c}
                 type="button"
                 onClick={() => toggle(c)}
-                className="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-white px-2 py-0.5 text-xs text-indigo-900 hover:bg-indigo-100"
+                className="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-white px-2 py-1 text-xs text-indigo-900 hover:bg-indigo-100"
                 title="คลิกเพื่อนำออก"
               >
                 <span className="font-mono">{c}</span>
@@ -203,14 +203,14 @@ export function PlanningMultiAssign({
 
       <div className="mt-3 max-h-64 overflow-auto rounded border border-indigo-200 bg-white">
         {filtered.length === 0 ? (
-          <p className="px-3 py-4 text-sm text-zinc-500">ไม่มี workcenter ที่ตรงคำค้น</p>
+          <p className="px-3 py-4 text-caption">ไม่มี workcenter ที่ตรงคำค้น</p>
         ) : (
-          <ul className="divide-y divide-zinc-100">
+          <ul className="divide-y divide-[var(--app-border)]">
             {filtered.map((w) => {
               const already = assignedSet.has(w.wkctr)
               const checked = selected.has(w.wkctr)
               return (
-                <li key={w.wkctr} className="flex items-center justify-between gap-2 px-3 py-1.5">
+                <li key={w.wkctr} className="flex items-center justify-between gap-2 px-3 py-2">
                   <label className={`flex flex-1 cursor-pointer items-center gap-2 ${already ? 'cursor-not-allowed opacity-50' : ''}`}>
                     <input
                       type="checkbox"
@@ -219,13 +219,13 @@ export function PlanningMultiAssign({
                       disabled={already}
                       onChange={() => toggle(w.wkctr)}
                     />
-                    <span className="font-mono text-sm text-zinc-900">{w.wkctr}</span>
+                    <span className="font-mono text-body-sm text-app">{w.wkctr}</span>
                     {w.displayName && w.displayName !== w.wkctr ? (
-                      <span className="text-sm text-zinc-600">— {w.displayName}</span>
+                      <span className="text-caption">— {w.displayName}</span>
                     ) : null}
                   </label>
                   {already ? (
-                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800">
+                    <span className="rounded bg-emerald-100 px-2 py-1 text-badge font-medium text-emerald-800">
                       จ่ายแล้ว
                     </span>
                   ) : null}
@@ -237,7 +237,7 @@ export function PlanningMultiAssign({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-app-muted">
           {workcenters.length} workcenters • {assignedSet.size} จ่ายแล้ว •{' '}
           {workcenters.length - assignedSet.size} ว่าง
         </p>
@@ -252,7 +252,7 @@ export function PlanningMultiAssign({
       </div>
 
       {lastResult ? (
-        <div className="mt-3 rounded border border-indigo-200 bg-white p-2 text-xs text-zinc-700">
+        <div className="mt-3 rounded border border-indigo-200 bg-white p-2 text-xs text-app">
           <p>
             สรุป — เพิ่ม {lastResult.assigned.length} • ข้าม {lastResult.skipped.length} • ไม่พบ{' '}
             {lastResult.notFound.length}

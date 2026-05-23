@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from 'pg'
 import * as XLSX from 'xlsx'
+import { pepsiWorkWeekSql } from '../lib/pepsi-work-week.js'
 import type {
   ManhourImportResponse,
   ManhourItem,
@@ -79,6 +80,20 @@ function toHours(value: string | number | null | undefined): number {
   return Number.isFinite(n) ? n : 0
 }
 
+/** ISO `yyyy-mm-dd` (frontend query params) — not dd.mm.yyyy */
+function parseIsoYyyyMmDdToSec(value: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim())
+  if (!m) return null
+  const yyyy = Number(m[1])
+  const mm = Number(m[2])
+  const dd = Number(m[3])
+  if (!Number.isFinite(yyyy) || !Number.isFinite(mm) || !Number.isFinite(dd)) return null
+  if (dd < 1 || dd > 31 || mm < 1 || mm > 12 || yyyy < 1900 || yyyy > 2100) return null
+  const dt = new Date(yyyy, mm - 1, dd, 0, 0, 0, 0)
+  const sec = Math.floor(dt.getTime() / 1000)
+  return sec > 0 ? sec : null
+}
+
 export function parseWorkday(value: string | number): number {
   if (typeof value === 'number') {
     if (!Number.isFinite(value) || value <= 0) throw new Error('Invalid date')
@@ -88,6 +103,8 @@ export function parseWorkday(value: string | number): number {
   if (!trimmed) throw new Error('Invalid date')
   const numeric = Number(trimmed)
   if (Number.isFinite(numeric) && numeric > 0) return Math.floor(numeric)
+  const iso = parseIsoYyyyMmDdToSec(trimmed)
+  if (iso != null) return iso
   const parsed = parseThaiDate(trimmed)
   if (!parsed) throw new Error(`Invalid date: ${value}`)
   return parsed
@@ -166,7 +183,7 @@ export async function listManhours(
 
   if (opts.to?.trim()) {
     params.push(parseWorkday(opts.to.trim()))
-    conds.push(`m.stworkday <= $${params.length}`)
+    conds.push(`m.workday <= $${params.length}`)
   }
 
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : ''
@@ -330,7 +347,7 @@ export async function getManhoursWeeklySummary(
     ot_sum: string
   }>(
     `SELECT
-       to_char(to_timestamp(stworkday) AT TIME ZONE 'Asia/Bangkok', 'IYYY-"W"IW') AS week_label,
+       ${pepsiWorkWeekSql('stworkday')} AS week_label,
        COALESCE(SUM(wh), 0)::text AS wh,
        COALESCE(SUM(wh + ot1 + ot15 + ot1hol + ot2 + ot3), 0)::text AS actual,
        COALESCE(SUM(ot1 + ot15 + ot1hol + ot2 + ot3), 0)::text AS ot_sum

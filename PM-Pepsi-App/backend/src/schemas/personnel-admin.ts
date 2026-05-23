@@ -44,6 +44,8 @@ export const personnelAdminItemSchema = z.object({
   imgmemberMime: z.string(),
   imgmemberBytes: z.number().int(),
   hasImage: z.boolean(),
+  /** migration 053 — บังคับเปลี่ยนรหัสผ่านครั้งถัดไปหลัง reset */
+  passMustChange: z.boolean().optional(),
 })
 
 export const personnelAdminListResponseSchema = z.object({

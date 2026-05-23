@@ -9,8 +9,8 @@ export function PlaceholderBlock({
 }) {
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
-      <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50/80 p-6 text-sm text-zinc-600">
-        <p className="font-medium text-zinc-800">{title}</p>
+      <div className="rounded-card border border-dashed border-app bg-app-subtle p-6 text-caption">
+        <p className="font-medium text-app">{title}</p>
         <div className="mt-2">{children}</div>
       </div>
     </div>

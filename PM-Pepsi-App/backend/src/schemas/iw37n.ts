@@ -15,21 +15,41 @@ export const iw37nBatchesResponseSchema = z.object({
   items: z.array(iw37nBatchItemSchema),
 })
 
+const iw37nImportRowSchema = z.object({
+  rowNo: z.number(),
+  action: z.enum(['inserted', 'updated', 'skipped', 'error']),
+  wkorder: z.string(),
+  opac: z.string(),
+  mntplan: z.string(),
+  wktype: z.string(),
+  mat: z.string(),
+  syst: z.string(),
+  message: z.string(),
+})
+
+export const iw37nImportSummarySchema = z.object({
+  fileName: z.string(),
+  sha256: z.string(),
+  totalRows: z.number(),
+  inserted: z.number(),
+  updated: z.number(),
+  skipped: z.number(),
+  errors: z.number(),
+  isDuplicate: z.boolean(),
+  duplicateOfBatchId: z.string().nullable(),
+  wouldStatus: z.enum(['OK', 'PARTIAL', 'ERR']),
+  errorGroups: z.array(z.object({ message: z.string(), count: z.number() })),
+})
+
+export const iw37nImportPreviewResponseSchema = z.object({
+  preview: z.literal(true),
+  summary: iw37nImportSummarySchema,
+  rows: z.array(iw37nImportRowSchema),
+})
+
 export const iw37nImportResponseSchema = z.object({
   batch: iw37nBatchItemSchema,
-  rows: z.array(
-    z.object({
-      rowNo: z.number(),
-      action: z.enum(['inserted', 'updated', 'skipped', 'error']),
-      wkorder: z.string(),
-      opac: z.string(),
-      mntplan: z.string(),
-      wktype: z.string(),
-      mat: z.string(),
-      syst: z.string(),
-      message: z.string(),
-    }),
-  ),
+  rows: z.array(iw37nImportRowSchema),
 })
 
 export const iw37nBatchRowsQuerySchema = z.object({

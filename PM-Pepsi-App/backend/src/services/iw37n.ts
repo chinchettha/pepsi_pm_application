@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import type { Pool } from 'pg'
 import type { z } from 'zod'
 import type { iw37nBatchItemSchema } from '../schemas/iw37n.js'
-import { parseIw37nFile, type Iw37nImportRow } from './iw37n-parser.js'
+import { parseIw37nFile, parseIw37nFileWithMeta, type Iw37nImportRow } from './iw37n-parser.js'
 
 type BatchItem = z.infer<typeof iw37nBatchItemSchema>
 
@@ -439,6 +439,14 @@ export async function deleteIw37nItem(pool: Pool, id: string): Promise<boolean> 
   return (r.rowCount ?? 0) > 0
 }
 
+async function wouldUpsertIw37Row(pool: Pool, row: Iw37nImportRow): Promise<'inserted' | 'updated'> {
+  const existing = await pool.query<{ idiw37: number }>(
+    `SELECT idiw37 FROM app.tbiw37n WHERE wkorder = $1 AND opac = $2 LIMIT 1`,
+    [row.wkorder, row.opac],
+  )
+  return existing.rows[0] ? 'updated' : 'inserted'
+}
+
 async function upsertIw37Row(pool: Pool, row: Iw37nImportRow): Promise<'inserted' | 'updated'> {
   const existing = await pool.query<{ idiw37: number }>(
     `SELECT idiw37 FROM app.tbiw37n WHERE wkorder = $1 AND opac = $2 LIMIT 1`,
@@ -530,119 +538,211 @@ async function insertImportRows(
   }
 }
 
-export async function importIw37nFile(
-  pool: Pool,
+export type Iw37nImportSource = 'manual' | 'sap_folder' | 'api'
+
+export type Iw37nImportSummary = {
+  fileName: string
+  sha256: string
+  totalRows: number
+  inserted: number
+  updated: number
+  skipped: number
+  errors: number
+  isDuplicate: boolean
+  duplicateOfBatchId: string | null
+  wouldStatus: BatchItem['status']
+  errorGroups: { message: string; count: number }[]
+}
+
+function resolveImportStatus(
+  _isDuplicate: boolean,
+  inserted: number,
+  updated: number,
+  skipped: number,
+  errors: number,
+): BatchItem['status'] {
+  const processed = inserted + updated
+  if (processed === 0) return 'ERR'
+  if (skipped > 0 || errors > 0) return 'PARTIAL'
+  return 'OK'
+}
+
+function buildImportSummary(
   fileName: string,
-  buffer: Buffer,
-): Promise<{ batch: BatchItem; rows: Iw37nImportRowResult[] }> {
-  const sha256 = createHash('sha256').update(buffer).digest('hex')
-  const rows = parseIw37nFile(buffer, fileName)
-
-  const duplicateOfBatchId = await findEarliestBatchIdBySha256(pool, sha256)
-  const isDuplicate = Boolean(duplicateOfBatchId)
-
+  sha256: string,
+  rows: Iw37nImportRowResult[],
+  isDuplicate: boolean,
+  duplicateOfBatchId: string | null,
+): Iw37nImportSummary {
   let inserted = 0
   let updated = 0
   let skipped = 0
   let errors = 0
-  const results: Iw37nImportRowResult[] = []
+  const errMap = new Map<string, number>()
+  for (const r of rows) {
+    if (r.action === 'inserted') inserted++
+    else if (r.action === 'updated') updated++
+    else if (r.action === 'error') {
+      errors++
+      const msg = r.message.trim() || 'Error'
+      errMap.set(msg, (errMap.get(msg) ?? 0) + 1)
+    } else skipped++
+  }
+  const errorGroups = [...errMap.entries()]
+    .map(([message, count]) => ({ message, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 20)
 
-  if (isDuplicate) {
-    skipped = rows.length
-    const msgBase = `Duplicate file (SHA256 match batch #${duplicateOfBatchId})`
-    for (let idx = 0; idx < rows.length; idx++) {
-      const row = rows[idx]!
-      const rowNo = idx + 1
+  return {
+    fileName,
+    sha256,
+    totalRows: rows.length,
+    inserted,
+    updated,
+    skipped,
+    errors,
+    isDuplicate,
+    duplicateOfBatchId,
+    wouldStatus: resolveImportStatus(isDuplicate, inserted, updated, skipped, errors),
+    errorGroups,
+  }
+}
+
+async function processIw37nImportRows(
+  pool: Pool,
+  parsedRows: Iw37nImportRow[],
+  opts: { dryRun: boolean; isDuplicate: boolean; duplicateOfBatchId: string | null },
+): Promise<Iw37nImportRowResult[]> {
+  const results: Iw37nImportRowResult[] = []
+  const previewTag = opts.dryRun ? ' (ตรวจสอบก่อน commit)' : ''
+
+  const duplicateNote = opts.isDuplicate
+    ? ` (ไฟล์เคยนำเข้า batch #${opts.duplicateOfBatchId} — PHP อนุญาตนำเข้าซ้ำ)`
+    : ''
+
+  for (let idx = 0; idx < parsedRows.length; idx++) {
+    const row = parsedRows[idx]!
+    const rowNo = idx + 1
+    if (!row.bscstart) {
       results.push({
         rowNo,
-        action: 'skipped',
+        action: 'error',
         wkorder: row.wkorder,
         opac: row.opac,
         mntplan: row.mntplan,
         wktype: row.wktype,
         mat: row.mat,
         syst: row.syst,
-        message: row.bscstart ? msgBase : `${msgBase}; missing bscstart`,
+        message: `ผิดพลาด FALSE... วันที่ Bsc start ไม่ถูกต้อง${previewTag}`,
+      })
+      continue
+    }
+    try {
+      const kind = opts.dryRun ? await wouldUpsertIw37Row(pool, row) : await upsertIw37Row(pool, row)
+      if (kind === 'inserted') {
+        results.push({
+          rowNo,
+          action: 'inserted',
+          wkorder: row.wkorder,
+          opac: row.opac,
+          mntplan: row.mntplan,
+          wktype: row.wktype,
+          mat: row.mat,
+          syst: row.syst,
+          message: opts.dryRun
+            ? `Would insert${previewTag}${duplicateNote}`
+            : `New Success...${duplicateNote}`,
+        })
+      } else {
+        results.push({
+          rowNo,
+          action: 'updated',
+          wkorder: row.wkorder,
+          opac: row.opac,
+          mntplan: row.mntplan,
+          wktype: row.wktype,
+          mat: row.mat,
+          syst: row.syst,
+          message: opts.dryRun
+            ? `Would update${previewTag}${duplicateNote}`
+            : `Update Success...${duplicateNote}`,
+        })
+      }
+    } catch (err) {
+      results.push({
+        rowNo,
+        action: 'error',
+        wkorder: row.wkorder,
+        opac: row.opac,
+        mntplan: row.mntplan,
+        wktype: row.wktype,
+        mat: row.mat,
+        syst: row.syst,
+        message: `${err instanceof Error ? err.message : 'Error'}${previewTag}`,
       })
     }
-  } else {
-    for (let idx = 0; idx < rows.length; idx++) {
-      const row = rows[idx]!
-      const rowNo = idx + 1
-      if (!row.bscstart) {
-        skipped++
-        results.push({
-          rowNo,
-          action: 'skipped',
-          wkorder: row.wkorder,
-          opac: row.opac,
-          mntplan: row.mntplan,
-          wktype: row.wktype,
-          mat: row.mat,
-          syst: row.syst,
-          message: 'Skipped: missing bscstart',
-        })
-        continue
-      }
-      try {
-        const kind = await upsertIw37Row(pool, row)
-        if (kind === 'inserted') {
-          inserted++
-          results.push({
-            rowNo,
-            action: 'inserted',
-            wkorder: row.wkorder,
-            opac: row.opac,
-            mntplan: row.mntplan,
-            wktype: row.wktype,
-            mat: row.mat,
-            syst: row.syst,
-            message: 'Insert Success',
-          })
-        } else {
-          updated++
-          results.push({
-            rowNo,
-            action: 'updated',
-            wkorder: row.wkorder,
-            opac: row.opac,
-            mntplan: row.mntplan,
-            wktype: row.wktype,
-            mat: row.mat,
-            syst: row.syst,
-            message: 'Update Success',
-          })
-        }
-      } catch (err) {
-        skipped++
-        errors++
-        results.push({
-          rowNo,
-          action: 'error',
-          wkorder: row.wkorder,
-          opac: row.opac,
-          mntplan: row.mntplan,
-          wktype: row.wktype,
-          mat: row.mat,
-          syst: row.syst,
-          message: err instanceof Error ? err.message : 'Error',
-        })
-      }
-    }
   }
+  return results
+}
 
-  const processed = inserted + updated
-  let status: BatchItem['status'] = 'OK'
-  if (isDuplicate) status = 'OK'
-  else if (processed === 0) status = 'ERR'
-  else if (skipped > 0 || errors > 0) status = 'PARTIAL'
+/** ตรวจสอบก่อน commit — ไม่เขียน tbiw37n / batch */
+export async function previewIw37nFile(
+  pool: Pool,
+  fileName: string,
+  buffer: Buffer,
+): Promise<{ summary: Iw37nImportSummary; rows: Iw37nImportRowResult[] }> {
+  const sha256 = createHash('sha256').update(buffer).digest('hex')
+  const { rows: parsedRows } = parseIw37nFileWithMeta(buffer, fileName)
+  const duplicateOfBatchId = await findEarliestBatchIdBySha256(pool, sha256)
+  const isDuplicate = Boolean(duplicateOfBatchId)
+  const results = await processIw37nImportRows(pool, parsedRows, {
+    dryRun: true,
+    isDuplicate,
+    duplicateOfBatchId,
+  })
+  return {
+    summary: buildImportSummary(fileName, sha256, results, isDuplicate, duplicateOfBatchId),
+    rows: results,
+  }
+}
+
+export async function importIw37nFile(
+  pool: Pool,
+  fileName: string,
+  buffer: Buffer,
+  opts?: { source?: Iw37nImportSource },
+): Promise<{ batch: BatchItem; rows: Iw37nImportRowResult[] }> {
+  const source = opts?.source ?? 'manual'
+  const sha256 = createHash('sha256').update(buffer).digest('hex')
+  const { rows: parsedRows } = parseIw37nFileWithMeta(buffer, fileName)
+
+  const duplicateOfBatchId = await findEarliestBatchIdBySha256(pool, sha256)
+  const isDuplicate = Boolean(duplicateOfBatchId)
+
+  const results = await processIw37nImportRows(pool, parsedRows, {
+    dryRun: false,
+    isDuplicate,
+    duplicateOfBatchId,
+  })
+
+  const summary = buildImportSummary(fileName, sha256, results, isDuplicate, duplicateOfBatchId)
+  const status = summary.wouldStatus
 
   const ins = await pool.query<BatchRow & { id_raw: number }>(
     `INSERT INTO app.tbiw37n_import_batch (
-       file_name, sha256, row_count, inserted_count, updated_count, skipped_count, status
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+       file_name, sha256, row_count, inserted_count, updated_count, skipped_count, status, source
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING id::bigint AS id_raw, id::text, file_name, imported_at, row_count, sha256, status`,
-    [fileName, sha256, rows.length, inserted, updated, skipped, status],
+    [
+      fileName,
+      sha256,
+      summary.totalRows,
+      summary.inserted,
+      summary.updated,
+      summary.skipped,
+      status,
+      source,
+    ],
   )
 
   const insertedBatch = ins.rows[0]!

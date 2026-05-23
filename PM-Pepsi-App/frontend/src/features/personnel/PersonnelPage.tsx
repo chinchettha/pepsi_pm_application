@@ -5,9 +5,12 @@
  * ใช้ `GET /api/v1/personnel/me/dashboard` รวม profile + planning summary + confirmation summary + worktime
  * ของ user ปัจจุบันให้ทุกคนเปิดเองได้ (`/personnel` menuright `A:U:W`).
  */
-import { PageHeader } from '@/components/layout/PageHeader'
+import { CanPermission } from '@/components/auth/CanPermission'
+import { AppCard } from '@/components/layout/AppCard'
+import { AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -18,9 +21,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { getStoredAuthUser } from '@/features/auth/login-api'
-import { fetchPersonnelDashboard, personnelImageUrl } from '@/lib/api-public'
-import { useQuery } from '@tanstack/react-query'
+import { PersonnelAvatar } from '@/components/personnel/PersonnelAvatar'
+import { fetchPersonnelDashboard } from '@/lib/api-public'
+import { useAnyPermission } from '@/lib/use-permission'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
+  AlertCircle,
   Briefcase,
   CalendarClock,
   ClipboardList,
@@ -31,7 +37,6 @@ import {
   Phone,
   ShieldCheck,
   Timer,
-  UserCircle2,
   Users,
   Wrench,
 } from 'lucide-react'
@@ -52,23 +57,23 @@ function StatCard({
   icon: typeof Users
 }) {
   const inner = (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:shadow-md">
+    <AppCard pad="compact" className="transition hover:border-[var(--app-border)] hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wide text-zinc-500">{label}</div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">
+          <div className="text-xs uppercase tracking-wide text-app-muted">{label}</div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums text-app">
             {value}
           </div>
-          {hint ? <div className="mt-1 text-xs text-zinc-500">{hint}</div> : null}
+          {hint ? <div className="mt-1 text-xs text-app-muted">{hint}</div> : null}
         </div>
-        <div className="rounded-lg bg-zinc-100 p-2 text-zinc-700">
+        <div className="rounded-card bg-app-muted p-2 text-app">
           <Icon className="size-5" aria-hidden />
         </div>
       </div>
       {to ? (
         <div className="mt-3 text-xs font-medium text-blue-700">เปิดโมดูล →</div>
       ) : null}
-    </div>
+    </AppCard>
   )
   if (!to) return inner
   return (
@@ -120,7 +125,7 @@ function RoleBadge({ role }: { role: string }) {
   const Icon = cfg.icon
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${cfg.tone}`}
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ring-1 ${cfg.tone}`}
     >
       <Icon className="size-3.5" aria-hidden /> {cfg.label}
     </span>
@@ -129,54 +134,83 @@ function RoleBadge({ role }: { role: string }) {
 
 export function PersonnelPage() {
   const authUser = getStoredAuthUser()
+  const canRead = useAnyPermission(['personnel.read', 'personnel.write'])
   const isAdmin = authUser?.userst === 'A'
   const q = useQuery({
     queryKey: ['personnel', 'me', 'dashboard'],
     queryFn: fetchPersonnelDashboard,
     staleTime: 30_000,
+    enabled: canRead,
+    placeholderData: keepPreviousData,
   })
 
   const role = q.data?.role ?? 'planner'
   const showAdminGlobal = role === 'admin' || role === 'planner'
   const showManagerTeam = role === 'manager'
 
-  return (
-    <div>
-      <PageHeader
-        title="Personal Dashboard"
-        description="สรุปข้อมูลพนักงานของฉัน — เทียบ navbar/profile + M_personel* + M_personel_confirm + worktime_count"
-      >
-        {q.data ? <RoleBadge role={q.data.role} /> : null}
-        <Button asChild variant="outline" size="sm">
-          <Link to="/worktime">ดู Worktime</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/confirmation">รับรอง / Confirm</Link>
-        </Button>
-        {role === 'planner' ? (
-          <Button asChild variant="outline" size="sm">
-            <Link to="/planning">หน้าจ่ายงาน Planning</Link>
-          </Button>
-        ) : null}
-        {isAdmin ? (
-          <>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/personnel/confirm">Personnel Confirmation</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link to="/personnel/admin">จัดการบุคลากร (Admin)</Link>
-            </Button>
-          </>
-        ) : null}
-      </PageHeader>
+  if (!canRead) {
+    return (
+      <AppPageShell title="แดชบอร์ดส่วนตัว" description="สรุปงานและข้อมูลพนักงานของฉัน">
+        <EmptyState
+          icon={AlertCircle}
+          title="ไม่มีสิทธิ์เข้าถึง"
+          description={
+            <>
+              ต้องมีสิทธิ์ <code className="text-xs">personnel.read</code>
+            </>
+          }
+        />
+      </AppPageShell>
+    )
+  }
 
-      <div className="space-y-6 px-4 py-6 sm:px-6">
-        {q.isLoading ? (
-          <Skeleton className="h-48 w-full rounded-xl" />
+  return (
+    <AppPageShell
+      title="แดชบอร์ดส่วนตัว"
+      description="โปรไฟล์ · งานเปิด/ปิด · Confirmation · ชั่วโมงรวม"
+      contentClassName="space-y-6"
+      headerActions={
+        <>
+          {q.data ? <RoleBadge role={q.data.role} /> : null}
+          <CanPermission permission="manhours.read">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/worktime">Worktime</Link>
+            </Button>
+          </CanPermission>
+          <CanPermission permission="confirmation.read">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/confirmation">รับรองงาน</Link>
+            </Button>
+          </CanPermission>
+          {role === 'planner' ? (
+            <CanPermission permission="planning.read">
+              <Button asChild variant="outline" size="sm">
+                <Link to="/planning">จ่ายงาน</Link>
+              </Button>
+            </CanPermission>
+          ) : null}
+          {isAdmin ? (
+            <>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/personnel/confirm">ปิดงานรายบุคคล</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/admin/users">จัดการผู้ใช้</Link>
+              </Button>
+            </>
+          ) : null}
+        </>
+      }
+    >
+        {q.isLoading && !q.data ? (
+          <Skeleton className="h-48 w-full rounded-card" />
         ) : q.isError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {q.error instanceof Error ? q.error.message : String(q.error)}
-          </div>
+          <EmptyState
+            icon={AlertCircle}
+            title="โหลดแดชบอร์ดไม่สำเร็จ"
+            description={q.error instanceof Error ? q.error.message : String(q.error)}
+            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+          />
         ) : q.data ? (
           <>
             <ProfileCard data={q.data} />
@@ -237,9 +271,10 @@ export function PersonnelPage() {
             <RecentPlanning data={q.data} />
             <RecentConfirmation data={q.data} />
           </>
-        ) : null}
-      </div>
-    </div>
+        ) : (
+          <EmptyState title="ไม่มีข้อมูล" description="ลองรีเฟรชหน้าหรือตรวจการเชื่อมต่อ" />
+        )}
+    </AppPageShell>
   )
 }
 
@@ -294,10 +329,10 @@ function UnassignedWorkOrdersSection({
   total: number
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-blue-200 bg-blue-50/30 shadow-sm">
-      <div className="flex items-center justify-between border-b border-blue-200 px-5 py-3">
+    <div className="overflow-hidden rounded-card border border-blue-200 bg-blue-50/30 shadow-sm">
+      <div className="flex items-center justify-between border-b border-blue-200 px-6 py-3">
         <div>
-          <div className="text-sm font-medium text-blue-900">WO รอจ่ายงาน (Planner)</div>
+          <div className="text-body-sm font-medium text-blue-900">WO รอจ่ายงาน (Planner)</div>
           <p className="text-xs text-blue-900/70">
             tbiw37n syst CRTD/REL ที่ยังไม่มี tbplangingwork — เรียงตาม bscstart
             ASC, จำกัด 10 ใบ
@@ -307,23 +342,28 @@ function UnassignedWorkOrdersSection({
           <Link to="/planning">ไปจ่ายงาน ({total})</Link>
         </Button>
       </div>
-      <Table>
+      <div className="app-table-shell overflow-x-auto">
+      <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
             <TableHead>WO</TableHead>
             <TableHead>Type</TableHead>
-            <TableHead>Short text</TableHead>
+            <TableHead>คำอธิบาย</TableHead>
             <TableHead>Equipment / Loc</TableHead>
             <TableHead>WC</TableHead>
-            <TableHead>Basic start</TableHead>
+            <TableHead>เริ่ม</TableHead>
             <TableHead>Syst</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="py-8 text-center text-sm text-zinc-500">
-                ไม่มี WO รอจ่ายงาน — ดีมาก!
+              <TableCell colSpan={7} className="p-0">
+                <EmptyState
+                  className="border-0 bg-transparent py-10"
+                  title="ไม่มี WO รอจ่ายงาน"
+                  description="ทุกใบงานได้รับการจ่ายแล้ว"
+                />
               </TableCell>
             </TableRow>
           ) : (
@@ -335,13 +375,13 @@ function UnassignedWorkOrdersSection({
                   </Link>
                 </TableCell>
                 <TableCell className="text-xs">{it.wktype ?? '—'}</TableCell>
-                <TableCell className="max-w-[16rem] truncate text-sm" title={it.shortText ?? ''}>
+                <TableCell className="max-w-[16rem] truncate text-body-sm" title={it.shortText ?? ''}>
                   {it.shortText ?? '—'}
                 </TableCell>
                 <TableCell className="text-xs">
                   {it.equipment ?? '—'}
                   {it.functionalLoc ? (
-                    <div className="text-[11px] text-zinc-500">{it.functionalLoc}</div>
+                    <div className="text-caption">{it.functionalLoc}</div>
                   ) : null}
                 </TableCell>
                 <TableCell className="text-xs">{it.wkctr ?? '—'}</TableCell>
@@ -354,6 +394,7 @@ function UnassignedWorkOrdersSection({
           )}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }
@@ -366,10 +407,10 @@ function ManagerTeamSection({
   >
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-purple-200 bg-purple-50/30 shadow-sm">
-      <div className="flex items-center justify-between border-b border-purple-200 px-5 py-3">
+    <div className="overflow-hidden rounded-card border border-purple-200 bg-purple-50/30 shadow-sm">
+      <div className="flex items-center justify-between border-b border-purple-200 px-6 py-3">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-purple-900">
+          <div className="text-body-sm font-medium text-purple-900">
             ทีมของฉัน {team.groupName ? `· ${team.groupName}` : team.groupCode ? `· #${team.groupCode}` : ''}
           </div>
           <p className="text-xs text-purple-900/70">
@@ -377,7 +418,8 @@ function ManagerTeamSection({
           </p>
         </div>
       </div>
-      <Table>
+      <div className="app-table-shell overflow-x-auto">
+      <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
             <TableHead>รหัส</TableHead>
@@ -391,12 +433,16 @@ function ManagerTeamSection({
         <TableBody>
           {team.members.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="py-8 text-center text-sm text-zinc-500">
-                ไม่มีสมาชิกในกลุ่ม (
-                {team.groupCode
-                  ? `idwkctrgroup=${team.groupCode}`
-                  : 'ผู้ใช้ยังไม่ได้กำหนดกลุ่มงาน'}
-                )
+              <TableCell colSpan={6} className="p-0">
+                <EmptyState
+                  className="border-0 bg-transparent py-10"
+                  title="ไม่มีสมาชิกในกลุ่ม"
+                  description={
+                    team.groupCode
+                      ? `idwkctrgroup=${team.groupCode}`
+                      : 'ผู้ใช้ยังไม่ได้กำหนดกลุ่มงาน'
+                  }
+                />
               </TableCell>
             </TableRow>
           ) : (
@@ -415,6 +461,7 @@ function ManagerTeamSection({
           )}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }
@@ -422,31 +469,24 @@ function ManagerTeamSection({
 function ProfileCard({ data }: { data: NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<typeof fetchPersonnelDashboard>>>>['data']> }) {
   const p = data.profile
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
-        {p.imgMember ? (
-          <img
-            src={personnelImageUrl(p.idwkctr)}
-            alt={p.displayName}
-            className="h-24 w-24 shrink-0 rounded-full object-cover ring-2 ring-zinc-200"
-            onError={(e) => {
-              ;(e.currentTarget as HTMLImageElement).style.display = 'none'
-            }}
-          />
-        ) : (
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-zinc-100 p-3 text-zinc-700">
-            <UserCircle2 className="size-12" aria-hidden />
-          </div>
-        )}
+    <AppCard pad="default">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <PersonnelAvatar
+          idwkctr={p.idwkctr}
+          displayName={p.displayName}
+          hasImage={Boolean(p.imgMember)}
+          size="lg"
+          className="ring-2"
+        />
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <div className="text-xl font-semibold text-zinc-900">
+            <div className="text-xl font-semibold text-app">
               {p.displayName}
             </div>
-            <div className="mt-0.5 text-sm text-zinc-500">
+            <div className="mt-1 text-caption">
               <span className="font-mono">{p.idwkctr}</span>
               {p.username && p.username !== p.idwkctr ? (
-                <span className="ml-2 text-xs text-zinc-400">({p.username})</span>
+                <span className="ml-2 text-xs text-app-muted">({p.username})</span>
               ) : null}
             </div>
           </div>
@@ -502,15 +542,15 @@ function ProfileCard({ data }: { data: NonNullable<ReturnType<typeof useQuery<Aw
           </div>
         </div>
       </div>
-    </div>
+    </AppCard>
   )
 }
 
 function DataLine({ label, value }: { label: ReactNode; value: ReactNode }) {
   return (
-    <div className="flex items-baseline gap-2 border-b border-dashed border-zinc-200 py-1 text-sm">
-      <div className="w-28 shrink-0 text-xs text-zinc-500">{label}</div>
-      <div className="min-w-0 truncate text-zinc-900">{value}</div>
+    <div className="flex items-baseline gap-2 border-b border-dashed border-app py-1 text-body-sm">
+      <div className="w-28 shrink-0 text-xs text-app-muted">{label}</div>
+      <div className="min-w-0 truncate text-app">{value}</div>
     </div>
   )
 }
@@ -522,11 +562,11 @@ function RecentPlanning({
 }) {
   const items = data.planning.recent
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3">
+    <div className="overflow-hidden app-table-shell">
+      <div className="flex items-center justify-between border-b border-app px-6 py-3">
         <div>
-          <div className="text-sm font-medium text-zinc-900">งานเปิดล่าสุดของฉัน</div>
-          <p className="text-xs text-zinc-500">
+          <div className="text-body-sm font-medium text-app">งานเปิดล่าสุดของฉัน</div>
+          <p className="text-xs text-app-muted">
             ดึงจาก <code>view_planwork</code> (syst IN CRTD,REL) จำกัด 5 รายการ
           </p>
         </div>
@@ -534,25 +574,27 @@ function RecentPlanning({
           <Link to="/planning">ไปหน้าแผนงาน</Link>
         </Button>
       </div>
-      <Table>
+      <div className="app-table-shell overflow-x-auto">
+      <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
             <TableHead>WO</TableHead>
             <TableHead>Type</TableHead>
-            <TableHead>Short text</TableHead>
+            <TableHead>คำอธิบาย</TableHead>
             <TableHead>Functional loc / Equipment</TableHead>
-            <TableHead>Basic start</TableHead>
+            <TableHead>เริ่ม</TableHead>
             <TableHead>Syst</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={6}
-                className="py-8 text-center text-sm text-zinc-500"
-              >
-                ไม่มีงานเปิดสำหรับ <code>idwkctr={data.profile.idwkctr}</code>
+              <TableCell colSpan={6} className="p-0">
+                <EmptyState
+                  className="border-0 bg-transparent py-10"
+                  title="ไม่มีงานเปิด"
+                  description={`idwkctr=${data.profile.idwkctr}`}
+                />
               </TableCell>
             </TableRow>
           ) : (
@@ -568,7 +610,7 @@ function RecentPlanning({
                 </TableCell>
                 <TableCell className="text-xs">{it.wktype ?? '—'}</TableCell>
                 <TableCell
-                  className="max-w-[16rem] truncate text-sm"
+                  className="max-w-[16rem] truncate text-body-sm"
                   title={it.shortText ?? ''}
                 >
                   {it.shortText ?? '—'}
@@ -576,7 +618,7 @@ function RecentPlanning({
                 <TableCell className="text-xs">
                   {it.functionalLoc ?? '—'}
                   {it.equipment ? (
-                    <div className="text-[11px] text-zinc-500">{it.equipment}</div>
+                    <div className="text-caption">{it.equipment}</div>
                   ) : null}
                 </TableCell>
                 <TableCell className="tabular-nums">{it.bscStart ?? '—'}</TableCell>
@@ -588,6 +630,7 @@ function RecentPlanning({
           )}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }
@@ -599,13 +642,13 @@ function RecentConfirmation({
 }) {
   const items = data.confirmation.recent
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3">
+    <div className="overflow-hidden app-table-shell">
+      <div className="flex items-center justify-between border-b border-app px-6 py-3">
         <div>
-          <div className="text-sm font-medium text-zinc-900">
+          <div className="text-body-sm font-medium text-app">
             Confirmation ล่าสุดของฉัน
           </div>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             ดึงจาก <code>tbcofirm</code> ที่ <code>cwkctr</code> = ฉัน หรือ{' '}
             <code>wkctr</code> ตรงกับ WC ของฉัน (เทียบ <code>view_confirm.php</code>)
           </p>
@@ -614,26 +657,28 @@ function RecentConfirmation({
           <Link to="/confirmation">ไปหน้า Confirmation</Link>
         </Button>
       </div>
-      <Table>
+      <div className="app-table-shell overflow-x-auto">
+      <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
             <TableHead>WO</TableHead>
             <TableHead>Confirmation</TableHead>
             <TableHead>WC</TableHead>
-            <TableHead>Start</TableHead>
-            <TableHead>End</TableHead>
+            <TableHead>เริ่ม</TableHead>
+            <TableHead>สิ้นสุด</TableHead>
             <TableHead className="text-right">Act.Work</TableHead>
-            <TableHead>Time close</TableHead>
+            <TableHead>ปิดเมื่อ</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={7}
-                className="py-8 text-center text-sm text-zinc-500"
-              >
-                ไม่มี confirmation ของฉัน
+              <TableCell colSpan={7} className="p-0">
+                <EmptyState
+                  className="border-0 bg-transparent py-10"
+                  title="ไม่มี confirmation"
+                  description="ยังไม่มีรายการปิดงานของคุณ"
+                />
               </TableCell>
             </TableRow>
           ) : (
@@ -664,6 +709,7 @@ function RecentConfirmation({
           )}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }

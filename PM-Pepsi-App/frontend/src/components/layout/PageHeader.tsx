@@ -1,3 +1,5 @@
+import { PepsiBrandMark } from '@/components/brand/PepsiBrandMark'
+import { PepsiStripe } from '@/components/brand/PepsiStripe'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
@@ -13,21 +15,21 @@ export function PageHeader({
   className?: string
 }) {
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-4 border-b border-zinc-200 bg-white px-6 py-6 sm:flex-row sm:items-center sm:justify-between',
-        className,
-      )}
-    >
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-          {title}
-        </h1>
-        {description ? (
-          <p className="mt-1 max-w-2xl text-sm text-zinc-600">{description}</p>
-        ) : null}
+    <header className={cn('shrink-0', className)}>
+      <PepsiStripe />
+      <div className="app-page-header flex flex-col gap-4 px-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex min-w-0 items-start gap-3">
+          <PepsiBrandMark size="md" className="mt-1 shadow-sm" />
+          <div className="min-w-0">
+            <p className="text-eyebrow">Pepsi PM</p>
+            <h1 className="text-heading-page">{title}</h1>
+            {description ? (
+              <p className="text-caption mt-1 max-w-2xl">{description}</p>
+            ) : null}
+          </div>
+        </div>
+        {children ? <div className="flex shrink-0 flex-wrap gap-2">{children}</div> : null}
       </div>
-      {children ? <div className="flex shrink-0 gap-2">{children}</div> : null}
-    </div>
+    </header>
   )
 }

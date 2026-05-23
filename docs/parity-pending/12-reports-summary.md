@@ -1,4 +1,4 @@
-﻿# ลำดับที่ 12 — Reports & สรุปรายสัปดาห์
+# ลำดับที่ 12 — Reports & สรุปรายสัปดาห์
 
 **สถานะรวม:** **เสร็จ (แกน + §3)** — API + Chart.js + filter ช่วงวันที่ 2026-05-19  
 **Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ยังไม่มี — ดู [00-stack-target.md](00-stack-target.md)
@@ -14,7 +14,8 @@
   - [`ReportsPage.tsx`](../../PM-Pepsi-App/frontend/src/features/reports/ReportsPage.tsx): Chart.js Bar + Line จาก DB จริง
 - [x] **`GET /api/v1/reports/summary-weekly`** — 2026-05-19
   - เทียบ `W_summary_weekly_chart2.php` (Technician Utilizations bar) + ตาราง `W_summary_weekly.php`
-  - รวมต่อ `wkctr`: PM (`wktype <> ZB029`), Reactive (`ZB01`/`ZB05`), RCA (`view_confirmation`), HR/OT จาก `tbmanhours`, %PM/%Reactive/%RCA
+  - รวมต่อ `wkctr`: PM (**`ZB02`** ตาม Eng Utilization 2026), Reactive (`ZB01`/`ZB05`), RCA (`view_confirmation`), HR/OT จาก `tbmanhours`, %PM/%Reactive/%RCA
+  - **`importCoverage`** ใน response — ช่วง `tbiw37n` / manhour ใน DB + ปุ่ม「ใช้ช่วงข้อมูล SAP」บน `/summary-weekly`
   - [`SummaryWeeklyPage.tsx`](../../PM-Pepsi-App/frontend/src/features/reports/SummaryWeeklyPage.tsx) แทน placeholder
 - [x] **Filter ช่วงวันที่** — 2026-05-19
   - Backend [`reports-range.ts`](../../PM-Pepsi-App/backend/src/lib/reports-range.ts): `from`/`to` query + `range` ใน response
@@ -46,3 +47,5 @@
 | 2026-05-19 | **API KPI + สรุปรายสัปดาห์** — routes `/api/v1/reports/kpi`, `/api/v1/reports/summary-weekly`; UI `/reports`, `/summary-weekly` |
 | 2026-05-19 | **Fullscreen charts** — `/summary-weekly/chart/full?variant=chart|chart2` |
 | 2026-05-19 | **§3 ครบ (แกน)** — `from`/`to` filter + `range` ใน API; Vitest E2E-style component tests; สถานะ → เสร็จ (แกน + §3) |
+| 2026-05-22 | PM filter **ZB02** (ไม่ใช้ legacy `<> ZB029`) · `importCoverage` หลัง import SAP |
+| 2026-05-22 | **`/manhours-hr`** — % Utilization Confirm÷HR รายคน/ทีม + ตัวกรองวันที่ (เทียบ `M_manhour_chart_performance`) |

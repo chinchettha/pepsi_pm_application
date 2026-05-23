@@ -13,6 +13,8 @@ export const userProfileSchema = z.object({
   fullnameTh: z.string().optional(),
   fullnameEng: z.string().optional(),
   imgMember: z.string().nullable().optional(),
+  /** มีภาพใน imgmember_data (BYTEA) */
+  hasImage: z.boolean().optional(),
   birthdayLabel: z.string().optional(),
   workAgeLabel: z.string().optional(),
   /** รวมชั่วโมงทั้งหมด — เทียบ worktime_count.php */

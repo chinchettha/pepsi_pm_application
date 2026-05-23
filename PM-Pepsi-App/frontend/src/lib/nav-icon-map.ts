@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  ArrowLeftRight,
   BarChart3,
   Boxes,
   BookText,
@@ -8,11 +9,23 @@ import {
   ClipboardList,
   Clock3,
   Database,
+  DatabaseBackup,
+  Activity,
+  History,
   Home,
+  Info,
+  Lock,
+  LayoutDashboard,
   LayoutList,
   LineChart,
+  Megaphone,
+  Palette,
   Printer,
+  UserCog,
   Settings,
+  Settings2,
+  ShieldCheck,
+  Menu,
   Timer,
   Users,
   Wrench,
@@ -21,22 +34,39 @@ import {
 
 const byRoute: Record<string, LucideIcon> = {
   '/': Home,
+  '/plan-calendar': CalendarDays,
   '/calendar': CalendarDays,
   '/line-calendar': ChartGantt,
   '/backlog': LayoutList,
   '/work-orders': ClipboardList,
   '/confirmation': Users,
   '/planning': Wrench,
+  '/integration': ArrowLeftRight,
   '/iw37n': Database,
   '/master-data': Boxes,
   '/manhours': Timer,
   '/worktime': Clock3,
   '/personnel': Users,
   '/reports': BarChart3,
+  '/reports/audit': ShieldCheck,
   '/manhours-hr': Printer,
   '/summary-weekly': LineChart,
   '/settings': Settings,
   '/user-log': BookText,
+  '/admin': LayoutDashboard,
+  '/admin/branding': Palette,
+  '/admin/settings': Settings2,
+  '/admin/audit': History,
+  '/admin/health': Activity,
+  '/admin/backup': DatabaseBackup,
+  '/admin/announcements': Megaphone,
+  '/admin/security': Lock,
+  '/admin/about': Info,
+  '/admin/users': UserCog,
+  '/admin/roles': ShieldCheck,
+  '/admin/menu': Menu,
+  '/personnel/admin': UserCog,
+  '/manhours/admin': UserCog,
 }
 
 /** แปลง `menuicon` จาก tbmenu หรือใช้ route เป็น fallback */
@@ -51,5 +81,6 @@ export function resolveNavIcon(reactRoute: string, menuicon?: string): LucideIco
   if (icon.includes('book')) return BookText
   if (icon.includes('chart')) return BarChart3
   if (icon.includes('cog')) return Settings
+  if (icon.includes('palette')) return Palette
   return Circle
 }

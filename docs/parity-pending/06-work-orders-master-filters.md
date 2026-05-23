@@ -1,6 +1,6 @@
 # ลำดับที่ 6 — Work orders + master filters
 
-**สถานะรวม:** กำลังทำ  
+**สถานะรวม:** แกนเสร็จ ✅ · UAT ขั้น 5 ⏳  
 **Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ยังไม่มี — ดู [00-stack-target.md](00-stack-target.md)
 **Checklist หลัก:** `workorder.php`, `W_confirm*`, master filter  
 **Migration:** [`005_tbwkzb_tbfunctional.sql`](../../database/migrations/005_tbwkzb_tbfunctional.sql)  
@@ -18,7 +18,7 @@
 
 ---
 
-## ยังไม่ทำ
+## ยังไม่ทำ (UAT / stack)
 
 ### หน้า Work orders
 
@@ -50,3 +50,4 @@
 | 2026-05-18 | ปิด CRUD UI `M_functional*` โดยใช้แท็บ `functional` ในหน้า `/master-data` |
 | 2026-05-18 | ปิด CRUD UI work center zone / `tbwkzb` โดยใช้แท็บ `zone` + `zb` ในหน้า `/master-data` |
 | 2026-05-18 | ปิด `ModalOrderDetail.php` เต็มรูปแบบ: ต่อแท็บ Task List / Machine / Planning / Material ใน `WorkOrderDetailDialog` + API `/api/v1/work-orders/:id/modal-detail` + จ่ายงาน `/planning` |
+| 2026-05-21 | ปิดแกน parity — อัปเดต [`PLAN.md`](PLAN.md) §3.1 ลำดับ 5 → ✅; คง UAT ขั้น 5 ตาม [`CHECKLIST-ORDER.md`](CHECKLIST-ORDER.md) |

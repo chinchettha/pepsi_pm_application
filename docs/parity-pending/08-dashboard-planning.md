@@ -1,10 +1,10 @@
 ﻿# ลำดับที่ 8 — Dashboard + Planning
 
-**สถานะรวม:** เสร็จ (แกน) — 2026-05-19  
+**สถานะรวม:** เสร็จ (แกน) — 2026-05-21  
 **Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ยังไม่ใช่ — ขาด FullCalendar DnD ใน Planning, charts KPI Dashboard, IndexedDB offline, Docker ส่งมอบ — ดู [00-stack-target.md](00-stack-target.md)  
 **Checklist หลัก:** `content.php` (แทน Home), `M_planwork*` — ปิดทุกบรรทัด (Dashboard / Planning / Navigation / ข้อมูล)  
-**Migration:** [`007_tbplangingwork_view_planwork.sql`](../../database/migrations/007_tbplangingwork_view_planwork.sql), [`031_dashboard_menu_all_roles.sql`](../../database/migrations/031_dashboard_menu_all_roles.sql)  
-**Route:** `/` (Home), `/planning`, ลิงก์ออก `/work-orders/:id`, `/iw37n`
+**Migration:** [`007_tbplangingwork_view_planwork.sql`](../../database/migrations/007_tbplangingwork_view_planwork.sql), [`031_dashboard_menu_all_roles.sql`](../../database/migrations/031_dashboard_menu_all_roles.sql), [`074_plan_calendar_menu.sql`](../../database/migrations/074_plan_calendar_menu.sql) (เมนู `tbmenu` — ไฟล์ ✅ · รันบน PG ต่อ env)  
+**Route:** `/` (Home), **`/plan-calendar`** (login WC — `M_plan_calendar`), `/planning`, `/work-orders/:id`, `/iw37n`
 
 ---
 
@@ -23,6 +23,7 @@
 - [x] [`PlanningPage.tsx`](../../PM-Pepsi-App/frontend/src/features/planning/PlanningPage.tsx) — เพิ่มปุ่มจ่ายงานจากรายการ Planning ไปยัง work center ของผู้ล็อกอิน
 - [x] Register route handler [`registerPlanningRoutes`](../../PM-Pepsi-App/backend/src/routes/planning.ts) ครอบ `POST /api/v1/planning/assign` (403 ถ้า `userst != 'A'`, 400 zod, 404 WO ไม่อยู่ใน CRTD/REL, 503 ถ้ายังไม่รัน migration `007_tbplangingwork_view_planwork.sql`)
 - [x] Assign dialog ใน `PlanningPage` — เลือก WC ปลายทาง (จาก `/api/v1/workcenters`) / Team `P`/`G` / `pwcomment` + shortcut "จ่ายให้ฉัน" (parity แกน `M_planwork_view_form.php`: upsert `idiw37`, `wkctr`, `wkctrpw`, `pwcomment`, `pwteam`)
+- [x] **`/plan-calendar`** — `GET /api/v1/plan-calendar/events` + [`PlanCalendarPage`](../../PM-Pepsi-App/frontend/src/features/plan-calendar/PlanCalendarPage.tsx) (เทียบ `M_plan_calendar.php`; post-login WC)
 
 ---
 

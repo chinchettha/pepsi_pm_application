@@ -1,4 +1,6 @@
-import { PageHeader } from '@/components/layout/PageHeader'
+import { CanPermission } from '@/components/auth/CanPermission'
+import { AppCard } from '@/components/layout/AppCard'
+import { AppPageShell } from '@/components/layout/AppPageShell'
 import {
   type DepartmentItem,
   type EquipmentItem,
@@ -19,8 +21,14 @@ import {
   type ZoneItem,
 } from '@/api/schemas'
 import { ActivityTypePanel } from '@/features/master-data/ActivityTypePanel'
+import {
+  MasterDataPanelEmpty,
+  MasterDataPanelError,
+  MasterDataPanelSkeleton,
+} from '@/features/master-data/master-data-panel-ui'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   Dialog,
   DialogContent,
@@ -42,6 +50,7 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { fetchMasterData } from '@/lib/api-public'
+import { useMasterDataPermissions } from '@/lib/master-data-permissions'
 import {
   createDepartment,
   deleteDepartment,
@@ -119,28 +128,30 @@ import {
   parseLineSchdulFile,
   updateLineSchdul,
 } from '@/lib/master-data-api'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, Trash2, Upload } from 'lucide-react'
-import { useState } from 'react'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 
 const tabs = [
-  { id: 'equipment', label: 'Equipment', legacy: 'M_equipment', backend: true },
-  { id: 'functional', label: 'Functional loc.', legacy: 'M_functional', backend: true },
-  { id: 'machine', label: 'Machine', legacy: 'M_machine', backend: true },
-  { id: 'material', label: 'Material', legacy: 'M_material', backend: true },
-  { id: 'zone', label: 'Zone', legacy: 'M_zone', backend: true },
-  { id: 'department', label: 'Department', legacy: 'M_department', backend: true },
+  { id: 'equipment', label: 'อุปกรณ์', legacy: 'M_equipment', backend: true },
+  { id: 'functional', label: 'Functional Loc.', legacy: 'M_functional', backend: true },
+  { id: 'machine', label: 'เครื่องจักร', legacy: 'M_machine', backend: true },
+  { id: 'material', label: 'วัสดุ', legacy: 'M_material', backend: true },
+  { id: 'zone', label: 'โซน', legacy: 'M_zone', backend: true },
+  { id: 'department', label: 'แผนก', legacy: 'M_department', backend: true },
   { id: 'tasklist', label: 'Task list', legacy: 'M_tasklist', backend: true },
-  { id: 'worktype', label: 'Work type', legacy: 'M_worktype', backend: true },
+  { id: 'worktype', label: 'ประเภทงาน', legacy: 'M_worktype', backend: true },
   { id: 'zb', label: 'ZB', legacy: 'M_zb', backend: true },
-  { id: 'level', label: 'Level', legacy: 'M_level', backend: true },
-  { id: 'position', label: 'Position', legacy: 'M_position', backend: true },
+  { id: 'level', label: 'ระดับ', legacy: 'M_level', backend: true },
+  { id: 'position', label: 'ตำแหน่ง', legacy: 'M_position', backend: true },
   { id: 'activitytype', label: 'Activity type', legacy: 'M_activitytype', backend: true },
-  { id: 'workstatus', label: 'Work status', legacy: 'M_workstatus', backend: true },
-  { id: 'reason', label: 'Reason', legacy: 'M_reason', backend: true },
-  { id: 'group', label: 'Group', legacy: 'M_Group', backend: true },
-  { id: 'lineproduct', label: 'Line product', legacy: 'M_lineproduct', backend: true },
-  { id: 'lineschdul', label: 'Line schedule', legacy: 'M_lineschdul', backend: true },
+  { id: 'workstatus', label: 'สถานะงาน', legacy: 'M_workstatus', backend: true },
+  { id: 'reason', label: 'เหตุผล', legacy: 'M_reason', backend: true },
+  { id: 'group', label: 'กลุ่ม', legacy: 'M_Group', backend: true },
+  { id: 'lineproduct', label: 'สายผลิต', legacy: 'M_lineproduct', backend: true },
+  { id: 'lineschdul', label: 'ตารางสาย', legacy: 'M_lineschdul', backend: true },
 ] as const
 
 type DepartmentFormState = { iddepartment: string; department: string }
@@ -404,8 +415,8 @@ function DepartmentPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is DepartmentItem => 'iddepartment' in r && typeof (r as { iddepartment: unknown }).iddepartment === 'string',
@@ -416,17 +427,15 @@ function DepartmentPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          Create
+          เพิ่ม
         </Button>
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-zinc-600">
-          No data — run database/migrations/011_tbdepartment.sql and seed/import data
-        </p>
+        <MasterDataPanelEmpty description="รัน migration 011 หรือนำเข้าข้อมูลแผนก" />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200">
-          <Table>
+        <div className="app-table-shell overflow-x-auto">
+          <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
                 <TableHead>Department Code</TableHead>
@@ -437,7 +446,7 @@ function DepartmentPanel() {
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.iddepartment}>
-                  <TableCell className="font-mono text-sm">{row.iddepartment}</TableCell>
+                  <TableCell className="font-mono text-body-sm">{row.iddepartment}</TableCell>
                   <TableCell>{row.department}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -446,7 +455,7 @@ function DepartmentPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(row)}
-                        aria-label="Edit"
+                        aria-label="แก้ไข"
                       >
                         <Pencil className="size-4" />
                       </Button>
@@ -455,7 +464,7 @@ function DepartmentPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openDelete(row)}
-                        aria-label="Delete"
+                        aria-label="ลบ"
                       >
                         <Trash2 className="size-4 text-red-600" />
                       </Button>
@@ -508,15 +517,15 @@ function DepartmentPanel() {
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">
+            <p className="text-body-sm text-red-600">
               This action cannot be undone. Delete {form.iddepartment}?
             </p>
           ) : null}
           {errorSummary && mode !== 'delete' ? (
-            <p className="text-sm text-red-600">{errorSummary}</p>
+            <p className="text-body-sm text-red-600">{errorSummary}</p>
           ) : null}
           {mut.isError ? (
-            <p className="text-sm text-red-600">{(mut.error as Error).message}</p>
+            <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
@@ -689,8 +698,8 @@ function EquipmentPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is EquipmentItem => 'equipment' in r && typeof (r as { equipment: unknown }).equipment === 'string',
@@ -701,7 +710,7 @@ function EquipmentPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          Create
+          เพิ่ม
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -710,12 +719,10 @@ function EquipmentPanel() {
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-zinc-600">
-          No data — run database/migrations/012_tbequipment.sql and seed/import data
-        </p>
+        <MasterDataPanelEmpty description="รัน migration 012 หรือนำเข้าข้อมูลอุปกรณ์" />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200">
-          <Table>
+        <div className="app-table-shell overflow-x-auto">
+          <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
                 <TableHead>Equipment</TableHead>
@@ -728,7 +735,7 @@ function EquipmentPanel() {
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.equipment}>
-                  <TableCell className="font-mono text-sm">{row.equipment}</TableCell>
+                  <TableCell className="font-mono text-body-sm">{row.equipment}</TableCell>
                   <TableCell>{row.equdescrip}</TableCell>
                   <TableCell>{row.equipmentsub}</TableCell>
                   <TableCell>{row.functionalloc}</TableCell>
@@ -739,7 +746,7 @@ function EquipmentPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(row)}
-                        aria-label="Edit"
+                        aria-label="แก้ไข"
                       >
                         <Pencil className="size-4" />
                       </Button>
@@ -748,7 +755,7 @@ function EquipmentPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openDelete(row)}
-                        aria-label="Delete"
+                        aria-label="ลบ"
                       >
                         <Trash2 className="size-4 text-red-600" />
                       </Button>
@@ -848,12 +855,12 @@ function EquipmentPanel() {
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">
+            <p className="text-body-sm text-red-600">
               This action cannot be undone. Delete {form.equipment}?
             </p>
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -881,7 +888,7 @@ function EquipmentPanel() {
           <DialogHeader>
             <DialogTitle>Import Equipment (CSV/Excel)</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             Upload file export: equipment, description, equipmentsub, functionalloc, equl, equ1, equea. For Excel files,
             the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
@@ -895,7 +902,7 @@ function EquipmentPanel() {
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
               />
             </div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-app-muted">
               Or paste CSV: equipment,equdescrip,equipmentsub,functionalloc,equl,equ1,equea
             </div>
           </div>
@@ -906,11 +913,11 @@ function EquipmentPanel() {
             placeholder={'EQ0001,Sample Equipment,,,L,1,EA'}
           />
           {importMut.isSuccess ? (
-            <p className="text-sm text-emerald-700">
+            <p className="text-body-sm text-emerald-700">
               Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed} · Skipped {importMut.data.skipped}
             </p>
           ) : null}
-          {importMut.isError ? <p className="text-sm text-red-600">{(importMut.error as Error).message}</p> : null}
+          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>
               Close
@@ -1067,8 +1074,8 @@ function FunctionalPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is FunctionalItem =>
@@ -1080,7 +1087,7 @@ function FunctionalPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          Create
+          เพิ่ม
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -1089,12 +1096,10 @@ function FunctionalPanel() {
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-zinc-600">
-          No data — run database/migrations/005_tbwkzb_tbfunctional.sql and seed/import data
-        </p>
+        <MasterDataPanelEmpty description="รัน migration 005 หรือนำเข้า Functional loc." />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200">
-          <Table>
+        <div className="app-table-shell overflow-x-auto">
+          <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
                 <TableHead>Functional loc.</TableHead>
@@ -1106,7 +1111,7 @@ function FunctionalPanel() {
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.functionalloc}>
-                  <TableCell className="font-mono text-sm">{row.functionalloc}</TableCell>
+                  <TableCell className="font-mono text-body-sm">{row.functionalloc}</TableCell>
                   <TableCell>{row.funldescrip}</TableCell>
                   <TableCell>{row.functionallocsub}</TableCell>
                   <TableCell>
@@ -1116,7 +1121,7 @@ function FunctionalPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(row)}
-                        aria-label="Edit"
+                        aria-label="แก้ไข"
                       >
                         <Pencil className="size-4" />
                       </Button>
@@ -1125,7 +1130,7 @@ function FunctionalPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openDelete(row)}
-                        aria-label="Delete"
+                        aria-label="ลบ"
                       >
                         <Trash2 className="size-4 text-red-600" />
                       </Button>
@@ -1194,15 +1199,15 @@ function FunctionalPanel() {
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">
+            <p className="text-body-sm text-red-600">
               This action cannot be undone. Delete {form.functionalloc}?
             </p>
           ) : null}
           {errorSummary && mode !== 'delete' ? (
-            <p className="text-sm text-red-600">{errorSummary}</p>
+            <p className="text-body-sm text-red-600">{errorSummary}</p>
           ) : null}
           {mut.isError ? (
-            <p className="text-sm text-red-600">{(mut.error as Error).message}</p>
+            <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
@@ -1231,7 +1236,7 @@ function FunctionalPanel() {
           <DialogHeader>
             <DialogTitle>Import Functional location (CSV/Excel)</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             Upload file export: functionalloc, funldescrip, functionallocsub. For Excel files, the first 2 rows are skipped (PHP parity).
             Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
@@ -1245,7 +1250,7 @@ function FunctionalPanel() {
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
               />
             </div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-app-muted">
               Or paste CSV: functionalloc,funldescrip,functionallocsub
             </div>
           </div>
@@ -1256,12 +1261,12 @@ function FunctionalPanel() {
             placeholder={'7151-PL01,Product line 01,'}
           />
           {importMut.isSuccess ? (
-            <p className="text-sm text-emerald-700">
+            <p className="text-body-sm text-emerald-700">
               Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed} · Skipped {importMut.data.skipped}
             </p>
           ) : null}
           {importMut.isError ? (
-            <p className="text-sm text-red-600">{(importMut.error as Error).message}</p>
+            <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>
@@ -1369,8 +1374,8 @@ function ReasonPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is ReasonItem => 'reasoncode' in r && typeof (r as { reasoncode: unknown }).reasoncode === 'string',
@@ -1380,11 +1385,11 @@ function ReasonPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        Create
+        เพิ่ม
       </Button>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Reason Code</TableHead>
@@ -1395,7 +1400,7 @@ function ReasonPanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.reasoncode}>
-                <TableCell className="font-mono text-sm">{row.reasoncode}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.reasoncode}</TableCell>
                 <TableCell>{row.reasonname}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -1404,7 +1409,7 @@ function ReasonPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="Edit"
+                      aria-label="แก้ไข"
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -1413,7 +1418,7 @@ function ReasonPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="Delete"
+                      aria-label="ลบ"
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -1461,12 +1466,12 @@ function ReasonPanel() {
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">
+            <p className="text-body-sm text-red-600">
               This action cannot be undone. Delete {form.reasoncode}?
             </p>
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -1578,8 +1583,8 @@ function WorkTypePanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is WorkTypeItem => 'idwkctrtype' in r && typeof (r as { idwkctrtype: unknown }).idwkctrtype === 'string',
@@ -1589,11 +1594,11 @@ function WorkTypePanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        Create
+        เพิ่ม
       </Button>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Type Status Code</TableHead>
@@ -1604,7 +1609,7 @@ function WorkTypePanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.idwkctrtype}>
-                <TableCell className="font-mono text-sm">{row.idwkctrtype}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.idwkctrtype}</TableCell>
                 <TableCell>{row.wkctrtype}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -1613,7 +1618,7 @@ function WorkTypePanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="Edit"
+                      aria-label="แก้ไข"
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -1622,7 +1627,7 @@ function WorkTypePanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="Delete"
+                      aria-label="ลบ"
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -1670,12 +1675,12 @@ function WorkTypePanel() {
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">
+            <p className="text-body-sm text-red-600">
               This action cannot be undone. Delete {form.idwkctrtype}?
             </p>
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -1785,8 +1790,8 @@ function ZbPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows =
     q.data?.filter(
@@ -1797,11 +1802,11 @@ function ZbPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        Create
+        เพิ่ม
       </Button>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>ZB Code</TableHead>
@@ -1812,7 +1817,7 @@ function ZbPanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.wkzb}>
-                <TableCell className="font-mono text-sm">{row.wkzb}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.wkzb}</TableCell>
                 <TableCell>{row.zbdescrip}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -1821,7 +1826,7 @@ function ZbPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="Edit"
+                      aria-label="แก้ไข"
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -1830,7 +1835,7 @@ function ZbPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="Delete"
+                      aria-label="ลบ"
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -1878,12 +1883,12 @@ function ZbPanel() {
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">
+            <p className="text-body-sm text-red-600">
               This action cannot be undone. Delete {form.wkzb}?
             </p>
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -1995,8 +2000,8 @@ function LevelPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is LevelItem => 'idwklevel' in r && typeof (r as { idwklevel: unknown }).idwklevel === 'string',
@@ -2006,11 +2011,11 @@ function LevelPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        Create
+        เพิ่ม
       </Button>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Level Code</TableHead>
@@ -2021,7 +2026,7 @@ function LevelPanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.idwklevel}>
-                <TableCell className="font-mono text-sm">{row.idwklevel}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.idwklevel}</TableCell>
                 <TableCell>{row.wklevel}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -2030,7 +2035,7 @@ function LevelPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="Edit"
+                      aria-label="แก้ไข"
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -2039,7 +2044,7 @@ function LevelPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="Delete"
+                      aria-label="ลบ"
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -2087,10 +2092,10 @@ function LevelPanel() {
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">This action cannot be undone. Delete {form.idwklevel}?</p>
+            <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.idwklevel}?</p>
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -2202,8 +2207,8 @@ function PositionPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is PositionItem => 'idposition' in r && typeof (r as { idposition: unknown }).idposition === 'string',
@@ -2213,11 +2218,11 @@ function PositionPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        Create
+        เพิ่ม
       </Button>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Position Code</TableHead>
@@ -2228,7 +2233,7 @@ function PositionPanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.idposition}>
-                <TableCell className="font-mono text-sm">{row.idposition}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.idposition}</TableCell>
                 <TableCell>{row.position}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -2237,7 +2242,7 @@ function PositionPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="Edit"
+                      aria-label="แก้ไข"
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -2246,7 +2251,7 @@ function PositionPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="Delete"
+                      aria-label="ลบ"
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -2298,10 +2303,10 @@ function PositionPanel() {
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">This action cannot be undone. Delete {form.idposition}?</p>
+            <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.idposition}?</p>
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -2412,8 +2417,8 @@ function GroupPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is GroupItem => 'idwkctrgroup' in r && typeof (r as { idwkctrgroup: unknown }).idwkctrgroup === 'number',
@@ -2423,11 +2428,11 @@ function GroupPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        Create
+        เพิ่ม
       </Button>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Group</TableHead>
@@ -2438,14 +2443,14 @@ function GroupPanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.idwkctrgroup}>
-                <TableCell className="font-mono text-sm">{row.wkctrgroup}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.wkctrgroup}</TableCell>
                 <TableCell>{row.wkctrdescription}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="Edit">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="Delete">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -2473,9 +2478,9 @@ function GroupPanel() {
               {errors.wkctrdescription ? <p className="mt-1 text-xs text-red-600">{errors.wkctrdescription}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-sm text-red-600">This action cannot be undone. Delete {form.wkctrgroup}?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.wkctrgroup}?</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -2492,9 +2497,13 @@ function GroupPanel() {
 
 function TasklistPanel() {
   const qc = useQueryClient()
+  const tableWrapRef = useRef<HTMLDivElement>(null)
+  const scrollToIdRef = useRef<number | null>(null)
+
   const q = useQuery({
     queryKey: ['master-data', 'tasklist'],
     queryFn: () => fetchMasterData('tasklist'),
+    placeholderData: keepPreviousData,
   })
 
   const [open, setOpen] = useState(false)
@@ -2507,8 +2516,6 @@ function TasklistPanel() {
   const [importOpen, setImportOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importText, setImportText] = useState('')
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['master-data', 'tasklist'] })
 
   const close = () => {
     setOpen(false)
@@ -2605,9 +2612,22 @@ function TasklistPanel() {
       }
       return createTasklist(payload)
     },
-    onSuccess: () => {
-      invalidate()
+    onSuccess: async (saved) => {
+      await qc.refetchQueries({ queryKey: ['master-data', 'tasklist'] })
+      if (mode === 'edit' && saved && typeof saved === 'object' && 'idtasklist' in saved) {
+        const row = saved as TasklistItem
+        scrollToIdRef.current = row.idtasklist
+        openEdit(row)
+        toast.success('บันทึก Task list แล้ว')
+        return
+      }
+      if (mode === 'delete') {
+        close()
+        toast.success('ลบแล้ว')
+        return
+      }
       close()
+      toast.success('เพิ่ม Task list แล้ว')
     },
   })
 
@@ -2622,9 +2642,10 @@ function TasklistPanel() {
       }
       return importTasklists(rows)
     },
-    onSuccess: () => {
-      invalidate()
+    onSuccess: async () => {
+      await qc.refetchQueries({ queryKey: ['master-data', 'tasklist'] })
       closeImport()
+      toast.success('นำเข้า Task list แล้ว')
     },
   })
 
@@ -2697,12 +2718,20 @@ function TasklistPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is TasklistItem => 'idtasklist' in r && typeof (r as { idtasklist: unknown }).idtasklist === 'number',
   ) ?? []
+
+  useEffect(() => {
+    const id = scrollToIdRef.current
+    if (id == null || !tableWrapRef.current) return
+    const el = tableWrapRef.current.querySelector(`[data-tasklist-id="${id}"]`)
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    scrollToIdRef.current = null
+  }, [q.dataUpdatedAt, rows.length])
 
   const formFields: Array<[keyof TasklistFormState, string, boolean]> = [
     ['idwkctrtype', 'Type code', true],
@@ -2733,7 +2762,7 @@ function TasklistPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          Create
+          เพิ่ม
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -2741,8 +2770,8 @@ function TasklistPanel() {
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div ref={tableWrapRef} className="app-table-shell max-h-[min(70vh,720px)] overflow-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Task list</TableHead>
@@ -2754,17 +2783,25 @@ function TasklistPanel() {
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.idtasklist}>
-                <TableCell className="font-mono text-sm">{row.tasklist}</TableCell>
+              <TableRow
+                key={row.idtasklist}
+                data-tasklist-id={row.idtasklist}
+                className={
+                  open && editing?.idtasklist === row.idtasklist
+                    ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-300'
+                    : undefined
+                }
+              >
+                <TableCell className="font-mono text-body-sm">{row.tasklist}</TableCell>
                 <TableCell>{row.mntplan}</TableCell>
                 <TableCell>{row.pmlist}</TableCell>
                 <TableCell>{row.wkctrtype || row.idwkctrtype}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="Edit">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="Delete">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -2795,10 +2832,10 @@ function TasklistPanel() {
             ))}
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">This action cannot be undone. Delete {form.tasklist}?</p>
+            <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.tasklist}?</p>
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -2820,7 +2857,7 @@ function TasklistPanel() {
           <DialogHeader>
             <DialogTitle>Import Task list (CSV/Excel)</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
           <div className="space-y-2">
@@ -2828,11 +2865,11 @@ function TasklistPanel() {
               <Label htmlFor="tasklist-import-file">Select file</Label>
               <Input id="tasklist-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-zinc-500">Or paste CSV</div>
+            <div className="text-xs text-app-muted">Or paste CSV</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'TYPE 01,ZONE 01,MACHINE-01,PLAN-01,TASK-01,LEGACY-01,M/C,PM-01,7,0,10,2,1,ACT,80,MP,0,GLS,MENT,0,PLAN'} />
-          {importMut.isSuccess ? <p className="text-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-sm text-red-600">{(importMut.error as Error).message}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>
               Close
@@ -2950,8 +2987,8 @@ function WorkStatusPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is WorkStatusItem => 'syst' in r && typeof (r as { syst: unknown }).syst === 'string',
@@ -2961,11 +2998,11 @@ function WorkStatusPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        Create
+        เพิ่ม
       </Button>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>System Status</TableHead>
@@ -2977,12 +3014,12 @@ function WorkStatusPanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.syst}>
-                <TableCell className="font-mono text-sm">{row.syst}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.syst}</TableCell>
                 <TableCell>{row.wkstreason}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-10 rounded border border-zinc-200" style={{ backgroundColor: row.wkstcolor }} />
-                    <span className="font-mono text-xs text-zinc-600">{row.wkstcolor}</span>
+                    <div className="h-6 w-10 rounded border border-app" style={{ backgroundColor: row.wkstcolor }} />
+                    <span className="font-mono text-xs text-app-muted">{row.wkstcolor}</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -2992,7 +3029,7 @@ function WorkStatusPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="Edit"
+                      aria-label="แก้ไข"
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -3001,7 +3038,7 @@ function WorkStatusPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="Delete"
+                      aria-label="ลบ"
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -3063,12 +3100,12 @@ function WorkStatusPanel() {
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-sm text-red-600">
+            <p className="text-body-sm text-red-600">
               This action cannot be undone. Delete {form.syst}?
             </p>
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -3199,8 +3236,8 @@ function LineProductPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows = q.data?.filter(
     (r): r is LineProductItem =>
@@ -3212,7 +3249,7 @@ function LineProductPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          Create
+          เพิ่ม
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -3220,8 +3257,8 @@ function LineProductPanel() {
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Product line</TableHead>
@@ -3232,14 +3269,14 @@ function LineProductPanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.productline}>
-                <TableCell className="font-mono text-sm">{row.productline}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.productline}</TableCell>
                 <TableCell>{row.prolinedescrip}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="Edit">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="Delete">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -3269,9 +3306,9 @@ function LineProductPanel() {
               {errors.prolinedescrip ? <p className="mt-1 text-xs text-red-600">{errors.prolinedescrip}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-sm text-red-600">This action cannot be undone. Delete {form.productline}?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.productline}?</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>Cancel</Button>
             <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={!form.productline.trim() || mut.isPending} onClick={() => mut.mutate()}>
@@ -3286,7 +3323,7 @@ function LineProductPanel() {
           <DialogHeader>
             <DialogTitle>Import Line product (CSV/Excel)</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
           <div className="space-y-2">
@@ -3294,11 +3331,11 @@ function LineProductPanel() {
               <Label htmlFor="lineproduct-import-file">Select file</Label>
               <Input id="lineproduct-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-zinc-500">Or paste CSV: productline,prolinedescrip</div>
+            <div className="text-xs text-app-muted">Or paste CSV: productline,prolinedescrip</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'PL01,Product line 01'} />
-          {importMut.isSuccess ? <p className="text-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-sm text-red-600">{(importMut.error as Error).message}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
             <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>Import</Button>
@@ -3459,8 +3496,8 @@ function LineSchdulPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const rows =
     q.data?.filter(
@@ -3472,7 +3509,7 @@ function LineSchdulPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          Create
+          เพิ่ม
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -3480,8 +3517,8 @@ function LineSchdulPanel() {
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
@@ -3494,16 +3531,16 @@ function LineSchdulPanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.idline}>
-                <TableCell className="font-mono text-sm">{formatEpochSecondsToDdMmYyyy(row.lineday)}</TableCell>
+                <TableCell className="font-mono text-body-sm">{formatEpochSecondsToDdMmYyyy(row.lineday)}</TableCell>
                 <TableCell>{row.productline || row.idproductline}</TableCell>
-                <TableCell className="font-mono text-sm">{row.uptime || ''}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.uptime || ''}</TableCell>
                 <TableCell>{row.linereason}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="Edit">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="Delete">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -3543,9 +3580,9 @@ function LineSchdulPanel() {
               {errors.linereason ? <p className="mt-1 text-xs text-red-600">{errors.linereason}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-sm text-red-600">This action cannot be undone. Delete this line schedule?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete this line schedule?</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>
               Cancel
@@ -3562,7 +3599,7 @@ function LineSchdulPanel() {
           <DialogHeader>
             <DialogTitle>Import Line schedule (CSV/Excel)</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
           <div className="space-y-2">
@@ -3570,11 +3607,11 @@ function LineSchdulPanel() {
               <Label htmlFor="lineschdul-import-file">Select file</Label>
               <Input id="lineschdul-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-zinc-500">Or paste CSV: productline,lineday(DD.MM.YYYY),uptime,linereason</div>
+            <div className="text-xs text-app-muted">Or paste CSV: productline,lineday(DD.MM.YYYY),uptime,linereason</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'PL01,18.05.2026,4,Close'} />
-          {importMut.isSuccess ? <p className="text-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-sm text-red-600">{(importMut.error as Error).message}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>
               Close
@@ -3723,8 +3760,8 @@ function ZonePanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
   const rows = q.data?.filter((r): r is ZoneItem => 'idzone' in r && typeof (r as { idzone: unknown }).idzone === 'string') ?? []
 
   return (
@@ -3732,15 +3769,15 @@ function ZonePanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          Create
+          เพิ่ม
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
           Import file
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Zone code</TableHead>
@@ -3753,16 +3790,16 @@ function ZonePanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.idzone}>
-                <TableCell className="font-mono text-sm">{row.idzone}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.idzone}</TableCell>
                 <TableCell>{row.zone}</TableCell>
                 <TableCell>{row.zonedescrip}</TableCell>
                 <TableCell>{row.productline || row.idproductline}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="Edit">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="Delete">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -3799,9 +3836,9 @@ function ZonePanel() {
               {errors.idproductline ? <p className="mt-1 text-xs text-red-600">{errors.idproductline}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-sm text-red-600">This action cannot be undone. Delete {form.idzone}?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.idzone}?</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>Cancel</Button>
             <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={!form.idzone.trim() || mut.isPending} onClick={() => mut.mutate()}>
@@ -3816,7 +3853,7 @@ function ZonePanel() {
           <DialogHeader>
             <DialogTitle>Import Zone (CSV/Excel)</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
           <div className="space-y-2">
@@ -3824,11 +3861,11 @@ function ZonePanel() {
               <Label htmlFor="zone-import-file">Select file</Label>
               <Input id="zone-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-zinc-500">Or paste CSV: zone,zonedescrip,productline</div>
+            <div className="text-xs text-app-muted">Or paste CSV: zone,zonedescrip,productline</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'ZONE 01,Zone description,PL01'} />
-          {importMut.isSuccess ? <p className="text-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-sm text-red-600">{(importMut.error as Error).message}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
             <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>Import</Button>
@@ -3956,8 +3993,8 @@ function MachinePanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
   const rows = q.data?.filter((r): r is MachineItem => 'machine' in r && typeof (r as { machine: unknown }).machine === 'string') ?? []
 
   return (
@@ -3966,8 +4003,8 @@ function MachinePanel() {
         <Button type="button" size="sm" onClick={openCreate}><Plus className="mr-1 size-4" />Create</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-1 size-4" />Import file</Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Machine</TableHead>
@@ -3979,13 +4016,13 @@ function MachinePanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.machine}>
-                <TableCell className="font-mono text-sm">{row.machine}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.machine}</TableCell>
                 <TableCell>{row.zone || row.idzone}</TableCell>
                 <TableCell>{row.wkctrtype || row.idwkctrtype}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="Edit"><Pencil className="size-4" /></Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="Delete"><Trash2 className="size-4 text-red-600" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข"><Pencil className="size-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ"><Trash2 className="size-4 text-red-600" /></Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -4016,9 +4053,9 @@ function MachinePanel() {
               {errors.idwkctrtype ? <p className="mt-1 text-xs text-red-600">{errors.idwkctrtype}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-sm text-red-600">This action cannot be undone. Delete {form.machine}?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.machine}?</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>Cancel</Button>
             <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={!form.machine.trim() || mut.isPending} onClick={() => mut.mutate()}>
@@ -4033,7 +4070,7 @@ function MachinePanel() {
           <DialogHeader>
             <DialogTitle>Import Machine (CSV/Excel)</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
           <div className="space-y-2">
@@ -4041,11 +4078,11 @@ function MachinePanel() {
               <Label htmlFor="machine-import-file">Select file</Label>
               <Input id="machine-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-zinc-500">Or paste CSV: machine,zone,wkctrtype</div>
+            <div className="text-xs text-app-muted">Or paste CSV: machine,zone,wkctrtype</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'MACHINE-01,ZONE 01,Type 01'} />
-          {importMut.isSuccess ? <p className="text-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-sm text-red-600">{(importMut.error as Error).message}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
             <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>Import</Button>
@@ -4199,8 +4236,8 @@ function MaterialPanel() {
     setOpen(true)
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
   const rows = q.data?.filter(
     (r): r is MaterialItem => 'idmaterial' in r && typeof (r as { idmaterial: unknown }).idmaterial === 'number',
   ) ?? []
@@ -4211,8 +4248,8 @@ function MaterialPanel() {
         <Button type="button" size="sm" onClick={openCreate}><Plus className="mr-1 size-4" />Create</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-1 size-4" />Import file</Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-zinc-200">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
               <TableHead>Order</TableHead>
@@ -4226,15 +4263,15 @@ function MaterialPanel() {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.idmaterial}>
-                <TableCell className="font-mono text-sm">{row.wkorder}</TableCell>
+                <TableCell className="font-mono text-body-sm">{row.wkorder}</TableCell>
                 <TableCell>{formatIsoDateToDdMmYyyy(row.pstngdate)}</TableCell>
                 <TableCell>{row.materialdesc}</TableCell>
                 <TableCell className="text-right">{row.amountinlc}</TableCell>
                 <TableCell>{row.mvt}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="Edit"><Pencil className="size-4" /></Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="Delete"><Trash2 className="size-4 text-red-600" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข"><Pencil className="size-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ"><Trash2 className="size-4 text-red-600" /></Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -4287,9 +4324,9 @@ function MaterialPanel() {
               <Input id="material" value={form.material} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} />
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-sm text-red-600">This action cannot be undone. Delete material row?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-sm text-red-600">{(mut.error as Error).message}</p> : null}
+          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete material row?</p> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={close}>Cancel</Button>
             <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={mut.isPending} onClick={() => mut.mutate()}>
@@ -4304,7 +4341,7 @@ function MaterialPanel() {
           <DialogHeader>
             <DialogTitle>Import Material (CSV/Excel)</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-app-muted">
             For Excel files, the first 2 rows are skipped (PHP parity). Dates are stored as date in PostgreSQL. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
           </p>
           <div className="space-y-2">
@@ -4312,11 +4349,11 @@ function MaterialPanel() {
               <Label htmlFor="material-import-file">Select file</Label>
               <Input id="material-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-zinc-500">Or paste CSV (same column order as legacy export)</div>
+            <div className="text-xs text-app-muted">Or paste CSV (same column order as legacy export)</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'4000001,,, ,18.05.2026,,Material desc,1,EA,100,THB,2610,,2026,MAT01'} />
-          {importMut.isSuccess ? <p className="text-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-sm text-red-600">{(importMut.error as Error).message}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
             <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>Import</Button>
@@ -4333,8 +4370,8 @@ function GenericMasterTable({
   rows: Extract<MasterDataItem, { code: string }>[]
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200">
-      <Table>
+    <div className="app-table-shell overflow-x-auto">
+      <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
             <TableHead>รหัส</TableHead>
@@ -4346,7 +4383,7 @@ function GenericMasterTable({
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.id}>
-              <TableCell className="font-mono text-sm">{row.code}</TableCell>
+              <TableCell className="font-mono text-body-sm">{row.code}</TableCell>
               <TableCell>{row.nameTh}</TableCell>
               <TableCell>{row.plant}</TableCell>
               <TableCell>{row.active ? 'ใช่' : 'ไม่'}</TableCell>
@@ -4358,7 +4395,7 @@ function GenericMasterTable({
   )
 }
 
-function MasterTable({ entity, useBackend }: { entity: string; useBackend: boolean }) {
+function MasterTable({ entity }: { entity: string }) {
   const enableGenericQuery =
     entity !== 'activitytype' &&
     entity !== 'department' &&
@@ -4381,6 +4418,7 @@ function MasterTable({ entity, useBackend }: { entity: string; useBackend: boole
     queryKey: ['master-data', entity],
     queryFn: () => fetchMasterData(entity),
     enabled: enableGenericQuery,
+    placeholderData: keepPreviousData,
   })
 
   if (entity === 'activitytype') {
@@ -4451,16 +4489,12 @@ function MasterTable({ entity, useBackend }: { entity: string; useBackend: boole
     return <MaterialPanel />
   }
 
-  if (q.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <MasterDataPanelSkeleton />
+  if (q.isError) return <MasterDataPanelError error={q.error} onRetry={() => void q.refetch()} />
 
   const items = q.data ?? []
   if (items.length === 0) {
-    return (
-      <p className="text-sm text-zinc-600">
-        {useBackend ? 'ไม่มีข้อมูล — รัน migration 002 และ seed ใน DBeaver' : 'ไม่มีข้อมูล (mock)'}
-      </p>
-    )
+    return <MasterDataPanelEmpty />
   }
 
   const generic = items.filter((r): r is Extract<MasterDataItem, { code: string }> => 'code' in r)
@@ -4468,41 +4502,109 @@ function MasterTable({ entity, useBackend }: { entity: string; useBackend: boole
 }
 
 export function MasterDataPage() {
+  const { canRead, canWrite } = useMasterDataPermissions()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const entityFromUrl = searchParams.get('entity')?.trim() ?? ''
   const [tab, setTab] = useState<string>('activitytype')
-  const current = tabs.find((t) => t.id === tab) ?? tabs[0]
-  const currentTab = current?.id ?? 'activitytype'
+
+  useEffect(() => {
+    if (!entityFromUrl) return
+    if (!tabs.some((t) => t.id === entityFromUrl)) return
+    setTab((prev) => (prev === entityFromUrl ? prev : entityFromUrl))
+  }, [entityFromUrl])
+
+  if (!canRead) {
+    return (
+      <AppPageShell title="ข้อมูลหลัก" description="จัดการ master data สำหรับ PM">
+        <EmptyState
+          icon={AlertCircle}
+          title="ไม่มีสิทธิ์เข้าถึง"
+          description={
+            <>
+              ต้องมีสิทธิ์ <code className="text-xs">master-data.read</code>
+            </>
+          }
+        />
+      </AppPageShell>
+    )
+  }
+
+  const currentTab = (tabs.find((t) => t.id === tab) ?? tabs[0])?.id ?? 'activitytype'
 
   return (
-    <div>
-      <PageHeader
-        title="ข้อมูลหลัก (Master data)"
-        description="Master data: แท็บที่ต่อ DB แล้ว = Activity type, Department, Equipment, Functional loc., Reason, Work status, Work type, ZB, Level, Position, Group, Task list, Line product, Line schedule, Zone, Machine, Material"
-      >
-        <Badge variant="secondary">{tabs.length} แท็บ</Badge>
-        {current.backend ? (
-          <Badge className="bg-emerald-700">API + DB</Badge>
-        ) : (
-          <Badge variant="outline">API</Badge>
-        )}
-      </PageHeader>
-
-      <div className="px-4 py-6 sm:px-6">
-        <Tabs value={currentTab} onValueChange={setTab}>
-          <TabsList className="mb-4 flex h-auto flex-wrap justify-start gap-1">
+    <AppPageShell
+      title="ข้อมูลหลัก"
+      description="อุปกรณ์ · Functional loc. · แผนก · Task list · สายผลิต · วัสดุ และอื่น ๆ"
+      contentClassName="space-y-4"
+      headerActions={
+        <>
+          <Badge variant="secondary" className="text-xs">
+            {tabs.length} แท็บ
+          </Badge>
+          <Button type="button" variant="outline" size="sm" asChild>
+            <Link to="/admin/master">Master Hub</Link>
+          </Button>
+          <CanPermission permission="master-data.read">
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link to="/line-calendar">ปฏิทินสาย</Link>
+            </Button>
+          </CanPermission>
+          <CanPermission permission="iw37n.read">
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link to="/iw37n">IW37N</Link>
+            </Button>
+          </CanPermission>
+        </>
+      }
+    >
+        {!canWrite ? (
+          <AppCard pad="compact" className="border-amber-200/80 bg-amber-50/60 text-body-sm text-amber-950">
+            โหมดอ่านอย่างเดียว — ต้องมี <code className="text-xs">master-data.write</code> เพื่อเพิ่ม/แก้/ลบ/นำเข้า
+          </AppCard>
+        ) : null}
+        {entityFromUrl && tabs.some((t) => t.id === entityFromUrl) ? (
+          <p className="text-caption">
+            <Link to="/admin/master" className="text-[var(--app-accent,#007AFF)] hover:underline">
+              ← Master Data Hub
+            </Link>
+            <span className="mx-2 text-app-muted">|</span>
+            <span>
+              เปิดจาก hub: <code className="text-xs">{entityFromUrl}</code>
+            </span>
+          </p>
+        ) : null}
+        <Tabs
+          value={currentTab}
+          onValueChange={(v) => {
+            setTab(v)
+            setSearchParams(
+              (prev) => {
+                const next = new URLSearchParams(prev)
+                next.set('entity', v)
+                return next
+              },
+              { replace: true },
+            )
+          }}
+        >
+          <TabsList className="mb-4 flex h-auto flex-wrap justify-start gap-1 bg-[var(--app-surface)] p-1">
             {tabs.map((t) => (
-              <TabsTrigger key={t.id} value={t.id} className="text-xs sm:text-sm">
+              <TabsTrigger key={t.id} value={t.id} className="text-xs sm:text-body-sm">
                 {t.label}
               </TabsTrigger>
             ))}
           </TabsList>
           {tabs.map((t) => (
             <TabsContent key={t.id} value={t.id}>
-              <p className="mb-3 text-xs text-zinc-500">Legacy: {t.legacy}</p>
-              <MasterTable entity={t.id} useBackend={t.backend} />
+              <AppCard pad="default">
+                <p className="mb-4 text-xs text-app-muted">
+                  Legacy PHP: <code className="text-code">{t.legacy}</code>
+                </p>
+                <MasterTable entity={t.id} />
+              </AppCard>
             </TabsContent>
           ))}
         </Tabs>
-      </div>
-    </div>
+    </AppPageShell>
   )
 }

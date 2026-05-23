@@ -1,5 +1,10 @@
 import type { Pool } from 'pg'
-import { FACTORY_CODE, unixToDateString } from './scheduling-shared.js'
+import {
+  FACTORY_CODE,
+  isPlanMovableStatus,
+  sqlFactoryScope,
+  unixToDateString,
+} from './scheduling-shared.js'
 
 function isoToUnixStart(iso: string): number {
   const [y, m, d] = iso.split('-').map(Number)
@@ -53,15 +58,17 @@ export async function moveWorkOrderPlan(
 
   const wo = await pool.query<{ syst: string | null }>(
     `SELECT syst FROM app.tbiw37n
-     WHERE idiw37 = $1 AND functionalloc LIKE $2`,
+     WHERE idiw37 = $1 AND ${sqlFactoryScope('', '$2')}`,
     [idNum, `%${FACTORY_CODE}%`],
   )
   const row = wo.rows[0]
   if (!row) throw new MovePlanError('Work order not found', 'NOT_FOUND')
 
-  const syst = (row.syst ?? '').trim()
-  if (syst !== 'CRTD' && syst !== 'REL') {
-    throw new MovePlanError("Status plan don't move", 'STATUS_NOT_MOVABLE')
+  if (!isPlanMovableStatus(row.syst)) {
+    throw new MovePlanError(
+      'แผนสีเขียว (TECO/ปิดแล้ว) ย้ายแผนไม่ได้ — เฉพาะสถานะ CRTD/REL',
+      'STATUS_NOT_MOVABLE',
+    )
   }
 
   const cday = isoToUnixStart(input.targetDate)
@@ -108,7 +115,7 @@ export async function searchWorkOrderSuggestions(
   }>(
     `SELECT idiw37, wkorder, wktype, operationshorttext
      FROM app.view_order
-     WHERE functionalloc LIKE $1
+     WHERE ${sqlFactoryScope('', '$1')}
        AND wkorder ILIKE $2
      ORDER BY wkorder
      LIMIT $3`,

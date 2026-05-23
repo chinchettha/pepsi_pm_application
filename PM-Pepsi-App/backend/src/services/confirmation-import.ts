@@ -1,21 +1,10 @@
 import * as XLSX from 'xlsx'
 
 /**
- * แมปคอลัมน์ Excel ตาม M_Confirm.php (sap/pages/M_Confirm.php)
+ * แมปคอลัมน์ Excel ตาม M_Confirm.php + SAP ALV (Dynamic List Display)
  *
- * - skip 2 rows แรก (PHP: `if ($n > 2)`)
- * - คอลัมน์ที่ต้องไม่ว่าง (PHP บรรทัด 76):
- *     Row[0], Row[3], Row[6], Row[7], Row[8], Row[10], Row[11], Row[14], Row[15], Row[16], Row[17]
- * - การแปลงค่า (PHP บรรทัด 94-114, 139):
- *     confirmation = Row[0]
- *     wkorder      = Row[3]                                            (→ lookup tbiw37n.idiw37)
- *     wkctr        = Row[6]
- *     timewk       = Row[7]            (* 60 ถ้า Row[8] == 'H' → เก็บเป็น Min)
- *     unitc        = 'Min'             (ตายตัว ตาม PHP)
- *     timeclose    = parse(Row[11])    (dd.mm.yyyy เวลา 00:00:00)
- *     stdate       = combine(Row[16] dd.mm.yyyy, Row[14] HH:MM[:SS])
- *     endate       = combine(Row[17] dd.mm.yyyy, Row[15] HH:MM[:SS])
- *     cwkctr       = Row[19]           (optional)
+ * Legacy (M_Confirm): skip 2 แถว, index คงที่
+ * SAP ALV: หาแถว header (Confirm. + Order), แมปตามชื่อคอลัมน์
  */
 
 export type ConfirmParseError =
@@ -56,13 +45,39 @@ export type ConfirmParseResult =
       }
     }
 
+export type ConfirmLayout = 'legacy' | 'sap_alv'
+
+export type ConfirmFileParseResult = {
+  layout: ConfirmLayout
+  results: ConfirmParseResult[]
+}
+
+type ConfirmColumnMap = {
+  confirmation: number
+  wkorder: number
+  wkctr: number
+  actWork: number
+  unit: number
+  ordCat: number
+  postgDate: number
+  actStartDate: number
+  actFinishDate: number
+  actStartTime: number
+  actFinishTime: number
+  cwkctr: number
+}
+
 function cellStr(v: unknown): string {
   if (v == null) return ''
   if (typeof v === 'number') return String(v)
   return String(v).trim()
 }
 
-/** dd.mm.yyyy → epoch วินาที (00:00:00) — เทียบ mktime ใน PHP */
+function normHeaderLabel(v: unknown): string {
+  return cellStr(v).toLowerCase().replace(/\s+/g, ' ')
+}
+
+/** dd.mm.yyyy → epoch วินาที (00:00:00) */
 export function parseDdMmYyyy(value: string): number | null {
   const t = value.trim()
   if (!t) return null
@@ -70,15 +85,37 @@ export function parseDdMmYyyy(value: string): number | null {
   if (parts.length < 3) return null
   const day = Number(parts[0])
   const month = Number(parts[1])
-  const year = Number(parts[2])
+  let year = Number(parts[2])
   if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return null
+  if (year < 100) year += 2000
   if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1970 || year > 2100) return null
   const d = new Date(year, month - 1, day, 0, 0, 0, 0)
   const sec = Math.floor(d.getTime() / 1000)
   return sec > 0 ? sec : null
 }
 
-/** HH:MM หรือ HH:MM:SS → {hh, mm, ss} (เทียบ explode(":", $Row[14]) ใน PHP) */
+export function parseExcelSerialToUnix(value: number): number | null {
+  if (!Number.isFinite(value) || value < 1) return null
+  const sec = Math.round((value - 25569) * 86400)
+  return sec > 0 ? sec : null
+}
+
+/** Excel serial หรือ dd.mm.yyyy */
+export function parseExcelOrDdMmDate(value: unknown): number | null {
+  if (value == null || value === '') return null
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    if (value > 25569 && value < 100000) return parseExcelSerialToUnix(value)
+    return null
+  }
+  const s = cellStr(value)
+  if (!s) return null
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const n = Number(s)
+    if (n > 25569 && n < 100000) return parseExcelSerialToUnix(n)
+  }
+  return parseDdMmYyyy(s)
+}
+
 function parseHhMm(value: string): { hh: number; mm: number; ss: number } | null {
   const t = value.trim()
   if (!t) return null
@@ -92,7 +129,23 @@ function parseHhMm(value: string): { hh: number; mm: number; ss: number } | null
   return { hh, mm, ss }
 }
 
-/** combine dd.mm.yyyy + HH:MM[:SS] → epoch วินาที */
+function parseExcelDayFraction(value: unknown): { hh: number; mm: number; ss: number } | null {
+  const n = typeof value === 'number' ? value : Number(cellStr(value))
+  if (!Number.isFinite(n) || n < 0) return null
+  if (n >= 1) return null
+  const secs = Math.round(n * 86400)
+  const hh = Math.floor(secs / 3600)
+  const mm = Math.floor((secs % 3600) / 60)
+  const ss = secs % 60
+  return { hh, mm, ss }
+}
+
+function unixFromParts(year: number, month: number, day: number, hh: number, mm: number, ss: number): number | null {
+  const d = new Date(year, month - 1, day, hh, mm, ss, 0)
+  const sec = Math.floor(d.getTime() / 1000)
+  return sec > 0 ? sec : null
+}
+
 function combineDateTime(dateStr: string, timeStr: string): number | null {
   const t = parseHhMm(timeStr)
   if (!t) return null
@@ -100,31 +153,220 @@ function combineDateTime(dateStr: string, timeStr: string): number | null {
   if (dParts.length < 3) return null
   const day = Number(dParts[0])
   const month = Number(dParts[1])
-  const year = Number(dParts[2])
+  let year = Number(dParts[2])
   if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return null
-  if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1970 || year > 2100) return null
-  const d = new Date(year, month - 1, day, t.hh, t.mm, t.ss, 0)
-  const sec = Math.floor(d.getTime() / 1000)
-  return sec > 0 ? sec : null
+  if (year < 100) year += 2000
+  return unixFromParts(year, month, day, t.hh, t.mm, t.ss)
 }
 
-function rowArrayToParseResult(cells: unknown[], rowNo: number): ConfirmParseResult {
-  const get = (i: number) => cellStr(cells[i])
+/** รวมวันที่ + เวลา (รองรับ Excel serial / fraction ของวัน) */
+export function parseConfirmDateTime(dateCell: unknown, timeCell: unknown): number | null {
+  if (typeof timeCell === 'number' && timeCell > 25569) {
+    return parseExcelSerialToUnix(timeCell)
+  }
+  if (typeof dateCell === 'number' && dateCell > 25569) {
+    const base = parseExcelSerialToUnix(dateCell)
+    if (base == null) return null
+    const d = new Date(base * 1000)
+    const hmFromStr = parseHhMm(cellStr(timeCell))
+    if (hmFromStr) {
+      return unixFromParts(d.getFullYear(), d.getMonth() + 1, d.getDate(), hmFromStr.hh, hmFromStr.mm, hmFromStr.ss)
+    }
+    const frac = parseExcelDayFraction(timeCell)
+    if (frac) {
+      return unixFromParts(d.getFullYear(), d.getMonth() + 1, d.getDate(), frac.hh, frac.mm, frac.ss)
+    }
+    return base
+  }
 
-  const confirmation = get(0)
-  const wkorder = get(3)
-  const wkctr = get(6)
-  const timewkRaw = get(7)
-  const unitRaw = get(8)
-  const col10 = get(10) // PHP validates not empty แต่ไม่ใช้ในการ INSERT
-  const closeDateRaw = get(11)
-  const startTimeRaw = get(14)
-  const endTimeRaw = get(15)
-  const startDateRaw = get(16)
-  const endDateRaw = get(17)
-  const cwkctrRaw = get(19)
+  const frac = parseExcelDayFraction(timeCell)
+  const dateMid = parseExcelOrDdMmDate(dateCell)
+  if (frac && dateMid != null) {
+    const d = new Date(dateMid * 1000)
+    return unixFromParts(d.getFullYear(), d.getMonth() + 1, d.getDate(), frac.hh, frac.mm, frac.ss)
+  }
 
+  const dateStr = cellStr(dateCell)
+  const timeStr = cellStr(timeCell)
+  if (dateStr && timeStr.includes(':')) return combineDateTime(dateStr, timeStr)
+  if (dateMid != null) return dateMid
+  return parseDdMmYyyy(dateStr)
+}
+
+function matrixRowText(row: unknown): string {
+  if (!Array.isArray(row)) return ''
+  return row.map(cellStr).join(' ')
+}
+
+export function detectConfirmLayout(matrix: unknown[][]): ConfirmLayout {
+  for (let i = 0; i < Math.min(matrix.length, 12); i++) {
+    if (/dynamic\s+list\s+display/i.test(matrixRowText(matrix[i]))) return 'sap_alv'
+  }
+  for (let i = 0; i < Math.min(matrix.length, 8); i++) {
+    const row = matrix[i]
+    if (!Array.isArray(row)) continue
+    const labels = row.map(normHeaderLabel)
+    const hasConfirm = labels.some((h) => /^confirm\.?$/.test(h))
+    const hasOrder = labels.some((h) => h === 'order')
+    if (hasConfirm && hasOrder) {
+      const orderIdx = labels.findIndex((h) => h === 'order')
+      const confirmIdx = labels.findIndex((h) => /^confirm\.?$/.test(h))
+      if (orderIdx > 3 || labels[1] === 's') return 'sap_alv'
+      if (confirmIdx <= 1 && orderIdx === 3) return 'legacy'
+      return 'sap_alv'
+    }
+  }
+  return 'legacy'
+}
+
+function findConfirmHeaderRowIndex(matrix: unknown[][]): number {
+  for (let i = 0; i < Math.min(matrix.length, 12); i++) {
+    const row = matrix[i]
+    if (!Array.isArray(row)) continue
+    const labels = row.map(normHeaderLabel)
+    const hasConfirm = labels.some((h) => /^confirm\.?$/.test(h) || h.startsWith('confirm.'))
+    const hasOrder = labels.some((h) => h === 'order')
+    if (hasConfirm && hasOrder) return i
+  }
+  return 3
+}
+
+function buildConfirmColumnMap(headerRow: unknown[]): ConfirmColumnMap | null {
+  const labels = headerRow.map(normHeaderLabel)
+  const idx = (pred: (h: string, i: number) => boolean) => labels.findIndex(pred)
+
+  const confirmation = idx((h) => /^confirm\.?$/.test(h) || h === 'confirm.')
+  const wkorder = idx((h) => h === 'order')
+  const wkctr = idx((h) => h.includes('wkctract') || h === 'wkctr act')
+  const actWork = idx((h) => h.includes('act. work') || h.includes('act work'))
+  const unit = idx((h) => h.includes('un.') && h.includes('wkact'))
+  const ordCat = idx((h) => h === 'ordcat' || h.includes('ordcat'))
+
+  const postgDate = idx(
+    (h) => h === 'postg date' || h === 'posting date' || h === 'created on',
+  )
+
+  let actStartDate = -1
+  let actStartTime = -1
+  const actFinishCols: number[] = []
+  for (let i = 0; i < labels.length; i++) {
+    const h = labels[i]!
+    if (h === 'act. start') actStartDate = i
+    if (h === 'act.start') actStartTime = i
+    if (h === 'act.finish' || h === 'act. finish') actFinishCols.push(i)
+  }
+
+  const actFinishDate = actFinishCols[0] ?? -1
+  const actFinishTime = actFinishCols[1] ?? -1
+
+  const cwkctr = idx((h) => h === 'pg' || h === 'ptac' || h === 'cwkctr')
+
+  if (confirmation < 0 || wkorder < 0 || wkctr < 0 || actWork < 0 || unit < 0) return null
+
+  return {
+    confirmation,
+    wkorder,
+    wkctr,
+    actWork,
+    unit,
+    ordCat: ordCat >= 0 ? ordCat : -1,
+    postgDate: postgDate >= 0 ? postgDate : -1,
+    actStartDate: actStartDate >= 0 ? actStartDate : -1,
+    actFinishDate: actFinishDate >= 0 ? actFinishDate : -1,
+    actStartTime: actStartTime >= 0 ? actStartTime : -1,
+    actFinishTime: actFinishTime >= 0 ? actFinishTime : -1,
+    cwkctr: cwkctr >= 0 ? cwkctr : -1,
+  }
+}
+
+function legacyColumnMap(): ConfirmColumnMap {
+  return {
+    confirmation: 0,
+    wkorder: 3,
+    wkctr: 6,
+    actWork: 7,
+    unit: 8,
+    ordCat: 10,
+    postgDate: 11,
+    actStartDate: 16,
+    actFinishDate: 17,
+    actStartTime: 14,
+    actFinishTime: 15,
+    cwkctr: 19,
+  }
+}
+
+function getCell(cells: unknown[], i: number): string {
+  return i >= 0 ? cellStr(cells[i]) : ''
+}
+
+/** จับคู่คอลัมน์วันที่/เวลาเมื่อ SAP ใส่ HH:MM กับ serial สลับตำแหน่ง */
+function pickDateTimeCells(
+  cells: unknown[],
+  dateIdx: number,
+  timeIdx: number,
+): { dateCell: unknown; timeCell: unknown } {
+  if (dateIdx < 0 && timeIdx < 0) return { dateCell: '', timeCell: '' }
+  if (dateIdx < 0) return { dateCell: cells[timeIdx], timeCell: '' }
+  if (timeIdx < 0) return { dateCell: cells[dateIdx], timeCell: '' }
+
+  const d = cells[dateIdx]
+  const t = cells[timeIdx]
+  const dStr = cellStr(d)
+  const tStr = cellStr(t)
+
+  if (typeof d === 'number' && d > 25569) return { dateCell: d, timeCell: t }
+  if (typeof t === 'number' && t > 25569) return { dateCell: t, timeCell: d }
+  if (dStr.includes(':') && !tStr.includes(':') && (parseDdMmYyyy(tStr) || typeof t === 'number')) {
+    return { dateCell: t, timeCell: d }
+  }
+  if (tStr.includes(':') && parseDdMmYyyy(dStr)) return { dateCell: d, timeCell: t }
+  return { dateCell: d, timeCell: t }
+}
+
+function rowLooksLikeHeader(confirmation: string, wkorder: string): boolean {
+  const c = confirmation.toLowerCase()
+  const o = wkorder.toLowerCase()
+  return c === 'confirm.' || c === 'confirm' || o === 'order'
+}
+
+function rowArrayToParseResult(
+  cells: unknown[],
+  rowNo: number,
+  map: ConfirmColumnMap,
+): ConfirmParseResult {
+  const confirmation = getCell(cells, map.confirmation)
+  const wkorder = getCell(cells, map.wkorder)
+  const wkctr = getCell(cells, map.wkctr)
+  const timewkRaw = getCell(cells, map.actWork)
+  const unitRaw = getCell(cells, map.unit)
+  const ordCatRaw = map.ordCat >= 0 ? getCell(cells, map.ordCat) : 'ZB02'
   const rawSummary = { confirmation, wkorder, wkctr }
+
+  if (rowLooksLikeHeader(confirmation, wkorder)) {
+    return {
+      kind: 'error',
+      rowNo,
+      code: 'EMPTY_REQUIRED',
+      message: 'แถว header',
+      raw: rawSummary,
+    }
+  }
+
+  const postgCell = map.postgDate >= 0 ? cells[map.postgDate] : ''
+  const { dateCell: startDateCell, timeCell: startTimeCell } = pickDateTimeCells(
+    cells,
+    map.actStartDate,
+    map.actStartTime,
+  )
+  const { dateCell: endDateCell, timeCell: endTimeCell } = pickDateTimeCells(
+    cells,
+    map.actFinishDate,
+    map.actFinishTime,
+  )
+
+  const hasStart = map.actStartDate >= 0 || map.actStartTime >= 0
+  const hasEnd = map.actFinishDate >= 0 || map.actFinishTime >= 0
 
   if (
     !confirmation ||
@@ -132,18 +374,25 @@ function rowArrayToParseResult(cells: unknown[], rowNo: number): ConfirmParseRes
     !wkctr ||
     !timewkRaw ||
     !unitRaw ||
-    !col10 ||
-    !closeDateRaw ||
-    !startTimeRaw ||
-    !endTimeRaw ||
-    !startDateRaw ||
-    !endDateRaw
+    !ordCatRaw ||
+    (map.postgDate >= 0 && cellStr(postgCell) === '') ||
+    map.postgDate < 0 ||
+    !hasStart ||
+    !hasEnd
   ) {
+    const missing =
+      map.postgDate < 0
+        ? 'postg date'
+        : !hasStart
+          ? 'act start'
+          : !hasEnd
+            ? 'act finish'
+            : 'required columns'
     return {
       kind: 'error',
       rowNo,
       code: 'EMPTY_REQUIRED',
-      message: 'มีคอลัมน์ที่จำเป็นว่าง (Row 0/3/6/7/8/10/11/14/15/16/17)',
+      message: `มีคอลัมน์ที่จำเป็นว่าง (${missing})`,
       raw: rawSummary,
     }
   }
@@ -154,7 +403,7 @@ function rowArrayToParseResult(cells: unknown[], rowNo: number): ConfirmParseRes
       kind: 'error',
       rowNo,
       code: 'BAD_TIMEWK',
-      message: `ค่าเวลาทำงาน (Row[7]) ไม่ใช่ตัวเลข: "${timewkRaw}"`,
+      message: `ค่าเวลาทำงานไม่ใช่ตัวเลข: "${timewkRaw}"`,
       raw: rawSummary,
     }
   }
@@ -165,50 +414,44 @@ function rowArrayToParseResult(cells: unknown[], rowNo: number): ConfirmParseRes
       kind: 'error',
       rowNo,
       code: 'BAD_UNIT',
-      message: `หน่วยเวลา (Row[8]) ต้องเป็น H หรือ Min: "${unitRaw}"`,
+      message: `หน่วยเวลาต้องเป็น H หรือ Min: "${unitRaw}"`,
       raw: rawSummary,
     }
   }
-  // PHP: ถ้า Row[8] == 'H' ให้ * 60 แล้วเก็บเป็น Min
   const timewkMin = unit === 'H' ? Math.round(timewkNum * 60) : Math.round(timewkNum)
 
-  const timeclose = parseDdMmYyyy(closeDateRaw)
+  const timeclose =
+    map.postgDate >= 0
+      ? parseExcelOrDdMmDate(postgCell) ?? parseDdMmYyyy(cellStr(postgCell))
+      : null
   if (timeclose == null) {
     return {
       kind: 'error',
       rowNo,
       code: 'BAD_TIMECLOSE',
-      message: `วันที่ปิดงาน (Row[11]) ต้องอยู่รูปแบบ dd.mm.yyyy: "${closeDateRaw}"`,
+      message: `วันที่ปิดงานไม่ถูกต้อง: "${cellStr(postgCell)}"`,
       raw: rawSummary,
     }
   }
 
-  const stdate = combineDateTime(startDateRaw, startTimeRaw)
+  const stdate = parseConfirmDateTime(startDateCell, startTimeCell)
   if (stdate == null) {
-    const t = parseHhMm(startTimeRaw)
     return {
       kind: 'error',
       rowNo,
-      code: t == null ? 'BAD_START_TIME' : 'BAD_START_DATE',
-      message:
-        t == null
-          ? `เวลาเริ่ม (Row[14]) ต้องเป็น HH:MM[:SS]: "${startTimeRaw}"`
-          : `วันที่เริ่ม (Row[16]) ต้องเป็น dd.mm.yyyy: "${startDateRaw}"`,
+      code: 'BAD_START_DATE',
+      message: 'ไม่สามารถแปลงเวลาเริ่มได้',
       raw: rawSummary,
     }
   }
 
-  const endate = combineDateTime(endDateRaw, endTimeRaw)
+  const endate = parseConfirmDateTime(endDateCell, endTimeCell)
   if (endate == null) {
-    const t = parseHhMm(endTimeRaw)
     return {
       kind: 'error',
       rowNo,
-      code: t == null ? 'BAD_END_TIME' : 'BAD_END_DATE',
-      message:
-        t == null
-          ? `เวลาสิ้นสุด (Row[15]) ต้องเป็น HH:MM[:SS]: "${endTimeRaw}"`
-          : `วันที่สิ้นสุด (Row[17]) ต้องเป็น dd.mm.yyyy: "${endDateRaw}"`,
+      code: 'BAD_END_DATE',
+      message: 'ไม่สามารถแปลงเวลาสิ้นสุดได้',
       raw: rawSummary,
     }
   }
@@ -222,6 +465,8 @@ function rowArrayToParseResult(cells: unknown[], rowNo: number): ConfirmParseRes
       raw: rawSummary,
     }
   }
+
+  const cwkctrRaw = map.cwkctr >= 0 ? getCell(cells, map.cwkctr) : ''
 
   return {
     kind: 'ok',
@@ -240,6 +485,46 @@ function rowArrayToParseResult(cells: unknown[], rowNo: number): ConfirmParseRes
   }
 }
 
+function firstConfirmDataRowIndex(matrix: unknown[][], headerRow: number, map: ConfirmColumnMap): number {
+  for (let i = headerRow + 1; i < Math.min(matrix.length, headerRow + 4); i++) {
+    const row = matrix[i]
+    if (!Array.isArray(row)) continue
+    if (row.every((c) => cellStr(c) === '')) continue
+    const r = rowArrayToParseResult(row, i + 1, map)
+    if (r.kind === 'ok') return i
+  }
+  return headerRow + 2
+}
+
+export function parseConfirmMatrix(matrix: unknown[][]): ConfirmFileParseResult {
+  const layout = detectConfirmLayout(matrix)
+  const out: ConfirmParseResult[] = []
+
+  if (layout === 'sap_alv') {
+    const headerRow = findConfirmHeaderRowIndex(matrix)
+    const map = buildConfirmColumnMap(matrix[headerRow] ?? []) ?? legacyColumnMap()
+    const start = firstConfirmDataRowIndex(matrix, headerRow, map)
+    for (let i = start; i < matrix.length; i++) {
+      const row = matrix[i]
+      if (!row || !Array.isArray(row)) continue
+      if (row.every((c) => cellStr(c) === '')) continue
+      const parsed = rowArrayToParseResult(row, i + 1, map)
+      if (parsed.kind === 'error' && parsed.message === 'แถว header') continue
+      out.push(parsed)
+    }
+  } else {
+    const map = legacyColumnMap()
+    for (let i = 2; i < matrix.length; i++) {
+      const row = matrix[i]
+      if (!row || !Array.isArray(row)) continue
+      if (row.every((c) => cellStr(c) === '')) continue
+      out.push(rowArrayToParseResult(row, i + 1, map))
+    }
+  }
+
+  return { layout, results: out }
+}
+
 function sheetToMatrix(buffer: Buffer, fileName: string): unknown[][] {
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.csv')) {
@@ -256,23 +541,11 @@ function sheetToMatrix(buffer: Buffer, fileName: string): unknown[][] {
   return XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '' })
 }
 
-/**
- * Parse Confirm Excel/CSV
- * - skip 2 rows แรก (header + sub-header) — เทียบ PHP `if ($n > 2)`
- * - คืนทุกแถวพร้อม ok/error เพื่อให้ caller (service) เลือก insert/update และ
- *   route ใช้แสดงผลทีละแถว (เทียบตารางผลลัพธ์ของ M_Confirm.php)
- */
 export function parseConfirmFile(buffer: Buffer, fileName: string): ConfirmParseResult[] {
+  return parseConfirmFileWithMeta(buffer, fileName).results
+}
+
+export function parseConfirmFileWithMeta(buffer: Buffer, fileName: string): ConfirmFileParseResult {
   const matrix = sheetToMatrix(buffer, fileName)
-  const out: ConfirmParseResult[] = []
-  // PHP เริ่มนับ $n = 1 และเก็บเมื่อ $n > 2 → ข้าม index 0 และ 1 ของ matrix
-  for (let i = 2; i < matrix.length; i++) {
-    const row = matrix[i]
-    if (!row || !Array.isArray(row)) continue
-    // ข้ามแถวว่างทั้งแถว
-    const isEmpty = row.every((c) => cellStr(c) === '')
-    if (isEmpty) continue
-    out.push(rowArrayToParseResult(row, i + 1))
-  }
-  return out
+  return parseConfirmMatrix(matrix)
 }

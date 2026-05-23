@@ -4,6 +4,7 @@ const sizeClass = {
   sm: 'size-7',
   md: 'size-9',
   lg: 'size-11',
+  xl: 'size-12',
 } as const
 
 export type PepsiBrandMarkProps = {

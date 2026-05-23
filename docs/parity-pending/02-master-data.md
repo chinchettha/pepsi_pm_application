@@ -1,6 +1,6 @@
 # ลำดับที่ 2 — Master data (Activity type + อื่นๆ)
 
-**สถานะรวม:** กำลังทำ  
+**สถานะรวม:** แกนเสร็จ ✅ · UAT ขั้น 5 ⏳  
 **Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ยังไม่มี — ดู [00-stack-target.md](00-stack-target.md)
 **Checklist หลัก:** แถว `M_activitytype*` และ master `M_*` อื่นใน §4  
 **Migration:** [`002_tbactivitytype.sql`](../../database/migrations/002_tbactivitytype.sql), [`004_tbiw37n_calendar.sql`](../../database/migrations/004_tbiw37n_calendar.sql), [`005_tbwkzb_tbfunctional.sql`](../../database/migrations/005_tbwkzb_tbfunctional.sql), [`009_tbreason.sql`](../../database/migrations/009_tbreason.sql), [`011_tbdepartment.sql`](../../database/migrations/011_tbdepartment.sql), [`012_tbequipment.sql`](../../database/migrations/012_tbequipment.sql), [`013_tbwkstatus_add_wkstreason.sql`](../../database/migrations/013_tbwkstatus_add_wkstreason.sql), [`014_tbwkctrtype.sql`](../../database/migrations/014_tbwkctrtype.sql), [`015_tbproductline.sql`](../../database/migrations/015_tbproductline.sql), [`016_tbzone.sql`](../../database/migrations/016_tbzone.sql), [`017_tbmainteanance.sql`](../../database/migrations/017_tbmainteanance.sql), [`018_tbmaterial.sql`](../../database/migrations/018_tbmaterial.sql), [`019_tbwklevel.sql`](../../database/migrations/019_tbwklevel.sql), [`020_tbposition.sql`](../../database/migrations/020_tbposition.sql), [`021_tbwkctrgroup.sql`](../../database/migrations/021_tbwkctrgroup.sql), [`022_tbtasklist.sql`](../../database/migrations/022_tbtasklist.sql), [`023_tblineschdul_unique.sql`](../../database/migrations/023_tblineschdul_unique.sql), [`024_tbzone_extend.sql`](../../database/migrations/024_tbzone_extend.sql)
@@ -41,7 +41,7 @@
 
 ---
 
-## ยังไม่ทำ
+## ยังไม่ทำ (UAT / checklist หลัก)
 
 ### Activity type (parity `M_activitytype.php`)
 
@@ -100,3 +100,5 @@
 | 2026-05-18 | เพิ่ม Group+Task list (`tbwkctrgroup`, `tbtasklist`) — migration 021+022 + CRUD/import API + แท็บ Group/Task list ต่อ DB ใน `/master-data` |
 | 2026-05-18 | เพิ่ม Line schedule (`tblineschdul`) — เพิ่ม unique index (migration 023) + CRUD/import API + แท็บ Line schedule ต่อ DB ใน `/master-data` |
 | 2026-05-18 | เพิ่ม User Log (`M_UserLog.php`) — `GET /api/v1/user-log` + หน้า `/user-log` + migration 025 (เมนู) |
+| 2026-05-21 | ปิดแกน parity hub `/master-data` (17 แท็บ API+DB) — อัปเดต [`PLAN.md`](PLAN.md) §3.2; คง UAT ขั้น 5 + ติ๊ก §3 ใน checklist หลัก |
+| 2026-05-21 | `/user-log` — อัปเดต [`PLAN.md`](PLAN.md) §3.2–§3.3 แกน ✅ (รายละเอียดใน §3.2 User Log) |

@@ -1,11 +1,14 @@
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
-import { createRequireApiAuth } from '../middleware/require-api-auth.js'
+import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
+import { createRequirePermission } from '../middleware/require-permission.js'
+import { calendarEventsResponseSchema } from '../schemas/calendar.js'
 import {
   planningAssignBodySchema,
   planningAssignResponseSchema,
   planningResponseSchema,
 } from '../schemas/planning.js'
+import { listPlanCalendarEvents } from '../services/plan-calendar.js'
 import { assignPlanningWork, listPlanningForUser } from '../services/planning.js'
 
 function isSchemaMissing(err: unknown): boolean {
@@ -22,11 +25,46 @@ export function registerPlanningRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireAuth = createRequireApiAuth(sessionSecret)
+  const requireRead = createRequirePermission(pool, sessionSecret)('planning.read')
+  const requireAssign = createRequirePermission(pool, sessionSecret)('planning.assign')
+
+  app.get(
+    '/api/v1/plan-calendar/events',
+    ...requireRead,
+    async (req: Request, res: Response) => {
+      const idwkctr = req.authUser?.idwkctr
+      if (!idwkctr) {
+        res.status(401).json({ error: 'UNAUTHORIZED' })
+        return
+      }
+      const now = new Date()
+      const year = Math.min(
+        2100,
+        Math.max(1970, Number(req.query.year) || now.getFullYear()),
+      )
+      const month = Math.min(
+        12,
+        Math.max(1, Number(req.query.month) || now.getMonth() + 1),
+      )
+      try {
+        const items = await listPlanCalendarEvents(pool, idwkctr, year, month)
+        res.json(calendarEventsResponseSchema.parse({ items, year, month }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/007_tbplangingwork_view_planwork.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
 
   app.get(
     '/api/v1/planning/orders',
-    requireAuth,
+    ...requireRead,
     async (req: Request, res: Response) => {
       const idwkctr = req.authUser?.idwkctr
       if (!idwkctr) {
@@ -52,17 +90,9 @@ export function registerPlanningRoutes(
 
   app.post(
     '/api/v1/planning/assign',
-    requireAuth,
+    ...requireAssign,
     async (req: Request, res: Response) => {
-      const user = req.authUser
-      if (!user) {
-        res.status(401).json({ error: 'UNAUTHORIZED' })
-        return
-      }
-      if ((user.userst ?? '').trim() !== 'A') {
-        res.status(403).json({ error: 'FORBIDDEN', message: 'Admin only (M_planwork_view_form)' })
-        return
-      }
+      const user = req.authUser!
       const parsed = planningAssignBodySchema.safeParse(req.body)
       if (!parsed.success) {
         res.status(400).json({
@@ -82,6 +112,12 @@ export function registerPlanningRoutes(
           })
           return
         }
+        voidAudit(pool, req, {
+          action: 'planning.assign',
+          resource: 'tbplangingwork',
+          resourceId: String(parsed.data.idiw37),
+          after: sanitizeAuditPayload(parsed.data),
+        })
         res.json(planningAssignResponseSchema.parse({ ok: true }))
       } catch (err) {
         if (isSchemaMissing(err)) {

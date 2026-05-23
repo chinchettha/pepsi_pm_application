@@ -3,9 +3,12 @@
  * - แท็บ "มอบหมายงาน" → `W_worktime_view.php` (`GET /api/v1/worktime/planning`)
  * - แท็บ "ชั่วโมง HR" → `worktime_manhours.php` (`GET /api/v1/worktime/me`)
  */
-import { PageHeader } from '@/components/layout/PageHeader'
+import { CanPermission } from '@/components/auth/CanPermission'
+import { AppCard } from '@/components/layout/AppCard'
+import { AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,13 +24,31 @@ import {
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import { formatManhourDate } from '@/features/manhours/format-manhour-date'
 import { fetchWorktimeMe, fetchWorktimePlanning } from '@/lib/api-public'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ClipboardList, Clock3, Link as LinkIcon, RefreshCcw } from 'lucide-react'
+import { useAnyPermission } from '@/lib/use-permission'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, ClipboardList, Clock3, Link as LinkIcon, RefreshCcw } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 function HourCell({ value }: { value: number }) {
   return <span className="tabular-nums">{value > 0 ? value : '0'}</span>
+}
+
+function QueryErrorState({
+  message,
+  onRetry,
+}: {
+  message: string
+  onRetry: () => void
+}) {
+  return (
+    <EmptyState
+      icon={AlertCircle}
+      title="โหลดไม่สำเร็จ"
+      description={message}
+      action={{ label: 'ลองใหม่', onClick: onRetry }}
+    />
+  )
 }
 
 function WorktimePlanningTab({
@@ -48,26 +69,35 @@ function WorktimePlanningTab({
         limit: 500,
       }),
     enabled: isWorkcenter || (isAdmin && Boolean(adminIdwkctr.trim())),
+    placeholderData: keepPreviousData,
   })
 
   if (!isWorkcenter && !(isAdmin && adminIdwkctr.trim())) {
     return (
-      <p className="text-sm text-zinc-600">
-        {isAdmin
-          ? 'ระบุรหัส HR ด้านบนเพื่อดูรายการมอบหมายงาน'
-          : 'หน้านี้สำหรับบัญชี Work center — กรุณาเข้าสู่ระบบด้วยรหัสช่าง (idwkctr)'}
-      </p>
+      <EmptyState
+        className="border-0 bg-transparent"
+        title={isAdmin ? 'ระบุรหัส HR' : 'สำหรับบัญชี Work center'}
+        description={
+          isAdmin
+            ? 'กรอกรหัส HR ด้านบนเพื่อดูรายการมอบหมายงาน'
+            : 'เข้าสู่ระบบด้วยรหัสช่าง (idwkctr) เพื่อดูงานที่มอบหมาย'
+        }
+      />
     )
   }
 
-  if (q.isLoading) return <Skeleton className="h-64 w-full rounded-xl" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <Skeleton className="h-64 w-full rounded-card" />
+  if (q.isError) {
+    return (
+      <QueryErrorState message={(q.error as Error).message} onRetry={() => void q.refetch()} />
+    )
+  }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <Table>
+    <div className="app-table-shell overflow-x-auto">
+      <Table embedded stickyHeader zebra>
         <TableHeader>
-          <TableRow className="bg-sky-50">
+          <TableRow>
             <TableHead className="w-14">ลำดับ</TableHead>
             <TableHead>รหัสแผน</TableHead>
             <TableHead>วันที่เริ่ม</TableHead>
@@ -90,7 +120,7 @@ function WorktimePlanningTab({
                   {row.comment ?? '—'}
                 </TableCell>
                 <TableCell>
-                  <Button variant="ghost" size="sm" className="h-8 px-2 text-sky-700" asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
                     <Link to={`/work-orders/${row.idiw37}`}>ดู</Link>
                   </Button>
                 </TableCell>
@@ -98,8 +128,12 @@ function WorktimePlanningTab({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="py-8 text-center text-sm text-zinc-500">
-                ยังไม่มีงานที่มอบหมาย
+              <TableCell colSpan={7} className="p-0">
+                <EmptyState
+                  className="border-0 bg-transparent py-10"
+                  title="ยังไม่มีงานที่มอบหมาย"
+                  description="ตรวจแผน PM/CM หรือการจ่ายงานจากหัวหน้างาน"
+                />
               </TableCell>
             </TableRow>
           )}
@@ -114,20 +148,27 @@ function WorktimeManhoursTab({ isWorkcenter }: { isWorkcenter: boolean }) {
     queryKey: ['worktime-me'],
     queryFn: () => fetchWorktimeMe({ limit: 500 }),
     enabled: Boolean(isWorkcenter),
+    placeholderData: keepPreviousData,
   })
 
   const total = q.data?.total
 
   if (!isWorkcenter) {
     return (
-      <p className="text-sm text-zinc-600">
-        แท็บชั่วโมง HR สำหรับบัญชี Work center — กรุณาเข้าสู่ระบบด้วยรหัสช่าง (idwkctr)
-      </p>
+      <EmptyState
+        className="border-0 bg-transparent"
+        title="สำหรับบัญชี Work center"
+        description="เข้าสู่ระบบด้วยรหัสช่าง (idwkctr) เพื่อดูชั่วโมง HR รายวัน"
+      />
     )
   }
 
-  if (q.isLoading) return <Skeleton className="h-64 w-full rounded-xl" />
-  if (q.isError) return <p className="text-sm text-red-600">{(q.error as Error).message}</p>
+  if (q.isLoading && !q.data) return <Skeleton className="h-64 w-full rounded-card" />
+  if (q.isError) {
+    return (
+      <QueryErrorState message={(q.error as Error).message} onRetry={() => void q.refetch()} />
+    )
+  }
 
   return (
     <>
@@ -138,30 +179,27 @@ function WorktimeManhoursTab({ isWorkcenter }: { isWorkcenter: boolean }) {
               ['WH', total.wh],
               ['OT1', total.ot1],
               ['OT1.5', total.ot15],
-              ['OT1HOL', total.ot1hol],
+              ['OT1 วันหยุด', total.ot1hol],
               ['OT2', total.ot2],
               ['OT3', total.ot3],
               ['รวม', total.total],
             ] as const
           ).map(([label, val]) => (
-            <div
-              key={label}
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-center shadow-sm"
-            >
-              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">{label}</p>
-              <p className="text-lg font-semibold tabular-nums text-zinc-900">{val}</p>
-            </div>
+            <AppCard key={label} pad="compact" className="text-center">
+              <p className="text-eyebrow text-app-muted">{label}</p>
+              <p className="text-lg font-semibold tabular-nums text-app">{val}</p>
+            </AppCard>
           ))}
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-        <Table>
+      <div className="app-table-shell overflow-x-auto">
+        <Table embedded stickyHeader zebra>
           <TableHeader>
-            <TableRow className="bg-sky-50">
+            <TableRow>
               <TableHead className="w-14">ลำดับ</TableHead>
               <TableHead>วันที่ทำงาน</TableHead>
-              <TableHead className="text-right">จำนวนชั่วโมงที่ทำงาน</TableHead>
+              <TableHead className="text-right">WH</TableHead>
               <TableHead className="text-right">OT1</TableHead>
               <TableHead className="text-right">OT1.5</TableHead>
               <TableHead className="text-right">OT1HOL</TableHead>
@@ -197,8 +235,12 @@ function WorktimeManhoursTab({ isWorkcenter }: { isWorkcenter: boolean }) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-sm text-zinc-500">
-                  ยังไม่มีข้อมูล manhour
+                <TableCell colSpan={8} className="p-0">
+                  <EmptyState
+                    className="border-0 bg-transparent py-10"
+                    title="ยังไม่มีข้อมูล manhour"
+                    description="บันทึกชั่วโมงที่แท็บ Admin หรือนำเข้าไฟล์"
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -211,48 +253,76 @@ function WorktimeManhoursTab({ isWorkcenter }: { isWorkcenter: boolean }) {
 
 export function WorktimePage() {
   const auth = getStoredAuthUser()
+  const canRead = useAnyPermission(['manhours.read', 'manhours.admin'])
   const isAdmin = auth?.userst === 'A'
   const isWorkcenter = auth?.accountType === 'workcenter' || (!auth?.accountType && auth?.idwkctr)
   const [adminIdwkctr, setAdminIdwkctr] = useState('')
 
   const qc = useQueryClient()
 
-  return (
-    <div>
-      <PageHeader
-        title="ดู Worktime ทั้งหมด"
-        description="มอบหมายงาน (W_worktime_view) และชั่วโมง HR รายวัน (worktime_manhours)"
-      >
-        <Badge variant="secondary" className="gap-1">
-          <ClipboardList className="size-3.5" />
-          Planning
-        </Badge>
-        <Badge variant="outline" className="gap-1">
-          <Clock3 className="size-3.5" />
-          Manhours
-        </Badge>
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/manhours">
-            <LinkIcon className="mr-1 size-3.5" />
-            Performance
-          </Link>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            void qc.invalidateQueries({ queryKey: ['worktime-planning'] })
-            void qc.invalidateQueries({ queryKey: ['worktime-me'] })
-          }}
-        >
-          <RefreshCcw className="mr-1 size-3.5" />
-          รีเฟรช
-        </Button>
-      </PageHeader>
+  if (!canRead) {
+    return (
+      <AppPageShell title="Worktime" description="มอบหมายงานและชั่วโมง HR รายวัน">
+        <EmptyState
+          icon={AlertCircle}
+          title="ไม่มีสิทธิ์เข้าถึง"
+          description={
+            <>
+              ต้องมีสิทธิ์ <code className="text-xs">manhours.read</code>
+            </>
+          }
+        />
+      </AppPageShell>
+    )
+  }
 
-      <div className="space-y-6 px-4 py-6 sm:px-6">
+  return (
+    <AppPageShell
+      title="Worktime"
+      description="มอบหมายงาน (W_worktime_view) · ชั่วโมง HR รายวัน"
+      contentClassName="space-y-6"
+      headerActions={
+        <>
+          <Badge variant="secondary" className="gap-1 text-xs">
+            <ClipboardList className="size-3.5" aria-hidden />
+            มอบหมาย
+          </Badge>
+          <Badge variant="outline" className="gap-1 text-xs">
+            <Clock3 className="size-3.5" aria-hidden />
+            ชั่วโมง
+          </Badge>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/manhours">
+              <LinkIcon className="mr-1 size-3.5" aria-hidden />
+              Performance
+            </Link>
+          </Button>
+          {isAdmin ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/manhours/admin">จัดการ Man Hour</Link>
+            </Button>
+          ) : null}
+          <CanPermission permission="work-orders.read">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/work-orders">ใบงาน</Link>
+            </Button>
+          </CanPermission>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              void qc.invalidateQueries({ queryKey: ['worktime-planning'] })
+              void qc.invalidateQueries({ queryKey: ['worktime-me'] })
+            }}
+          >
+            <RefreshCcw className="mr-1 size-3.5" aria-hidden />
+            รีเฟรช
+          </Button>
+        </>
+      }
+    >
         {isAdmin ? (
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <AppCard pad="compact">
             <div className="space-y-1">
               <Label htmlFor="wt-idwkctr">รหัส HR (Admin)</Label>
               <Input
@@ -263,22 +333,25 @@ export function WorktimePage() {
                 className="w-48"
               />
             </div>
-          </div>
+          </AppCard>
         ) : null}
 
         <Tabs defaultValue="planning">
-          <TabsList>
+          <TabsList className="flex h-auto flex-wrap gap-1 bg-[var(--app-surface)] p-1">
             <TabsTrigger value="planning">มอบหมายงาน</TabsTrigger>
             <TabsTrigger value="manhours">ชั่วโมง HR</TabsTrigger>
           </TabsList>
           <TabsContent value="planning" className="mt-4">
-            <WorktimePlanningTab isWorkcenter={Boolean(isWorkcenter)} adminIdwkctr={adminIdwkctr} />
+            <AppCard pad="default">
+              <WorktimePlanningTab isWorkcenter={Boolean(isWorkcenter)} adminIdwkctr={adminIdwkctr} />
+            </AppCard>
           </TabsContent>
           <TabsContent value="manhours" className="mt-4">
-            <WorktimeManhoursTab isWorkcenter={Boolean(isWorkcenter)} />
+            <AppCard pad="default">
+              <WorktimeManhoursTab isWorkcenter={Boolean(isWorkcenter)} />
+            </AppCard>
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+    </AppPageShell>
   )
 }

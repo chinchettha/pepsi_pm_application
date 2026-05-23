@@ -21,35 +21,10 @@ PostgreSQL*** ที่ทำงานอยู่ ณ ตอนนี้
 Theme/Skin จากลูกค้า
 ลูกค้าต้องการ
 Base color โทนสีขาว ส้ม ฟ้า เขียว (ล่าสุดของ บ.เป๊ปซี่โคล่า (ไทย) เทรดดิ้ง จำกัด)
-visual design ล่าสุดของ macOS (เวอร์ชัน macOS Tahoe) Liquid Glass
-ความเป็นกระจกที่มีมิติ มีเลเยอร์ และการสะท้อน/กลืนไปกับพื้นหลัง (Vibrancy & Material effects)
-1. ชุดสีมาตรฐาน (System Colors)
-ดใส (System Color)	โหมดสว่าง (Light)	โหมดมืด (Dark)
-Blue (สีหลักระบบ)	#007AFF	#0A84FF
-Green	#34C759	#30D158
-Orange	#FF9500	#FF9F0A
-Red	#FF3B30	#FF453A
-Purple	#AF52DE	#BF5AF2
-Yellow	#FFCC00	#FFD60A
-
-2. สีพื้นหลังและเลเยอร์ (Background & Surfaces)
-หัวใจของ "Liquid Glass" คือการซ้อนกันของวัตถุที่มีความตื้นลึก หากใช้สีทึบ แนะนำให้ไล่ระดับตามความสำคัญ (Elevation):
-
-โหมดสว่าง (Light Mode)
-พื้นหลังหลัก (Primary Background): #F6F6F6 หรือ #FFFFFF
-
-คอนเทนเนอร์/การ์ด (Secondary Surface): #FFFFFF (ใส่เงาฟุ้ง ๆ นุ่ม ๆ)
-
-แถบเครื่องมือ/Sidebar: #EAEAEA หรือปรับให้โปร่งแสง
-
-โหมดมืด (Dark Mode)
-พื้นหลังหลัก (Primary Background): #1E1E1E หรือ #121212
-
-คอนเทนเนอร์/การ์ด (Secondary Surface): #2D2D2D หรือ #1C1C1E
-
-แถบเครื่องมือ/Sidebar: #252525
 
 สามารถ cutomize เปลี่ยนแปลงโลโก้ของ application ได้
+
+**คู่มือ UI ฉบับเต็ม (wireframe, ตารางสี hex, ก่อน/หลัง, motion):** [`skill-theme.md`](skill-theme.md) — §11 Admin Console wireframe · §12 token map · §13 ก่อน/หลัง
 
 ***อันดับแรกให้ทำ frontend ของโปรเจคใหม่ ให้ทุก function, component ทำงานได้เหมือนโปรเจคเก่าก่อน***
 

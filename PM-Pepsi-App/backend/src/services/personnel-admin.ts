@@ -4,6 +4,7 @@
  */
 import type { Pool, PoolClient } from 'pg'
 import bcrypt from 'bcryptjs'
+import { personnelIsActiveSql } from '../lib/personnel-active-sql.js'
 import type {
   PersonnelAdminItem,
   PersonnelAdminUpsertBody,
@@ -54,6 +55,7 @@ type PersonnelRow = {
   imgmember_mime: string | null
   imgmember_bytes: number | null
   has_image: boolean
+  pass_must_change: boolean
 }
 
 const SELECT_BASE = `
@@ -75,7 +77,8 @@ const SELECT_BASE = `
     wc.userst, wc.userrole, wc.workstatus, wc.imgmember,
     wc.imgmember_mime,
     wc.imgmember_bytes,
-    (octet_length(wc.imgmember_data) > 0) AS has_image
+    (octet_length(wc.imgmember_data) > 0) AS has_image,
+    COALESCE(wc.pass_must_change, false) AS pass_must_change
   FROM app.tbworkcenter wc
   LEFT JOIN app.tbdepartment dept
     ON dept.iddepartment::text = wc.iddepartment::text
@@ -124,6 +127,7 @@ function mapRow(row: PersonnelRow): PersonnelAdminItem {
     imgmemberMime: row.imgmember_mime ?? 'image/webp',
     imgmemberBytes: row.imgmember_bytes ?? 0,
     hasImage: Boolean(row.has_image),
+    passMustChange: row.pass_must_change === true,
   }
 }
 
@@ -144,6 +148,7 @@ export async function listPersonnelAdmin(
     limit?: number
     offset?: number
     status?: PersonnelListStatusFilter
+    userrole?: PersonnelUserrole
   } = {},
 ): Promise<{ items: PersonnelAdminItem[]; totalRows: number }> {
   const limit = Math.max(1, Math.min(500, opts.limit ?? 200))
@@ -166,13 +171,7 @@ export async function listPersonnelAdmin(
   }
 
   if (status === 'active') {
-    conds.push(`(
-      wc.workstatus IS NULL OR wc.workstatus = ''
-      OR EXISTS (
-        SELECT 1 FROM app.tbwkctrstatus s
-        WHERE s.workstatus = wc.workstatus AND s.is_active = true
-      )
-    )`)
+    conds.push(personnelIsActiveSql('wc'))
   } else if (status === 'inactive') {
     conds.push(`EXISTS (
       SELECT 1 FROM app.tbwkctrstatus s
@@ -181,6 +180,11 @@ export async function listPersonnelAdmin(
   } else if (status && status !== 'all') {
     params.push(status)
     conds.push(`wc.workstatus = $${params.length}`)
+  }
+
+  if (opts.userrole) {
+    params.push(opts.userrole)
+    conds.push(`wc.userrole = $${params.length}`)
   }
 
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : ''

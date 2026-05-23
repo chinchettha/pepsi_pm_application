@@ -5,6 +5,8 @@ import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import App from './App.tsx'
 import { AppErrorBoundary } from '@/features/errors/AppErrorBoundary'
+import { SettingsProvider } from '@/providers/SettingsProvider'
+import { ThemeProvider } from '@/providers/ThemeProvider'
 import './index.css'
 import './styles/fullcalendar.css'
 
@@ -22,7 +24,11 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AppErrorBoundary>
-          <App />
+          <SettingsProvider>
+            <ThemeProvider>
+              <App />
+            </ThemeProvider>
+          </SettingsProvider>
         </AppErrorBoundary>
         <Toaster richColors position="top-right" closeButton />
       </BrowserRouter>

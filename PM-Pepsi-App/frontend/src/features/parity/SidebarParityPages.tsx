@@ -1,5 +1,12 @@
+import { CanPermission } from '@/components/auth/CanPermission'
+import { ReportExportButton } from '@/components/reports/ReportExportButton'
+import { ConfirmQcPendingQueue } from '@/components/confirmation/ConfirmQcPendingQueue'
+import { ConfirmationImagesPanel } from '@/components/confirmation/ConfirmationImagesPanel'
+import { AppCard } from '@/components/layout/AppCard'
+import { AppPageShell } from '@/components/layout/AppPageShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PlaceholderBlock } from '@/components/layout/PlaceholderBlock'
+import { EmptyState } from '@/components/ui/empty-state'
 import { PlanningMultiAssign } from '@/components/scheduling/PlanningMultiAssign'
 import { WorkOrderAutocomplete } from '@/components/scheduling/WorkOrderAutocomplete'
 import { Badge } from '@/components/ui/badge'
@@ -17,30 +24,31 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  deleteConfirmationImage,
   deleteWorkOrderPlanning,
   deleteWorkOrderPlanningAssignee,
   deleteConfirmationClose,
   fetchConfirmationByWorkOrder,
+  confirmationSapCsvFilename,
   fetchConfirmationExport,
+  fetchConfirmationExportCsv,
   fetchConfirmationExportXlsx,
-  fetchConfirmationImageData,
-  fetchConfirmationImages,
   fetchWorkOrderDetail,
   fetchWorkOrderModalDetail,
   fetchWorkcenters,
   postConfirmationClose,
-  postConfirmationImage,
   postConfirmationImport,
   postWorkOrderPlanningBatch,
   putWorkOrderPlanning,
 } from '@/lib/api-public'
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import type { ConfirmationImportResponse } from '@/api/schemas'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { usePermission } from '@/lib/use-permission'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ChangeEvent, ReactNode } from 'react'
-import { useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { MassConfirmSearchCard } from '@/features/confirmation/MassConfirmSearchCard'
+import { AlertCircle, ClipboardList, Search } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 function Shell({
@@ -61,7 +69,7 @@ function Shell({
         <ul className="list-inside list-disc space-y-1">
           {phpModules.map((m) => (
             <li key={m}>
-              <code className="rounded bg-zinc-200 px-1">{m}</code>
+              <code className="rounded bg-app-muted px-1">{m}</code>
             </li>
           ))}
         </ul>
@@ -80,7 +88,7 @@ export function LineCalendarParityPage() {
       phpModules={['line_calendar.php']}
       hint={
         <Button variant="outline" size="sm" asChild>
-          <Link to="/calendar">ไปปฏิทินรายเดือน (mock) ชั่วคราว</Link>
+          <Link to="/calendar">ไปปฏิทินรายเดือน</Link>
         </Button>
       }
     />
@@ -90,15 +98,19 @@ export function LineCalendarParityPage() {
 /** Admin: `M_confirmation.php` — ช่าง: ใช้ `W_planwork_view` เป็นเมนู Confirmation ในเมนูสำรอง */
 export function ConfirmationParityPage() {
   const qc = useQueryClient()
+  const location = useLocation()
   const authUser = getStoredAuthUser()
   const isAdmin = (authUser?.userst ?? '').trim() === 'A'
+  const canRead = usePermission('confirmation.read')
+  const canImportConfirm = usePermission('confirmation.import') || isAdmin
+  const canWriteClose = usePermission('confirmation.write') || usePermission('confirmation.close')
   const [wkorder, setWkorder] = useState('')
+  const wkorderTrimmed = wkorder.trim()
+  const canSearchWo = wkorderTrimmed.length >= 1
   const [importResult, setImportResult] = useState<ConfirmationImportResponse | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [viewImageId, setViewImageId] = useState<number | null>(null)
   const [planComment, setPlanComment] = useState('')
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState<'xlsx' | 'csv' | null>(null)
 
   const today = useMemo(() => {
     const d = new Date()
@@ -120,23 +132,23 @@ export function ConfirmationParityPage() {
   })
 
   const detailQ = useQuery({
-    queryKey: ['work-order-detail', wkorder],
-    queryFn: () => fetchWorkOrderDetail(wkorder),
-    enabled: false,
+    queryKey: ['work-order-detail', wkorderTrimmed],
+    queryFn: () => fetchWorkOrderDetail(wkorderTrimmed),
+    enabled: canSearchWo,
     retry: 0,
   })
 
   const confirmationQ = useQuery({
-    queryKey: ['confirmation-by-wkorder', wkorder],
-    queryFn: () => fetchConfirmationByWorkOrder(wkorder),
-    enabled: false,
+    queryKey: ['confirmation-by-wkorder', wkorderTrimmed],
+    queryFn: () => fetchConfirmationByWorkOrder(wkorderTrimmed),
+    enabled: canSearchWo,
     retry: 0,
   })
 
   const modalDetailQ = useQuery({
-    queryKey: ['work-order-modal-detail', wkorder],
-    queryFn: () => fetchWorkOrderModalDetail(wkorder),
-    enabled: false,
+    queryKey: ['work-order-modal-detail', wkorderTrimmed],
+    queryFn: () => fetchWorkOrderModalDetail(wkorderTrimmed),
+    enabled: canSearchWo,
     retry: 0,
   })
 
@@ -147,25 +159,11 @@ export function ConfirmationParityPage() {
     return Number.isFinite(fromDetail) ? fromDetail : null
   }, [confirmationQ.data?.idiw37, detailQ.data?.id])
 
-  const imagesQ = useQuery({
-    queryKey: ['confirmation-images', idiw37],
-    queryFn: () => fetchConfirmationImages(idiw37!),
-    enabled: typeof idiw37 === 'number',
-    retry: 0,
-  })
-
-  const imageDataQ = useQuery({
-    queryKey: ['confirmation-image-data', viewImageId],
-    queryFn: () => fetchConfirmationImageData(viewImageId!),
-    enabled: typeof viewImageId === 'number',
-    retry: 0,
-  })
-
   const addClose = useMutation({
     mutationFn: postConfirmationClose,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['confirmation-by-wkorder', wkorder] })
-      toast.success('Saved')
+      toast.success('บันทึกปิดงานแล้ว')
     },
     onError: (err) => toast.error((err as Error).message),
   })
@@ -174,7 +172,7 @@ export function ConfirmationParityPage() {
     mutationFn: deleteConfirmationClose,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['confirmation-by-wkorder', wkorder] })
-      toast.success('Deleted')
+      toast.success('ลบรายการปิดงานแล้ว')
     },
     onError: (err) => toast.error((err as Error).message),
   })
@@ -185,8 +183,8 @@ export function ConfirmationParityPage() {
       setImportResult(res)
       const ok = res.inserted + res.updated
       const failTotal = res.skipped + res.errors
-      if (failTotal === 0) toast.success(`Import success: ${ok}/${res.totalRows} rows`)
-      else toast.warning(`Import done: ok=${ok} fail=${failTotal} (total ${res.totalRows})`)
+      if (failTotal === 0) toast.success(`นำเข้าสำเร็จ ${ok}/${res.totalRows} แถว`)
+      else toast.warning(`นำเข้าเสร็จ: สำเร็จ ${ok} ล้มเหลว ${failTotal} (รวม ${res.totalRows} แถว)`)
       if (wkorder) {
         await qc.invalidateQueries({ queryKey: ['confirmation-by-wkorder', wkorder] })
       }
@@ -213,37 +211,22 @@ export function ConfirmationParityPage() {
     URL.revokeObjectURL(url)
   }
 
-  const onExportConfirm = async () => {
+  const onExportConfirm = async (format: 'xlsx' | 'csv') => {
     try {
-      setExporting(true)
-      const blob = await fetchConfirmationExportXlsx()
-      downloadBlob(blob, 'Export_Confirm.xlsx')
+      setExporting(format)
+      const blob =
+        format === 'xlsx'
+          ? await fetchConfirmationExportXlsx()
+          : await fetchConfirmationExportCsv()
+      const name =
+        format === 'xlsx' ? 'Export_Confirm.xlsx' : confirmationSapCsvFilename()
+      downloadBlob(blob, name)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Download failed')
+      toast.error(err instanceof Error ? err.message : 'ดาวน์โหลดไม่สำเร็จ')
     } finally {
-      setExporting(false)
+      setExporting(null)
     }
   }
-
-  const uploadImage = useMutation({
-    mutationFn: () => postConfirmationImage(idiw37!, imageFile!),
-    onSuccess: async () => {
-      setImageFile(null)
-      await qc.invalidateQueries({ queryKey: ['confirmation-images', idiw37] })
-      toast.success('Uploaded')
-    },
-    onError: (err) => toast.error((err as Error).message),
-  })
-
-  const delImage = useMutation({
-    mutationFn: (idcimg: number) => deleteConfirmationImage(idcimg),
-    onSuccess: async () => {
-      if (viewImageId != null) setViewImageId(null)
-      await qc.invalidateQueries({ queryKey: ['confirmation-images', idiw37] })
-      toast.success('Deleted')
-    },
-    onError: (err) => toast.error((err as Error).message),
-  })
 
   const assignPlan = useMutation({
     mutationFn: (args: { mode: 'P' | 'G'; code: string }) =>
@@ -302,40 +285,112 @@ export function ConfirmationParityPage() {
     onError: (err) => toast.error((err as Error).message),
   })
 
-  const onGo = async () => {
-    const w = wkorder.trim()
+  const loadWorkOrder = async (wo: string) => {
+    const w = wo.trim()
     if (!w) {
-      toast.error('Work order is required')
+      toast.error('กรุณาระบุเลขที่ใบงาน')
       return
     }
-    setViewImageId(null)
-    await Promise.all([detailQ.refetch(), confirmationQ.refetch(), modalDetailQ.refetch()])
+    if (w === wkorderTrimmed && canSearchWo) {
+      await Promise.all([detailQ.refetch(), confirmationQ.refetch(), modalDetailQ.refetch()])
+      return
+    }
+    setWkorder(w)
+  }
+
+  useEffect(() => {
+    const w = (location.state as { wkorder?: string } | null)?.wkorder?.trim()
+    if (w) void loadWorkOrder(w)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when navigating from WO modal
+  }, [location.key])
+
+  const onGo = () => void loadWorkOrder(wkorder)
+
+  if (!canRead) {
+    return (
+      <AppPageShell
+        title="รับรองงาน (Confirmation)"
+        description="ปิดงานช่าง · นำเข้า Confirm · รูป before/after · Mass confirm ≤44"
+      >
+        <EmptyState
+          icon={AlertCircle}
+          title="ไม่มีสิทธิ์เข้าถึง"
+          description={
+            <>
+              ต้องมีสิทธิ์ <code className="text-xs">confirmation.read</code>
+            </>
+          }
+        />
+      </AppPageShell>
+    )
   }
 
   return (
-    <div>
-      <PageHeader
-        title="รับรอง / Confirmation"
-        description="เทียบ M_confirmation.php / M_Confirm* / M_Export_confirm* / confirmTab*"
+    <>
+      <AppPageShell
+        title="รับรองงาน (Confirmation)"
+        description="ค้นหา WO · บันทึกปิดงาน · รูปประกอบ · Mass confirm (สูงสุด 44 รายการต่อ SAP)"
+        contentClassName="space-y-4"
+        headerActions={
+          <>
+            <Badge variant="secondary" className="text-xs">
+              Mass ≤44
+            </Badge>
+            <CanPermission permission="confirmation.read">
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link to="/confirmation/export">ดูตัวอย่าง Export</Link>
+              </Button>
+            </CanPermission>
+            <CanPermission permission="confirmation.import">
+              <ReportExportButton
+                format="xlsx"
+                label="ส่งออก Excel"
+                loading={exporting === 'xlsx'}
+                loadingLabel="กำลังส่งออก…"
+                disabled={exporting != null}
+                onClick={() => void onExportConfirm('xlsx')}
+              />
+              <ReportExportButton
+                format="csv"
+                label="CSV สำหรับ SAP"
+                loading={exporting === 'csv'}
+                loadingLabel="กำลังส่งออก…"
+                disabled={exporting != null}
+                onClick={() => void onExportConfirm('csv')}
+              />
+            </CanPermission>
+            <CanPermission permission="work-orders.read">
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link to="/work-orders">ใบงาน WO</Link>
+              </Button>
+            </CanPermission>
+            <CanPermission permission="planning.read">
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link to="/planning">แผนงาน</Link>
+              </Button>
+            </CanPermission>
+          </>
+        }
       >
-        <Badge variant="secondary">API + DB</Badge>
-        <Button type="button" variant="outline" size="sm" asChild>
-          <Link to="/confirmation/export">Preview Export</Link>
-        </Button>
-        <Button type="button" variant="outline" size="sm" disabled={exporting} onClick={onExportConfirm}>
-          {exporting ? 'Exporting…' : 'Export Confirm Excel'}
-        </Button>
-      </PageHeader>
+        <MassConfirmSearchCard />
 
-      <div className="space-y-6 px-4 py-6 sm:px-6">
-        {isAdmin ? (
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        {canImportConfirm ? (
+          <ConfirmQcPendingQueue
+            enabled
+            onOpenWo={(wo) => {
+              void loadWorkOrder(wo)
+            }}
+          />
+        ) : null}
+
+        {canImportConfirm ? (
+          <AppCard pad="compact">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <div className="text-sm font-medium text-zinc-800">
-                  Import Confirm (M_Confirm.php)
+                <div className="text-body-sm font-medium text-app">
+                  นำเข้า Confirm (Excel)
                 </div>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-app-muted">
                   อัปโหลด <code>Confirm.xlsx</code> — ระบบจะ skip 2 แถวแรกตาม PHP และ validate
                   คอลัมน์ Row 0/3/6/7/8/10/11/14/15/16/17
                 </p>
@@ -354,7 +409,7 @@ export function ConfirmationParityPage() {
                   disabled={importMut.isPending}
                   onClick={() => importFileRef.current?.click()}
                 >
-                  {importMut.isPending ? 'Importing…' : 'Upload Excel'}
+                  {importMut.isPending ? 'กำลังนำเข้า…' : 'อัปโหลด Excel'}
                 </Button>
               </div>
             </div>
@@ -375,12 +430,12 @@ export function ConfirmationParityPage() {
                     errors: {importResult.errors}
                   </Badge>
                 </div>
-                <div className="overflow-hidden rounded-lg border border-zinc-200">
-                  <Table>
+                <div className="app-table-shell overflow-hidden">
+                  <Table embedded stickyHeader zebra>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-16 text-center">Row</TableHead>
-                        <TableHead className="w-28">Status</TableHead>
+                        <TableHead className="w-16 text-center">แถว</TableHead>
+                        <TableHead className="w-28">สถานะ</TableHead>
                         <TableHead>Confirm</TableHead>
                         <TableHead>Order</TableHead>
                         <TableHead>WkCtr</TableHead>
@@ -392,7 +447,7 @@ export function ConfirmationParityPage() {
                     <TableBody>
                       {importResult.rows.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="py-6 text-center text-sm text-zinc-500">
+                          <TableCell colSpan={8} className="py-6 text-center text-caption">
                             ไม่มีแถวข้อมูล (Excel ว่างหลังจาก skip 2 แถวแรก)
                           </TableCell>
                         </TableRow>
@@ -420,7 +475,7 @@ export function ConfirmationParityPage() {
                             <TableCell className="tabular-nums">
                               {r.endate ? new Date(r.endate * 1000).toLocaleString() : ''}
                             </TableCell>
-                            <TableCell className="text-xs text-zinc-600">{r.message}</TableCell>
+                            <TableCell className="text-xs text-app-muted">{r.message}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -429,97 +484,130 @@ export function ConfirmationParityPage() {
                 </div>
               </div>
             ) : null}
-          </div>
+          </AppCard>
         ) : null}
 
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <AppCard pad="compact">
           <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
             <div>
-              <Label htmlFor="wkorder">Number Work Order</Label>
+              <Label htmlFor="wkorder">เลขที่ใบงาน (Work Order)</Label>
               <WorkOrderAutocomplete
                 value={wkorder}
-                placeholder="Enter Work Order"
+                placeholder="พิมพ์เลข WO หรือคำค้น"
                 minLength={1}
                 onInputChange={setWkorder}
-                onSelect={(item) => setWkorder(item.wkorder)}
+                onSelect={(item) => void loadWorkOrder(item.wkorder)}
               />
             </div>
             <div className="flex items-end">
-              <Button type="button" onClick={onGo} disabled={detailQ.isFetching || confirmationQ.isFetching}>
-                Go
+              <Button
+                type="button"
+                className="gap-2"
+                onClick={onGo}
+                disabled={detailQ.isFetching || confirmationQ.isFetching}
+              >
+                <Search className="size-4" aria-hidden />
+                เปิดใบงาน
               </Button>
             </div>
           </div>
 
           <div className="mt-4">
-            {(detailQ.isFetching || confirmationQ.isFetching) && !detailQ.data ? (
-              <Skeleton className="h-24 w-full rounded-lg" />
+            {!canSearchWo ? (
+              <p className="text-caption">
+                ใส่เลข WO แล้วกด「เปิดใบงาน」หรือเลือกจากรายการค้นหา
+              </p>
             ) : null}
-            {detailQ.isError ? <p className="mt-2 text-sm text-red-600">{(detailQ.error as Error).message}</p> : null}
+            {(detailQ.isFetching || confirmationQ.isFetching) && !detailQ.data && !confirmationQ.data ? (
+              <Skeleton className="h-24 w-full rounded-card" aria-label="กำลังโหลดใบงาน" />
+            ) : null}
+            {detailQ.isError ? (
+              <EmptyState
+                icon={AlertCircle}
+                title="โหลดใบงานไม่สำเร็จ"
+                description={(detailQ.error as Error).message}
+                action={{ label: 'ลองใหม่', onClick: () => void detailQ.refetch() }}
+                className="mt-2"
+              />
+            ) : null}
             {confirmationQ.isError ? (
-              <p className="mt-2 text-sm text-red-600">{(confirmationQ.error as Error).message}</p>
+              <EmptyState
+                icon={AlertCircle}
+                title="โหลดข้อมูลรับรองไม่สำเร็จ"
+                description={(confirmationQ.error as Error).message}
+                action={{ label: 'ลองใหม่', onClick: () => void confirmationQ.refetch() }}
+                className="mt-2"
+              />
+            ) : null}
+            {canSearchWo && confirmationQ.isSuccess && detailQ.isSuccess ? (
+              <p className="mt-2 text-xs text-app-muted">
+                WO {confirmationQ.data.wkorder} · idiw37 {confirmationQ.data.idiw37} · ปิดงาน{' '}
+                {confirmationQ.data.items.length} รายการ
+              </p>
             ) : null}
           </div>
-        </div>
+        </AppCard>
 
         <Tabs defaultValue="workorder" className="w-full">
           <TabsList>
-            <TabsTrigger value="workorder">Work Order + Tasklist</TabsTrigger>
-            <TabsTrigger value="confirmation">Confirmation</TabsTrigger>
-            <TabsTrigger value="images">Images</TabsTrigger>
-            <TabsTrigger value="planning">Planning</TabsTrigger>
+            <TabsTrigger value="workorder">ใบงาน + Task List</TabsTrigger>
+            <TabsTrigger value="confirmation">ปิดงาน / Confirm</TabsTrigger>
+            <TabsTrigger value="images">รูป before/after</TabsTrigger>
+            <TabsTrigger value="planning">จ่ายงาน (Planning)</TabsTrigger>
           </TabsList>
 
           <TabsContent value="workorder" className="mt-4">
             {!detailQ.data ? (
-              <div className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
-                Search work order first.
-              </div>
+              <EmptyState
+                icon={ClipboardList}
+                title="ยังไม่ได้เลือกใบงาน"
+                description="ค้นหาเลข WO ด้านบนก่อนดูรายละเอียดและ Task List"
+              />
             ) : (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <div className="app-page-content space-y-4">
+                <div className="app-card app-card-pad-compact">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <div className="text-sm font-medium text-zinc-800">รายละเอียด Work Order</div>
-                      <div className="text-xs text-zinc-500">เทียบ `confirmTab1.php` — header + operation detail</div>
+                      <div className="text-body-sm font-medium text-app">รายละเอียด Work Order</div>
+                      <div className="text-xs text-app-muted">เทียบ `confirmTab1.php` — header + operation detail</div>
                     </div>
                     <Badge variant="outline">{detailQ.data.status}</Badge>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="text-sm">
-                      <div className="text-xs text-zinc-500">Work Order</div>
+                    <div className="text-body-sm">
+                      <div className="text-xs text-app-muted">Work Order</div>
                       <div className="font-medium tabular-nums">{detailQ.data.wkorder}</div>
                     </div>
-                    <div className="text-sm">
-                      <div className="text-xs text-zinc-500">Work Center</div>
+                    <div className="text-body-sm">
+                      <div className="text-xs text-app-muted">Work Center</div>
                       <div className="font-medium">{detailQ.data.workCenter}</div>
                     </div>
-                    <div className="text-sm">
-                      <div className="text-xs text-zinc-500">Functional Location</div>
+                    <div className="text-body-sm">
+                      <div className="text-xs text-app-muted">Functional Location</div>
                       <div className="font-medium">{detailQ.data.functLoc}</div>
-                      <div className="text-xs text-zinc-500">{detailQ.data.description}</div>
+                      <div className="text-xs text-app-muted">{detailQ.data.description}</div>
                     </div>
-                    <div className="text-sm">
-                      <div className="text-xs text-zinc-500">Equipment</div>
+                    <div className="text-body-sm">
+                      <div className="text-xs text-app-muted">Equipment</div>
                       <div className="font-medium">{detailQ.data.equipment}</div>
                     </div>
-                    <div className="text-sm">
-                      <div className="text-xs text-zinc-500">Start / End</div>
+                    <div className="text-body-sm">
+                      <div className="text-xs text-app-muted">Start / End</div>
                       <div className="font-medium tabular-nums">
                         {detailQ.data.plannedDate || '—'} → {detailQ.data.finishDate || '—'}
                       </div>
                     </div>
-                    <div className="text-sm">
-                      <div className="text-xs text-zinc-500">Activity Type / Mat</div>
+                    <div className="text-body-sm">
+                      <div className="text-xs text-app-muted">Activity Type / Mat</div>
                       <div className="font-medium tabular-nums">{detailQ.data.mat || '—'}</div>
                     </div>
-                    <div className="text-sm sm:col-span-2">
-                      <div className="text-xs text-zinc-500">Header Short Text</div>
+                    <div className="text-body-sm sm:col-span-2">
+                      <div className="text-xs text-app-muted">Header Short Text</div>
                       <div className="font-medium">{detailQ.data.title}</div>
                     </div>
                     {(detailQ.data.operations ?? []).map((op) => (
-                      <div key={`${op.no}-${op.desc}`} className="text-sm sm:col-span-2">
-                        <div className="text-xs text-zinc-500">Operation {op.no}</div>
+                      <div key={`${op.no}-${op.desc}`} className="text-body-sm sm:col-span-2">
+                        <div className="text-xs text-app-muted">Operation {op.no}</div>
                         <div className="font-medium">
                           {op.desc} {op.wc ? `(${op.wc})` : ''}
                         </div>
@@ -528,18 +616,18 @@ export function ConfirmationParityPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-                  <div className="mb-3 text-sm font-medium text-zinc-800">
+                <div className="app-card app-card-pad-compact">
+                  <div className="mb-3 text-body-sm font-medium text-app">
                     PM Task List จาก `view_tarklist`
                   </div>
                   {modalDetailQ.isFetching && !modalDetailQ.data ? (
-                    <Skeleton className="h-24 w-full rounded-lg" />
+                    <Skeleton className="h-24 w-full rounded-card" />
                   ) : modalDetailQ.isError ? (
-                    <p className="text-sm text-red-600">{(modalDetailQ.error as Error).message}</p>
+                    <p className="text-body-sm text-red-600">{(modalDetailQ.error as Error).message}</p>
                   ) : modalDetailQ.data?.taskList.items.length ? (
                     <div className="space-y-2">
                       {modalDetailQ.data.taskList.summary ? (
-                        <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm">
+                        <div className="rounded-card border border-sky-200 bg-sky-50 p-3 text-body-sm">
                           <div className="font-medium text-sky-900">
                             Task List {modalDetailQ.data.taskList.summary.tasklist}
                           </div>
@@ -553,20 +641,20 @@ export function ConfirmationParityPage() {
                       {modalDetailQ.data.taskList.items.map((t, idx) => (
                         <div
                           key={`${t.tasklist}-${t.machine}-${t.pmlist}-${idx}`}
-                          className="rounded-md border border-zinc-200 bg-white px-3 py-2"
+                          className="rounded-button border border-app bg-[var(--app-surface)] px-3 py-2"
                         >
-                          <div className="text-sm text-zinc-900">
+                          <div className="text-body-sm text-app">
                             {idx + 1}. {t.machine} - {t.pmlist}
                             {t.mat ? ` / ${t.mat} = ${t.matdescrip}` : ''}
                           </div>
-                          <div className="text-xs text-zinc-500">
+                          <div className="text-xs text-app-muted">
                             สถานะเครื่อง: {t.machinestatus === 1 ? 'หยุด' : 'เดิน'}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-zinc-600">ไม่พบ PM Task List</p>
+                    <p className="text-caption">ไม่พบ PM Task List</p>
                   )}
                 </div>
               </div>
@@ -574,7 +662,7 @@ export function ConfirmationParityPage() {
           </TabsContent>
 
           <TabsContent value="confirmation" className="mt-4 space-y-4">
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <div className="app-card app-card-pad-compact">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <Label htmlFor="startD">Start date</Label>
@@ -595,12 +683,12 @@ export function ConfirmationParityPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <div className="mb-3 text-sm font-medium text-zinc-800">Technicians</div>
+            <div className="app-card app-card-pad-compact">
+              <div className="mb-3 text-body-sm font-medium text-app">Technicians</div>
               {workcentersQ.isLoading ? (
-                <Skeleton className="h-24 w-full rounded-lg" />
+                <Skeleton className="h-24 w-full rounded-card" />
               ) : workcentersQ.isError ? (
-                <p className="text-sm text-red-600">{(workcentersQ.error as Error).message}</p>
+                <p className="text-body-sm text-red-600">{(workcentersQ.error as Error).message}</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {(workcentersQ.data ?? []).map((wc) => (
@@ -609,11 +697,14 @@ export function ConfirmationParityPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={!confirmationQ.data || addClose.isPending}
+                      disabled={typeof idiw37 !== 'number' || addClose.isPending || !canWriteClose}
                       onClick={() => {
-                        const idiw37 = confirmationQ.data?.idiw37
-                        if (!idiw37) {
-                          toast.error('Search work order first')
+                        if (typeof idiw37 !== 'number') {
+                          toast.error('กรุณาเปิดใบงานก่อน')
+                          return
+                        }
+                        if (!canWriteClose) {
+                          toast.error('ไม่มีสิทธิ์บันทึกปิดงาน')
                           return
                         }
                         addClose.mutate({
@@ -634,29 +725,47 @@ export function ConfirmationParityPage() {
               )}
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-              <Table>
+            <div className="overflow-hidden app-table-shell">
+              <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>WkCtr</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Start</TableHead>
-                    <TableHead>End</TableHead>
-                    <TableHead className="text-right">Minutes</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead>รหัสช่าง</TableHead>
+                    <TableHead>ชื่อ</TableHead>
+                    <TableHead>เริ่ม</TableHead>
+                    <TableHead>สิ้นสุด</TableHead>
+                    <TableHead className="text-right">นาที</TableHead>
+                    <TableHead className="text-right">จัดการ</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!confirmationQ.data ? (
+                  {!canSearchWo ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center text-sm text-zinc-500">
-                        Search work order first.
+                      <TableCell colSpan={6} className="py-8 text-center text-caption">
+                        เปิดใบงานก่อน
+                      </TableCell>
+                    </TableRow>
+                  ) : confirmationQ.isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-8">
+                        <Skeleton className="h-12 w-full rounded-card" />
+                      </TableCell>
+                    </TableRow>
+                  ) : confirmationQ.isError ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-8 text-center text-body-sm text-red-600">
+                        {(confirmationQ.error as Error).message}
+                      </TableCell>
+                    </TableRow>
+                  ) : !confirmationQ.data ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-8 text-center text-caption">
+                        No data
                       </TableCell>
                     </TableRow>
                   ) : (confirmationQ.data.items ?? []).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center text-sm text-zinc-500">
-                        No confirmations
+                      <TableCell colSpan={6} className="py-8 text-center text-caption">
+                        ยังไม่มีรายการปิดงาน
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -678,10 +787,10 @@ export function ConfirmationParityPage() {
                             type="button"
                             size="sm"
                             variant="destructive"
-                            disabled={delClose.isPending}
+                            disabled={delClose.isPending || !canWriteClose}
                             onClick={() => delClose.mutate(row.idclose)}
                           >
-                            Del
+                            ลบ
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -693,147 +802,32 @@ export function ConfirmationParityPage() {
           </TabsContent>
 
           <TabsContent value="images" className="mt-4">
-            <div className="space-y-4">
-              <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <div className="mb-3">
-                  <div className="text-sm font-medium text-zinc-800">Upload images</div>
-                  <p className="text-xs text-zinc-500">
-                    เทียบ `confirmTab3.php` + `submit_upload_file.php` — รองรับ JPEG และผูกกับ `idiw37`
-                  </p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                  <Input
-                    type="file"
-                    accept=".jpg,.jpeg,image/jpeg"
-                    disabled={typeof idiw37 !== 'number'}
-                    onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                  />
-                  <Button
-                    type="button"
-                    disabled={typeof idiw37 !== 'number' || !imageFile || uploadImage.isPending}
-                    onClick={() => uploadImage.mutate()}
-                  >
-                    Upload
-                  </Button>
-                </div>
-                {typeof idiw37 !== 'number' ? (
-                  <p className="mt-2 text-xs text-zinc-500">Search work order first.</p>
-                ) : null}
-              </div>
-
-              <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>File</TableHead>
-                      <TableHead>WkCtr</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Bytes</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {typeof idiw37 !== 'number' ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="py-10 text-center text-sm text-zinc-500">
-                          Search work order first.
-                        </TableCell>
-                      </TableRow>
-                    ) : imagesQ.isLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="py-10">
-                          <Skeleton className="h-12 w-full rounded-lg" />
-                        </TableCell>
-                      </TableRow>
-                    ) : imagesQ.isError ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="py-10 text-center text-sm text-red-600">
-                          {(imagesQ.error as Error).message}
-                        </TableCell>
-                      </TableRow>
-                    ) : (imagesQ.data ?? []).length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="py-10 text-center text-sm text-zinc-500">
-                          No images
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      (imagesQ.data ?? []).map((img) => (
-                        <TableRow key={img.idcimg}>
-                          <TableCell className="font-medium">{img.originalName || img.fileName}</TableCell>
-                          <TableCell className="tabular-nums">{img.wkctr}</TableCell>
-                          <TableCell className="tabular-nums">
-                            {new Date(img.createdAt).toLocaleString('th-TH')}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">{img.bytes}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button type="button" size="sm" variant="outline" onClick={() => setViewImageId(img.idcimg)}>
-                                View
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="destructive"
-                                disabled={delImage.isPending}
-                                onClick={() => delImage.mutate(img.idcimg)}
-                              >
-                                Del
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {viewImageId != null ? (
-                <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <div className="text-sm font-medium text-zinc-800">Image preview</div>
-                    <Button type="button" size="sm" variant="outline" onClick={() => setViewImageId(null)}>
-                      Close
-                    </Button>
-                  </div>
-                  {imageDataQ.isLoading ? (
-                    <Skeleton className="h-48 w-full rounded-lg" />
-                  ) : imageDataQ.isError ? (
-                    <p className="text-sm text-red-600">{(imageDataQ.error as Error).message}</p>
-                  ) : imageDataQ.data ? (
-                    <img
-                      src={`data:${imageDataQ.data.mime};base64,${imageDataQ.data.base64}`}
-                      alt="Confirmation upload"
-                      className="max-h-[520px] w-auto rounded-lg border border-zinc-200"
-                    />
-                  ) : null}
-                </div>
-              ) : null}
+            <div className="app-page-content">
+              <ConfirmationImagesPanel idiw37={idiw37} enabled={typeof idiw37 === 'number'} />
             </div>
           </TabsContent>
 
           <TabsContent value="planning" className="mt-4">
-            <div className="space-y-4">
-              <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <div className="app-page-content space-y-4">
+              <div className="app-card app-card-pad-compact">
                 <div className="mb-3">
-                  <div className="text-sm font-medium text-zinc-800">Planning</div>
-                  <p className="text-xs text-zinc-500">
+                  <div className="text-body-sm font-medium text-app">Planning</div>
+                  <p className="text-xs text-app-muted">
                     เทียบ `confirmTab4.php` — แสดงผู้รับผิดชอบจาก `view_planwork`; Admin สามารถจ่าย/ยกเลิกงานได้
                   </p>
                 </div>
 
                 {!detailQ.data ? (
-                  <p className="text-sm text-zinc-600">Search work order first.</p>
+                  <p className="text-caption">Search work order first.</p>
                 ) : modalDetailQ.isFetching && !modalDetailQ.data ? (
-                  <Skeleton className="h-24 w-full rounded-lg" />
+                  <Skeleton className="h-24 w-full rounded-card" />
                 ) : modalDetailQ.isError ? (
-                  <p className="text-sm text-red-600">{(modalDetailQ.error as Error).message}</p>
+                  <p className="text-body-sm text-red-600">{(modalDetailQ.error as Error).message}</p>
                 ) : modalDetailQ.data ? (
-                  <div className="space-y-4">
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="app-page-content space-y-4">
+                    <div className="rounded-card border border-emerald-200 bg-emerald-50 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-sm font-medium text-emerald-900">
+                        <div className="text-body-sm font-medium text-emerald-900">
                           ผู้รับผิดชอบปัจจุบัน
                           {modalDetailQ.data.planning.assignees.length > 0
                             ? ` (${modalDetailQ.data.planning.assignees.length} คน)`
@@ -852,22 +846,22 @@ export function ConfirmationParityPage() {
                         ) : null}
                       </div>
                       {modalDetailQ.data.planning.assignees.length === 0 ? (
-                        <div className="mt-2 text-sm text-emerald-900/80">ยังไม่ได้จ่ายงาน</div>
+                        <div className="mt-2 text-body-sm text-emerald-900/80">ยังไม่ได้จ่ายงาน</div>
                       ) : (
-                        <ul className="mt-2 space-y-1.5">
+                        <ul className="mt-2 space-y-2">
                           {modalDetailQ.data.planning.assignees.map((a) => (
                             <li
                               key={`${a.code}-${a.idplanw ?? ''}`}
-                              className="flex items-center justify-between gap-2 rounded border border-emerald-200/70 bg-white/60 px-2 py-1.5"
+                              className="flex items-center justify-between gap-2 rounded border border-emerald-200/70 bg-white/60 px-2 py-2"
                             >
                               <div className="min-w-0">
-                                <div className="text-sm text-emerald-900">
+                                <div className="text-body-sm text-emerald-900">
                                   <span className="font-mono">{a.code}</span>
                                   {a.displayName && a.displayName !== a.code ? (
-                                    <span className="ml-1.5 text-emerald-900/80">— {a.displayName}</span>
+                                    <span className="ml-2 text-emerald-900/80">— {a.displayName}</span>
                                   ) : null}
                                   {a.pwteam === 'G' ? (
-                                    <span className="ml-1.5 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium text-amber-800">
+                                    <span className="ml-2 rounded bg-amber-100 px-1 py-1 text-badge font-medium text-amber-800">
                                       GROUP
                                     </span>
                                   ) : null}
@@ -922,8 +916,8 @@ export function ConfirmationParityPage() {
                           }}
                         />
 
-                        <details className="rounded-lg border border-zinc-200 bg-white p-3">
-                          <summary className="cursor-pointer text-sm font-medium text-zinc-800">
+                        <details className="app-table-shell p-3">
+                          <summary className="cursor-pointer text-body-sm font-medium text-app">
                             จ่ายงานรายบุคคล (Quick assign — คลิก 1 ครั้ง/คน)
                           </summary>
                           <div className="mt-3 flex max-h-56 flex-wrap gap-2 overflow-auto">
@@ -944,7 +938,7 @@ export function ConfirmationParityPage() {
                           </div>
                         </details>
 
-                        <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
+                        <div className="overflow-hidden app-table-shell">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -983,29 +977,8 @@ export function ConfirmationParityPage() {
           </TabsContent>
         </Tabs>
 
-        <PlaceholderBlock title="Parity กับระบบ PHP (sap/pages)">
-          <ul className="list-inside list-disc space-y-1">
-            <li>
-              <code className="rounded bg-zinc-200 px-1">M_confirmation.php</code>
-            </li>
-            <li>
-              <code className="rounded bg-zinc-200 px-1">M_confirmation_form.php</code>
-            </li>
-            <li>
-              <code className="rounded bg-zinc-200 px-1">modalPages/confirmTab2.php</code>
-            </li>
-          </ul>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/planning">แผนงาน (ใกล้เคียง W_planwork_view)</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/work-orders">ใบงาน / WO</Link>
-            </Button>
-          </div>
-        </PlaceholderBlock>
-      </div>
-    </div>
+      </AppPageShell>
+    </>
   )
 }
 
@@ -1013,29 +986,49 @@ export function ConfirmationParityPage() {
  *  ใช้ view `app.view_exportconfirm` กรองตามสิทธิ์ผู้ใช้ (PAC007/PRO005 = ALL, อื่นๆ = OWN wkctr)
  */
 export function ConfirmationExportParityPage() {
-  const [exporting, setExporting] = useState(false)
+  const navigate = useNavigate()
+  const authUser = getStoredAuthUser()
+  const isAdmin = (authUser?.userst ?? '').trim() === 'A'
+  const canRead = usePermission('confirmation.read')
+  const canExport =
+    usePermission('confirmation.export') ||
+    usePermission('confirmation.import') ||
+    isAdmin
+  const [exporting, setExporting] = useState<'xlsx' | 'csv' | null>(null)
   const exportQ = useQuery({
     queryKey: ['confirmation', 'export', 'preview'],
     queryFn: fetchConfirmationExport,
     staleTime: 30_000,
+    enabled: canRead,
+    placeholderData: keepPreviousData,
   })
 
-  const onDownload = async () => {
-    setExporting(true)
+  const onDownload = async (format: 'xlsx' | 'csv') => {
+    if (!canExport) {
+      toast.error('ไม่มีสิทธิ์ส่งออก — ต้องมี confirmation.export หรือ confirmation.import')
+      return
+    }
+    setExporting(format)
     try {
-      const blob = await fetchConfirmationExportXlsx()
+      const blob =
+        format === 'xlsx'
+          ? await fetchConfirmationExportXlsx()
+          : await fetchConfirmationExportCsv()
+      const name =
+        format === 'xlsx' ? 'Export_Confirm.xlsx' : confirmationSapCsvFilename()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'Export_Confirm.xlsx'
+      a.download = name
       document.body.appendChild(a)
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
+      toast.success(format === 'xlsx' ? 'ดาวน์โหลด Excel แล้ว' : 'ดาวน์โหลด CSV สำหรับ SAP แล้ว')
     } catch (err) {
-      toast.error(`Export failed: ${err instanceof Error ? err.message : String(err)}`)
+      toast.error(err instanceof Error ? err.message : 'ส่งออกไม่สำเร็จ')
     } finally {
-      setExporting(false)
+      setExporting(null)
     }
   }
 
@@ -1043,88 +1036,134 @@ export function ConfirmationExportParityPage() {
   const scope = exportQ.data?.scope
   const actorWkctr = exportQ.data?.actorWkctr ?? ''
 
-  return (
-    <div>
-      <PageHeader
-        title="Export Confirm (Preview)"
-        description="เทียบ M_Export_confirm.php / M_Export_confirm_excel.php — preview ตารางก่อนดาวน์โหลด"
+  if (!canRead) {
+    return (
+      <AppPageShell
+        title="ตัวอย่าง Export Confirm"
+        description="ดูข้อมูลก่อนส่งออก SAP"
       >
-        <Badge variant="secondary">View: view_exportconfirm</Badge>
-        {scope ? (
-          <Badge variant={scope === 'ALL' ? 'default' : 'outline'}>
-            {scope === 'ALL' ? `ALL (PAC007/PRO005)` : `OWN: ${actorWkctr || '-'}`}
-          </Badge>
-        ) : null}
-        <Button type="button" variant="outline" size="sm" asChild>
-          <Link to="/confirmation">กลับหน้า Confirmation</Link>
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          disabled={exporting || exportQ.isFetching || items.length === 0}
-          onClick={onDownload}
-        >
-          {exporting ? 'Exporting…' : 'Download Excel'}
-        </Button>
-      </PageHeader>
+        <EmptyState
+          icon={AlertCircle}
+          title="ไม่มีสิทธิ์เข้าถึง"
+          description={
+            <>
+              ต้องมีสิทธิ์ <code className="text-xs">confirmation.read</code>
+            </>
+          }
+        />
+      </AppPageShell>
+    )
+  }
 
-      <div className="space-y-4 px-4 py-6 sm:px-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm text-zinc-700">
-            {exportQ.isLoading
-              ? 'กำลังโหลด…'
-              : exportQ.isError
-                ? `Error: ${exportQ.error instanceof Error ? exportQ.error.message : String(exportQ.error)}`
-                : `พบ ${items.length} แถว (สิทธิ์: ${scope ?? '-'}${
-                    scope === 'OWN' && actorWkctr ? `, wkctr=${actorWkctr}` : ''
-                  })`}
+  return (
+    <AppPageShell
+      title="ส่งออก Confirm (Preview)"
+      description="ดูตารางจาก view_exportconfirm ก่อนดาวน์โหลด — เทียบ M_Export_confirm.php"
+      contentClassName="space-y-4"
+      headerActions={
+        <>
+          {scope ? (
+            <Badge variant={scope === 'ALL' ? 'default' : 'outline'} className="text-xs">
+              {scope === 'ALL' ? 'เห็นทั้งหมด (PAC007/PRO005)' : `เฉพาะ wkctr: ${actorWkctr || '—'}`}
+            </Badge>
+          ) : null}
+          <CanPermission permission="confirmation.read">
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link to="/confirmation">กลับหน้ารับรอง</Link>
+            </Button>
+          </CanPermission>
+          {canExport ? (
+            <>
+              <ReportExportButton
+                format="xlsx"
+                label="ส่งออก Excel"
+                loading={exporting === 'xlsx'}
+                loadingLabel="กำลังส่งออก…"
+                disabled={exporting != null || exportQ.isFetching || items.length === 0}
+                onClick={() => void onDownload('xlsx')}
+              />
+              <ReportExportButton
+                format="csv"
+                label="CSV สำหรับ SAP"
+                variant="default"
+                loading={exporting === 'csv'}
+                loadingLabel="กำลังส่งออก…"
+                disabled={exporting != null || exportQ.isFetching || items.length === 0}
+                onClick={() => void onDownload('csv')}
+              />
+            </>
+          ) : null}
+        </>
+      }
+    >
+      {exportQ.isLoading && !exportQ.data ? (
+        <Skeleton className="h-64 w-full rounded-card" aria-label="กำลังโหลดตาราง export" />
+      ) : exportQ.isError ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="โหลดตัวอย่าง Export ไม่สำเร็จ"
+          description={
+            exportQ.error instanceof Error ? exportQ.error.message : 'เกิดข้อผิดพลาด'
+          }
+          action={{ label: 'ลองใหม่', onClick: () => void exportQ.refetch() }}
+        />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={ClipboardList}
+          title="ไม่มีข้อมูลส่งออก"
+          description={
+            scope === 'OWN' && actorWkctr
+              ? `ไม่พบ confirmation สำหรับ wkctr ${actorWkctr} — ลองปิดงานหรือนำเข้า Confirm ก่อน`
+              : 'ไม่พบแถวในขอบเขตสิทธิ์ของคุณ — ตรวจว่ามีการปิดงานในระบบแล้ว'
+          }
+          action={{
+            label: 'กลับหน้ารับรอง',
+            onClick: () => navigate('/confirmation'),
+          }}
+        />
+      ) : (
+        <AppCard pad="compact" className="space-y-3">
+          <p className="text-caption rounded-button border border-dashed border-app bg-app-subtle/50 px-3 py-2">
+            สิทธิ์ PAC007 / PRO005 เห็นทุกแถว · ผู้ใช้อื่นเห็นเฉพาะ wkctr ของตน (เทียบ PHP M_Export_confirm.php)
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-caption">
+              พบ {items.length.toLocaleString('th-TH')} แถวพร้อมส่งออก
+              {exportQ.isFetching ? ' · กำลังอัปเดต…' : ''}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={exportQ.isFetching}
+              onClick={() => exportQ.refetch()}
+            >
+              {exportQ.isFetching ? 'กำลังรีเฟรช…' : 'รีเฟรช'}
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={exportQ.isFetching}
-            onClick={() => exportQ.refetch()}
-          >
-            {exportQ.isFetching ? 'กำลังรีเฟรช…' : 'รีเฟรช'}
-          </Button>
-        </div>
 
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-          <Table>
+          <div className="app-table-shell max-h-[min(70vh,720px)] overflow-auto">
+          <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12 text-right">#</TableHead>
+                <TableHead className="w-12 text-right">ลำดับ</TableHead>
                 <TableHead>Confirmation</TableHead>
-                <TableHead>Order</TableHead>
+                <TableHead>เลข WO</TableHead>
                 <TableHead>Operation</TableHead>
                 <TableHead>SubO</TableHead>
-                <TableHead>Ca..</TableHead>
+                <TableHead>Ca</TableHead>
                 <TableHead>Split</TableHead>
-                <TableHead>Wrk Ctr</TableHead>
-                <TableHead className="text-right">Act.Work</TableHead>
-                <TableHead>unit</TableHead>
-                <TableHead>Start Date Exe.</TableHead>
-                <TableHead>End Date Exe.</TableHead>
-                <TableHead>Start Execute</TableHead>
-                <TableHead>End Execute</TableHead>
+                <TableHead>ศูนย์งาน</TableHead>
+                <TableHead className="text-right">ชม.ทำงาน</TableHead>
+                <TableHead>หน่วย</TableHead>
+                <TableHead>วันเริ่ม (Exe.)</TableHead>
+                <TableHead>วันสิ้นสุด (Exe.)</TableHead>
+                <TableHead>เวลาเริ่ม</TableHead>
+                <TableHead>เวลาสิ้นสุด</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {exportQ.isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={14} className="py-10 text-center text-sm text-zinc-500">
-                    กำลังโหลด…
-                  </TableCell>
-                </TableRow>
-              ) : items.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={14} className="py-10 text-center text-sm text-zinc-500">
-                    ไม่มีข้อมูล confirmation ภายใต้สิทธิ์ของคุณ
-                  </TableCell>
-                </TableRow>
-              ) : (
-                items.map((row) => (
+              {items.map((row) => (
                   <TableRow key={`${row.confirmation}-${row.wkorder}-${row.opac}-${row.no}`}>
                     <TableCell className="text-right tabular-nums">{row.no}</TableCell>
                     <TableCell className="tabular-nums">{row.confirmation}</TableCell>
@@ -1141,28 +1180,13 @@ export function ConfirmationExportParityPage() {
                     <TableCell className="tabular-nums">{row.startExecute}</TableCell>
                     <TableCell className="tabular-nums">{row.endExecute}</TableCell>
                   </TableRow>
-                ))
-              )}
+                ))}
             </TableBody>
           </Table>
         </div>
-
-        <PlaceholderBlock title="Parity กับระบบ PHP (sap/pages)">
-          <ul className="list-inside list-disc space-y-1">
-            <li>
-              <code className="rounded bg-zinc-200 px-1">M_Export_confirm.php</code> — หน้า preview ตาราง
-            </li>
-            <li>
-              <code className="rounded bg-zinc-200 px-1">M_Export_confirm_excel.php</code> — ดาวน์โหลด .xlsx
-            </li>
-          </ul>
-          <p className="mt-2 text-xs text-zinc-500">
-            สิทธิ์ผู้ใช้: PAC007 / PRO005 เห็นทั้งหมด, อื่นๆ จะกรองด้วย <code>cwkctr</code> หรือ{' '}
-            <code>wkctr</code> ของตนเอง (ตาม `M_Export_confirm.php`)
-          </p>
-        </PlaceholderBlock>
-      </div>
-    </div>
+        </AppCard>
+      )}
+    </AppPageShell>
   )
 }
 
@@ -1175,7 +1199,7 @@ export function SummaryWeeklyParityPage() {
       phpModules={['W_summary_weekly.php', 'W_summary_weekly_chart.php', 'W_summary_weekly_chart_full.php']}
       hint={
         <Button variant="outline" size="sm" asChild>
-          <Link to="/reports">รายงาน / กราฟ (mock)</Link>
+          <Link to="/summary-weekly">สรุปรายสัปดาห์</Link>
         </Button>
       }
     />

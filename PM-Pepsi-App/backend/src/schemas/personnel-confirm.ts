@@ -30,6 +30,8 @@ export const personnelConfirmRowSchema = z.object({
   percentClose: z.number().int(),
   /** มี tbcofirm อย่างน้อย 1 แถวหรือไม่ (สำหรับสีปุ่ม success/info) */
   hasConfirm: z.boolean(),
+  /** Admin QC — pending | approved | rejected */
+  qcStatus: z.enum(['pending', 'approved', 'rejected']).nullable(),
 })
 
 export const personnelConfirmListResponseSchema = z.object({

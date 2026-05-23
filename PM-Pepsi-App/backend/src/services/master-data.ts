@@ -19,6 +19,7 @@ import type {
   lineSchdulItemSchema,
 } from '../schemas/master-data.js'
 import type { z } from 'zod'
+import { isAuditTableMissing } from '../lib/audit-log.js'
 
 export type ActivityTypeItem = z.infer<typeof activityTypeItemSchema>
 export type DepartmentItem = z.infer<typeof departmentItemSchema>
@@ -1945,6 +1946,85 @@ export async function listLineSchduls(pool: Pool): Promise<LineSchdulItem[]> {
     })
   }
   return items
+}
+
+function tableForMasterEntity(entity: string): string | null {
+  // Keep in sync with `SUPPORTED_MASTER_ENTITIES` in schemas/master-data.ts
+  switch (entity) {
+    case 'activitytype':
+      return 'app.tbactivitytype'
+    case 'department':
+      return 'app.tbdepartment'
+    case 'equipment':
+      return 'app.tbequipment'
+    case 'functional':
+      return 'app.tbfunctional'
+    case 'reason':
+      return 'app.tbreason'
+    case 'workstatus':
+      return 'app.tbwkstatus'
+    case 'worktype':
+      return 'app.tbwkctrtype'
+    case 'zb':
+      return 'app.tbwkzb'
+    case 'lineproduct':
+      return 'app.tbproductline'
+    case 'zone':
+      return 'app.tbzone'
+    case 'machine':
+      return 'app.tbmainteanance'
+    case 'material':
+      return 'app.tbmaterial'
+    case 'level':
+      return 'app.tbwklevel'
+    case 'position':
+      return 'app.tbposition'
+    case 'group':
+      return 'app.tbwkctrgroup'
+    case 'tasklist':
+      return 'app.tbtasklist'
+    case 'lineschdul':
+      return 'app.tblineschdul'
+    default:
+      return null
+  }
+}
+
+export async function getMasterDataMeta(
+  pool: Pool,
+  entity: string,
+): Promise<{ entity: string; count: number; lastUpdatedAt: string | null }> {
+  const table = tableForMasterEntity(entity)
+  if (!table) {
+    return { entity, count: 0, lastUpdatedAt: null }
+  }
+
+  const countRes = await pool.query<{ count: number }>(
+    `SELECT COUNT(*)::int AS count FROM ${table}`,
+  )
+  const count = countRes.rows[0]?.count ?? 0
+
+  // Compute from audit log because legacy master tables don't have updated_at.
+  let lastUpdatedAt: string | null = null
+  try {
+    const { rows } = await pool.query<{ last: string | null }>(
+      `SELECT MAX(created_at)::timestamptz AS last
+       FROM app.tbl_audit_log
+       WHERE resource = $1
+         AND action LIKE 'master-data.%'
+         AND status = 'ok'`,
+      [entity],
+    )
+    const raw = rows[0]?.last ?? null
+    lastUpdatedAt = raw ? new Date(String(raw)).toISOString() : null
+  } catch (err) {
+    if (!isAuditTableMissing(err)) {
+      console.error('[getMasterDataMeta]', entity, err)
+    }
+    lastUpdatedAt = null
+  }
+
+  return { entity, count, lastUpdatedAt }
 }
 
 export async function createLineSchdul(pool: Pool, input: LineSchdulInput): Promise<LineSchdulItem> {

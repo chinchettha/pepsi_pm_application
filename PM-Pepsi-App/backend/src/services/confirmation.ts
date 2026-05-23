@@ -1,5 +1,13 @@
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import type { Pool, PoolClient } from 'pg'
+import type { ConfirmImagePhase } from '../lib/confirm-image-phase.js'
+import { touchConfirmQcPending } from './confirm-qc.js'
+import { SAP_MASS_CONFIRM_MAX, assertMassConfirmBatchSize } from '../lib/mass-confirm-limit.js'
+import { FACTORY_CODE } from './scheduling-shared.js'
 import { parseConfirmFile, type ConfirmImportRow } from './confirmation-import.js'
+
+export { SAP_MASS_CONFIRM_MAX as MASS_CONFIRM_MAX_ITEMS }
 
 type WorkcenterRow = {
   wkctr: string
@@ -159,6 +167,87 @@ export async function addConfirmationClose(
                    cwkctr = EXCLUDED.cwkctr, timewk = EXCLUDED.timewk, unitc = 'Min'`,
     [opts.idiw37, opts.wkctr, stdate, endate, opts.cwkctr, timeclose, timewk],
   )
+  await touchConfirmQcPending(pool, opts.idiw37)
+}
+
+export type ConfirmationMassCloseFail = { idiw37: number; message: string }
+
+export type ConfirmationMassCloseResult = {
+  succeeded: number[]
+  failed: ConfirmationMassCloseFail[]
+}
+
+async function idiw37InFactory(pool: Pool | PoolClient, idiw37: number): Promise<boolean> {
+  const r = await pool.query(
+    `SELECT 1 FROM app.tbiw37n WHERE idiw37 = $1 AND functionalloc LIKE $2 LIMIT 1`,
+    [idiw37, `%${FACTORY_CODE}%`],
+  )
+  return (r.rowCount ?? 0) > 0
+}
+
+/**
+ * ปิดงาน (confirm) หลาย WO ในคำขอเดียว — เทียบ Mass Confirm 44 ของ SAP
+ */
+export async function addConfirmationCloseBatch(
+  pool: Pool,
+  opts: {
+    idiw37n: number[]
+    wkctr: string
+    startD: string
+    startT: string
+    endD: string
+    endT: string
+    cwkctr: string | null
+  },
+): Promise<ConfirmationMassCloseResult> {
+  const seen = new Set<number>()
+  const unique: number[] = []
+  for (const raw of opts.idiw37n) {
+    const n = Number(raw)
+    if (!Number.isFinite(n) || n <= 0 || seen.has(n)) continue
+    seen.add(n)
+    unique.push(n)
+  }
+
+  assertMassConfirmBatchSize(unique.length)
+
+  const succeeded: number[] = []
+  const failed: ConfirmationMassCloseFail[] = []
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    for (const idiw37 of unique) {
+      try {
+        if (!(await idiw37InFactory(client, idiw37))) {
+          failed.push({ idiw37, message: 'Work order not found' })
+          continue
+        }
+        await addConfirmationClose(client, {
+          idiw37,
+          wkctr: opts.wkctr,
+          startD: opts.startD,
+          startT: opts.startT,
+          endD: opts.endD,
+          endT: opts.endT,
+          cwkctr: opts.cwkctr,
+        })
+        succeeded.push(idiw37)
+      } catch (err) {
+        failed.push({
+          idiw37,
+          message: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw err
+  } finally {
+    client.release()
+  }
+
+  return { succeeded, failed }
 }
 
 // ----- Import (M_Confirm.php) -----
@@ -385,18 +474,30 @@ function formatHhMm(sec: number): string {
 export async function listConfirmationExportRows(
   pool: Pool,
   actorWkctr: string | undefined,
+  idiw37n?: number[],
 ): Promise<ConfirmationExportRow[]> {
   const wkctr = (actorWkctr ?? '').trim()
   const canExportAll = wkctr === 'PAC007' || wkctr === 'PRO005'
-  const params = canExportAll ? [] : [wkctr]
-  const scopeSql = canExportAll ? '' : 'AND cwkctr = $1'
+  const params: unknown[] = []
+  const where: string[] = [
+    `e.syst IN ('CRTD', 'REL')`,
+    `i.confirm_qc_status = 'approved'`,
+  ]
+  if (idiw37n?.length) {
+    params.push(idiw37n)
+    where.push(`e.idiw37 = ANY($${params.length}::int[])`)
+  }
+  if (!canExportAll) {
+    params.push(wkctr)
+    where.push(`e.cwkctr = $${params.length}`)
+  }
 
   const r = await pool.query<ConfirmationExportRowDb>(
-    `SELECT wkorder, opac, wkctr, timewk, unitc, stdate, endate
-     FROM app.view_exportconfirm
-     WHERE syst IN ('CRTD', 'REL')
-       ${scopeSql}
-     ORDER BY wkorder ASC`,
+    `SELECT e.wkorder, e.opac, e.wkctr, e.timewk, e.unitc, e.stdate, e.endate
+     FROM app.view_exportconfirm e
+     JOIN app.tbiw37n i ON i.idiw37 = e.idiw37
+     WHERE ${where.join(' AND ')}
+     ORDER BY e.wkorder ASC`,
     params,
   )
 
@@ -525,7 +626,38 @@ export type ConfirmationImageItem = {
   mime: string
   bytes: number
   wkctr: string
+  phase: ConfirmImagePhase | ''
+  comment: string
   createdAt: string
+}
+
+function mapConfirmationImageRow(row: {
+  idcimg: string | number
+  idiw37: string | number
+  cfilename: string
+  original: string | null
+  mime: string | null
+  bytes: string | number | null
+  wkctr: string | null
+  img_phase?: string | null
+  img_comment?: string | null
+  created_at: Date
+}): ConfirmationImageItem {
+  const rawPhase = (row.img_phase ?? '').trim().toLowerCase()
+  const phase: ConfirmImagePhase | '' =
+    rawPhase === 'before' || rawPhase === 'after' ? rawPhase : ''
+  return {
+    idcimg: Number(row.idcimg),
+    idiw37: Number(row.idiw37),
+    fileName: row.cfilename ?? '',
+    originalName: row.original ?? '',
+    mime: row.mime ?? 'image/jpeg',
+    bytes: row.bytes != null && row.bytes !== '' ? Number(row.bytes) || 0 : 0,
+    wkctr: row.wkctr ?? '',
+    phase,
+    comment: row.img_comment ?? '',
+    createdAt: row.created_at.toISOString(),
+  }
 }
 
 export async function listConfirmationImages(
@@ -540,26 +672,35 @@ export async function listConfirmationImages(
     mime: string | null
     bytes: string | number | null
     wkctr: string | null
+    img_phase: string | null
+    img_comment: string | null
     created_at: Date
   }>(
-    `SELECT idcimg, idiw37, cfilename, original, mime, bytes, wkctr, created_at
+    `SELECT idcimg, idiw37, cfilename, original, mime, bytes, wkctr,
+            COALESCE(img_phase, '') AS img_phase,
+            COALESCE(img_comment, '') AS img_comment,
+            created_at
      FROM app.tbconfirmimg
      WHERE idiw37 = $1
-     ORDER BY created_at DESC, idcimg DESC
+     ORDER BY
+       CASE COALESCE(img_phase, '')
+         WHEN 'before' THEN 0
+         WHEN 'after' THEN 1
+         ELSE 2
+       END,
+       created_at DESC,
+       idcimg DESC
      LIMIT 200`,
     [idiw37],
   )
-  return r.rows.map((row) => ({
-    idcimg: Number(row.idcimg),
-    idiw37: Number(row.idiw37),
-    fileName: row.cfilename ?? '',
-    originalName: row.original ?? '',
-    mime: row.mime ?? 'image/jpeg',
-    bytes: row.bytes != null && row.bytes !== '' ? Number(row.bytes) || 0 : 0,
-    wkctr: row.wkctr ?? '',
-    createdAt: row.created_at.toISOString(),
-  }))
+  return r.rows.map(mapConfirmationImageRow)
 }
+
+/** โฟลเดอร์เก่าบนดิสก์ — อ่าน fallback จนกว่าจะ migrate เข้า img_data */
+export const CONFIRM_IMAGE_LEGACY_DIRS = [
+  path.resolve(process.cwd(), 'uploads', 'confirm-images'),
+  path.resolve(process.cwd(), 'data', 'confirmation-images'),
+]
 
 export async function createConfirmationImageRecord(
   pool: Pool,
@@ -569,7 +710,10 @@ export async function createConfirmationImageRecord(
     originalName: string
     mime: string
     bytes: number
+    imageData: Buffer
     wkctr: string
+    phase: ConfirmImagePhase
+    comment: string
   },
 ): Promise<ConfirmationImageItem> {
   const r = await pool.query<{
@@ -580,37 +724,45 @@ export async function createConfirmationImageRecord(
     mime: string | null
     bytes: number | null
     wkctr: string | null
+    img_phase: string | null
+    img_comment: string | null
     created_at: Date
   }>(
-    `INSERT INTO app.tbconfirmimg (idiw37, cfilename, original, mime, bytes, wkctr)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING idcimg, idiw37, cfilename, original, mime, bytes, wkctr, created_at`,
-    [opts.idiw37, opts.fileName, opts.originalName, opts.mime, opts.bytes, opts.wkctr],
+    `INSERT INTO app.tbconfirmimg
+       (idiw37, cfilename, original, mime, bytes, wkctr, img_phase, img_comment, img_data)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING idcimg, idiw37, cfilename, original, mime, bytes, wkctr,
+               img_phase, img_comment, created_at`,
+    [
+      opts.idiw37,
+      opts.fileName,
+      opts.originalName,
+      opts.mime,
+      opts.bytes,
+      opts.wkctr,
+      opts.phase,
+      opts.comment,
+      opts.imageData,
+    ],
   )
   const row = r.rows[0]
-  return {
-    idcimg: row.idcimg,
-    idiw37: row.idiw37,
-    fileName: row.cfilename,
-    originalName: row.original ?? '',
-    mime: row.mime ?? 'image/jpeg',
-    bytes: row.bytes ?? 0,
-    wkctr: row.wkctr ?? '',
-    createdAt: row.created_at.toISOString(),
-  }
+  await touchConfirmQcPending(pool, opts.idiw37)
+  return mapConfirmationImageRow(row)
 }
 
 export async function deleteConfirmationImageRecord(
   pool: Pool,
   idcimg: number,
 ): Promise<{ ok: boolean; fileName: string | null }> {
-  const r = await pool.query<{ cfilename: string }>(
+  const r = await pool.query<{ cfilename: string; idiw37: number }>(
     `DELETE FROM app.tbconfirmimg
      WHERE idcimg = $1
-     RETURNING cfilename`,
+     RETURNING cfilename, idiw37`,
     [idcimg],
   )
-  return { ok: (r.rowCount ?? 0) > 0, fileName: r.rows[0]?.cfilename ?? null }
+  const row = r.rows[0]
+  if (row) await touchConfirmQcPending(pool, row.idiw37)
+  return { ok: (r.rowCount ?? 0) > 0, fileName: row?.cfilename ?? null }
 }
 
 export async function getConfirmationImageMeta(
@@ -636,5 +788,56 @@ export async function getConfirmationImageMeta(
     idiw37: row.idiw37,
     fileName: row.cfilename,
     mime: row.mime ?? 'image/jpeg',
+  }
+}
+
+/** อ่าน binary — img_data ก่อน แล้ว fallback ไฟล์ legacy บนดิสก์ */
+export async function readConfirmationImageBuffer(
+  pool: Pool,
+  idcimg: number,
+): Promise<{ idcimg: number; mime: string; data: Buffer } | null> {
+  const r = await pool.query<{
+    idcimg: number
+    cfilename: string
+    mime: string | null
+    img_data: Buffer | null
+  }>(
+    `SELECT idcimg, cfilename, mime, img_data
+     FROM app.tbconfirmimg
+     WHERE idcimg = $1
+     LIMIT 1`,
+    [idcimg],
+  )
+  const row = r.rows[0]
+  if (!row) return null
+
+  if (row.img_data?.length) {
+    return {
+      idcimg: row.idcimg,
+      mime: row.mime ?? 'image/webp',
+      data: row.img_data,
+    }
+  }
+
+  for (const dir of CONFIRM_IMAGE_LEGACY_DIRS) {
+    const abs = path.join(dir, row.cfilename)
+    try {
+      const data = await fs.readFile(abs)
+      return {
+        idcimg: row.idcimg,
+        mime: row.mime ?? 'image/jpeg',
+        data,
+      }
+    } catch {
+      /* try next dir */
+    }
+  }
+  return null
+}
+
+/** ลบไฟล์ legacy บนดิสก์ (ถ้ามี) หลังลบแถวใน DB */
+export async function unlinkLegacyConfirmationImageFile(fileName: string): Promise<void> {
+  for (const dir of CONFIRM_IMAGE_LEGACY_DIRS) {
+    await fs.unlink(path.join(dir, fileName)).catch(() => {})
   }
 }

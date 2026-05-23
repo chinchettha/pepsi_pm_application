@@ -31,11 +31,12 @@ type Row = {
   countwkctr: number | string | null
   percent_close: number | string | null
   has_confirm: number | string | null
+  confirm_qc_status: string | null
 }
 
 export type PersonnelConfirmFilter = {
   q?: string
-  status?: 'all' | 'not_started' | 'in_progress' | 'done'
+  status?: 'all' | 'not_started' | 'in_progress' | 'done' | 'qc_pending'
   syst?: string[]
   limit?: number
   offset?: number
@@ -81,6 +82,9 @@ export async function listPersonnelConfirm(
     case 'done':
       where.push(`COALESCE(v.percent_close,0) >= 100`)
       break
+    case 'qc_pending':
+      where.push(`v.confirm_qc_status = 'pending'`)
+      break
     default:
       break
   }
@@ -96,7 +100,7 @@ export async function listPersonnelConfirm(
       v.bscstart::text  AS bscstart,
       v.cday::text      AS cday,
       v.systemstatus, v.syst, v.wkstcolor, v.wkctr,
-      v.planned_count, v.countwkctr, v.percent_close, v.has_confirm
+      v.planned_count, v.countwkctr, v.percent_close, v.has_confirm, v.confirm_qc_status
     FROM app.view_countpersonelclose v
     ${whereSql}
     ORDER BY COALESCE(v.countwkctr,0) ASC, v.bscstart ASC NULLS LAST, v.idiw37 ASC
@@ -144,6 +148,12 @@ export async function listPersonnelConfirm(
     closedCount: Number(r.countwkctr ?? 0),
     percentClose: Number(r.percent_close ?? 0),
     hasConfirm: Number(r.has_confirm ?? 0) > 0,
+    qcStatus:
+      r.confirm_qc_status === 'pending' ||
+      r.confirm_qc_status === 'approved' ||
+      r.confirm_qc_status === 'rejected'
+        ? r.confirm_qc_status
+        : null,
   }))
 
   const sum = sumRes.rows[0] ?? {

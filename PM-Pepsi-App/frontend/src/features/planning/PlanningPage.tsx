@@ -1,4 +1,6 @@
-import { PageHeader } from '@/components/layout/PageHeader'
+import { CanPermission } from '@/components/auth/CanPermission'
+import { AppCard } from '@/components/layout/AppCard'
+import { AppPageShell } from '@/components/layout/AppPageShell'
 import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -22,14 +25,16 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { getStoredAuthUser } from '@/features/auth/login-api'
+import { usePermission } from '@/lib/use-permission'
 import {
   fetchPlanning,
   fetchWorkcenters,
   postPlanningAssign,
 } from '@/lib/api-public'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, ClipboardList } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
@@ -51,15 +56,19 @@ type AssignTarget = {
 }
 
 export function PlanningPage() {
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const authUser = getStoredAuthUser()
+  const canRead = usePermission('planning.read')
+  const canAssign = usePermission('planning.assign')
   const [planningStatus, setPlanningStatus] = useState<'open' | 'closed'>('open')
   const [detailId, setDetailId] = useState<string | null>(null)
   const q = useQuery({
     queryKey: ['planning', planningStatus],
     queryFn: () => fetchPlanning({ status: planningStatus }),
+    enabled: canRead,
+    placeholderData: keepPreviousData,
   })
-  const canAssign = authUser?.userst === 'A'
   const myCode = (authUser?.wkctr || authUser?.username || authUser?.idwkctr || '').trim()
 
   const [assignTarget, setAssignTarget] = useState<AssignTarget | null>(null)
@@ -70,7 +79,7 @@ export function PlanningPage() {
   const workcentersQ = useQuery({
     queryKey: ['workcenters'],
     queryFn: fetchWorkcenters,
-    enabled: canAssign,
+    enabled: canAssign && !!assignTarget,
     retry: 0,
   })
 
@@ -109,7 +118,7 @@ export function PlanningPage() {
     if (!assignTarget) return
     const code = assignCode.trim()
     if (!code) {
-      toast.error('ต้องเลือก Work Center ปลายทาง')
+      toast.error('ต้องเลือกศูนย์งานปลายทาง')
       return
     }
     assignMut.mutate({
@@ -122,136 +131,202 @@ export function PlanningPage() {
 
   const wcItems = useMemo(() => workcentersQ.data ?? [], [workcentersQ.data])
   const submitting = assignMut.isPending
+  const rows = q.data ?? []
+
+  if (!canRead) {
+    return (
+      <AppPageShell
+        title="แผน PM / CM"
+        description="งานตาม work center ที่ล็อกอิน — view_planwork"
+      >
+        <EmptyState
+          icon={AlertCircle}
+          title="ไม่มีสิทธิ์เข้าถึง"
+          description={
+            <>
+              ต้องมีสิทธิ์ <code className="text-xs">planning.read</code>
+            </>
+          }
+        />
+      </AppPageShell>
+    )
+  }
 
   return (
-    <div>
-      <PageHeader
+    <>
+      <AppPageShell
         title="แผน PM / CM"
-        description="Plan Work View — เทียบ M_planwork_view / M_planwork_close / W_planwork_view (view_planwork ตาม work center ที่ login)"
+        description="งานเปิด/ปิดตาม work center ของคุณ — จ่ายงาน · บันทึกปิดงาน · เปิดรายละเอียด WO"
+        contentClassName="space-y-4"
+        headerActions={
+          <>
+            <Badge variant="secondary" className="text-xs">
+              {planningStatus === 'open' ? 'CRTD + REL' : 'ปิดแล้ว'}
+            </Badge>
+            <CanPermission permission="planning.read">
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link to="/plan-calendar">ปฏิทินจ่ายงาน</Link>
+              </Button>
+            </CanPermission>
+            <CanPermission permission="work-orders.read">
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link to="/work-orders">ใบงาน WO</Link>
+              </Button>
+            </CanPermission>
+            <CanPermission permission="iw37n.read">
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link to="/iw37n">นำเข้า IW37N</Link>
+              </Button>
+            </CanPermission>
+          </>
+        }
       >
-        <Badge variant="secondary">{planningStatus === 'open' ? 'CRTD + REL' : 'Closed status'}</Badge>
-        <Badge className="bg-teal-700">API + DB</Badge>
-      </PageHeader>
-
-      <div className="px-4 py-6 sm:px-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-zinc-500">
-            แสดงเฉพาะใบงานที่ `view_planwork.idwkctr` ตรงกับ user login
-            {authUser ? ` (idwkctr=${authUser.idwkctr || '—'}, wkctr=${authUser.wkctr || '—'})` : ''}
-            {' '}— กดเลข WO เพื่อดูรายละเอียด
-          </p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant={planningStatus === 'open' ? 'default' : 'outline'}
-              onClick={() => setPlanningStatus('open')}
-            >
-              งานเปิด
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={planningStatus === 'closed' ? 'default' : 'outline'}
-              onClick={() => setPlanningStatus('closed')}
-            >
-              งานปิดแล้ว
-            </Button>
+        <AppCard pad="compact" className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-caption text-app-muted">
+              แสดงเฉพาะ `view_planwork` ที่ idwkctr ตรง user ที่ล็อกอิน
+              {authUser
+                ? ` (idwkctr=${authUser.idwkctr || '—'}, wkctr=${authUser.wkctr || '—'})`
+                : ''}
+              {' '}
+              · คลิกเลข WO เพื่อเปิดรายละเอียด
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={planningStatus === 'open' ? 'default' : 'outline'}
+                onClick={() => setPlanningStatus('open')}
+              >
+                งานเปิด
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={planningStatus === 'closed' ? 'default' : 'outline'}
+                onClick={() => setPlanningStatus('closed')}
+              >
+                งานปิดแล้ว
+              </Button>
+            </div>
           </div>
-        </div>
-        {q.isLoading ? (
-          <Skeleton className="h-56 w-full rounded-xl" />
+        </AppCard>
+
+        {q.isLoading && !q.data ? (
+          <Skeleton className="h-56 w-full rounded-card" aria-label="กำลังโหลดแผนงาน" />
         ) : q.isError ? (
-          <p className="text-sm text-red-600">{(q.error as Error).message}</p>
-        ) : (q.data?.length ?? 0) === 0 ? (
-          <p className="text-sm text-zinc-600">
-            {planningStatus === 'open'
-              ? 'ไม่มีแผนเปิด — นำเข้า IW37N หรือตรวจว่า tbiw37n.wkctr / tbplangingwork.wkctr map ไป tbworkcenter.idwkctr ของ user ที่ login'
-              : 'ไม่มีแผนที่ปิดแล้วสำหรับ work center นี้ — ตรวจว่า view_planwork.idwkctr ตรงกับ user ที่ login และ syst ไม่ใช่ CRTD/REL'}
-          </p>
+          <EmptyState
+            icon={AlertCircle}
+            title="โหลดแผนงานไม่สำเร็จ"
+            description={(q.error as Error).message}
+            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+          />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={ClipboardList}
+            title={planningStatus === 'open' ? 'ไม่มีงานเปิด' : 'ไม่มีงานปิดแล้ว'}
+            description={
+              planningStatus === 'open'
+                ? 'นำเข้า IW37N หรือตรวจว่า wkctr ของใบงาน map กับ work center ที่ล็อกอิน'
+                : 'ตรวจว่าใบงานมีสถานะปิดแล้วและอยู่ใน view_planwork ของคุณ'
+            }
+            action={
+              planningStatus === 'open'
+                ? { label: 'ไปนำเข้า IW37N', onClick: () => navigate('/iw37n') }
+                : undefined
+            }
+          />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>WO</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                  <TableHead>สาย / FL</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>ย้ายแผน</TableHead>
-                  {planningStatus === 'closed' ? <TableHead>Plan Close</TableHead> : null}
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead>ผู้รับ</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {q.data?.map((p) => {
-                  const st = statusMap[p.status] ?? { label: p.status, variant: 'outline' as const }
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <Link
-                          to={`/work-orders/${p.id}`}
-                          className="font-mono text-sm text-blue-700 hover:underline"
-                          title="ดูในรายการใบงาน"
-                        >
-                          {p.wkorder ?? p.id}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-sm">{p.wktype ?? '—'}</TableCell>
-                      <TableCell className="max-w-xs truncate text-sm">{p.planName}</TableCell>
-                      <TableCell className="text-sm">{p.line}</TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">{p.planDate ?? '—'}</TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">{p.movedDate ?? '—'}</TableCell>
-                      {planningStatus === 'closed' ? (
-                        <TableCell className="whitespace-nowrap text-sm">{p.closedDate ?? '—'}</TableCell>
-                      ) : null}
-                      <TableCell>
-                        <Badge variant={st.variant}>{st.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">{p.owner || '—'}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setDetailId(p.id)}
-                            title={
-                              planningStatus === 'open'
-                                ? 'เปิด Confirm tab เพื่อบันทึกปิดงาน'
-                                : 'เปิด Confirm tab เพื่อดูประวัติปิดงาน'
-                            }
+          <AppCard pad="compact" className="space-y-3">
+            <p className="text-caption">
+              แสดง {rows.length.toLocaleString('th-TH')} รายการ
+              {q.isFetching ? ' · กำลังอัปเดต…' : ''}
+            </p>
+            <div className="app-table-shell max-h-[min(70vh,720px)] overflow-auto">
+              <Table embedded stickyHeader zebra>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>เลข WO</TableHead>
+                    <TableHead>ประเภท</TableHead>
+                    <TableHead>รายละเอียด</TableHead>
+                    <TableHead>สาย / FL</TableHead>
+                    <TableHead>แผน</TableHead>
+                    <TableHead>ย้ายแผน</TableHead>
+                    {planningStatus === 'closed' ? <TableHead>วันปิดแผน</TableHead> : null}
+                    <TableHead>สถานะ</TableHead>
+                    <TableHead>ผู้รับ</TableHead>
+                    <TableHead className="text-right">จัดการ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((p) => {
+                    const st = statusMap[p.status] ?? { label: p.status, variant: 'outline' as const }
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          <Link
+                            to={`/work-orders/${p.id}`}
+                            className="font-mono text-body-sm text-[var(--brand-pepsi-blue)] hover:underline"
+                            title="ดูในรายการใบงาน"
                           >
-                            {planningStatus === 'open' ? 'บันทึกปิดงาน' : 'ดูปิดงาน'}
-                          </Button>
-                          {canAssign && planningStatus === 'open' ? (
+                            {p.wkorder ?? p.id}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-body-sm">{p.wktype ?? '—'}</TableCell>
+                        <TableCell className="max-w-xs truncate text-body-sm">{p.planName}</TableCell>
+                        <TableCell className="text-body-sm">{p.line}</TableCell>
+                        <TableCell className="whitespace-nowrap text-body-sm">{p.planDate ?? '—'}</TableCell>
+                        <TableCell className="whitespace-nowrap text-body-sm">{p.movedDate ?? '—'}</TableCell>
+                        {planningStatus === 'closed' ? (
+                          <TableCell className="whitespace-nowrap text-body-sm">
+                            {p.closedDate ?? '—'}
+                          </TableCell>
+                        ) : null}
+                        <TableCell>
+                          <Badge variant={st.variant}>{st.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-body-sm">{p.owner || '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-wrap justify-end gap-2">
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => openAssign(p)}
+                              onClick={() => setDetailId(p.id)}
                               title={
-                                p.status === 'CONF'
-                                  ? 'มีแผนแล้ว — กดเพื่ออัปเดต (upsert)'
-                                  : 'จ่ายงานเข้า tbplangingwork'
+                                planningStatus === 'open'
+                                  ? 'เปิดแท็บ Confirm เพื่อบันทึกปิดงาน'
+                                  : 'เปิดแท็บ Confirm เพื่อดูประวัติปิดงาน'
                               }
                             >
-                              จ่ายงาน
+                              {planningStatus === 'open' ? 'บันทึกปิดงาน' : 'ดูปิดงาน'}
                             </Button>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                            {canAssign && planningStatus === 'open' ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openAssign(p)}
+                                title={
+                                  p.status === 'CONF'
+                                    ? 'มีแผนแล้ว — กดเพื่ออัปเดต (upsert)'
+                                    : 'จ่ายงานเข้า tbplangingwork'
+                                }
+                              >
+                                จ่ายงาน
+                              </Button>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </AppCard>
         )}
-      </div>
+      </AppPageShell>
 
       <Dialog
         open={!!assignTarget}
@@ -263,24 +338,27 @@ export function PlanningPage() {
           <DialogHeader>
             <DialogTitle>จ่ายงาน WO {assignTarget?.wkorder}</DialogTitle>
             <DialogDescription>
-              เทียบ M_planwork_view_form.php — upsert `tbplangingwork` ตาม `idiw37` (admin เท่านั้น)
+              เลือกศูนย์งานและทีม (P/G) — บันทึกลง tbplangingwork (ต้องมีสิทธิ์ planning.assign)
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="assign-code">Work Center ปลายทาง</Label>
+            <div className="grid gap-2">
+              <Label htmlFor="assign-code">ศูนย์งานปลายทาง (wkctr)</Label>
               <select
                 id="assign-code"
                 value={assignCode}
                 onChange={(e) => setAssignCode(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-zinc-300 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm shadow-sm focus:outline-none focus-app-ring disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={submitting}
               >
                 {!wcItems.some((it) => it.wkctr === assignCode) && assignCode ? (
                   <option value={assignCode}>{assignCode} (ของคุณ)</option>
                 ) : null}
                 {workcentersQ.isLoading ? <option value="">กำลังโหลด…</option> : null}
+                {workcentersQ.isError ? (
+                  <option value="">โหลดรายชื่อช่างไม่สำเร็จ</option>
+                ) : null}
                 {wcItems.map((it) => (
                   <option key={it.wkctr} value={it.wkctr}>
                     {it.displayName || it.wkctr}
@@ -290,7 +368,7 @@ export function PlanningPage() {
               {myCode ? (
                 <button
                   type="button"
-                  className="self-start text-xs text-blue-700 hover:underline disabled:opacity-50"
+                  className="self-start text-xs text-[var(--brand-pepsi-blue)] hover:underline disabled:opacity-50"
                   onClick={() => setAssignCode(myCode)}
                   disabled={submitting || assignCode === myCode}
                 >
@@ -299,11 +377,11 @@ export function PlanningPage() {
               ) : null}
             </div>
 
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label>ทีม (pwteam)</Label>
-              <div className="flex gap-3 text-sm">
+              <div className="flex flex-wrap gap-4 text-body-sm">
                 {(['P', 'G'] as const).map((t) => (
-                  <label key={t} className="inline-flex items-center gap-1.5">
+                  <label key={t} className="inline-flex items-center gap-2">
                     <input
                       type="radio"
                       name="assign-team"
@@ -312,21 +390,19 @@ export function PlanningPage() {
                       onChange={() => setAssignTeam(t)}
                       disabled={submitting}
                     />
-                    <span>
-                      {t === 'P' ? 'P — เฉพาะบุคคล (Personal)' : 'G — ทีม (Group)'}
-                    </span>
+                    <span>{t === 'P' ? 'P — รายบุคคล' : 'G — กลุ่มช่าง'}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            <div className="grid gap-1.5">
-              <Label htmlFor="assign-comment">หมายเหตุ (pwcomment)</Label>
+            <div className="grid gap-2">
+              <Label htmlFor="assign-comment">หมายเหตุ</Label>
               <Textarea
                 id="assign-comment"
                 value={assignComment}
                 onChange={(e) => setAssignComment(e.target.value)}
-                placeholder="บันทึกการจ่ายงาน เช่น เปลี่ยนทีม / เร่งด่วน"
+                placeholder="เช่น เปลี่ยนทีม / เร่งด่วน"
                 rows={3}
                 disabled={submitting}
               />
@@ -343,7 +419,7 @@ export function PlanningPage() {
               ยกเลิก
             </Button>
             <Button type="button" onClick={onSubmitAssign} disabled={submitting || !assignCode}>
-              {submitting ? 'กำลังบันทึก…' : 'บันทึก'}
+              {submitting ? 'กำลังบันทึก…' : 'บันทึกจ่ายงาน'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -356,6 +432,6 @@ export function PlanningPage() {
           if (!open) setDetailId(null)
         }}
       />
-    </div>
+    </>
   )
 }

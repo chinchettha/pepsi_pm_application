@@ -88,7 +88,7 @@ export function MovePlanDialog({
             <Label htmlFor="move-reason">เหตุผล</Label>
             <select
               id="move-reason"
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm"
+              className="w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body-sm shadow-sm"
               value={reasonCode}
               onChange={(e) => setReasonCode(e.target.value)}
               disabled={reasonsQ.isLoading}

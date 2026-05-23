@@ -3,19 +3,24 @@ import type { z } from 'zod'
 import {
   appendInFilter,
   FACTORY_CODE,
+  sqlFactoryScope,
   getMoveOverColor,
   mapOrderRowToEvent,
   monthRangeSec,
   type CalendarEvent,
   type OrderRow,
 } from './scheduling-shared.js'
+import { buildWktypeFilterOptions } from '../lib/wktype-zd-mapping.js'
+import { loadWorkflowSuffixMap } from './work-order-workflow.js'
 import type {
+  calendarFilterDetailResponseSchema,
   calendarFilterOptionsResponseSchema,
   calendarSearchBodySchema,
 } from '../schemas/calendar.js'
 
 type CalendarSearch = z.infer<typeof calendarSearchBodySchema>
 type FilterOptions = z.infer<typeof calendarFilterOptionsResponseSchema>
+type CalendarFilterDetail = z.infer<typeof calendarFilterDetailResponseSchema>
 
 function padMatLabel(mat: string, descrip: string | null): string {
   const n = Number(mat)
@@ -70,7 +75,7 @@ export async function listCalendarFilterOptions(pool: Pool): Promise<FilterOptio
       `SELECT DISTINCT wktype
        FROM app.tbiw37n
        WHERE wktype IS NOT NULL AND wktype <> ''
-         AND functionalloc LIKE $1
+         AND ${sqlFactoryScope('', '$1')}
        ORDER BY wktype`,
       [factory],
     ),
@@ -85,7 +90,7 @@ export async function listCalendarFilterOptions(pool: Pool): Promise<FilterOptio
       `SELECT DISTINCT functionalloc, funcdescrip
        FROM app.tbiw37n
        WHERE functionalloc IS NOT NULL AND functionalloc <> ''
-         AND functionalloc LIKE $1
+         AND ${sqlFactoryScope('', '$1')}
        ORDER BY functionalloc`,
       [factory],
     ),
@@ -96,7 +101,7 @@ export async function listCalendarFilterOptions(pool: Pool): Promise<FilterOptio
       `SELECT DISTINCT equipment, equdescrip
        FROM app.tbiw37n
        WHERE equipment IS NOT NULL AND equipment <> ''
-         AND functionalloc LIKE $1
+         AND ${sqlFactoryScope('', '$1')}
        ORDER BY equipment`,
       [factory],
     ),
@@ -107,13 +112,7 @@ export async function listCalendarFilterOptions(pool: Pool): Promise<FilterOptio
       code: r.mat,
       label: padMatLabel(r.mat, r.matdescrip),
     })),
-    wktypes:
-      wktypesMasterR.rows.length > 0
-        ? wktypesMasterR.rows.map((r) => ({
-            code: r.wkzb,
-            label: r.zbdescrip ? `${r.wkzb} = ${r.zbdescrip}` : r.wkzb,
-          }))
-        : wktypesR.rows.map((r) => ({ code: r.wktype, label: r.wktype })),
+    wktypes: buildWktypeFilterOptions(wktypesMasterR.rows, wktypesR.rows),
     statuses: statusOpts,
     workcenters: wcR.rows.map((r) => {
       const name = [r.namewkctr, r.surnamewkctr].filter(Boolean).join(' ').trim()
@@ -178,14 +177,12 @@ export async function listCalendarEvents(
   return listCalendarEventsFiltered(pool, body)
 }
 
-export async function listCalendarEventsFiltered(
-  pool: Pool,
+function buildCalendarFilteredFrom(
   body: CalendarSearch,
-): Promise<CalendarEvent[]> {
+  includeWktype: boolean,
+): { where: string; params: unknown[] } {
   const { year, month } = body
-  const { startSec: monthStart, endSec: monthEnd, prefix } = monthRangeSec(year, month)
-  const moveColor = await getMoveOverColor(pool)
-
+  const { startSec: monthStart, endSec: monthEnd } = monthRangeSec(year, month)
   const fromSec = body.fromDate ? parseIsoYyyyMmDdToSec(body.fromDate) : null
   const toSec = body.toDate ? parseIsoYyyyMmDdToSec(body.toDate) : null
   const startSec = fromSec != null ? fromSec : monthStart
@@ -193,10 +190,9 @@ export async function listCalendarEventsFiltered(
 
   const params: unknown[] = [startSec, endSec, `%${FACTORY_CODE}%`]
   const source = body.wkctr.length > 0 ? 'app.view_confrim' : 'app.view_order'
-  let sql = `
-    SELECT idiw37, wkorder, wktype, bscstart, actfinish, cday, syst, operationshorttext, wkstcolor
+  let where = `
     FROM ${source}
-    WHERE functionalloc LIKE $3
+    WHERE ${sqlFactoryScope('', '$3')}
       AND bscstart IS NOT NULL
       AND bscstart > 0
       AND (
@@ -205,14 +201,109 @@ export async function listCalendarEventsFiltered(
         OR (cday >= $1 AND cday < $2)
       )`
 
-  sql += appendInFilter('mat', body.activity, params)
-  sql += appendInFilter('wktype', body.wktype, params)
-  sql += appendInFilter('syst', body.status, params)
-  sql += appendInFilter('wkctr', body.wkctr, params)
-  sql += appendInFilter('functionalloc', body.functionalloc, params)
-  sql += appendInFilter('equipment', body.equipment, params)
-  sql += appendTeamFilter(body.team, params)
-  sql += ` ORDER BY bscstart DESC LIMIT 2500`
+  where += appendInFilter('mat', body.activity, params)
+  if (includeWktype) where += appendInFilter('wktype', body.wktype, params)
+  where += appendInFilter('syst', body.status, params)
+  where += appendInFilter('wkctr', body.wkctr, params)
+  where += appendInFilter('functionalloc', body.functionalloc, params)
+  where += appendInFilter('equipment', body.equipment, params)
+  where += appendTeamFilter(body.team, params)
+  return { where, params }
+}
+
+/** สรุปตัวกรองปฏิทิน — เทียบ `#OrderDetail` ใน `M_filter_iw37.php` / W_calendar.php */
+export async function getCalendarFilterDetail(
+  pool: Pool,
+  body: CalendarSearch,
+): Promise<CalendarFilterDetail> {
+  const { year, month } = body
+  const { where: whereAll, params: paramsAll } = buildCalendarFilteredFrom(body, true)
+
+  const totalsR = await pool.query<{
+    total_orders: string
+    completion_count: string
+    team_a_count: string
+    team_a_work: string
+    team_b_count: string
+    team_b_work: string
+    team_p_count: string
+    team_p_work: string
+  }>(
+    `SELECT
+       COUNT(*)::text AS total_orders,
+       COUNT(*) FILTER (WHERE syst NOT IN ('CRTD', 'REL'))::text AS completion_count,
+       COUNT(*) FILTER (WHERE team = 'A')::text AS team_a_count,
+       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'A'), 0)::text AS team_a_work,
+       COUNT(*) FILTER (WHERE team = 'B')::text AS team_b_count,
+       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'B'), 0)::text AS team_b_work,
+       COUNT(*) FILTER (WHERE team = 'P')::text AS team_p_count,
+       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'P'), 0)::text AS team_p_work
+     ${whereAll}`,
+    paramsAll,
+  )
+
+  const totalOrders = Number(totalsR.rows[0]?.total_orders ?? 0) || 0
+  const completionCount = Number(totalsR.rows[0]?.completion_count ?? 0) || 0
+  const completionPercent =
+    totalOrders > 0 ? Math.round((completionCount / totalOrders) * 100) : 0
+
+  const { where: whereNoType, params: paramsNoType } = buildCalendarFilteredFrom(body, false)
+
+  const byWkzbR = await pool.query<{
+    wkzb: string
+    zbdescrip: string | null
+    cnt: string
+  }>(
+    `SELECT z.wkzb, z.zbdescrip, COALESCE(x.cnt, 0)::text AS cnt
+     FROM app.tbwkzb z
+     LEFT JOIN (
+       SELECT wktype, COUNT(*)::int AS cnt
+       ${whereNoType}
+       GROUP BY wktype
+     ) x ON x.wktype = z.wkzb
+     ORDER BY z.wkzb`,
+    paramsNoType,
+  )
+
+  return {
+    year,
+    month,
+    totalOrders,
+    completionCount,
+    completionPercent,
+    byWkzb: byWkzbR.rows.map((r) => ({
+      code: r.wkzb,
+      label: r.zbdescrip ? `${r.wkzb} = ${r.zbdescrip}` : r.wkzb,
+      count: Number(r.cnt) || 0,
+    })),
+    teamA: {
+      count: Number(totalsR.rows[0]?.team_a_count ?? 0) || 0,
+      workSumMinutes: Number(totalsR.rows[0]?.team_a_work ?? 0) || 0,
+    },
+    teamB: {
+      count: Number(totalsR.rows[0]?.team_b_count ?? 0) || 0,
+      workSumMinutes: Number(totalsR.rows[0]?.team_b_work ?? 0) || 0,
+    },
+    teamP: {
+      count: Number(totalsR.rows[0]?.team_p_count ?? 0) || 0,
+      workSumMinutes: Number(totalsR.rows[0]?.team_p_work ?? 0) || 0,
+    },
+  }
+}
+
+export async function listCalendarEventsFiltered(
+  pool: Pool,
+  body: CalendarSearch,
+): Promise<CalendarEvent[]> {
+  const { year, month } = body
+  const { prefix } = monthRangeSec(year, month)
+  const moveColor = await getMoveOverColor(pool)
+
+  const { where, params } = buildCalendarFilteredFrom(body, true)
+  const sql = `
+    SELECT idiw37, wkorder, wktype, bscstart, actfinish, cday, syst, operationshorttext, wkstcolor
+    ${where}
+    ORDER BY bscstart DESC LIMIT 2500`
 
   const r = await pool.query<OrderRow>(sql, params)
 
@@ -221,5 +312,13 @@ export async function listCalendarEventsFiltered(
     const ev = mapOrderRowToEvent(row, moveColor)
     if (ev && ev.date.startsWith(prefix)) items.push(ev)
   }
-  return items
+  const suffixMap = await loadWorkflowSuffixMap(
+    pool,
+    items.map((e) => Number(e.id)).filter((n) => Number.isFinite(n)),
+  )
+  return items.map((ev) => {
+    const suffix = suffixMap.get(Number(ev.id))
+    if (!suffix) return ev
+    return { ...ev, title: `${ev.title}/${suffix}` }
+  })
 }

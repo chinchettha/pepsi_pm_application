@@ -1,6 +1,6 @@
 # ลำดับที่ 4 — Work calendar (IW37 / scheduling)
 
-**สถานะรวม:** กำลังทำ  
+**สถานะรวม:** แกนเสร็จ ✅ · UAT ขั้น 5 ⏳  
 **Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ยังไม่มี — ดู [00-stack-target.md](00-stack-target.md)
 **Checklist หลัก:** `calendar.php`, `M_filter_iw37.php`, `calendar_wkctr.php`  
 **Migration:** [`004_tbiw37n_calendar.sql`](../../database/migrations/004_tbiw37n_calendar.sql) · dependency: [`002_tbactivitytype.sql`](../../database/migrations/002_tbactivitytype.sql), [`005_tbwkzb_tbfunctional.sql`](../../database/migrations/005_tbwkzb_tbfunctional.sql), [`009_tbreason.sql`](../../database/migrations/009_tbreason.sql), [`013_tbwkstatus_add_wkstreason.sql`](../../database/migrations/013_tbwkstatus_add_wkstreason.sql)  
@@ -34,7 +34,7 @@
 
 ---
 
-## ยังไม่ทำ
+## ยังไม่ทำ (UAT / stack)
 
 ### ฟิลเตอร์
 
@@ -67,3 +67,5 @@
 | 2026-05-18 | ปิดฟิลเตอร์ `M_filter_iw37` บน React (`/calendar`) + API `filter-options` + `POST /calendar/events`; อัปเดตเอกสารให้ sync |
 | 2026-05-18 | เพิ่ม route calendar ตาม work center: `/calendar?wkctr=` และ `/calendar/wc/:code` (prefill filter `wkctr`) |
 | 2026-05-18 | เพิ่ม migration `028_view_confrim.sql` สร้าง `app.view_confrim` และใช้เป็น data source เมื่อกรอง `wkctr` |
+| 2026-05-21 | ปิดแกน parity — อัปเดต [`PLAN.md`](PLAN.md) §3.1 ลำดับ 2 → ✅; คง UAT ขั้น 5 ตาม [`CHECKLIST-ORDER.md`](CHECKLIST-ORDER.md) |
+| 2026-05-22 | `listCalendarFilterOptions` + `scheduling-move` ใช้ `sqlFactoryScope` ให้สอดคล้อง events — ดู [`17-four-routes-php-audit.md`](17-four-routes-php-audit.md) |

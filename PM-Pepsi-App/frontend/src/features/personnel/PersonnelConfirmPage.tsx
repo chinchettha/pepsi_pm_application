@@ -6,9 +6,11 @@
  * - แต่ละแถวมีปุ่ม Confirm ที่เปิด `WorkOrderDetailDialog` ด้วย `initialTab="confirm"`
  *   (เทียบ `M_personel_confirm_form.php` ที่เป็น modal 4 แท็บ)
  */
-import { PageHeader } from '@/components/layout/PageHeader'
+import { AppCard } from '@/components/layout/AppCard'
+import { AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -19,11 +21,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { MassConfirmBar, MASS_CONFIRM_MAX } from '@/components/confirmation/MassConfirmBar'
 import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDialog'
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import { fetchPersonnelConfirm } from '@/lib/api-public'
-import { useQuery } from '@tanstack/react-query'
+import { useAnyPermission } from '@/lib/use-permission'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
+  AlertCircle,
   CheckCircle2,
   CircleDashed,
   ClipboardList,
@@ -37,14 +42,37 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
-type StatusFilter = 'all' | 'not_started' | 'in_progress' | 'done'
+type StatusFilter = 'all' | 'not_started' | 'in_progress' | 'done' | 'qc_pending'
 
 const STATUS_TABS: { id: StatusFilter; label: string }[] = [
   { id: 'all', label: 'ทั้งหมด' },
+  { id: 'qc_pending', label: 'รอ Admin QC' },
   { id: 'not_started', label: 'ยังไม่เริ่ม' },
   { id: 'in_progress', label: 'กำลังทำ' },
   { id: 'done', label: 'ปิดครบ' },
 ]
+
+function QcStatusBadge({ status }: { status: string | null }) {
+  if (!status) return null
+  const map: Record<string, string> = {
+    pending: 'bg-amber-100 text-amber-900 ring-amber-200',
+    approved: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+    rejected: 'bg-red-100 text-red-800 ring-red-200',
+  }
+  const label =
+    status === 'pending'
+      ? 'รอ QC'
+      : status === 'approved'
+        ? 'QC ผ่าน'
+        : 'ส่งกลับ'
+  return (
+    <span
+      className={`inline-flex rounded px-2 py-1 text-badge font-medium ring-1 ${map[status] ?? ''}`}
+    >
+      {label}
+    </span>
+  )
+}
 
 function ProgressBar({ percent }: { percent: number }) {
   const safe = Math.max(0, Math.min(100, Math.round(percent || 0)))
@@ -55,14 +83,14 @@ function ProgressBar({ percent }: { percent: number }) {
         ? 'bg-blue-600'
         : safe > 0
           ? 'bg-amber-500'
-          : 'bg-zinc-300'
+          : 'bg-[var(--app-border)]'
   return (
     <div
-      className="h-5 w-full overflow-hidden rounded bg-zinc-100 ring-1 ring-zinc-200"
+      className="h-5 w-full overflow-hidden rounded bg-app-muted ring-1 ring-app"
       title={`${safe}%`}
     >
       <div
-        className={`flex h-full items-center justify-center text-[10px] font-medium text-white transition-all ${color}`}
+        className={`flex h-full items-center justify-center text-badge font-medium text-white transition-all ${color}`}
         style={{ width: `${safe}%`, minWidth: safe > 0 ? '1.5rem' : 0 }}
       >
         {safe > 0 ? `${safe}%` : ''}
@@ -72,17 +100,17 @@ function ProgressBar({ percent }: { percent: number }) {
 }
 
 function SystBadge({ syst }: { syst: string | null }) {
-  if (!syst) return <span className="text-xs text-zinc-400">—</span>
+  if (!syst) return <span className="text-xs text-app-muted">—</span>
   const map: Record<string, string> = {
     CRTD: 'bg-amber-100 text-amber-800 ring-amber-200',
     REL: 'bg-blue-100 text-blue-800 ring-blue-200',
     TECO: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
-    COMP: 'bg-zinc-100 text-zinc-700 ring-zinc-200',
+    COMP: 'bg-app-muted text-app ring-app',
   }
-  const cls = map[syst] ?? 'bg-zinc-100 text-zinc-700 ring-zinc-200'
+  const cls = map[syst] ?? 'bg-app-muted text-app ring-app'
   return (
     <span
-      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ${cls}`}
+      className={`inline-flex items-center rounded px-2 py-1 text-badge font-medium ring-1 ${cls}`}
     >
       {syst}
     </span>
@@ -92,19 +120,21 @@ function SystBadge({ syst }: { syst: string | null }) {
 export function PersonnelConfirmPage() {
   const navigate = useNavigate()
   const authUser = getStoredAuthUser()
-  const isAdmin = authUser?.userst === 'A'
+  const canConfirmRead =
+    useAnyPermission(['personnel.confirm.read', 'personnel.write']) || authUser?.userst === 'A'
 
   useEffect(() => {
-    if (!isAdmin) {
-      toast.error('Admin only')
+    if (!canConfirmRead) {
+      toast.error('ไม่มีสิทธิ์เข้าถึง')
       navigate('/personnel', { replace: true })
     }
-  }, [isAdmin, navigate])
+  }, [canConfirmRead, navigate])
 
   const [qInput, setQInput] = useState('')
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
 
   const listQ = useQuery({
     queryKey: ['personnel', 'confirm', 'list', q, status],
@@ -114,8 +144,9 @@ export function PersonnelConfirmPage() {
         status,
         limit: 500,
       }),
-    enabled: isAdmin,
+    enabled: canConfirmRead,
     staleTime: 15_000,
+    placeholderData: keepPreviousData,
   })
 
   const items = useMemo(() => listQ.data?.items ?? [], [listQ.data])
@@ -126,43 +157,95 @@ export function PersonnelConfirmPage() {
   const onSubmitSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setQ(qInput.trim())
+    setSelectedIds(new Set())
+  }
+
+  const pageIds = useMemo(() => items.map((it) => it.idiw37), [items])
+  const allPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id))
+
+  const toggleSelectAllPage = () => {
+    if (allPageSelected) {
+      setSelectedIds(new Set())
+      return
+    }
+    const next = new Set(pageIds.slice(0, MASS_CONFIRM_MAX))
+    if (pageIds.length > MASS_CONFIRM_MAX) {
+      toast.message(`เลือกได้สูงสุด ${MASS_CONFIRM_MAX} รายการ (SAP)`)
+    }
+    setSelectedIds(next)
+  }
+
+  const toggleSelectRow = (idiw37: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(idiw37)) {
+        next.delete(idiw37)
+        return next
+      }
+      if (next.size >= MASS_CONFIRM_MAX) {
+        toast.error(`เลือกได้สูงสุด ${MASS_CONFIRM_MAX} รายการ`)
+        return prev
+      }
+      next.add(idiw37)
+      return next
+    })
+  }
+
+  if (!canConfirmRead) {
+    return (
+      <AppPageShell title="ปิดงานรายบุคคล" description="สรุป % การปิดงานของช่างต่อ WO">
+        <EmptyState
+          icon={AlertCircle}
+          title="ไม่มีสิทธิ์เข้าถึง"
+          description={
+            <>
+              ต้องมีสิทธิ์ <code className="text-xs">personnel.confirm.read</code>
+            </>
+          }
+        />
+      </AppPageShell>
+    )
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Personnel Confirmation"
-        description="สรุป % การปิดงานของช่างต่อ WO (เทียบ M_personel_confirm.php → view_countpersonelclose)"
-      >
-        <Badge variant="secondary">Admin</Badge>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/personnel">Personal Dashboard</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/personnel/admin">จัดการบุคลากร</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/confirmation">Confirmation</Link>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => listQ.refetch()}
-          disabled={listQ.isFetching}
-        >
-          <RefreshCcw className="mr-1.5 size-3.5" />
-          Refresh
-        </Button>
-      </PageHeader>
-
-      <div className="space-y-4 px-4 py-6 sm:px-6">
+    <AppPageShell
+      title="ปิดงานรายบุคคล"
+      description="สรุป % การปิดงานของช่างต่อ WO (view_countpersonelclose)"
+      contentClassName="space-y-4"
+      headerActions={
+        <>
+          <Badge variant="secondary" className="text-xs">
+            Admin / QC
+          </Badge>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/personnel">แดชบอร์ดส่วนตัว</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/users">จัดการผู้ใช้</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/confirmation">รับรองงาน</Link>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void listQ.refetch()}
+            disabled={listQ.isFetching}
+          >
+            <RefreshCcw className="mr-2 size-3.5" aria-hidden />
+            รีเฟรช
+          </Button>
+        </>
+      }
+    >
         {/* Summary cards */}
         <div className="grid gap-3 sm:grid-cols-4">
           <SummaryCard
             label="WO ที่เปิดทั้งหมด"
             value={summary?.totalOpen ?? 0}
             icon={ClipboardList}
-            tone="zinc"
+            tone="neutral"
             isLoading={listQ.isLoading}
           />
           <SummaryCard
@@ -189,10 +272,10 @@ export function PersonnelConfirmPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <AppCard pad="compact" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <form onSubmit={onSubmitSearch} className="flex flex-1 items-center gap-2">
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-zinc-400" />
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-app-muted" />
               <Input
                 placeholder="ค้นหา WO / Maintenance plan / Equipment / Description"
                 className="pl-8"
@@ -217,8 +300,8 @@ export function PersonnelConfirmPage() {
               </Button>
             ) : null}
           </form>
-          <div className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap">
-            <Filter className="size-4 text-zinc-500" />
+          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+            <Filter className="size-4 text-app-muted" />
             {STATUS_TABS.map((t) => (
               <Button
                 key={t.id}
@@ -242,49 +325,86 @@ export function PersonnelConfirmPage() {
               </Button>
             ))}
           </div>
-        </div>
+        </AppCard>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-          {listQ.isLoading ? (
-            <div className="space-y-2 p-4">
+        <MassConfirmBar
+          selectedIds={[...selectedIds]}
+          onClearSelection={() => setSelectedIds(new Set())}
+          onComplete={() => void listQ.refetch()}
+        />
+
+        <AppCard pad="compact">
+          {listQ.isLoading && !listQ.data ? (
+            <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full rounded" />
               ))}
             </div>
           ) : errorMessage ? (
-            <div className="p-4 text-sm text-red-700">{errorMessage}</div>
+            <EmptyState
+              icon={AlertCircle}
+              title="โหลดรายการไม่สำเร็จ"
+              description={errorMessage}
+              action={{ label: 'ลองใหม่', onClick: () => void listQ.refetch() }}
+            />
           ) : (
-            <Table>
+            <div className="app-table-shell overflow-x-auto">
+            <Table embedded stickyHeader zebra>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[15%]">Close (%)</TableHead>
-                  <TableHead>Work Order</TableHead>
-                  <TableHead>Maintenance plan</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Equipment</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>New Plan</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      aria-label="เลือกทั้งหน้า"
+                      checked={allPageSelected}
+                      ref={(el) => {
+                        if (el) {
+                          el.indeterminate =
+                            selectedIds.size > 0 && !allPageSelected
+                        }
+                      }}
+                      onChange={toggleSelectAllPage}
+                    />
+                  </TableHead>
+                  <TableHead className="w-[15%]">ปิด (%)</TableHead>
+                  <TableHead>ใบงาน</TableHead>
+                  <TableHead>แผนบำรุง</TableHead>
+                  <TableHead>ประเภท</TableHead>
+                  <TableHead>อุปกรณ์</TableHead>
+                  <TableHead>แผน</TableHead>
+                  <TableHead>แผนใหม่</TableHead>
+                  <TableHead className="text-right">ดำเนินการ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="py-12 text-center text-sm text-zinc-500"
-                    >
-                      ไม่พบ WO ตามเงื่อนไข
+                    <TableCell colSpan={9} className="p-0">
+                      <EmptyState
+                        className="border-0 bg-transparent py-10"
+                        title="ไม่พบใบงาน"
+                        description="ลองเปลี่ยนตัวกรองหรือคำค้น"
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (
                   items.map((it) => (
-                    <TableRow key={it.idiw37}>
+                    <TableRow
+                      key={it.idiw37}
+                      className={selectedIds.has(it.idiw37) ? 'bg-emerald-50/40' : undefined}
+                    >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          aria-label={`เลือก ${it.wkorder}`}
+                          checked={selectedIds.has(it.idiw37)}
+                          onChange={() => toggleSelectRow(it.idiw37)}
+                        />
+                      </TableCell>
                       <TableCell className="align-middle">
                         <div className="space-y-1">
                           <ProgressBar percent={it.percentClose} />
-                          <div className="text-[11px] text-zinc-500 tabular-nums">
+                          <div className="text-caption tabular-nums">
                             {it.closedCount}/{it.plannedCount} คน
                           </div>
                         </div>
@@ -302,8 +422,9 @@ export function PersonnelConfirmPage() {
                         >
                           {it.wkorder}
                         </button>
-                        <div className="mt-1">
+                        <div className="mt-1 flex flex-wrap gap-1">
                           <SystBadge syst={it.syst} />
+                          <QcStatusBadge status={it.qcStatus} />
                         </div>
                       </TableCell>
                       <TableCell
@@ -339,9 +460,9 @@ export function PersonnelConfirmPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
-        </div>
-      </div>
+        </AppCard>
 
       <WorkOrderDetailDialog
         orderId={detailId}
@@ -353,7 +474,7 @@ export function PersonnelConfirmPage() {
           }
         }}
       />
-    </div>
+    </AppPageShell>
   )
 }
 
@@ -367,30 +488,30 @@ function SummaryCard({
   label: string
   value: number
   icon: typeof Users
-  tone: 'zinc' | 'emerald' | 'blue' | 'amber'
+  tone: 'neutral' | 'emerald' | 'blue' | 'amber'
   isLoading: boolean
 }) {
   const toneMap: Record<typeof tone, string> = {
-    zinc: 'bg-zinc-100 text-zinc-700',
+    neutral: 'bg-app-muted text-app',
     emerald: 'bg-emerald-100 text-emerald-700',
     blue: 'bg-blue-100 text-blue-700',
     amber: 'bg-amber-100 text-amber-700',
   }
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <AppCard pad="compact">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wide text-zinc-500">
+          <div className="text-xs uppercase tracking-wide text-app-muted">
             {label}
           </div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">
+          <div className="mt-1 text-2xl font-semibold tabular-nums text-app">
             {isLoading ? <Skeleton className="h-7 w-12" /> : value}
           </div>
         </div>
-        <div className={`rounded-lg p-2 ${toneMap[tone]}`}>
+        <div className={`rounded-card p-2 ${toneMap[tone]}`}>
           <Icon className="size-5" aria-hidden />
         </div>
       </div>
-    </div>
+    </AppCard>
   )
 }

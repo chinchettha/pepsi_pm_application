@@ -1,5 +1,8 @@
 import type { Pool } from 'pg'
 import { manhourOtNet, manhourSummaryW } from '../lib/manhour-minutes.js'
+import { personnelIsActiveSql } from '../lib/personnel-active-sql.js'
+import { pepsiWorkWeekSql } from '../lib/pepsi-work-week.js'
+import { getReportsImportCoverage } from '../lib/reports-import-coverage.js'
 import {
   computeSummaryWeeklyPercents,
   resolveReportsRange,
@@ -7,7 +10,19 @@ import {
   weekLabelsInRange,
   type ReportsDateRange,
 } from '../lib/reports-range.js'
+import {
+  sqlWktypeInList,
+  SUMMARY_WEEKLY_PM_WKTYPES,
+  SUMMARY_WEEKLY_REACTIVE_WKTYPES,
+} from '../lib/reports-wktype.js'
+import { buildWeekToWeek } from '../lib/week-to-week.js'
 import type { ReportsKpiResponse, SummaryWeeklyResponse } from '../schemas/reports.js'
+
+const WEEK_LABEL_SQL = {
+  manhours: pepsiWorkWeekSql('workday'),
+  confirm: pepsiWorkWeekSql('endate'),
+  backlog: pepsiWorkWeekSql('bscstart'),
+} as const
 
 export type { ReportsDateRange }
 
@@ -45,7 +60,7 @@ export async function getReportsKpi(
   const [mhRes, confirmRes, backlogRes] = await Promise.all([
     pool.query<{ week_label: string; total: string }>(
       `SELECT
-         to_char(to_timestamp(workday) AT TIME ZONE 'Asia/Bangkok', 'IYYY-"W"IW') AS week_label,
+         ${WEEK_LABEL_SQL.manhours} AS week_label,
          COALESCE(SUM(wh + ot1 + ot15 + ot1hol + ot2 + ot3), 0)::text AS total
        FROM app.tbmanhours
        WHERE workday >= $1 AND workday <= $2
@@ -54,7 +69,7 @@ export async function getReportsKpi(
     ),
     pool.query<{ week_label: string; total: string }>(
       `SELECT
-         to_char(to_timestamp(endate) AT TIME ZONE 'Asia/Bangkok', 'IYYY-"W"IW') AS week_label,
+         ${WEEK_LABEL_SQL.confirm} AS week_label,
          COALESCE(SUM(timewk), 0)::text AS total
        FROM app.view_exportconfirm
        WHERE endate >= $1 AND endate <= $2
@@ -63,7 +78,7 @@ export async function getReportsKpi(
     ),
     pool.query<{ week_label: string; hours: string }>(
       `SELECT
-         to_char(to_timestamp(bscstart) AT TIME ZONE 'Asia/Bangkok', 'IYYY-"W"IW') AS week_label,
+         ${WEEK_LABEL_SQL.backlog} AS week_label,
          (COALESCE(SUM(${ACTWORK_MINUTES_SQL}), 0) / 60.0)::text AS hours
        FROM app.view_order
        WHERE syst IN ('CRTD', 'REL')
@@ -88,7 +103,9 @@ export async function getReportsKpi(
     backlogHours.push(Math.round((backlogMap.get(label) ?? 0) * 100) / 100)
   }
 
-  return { range, labels, utilization, backlogHours }
+  const weekToWeek = buildWeekToWeek(labels, utilization, backlogHours)
+
+  return { range, labels, utilization, backlogHours, weekToWeek }
 }
 
 /**
@@ -100,6 +117,7 @@ export async function getSummaryWeekly(
 ): Promise<SummaryWeeklyResponse> {
   const range = parseRange(opts)
   const { from, to } = range
+  const activeWc = personnelIsActiveSql('wc')
 
   const [utilRes, mhRes, pmRes, reaRes, rcaRes, woRes] = await Promise.all([
     pool.query<{ idwkctr: string; wkctr: string; summary: string }>(
@@ -110,6 +128,7 @@ export async function getSummaryWeekly(
        FROM app.tbmanhours m
        INNER JOIN app.tbworkcenter wc ON wc.idwkctr = m.idwkctr
        WHERE m.workday >= $1 AND m.workday <= $2
+         AND ${activeWc}
        GROUP BY wc.idwkctr, wc.wkctr
        ORDER BY SUM(m.wh + m.ot1 + m.ot15 + m.ot1hol + m.ot2 + m.ot3) DESC
        LIMIT 200`,
@@ -119,6 +138,7 @@ export async function getSummaryWeekly(
       idwkctr: string
       wkctr: string
       display_name: string | null
+      has_image: boolean
       wh: string
       ot1: string
       ot15: string
@@ -130,6 +150,7 @@ export async function getSummaryWeekly(
          wc.idwkctr,
          wc.wkctr,
          NULLIF(TRIM(CONCAT(COALESCE(wc.titlewkctr,''), COALESCE(wc.namewkctr,''), ' ', COALESCE(wc.surnamewkctr,''))), '') AS display_name,
+         (octet_length(wc.imgmember_data) > 0) AS has_image,
          COALESCE(SUM(m.wh), 0)::text AS wh,
          COALESCE(SUM(m.ot1), 0)::text AS ot1,
          COALESCE(SUM(m.ot15), 0)::text AS ot15,
@@ -139,7 +160,8 @@ export async function getSummaryWeekly(
        FROM app.tbmanhours m
        INNER JOIN app.tbworkcenter wc ON wc.idwkctr = m.idwkctr
        WHERE m.workday >= $1 AND m.workday <= $2
-       GROUP BY wc.idwkctr, wc.wkctr, wc.titlewkctr, wc.namewkctr, wc.surnamewkctr`,
+         AND ${activeWc}
+       GROUP BY wc.idwkctr, wc.wkctr, wc.titlewkctr, wc.namewkctr, wc.surnamewkctr, wc.imgmember_data`,
       [from, to],
     ),
     pool.query<{ wkctr: string; minutes: string; sample_act: string; sample_untime: string }>(
@@ -149,7 +171,7 @@ export async function getSummaryWeekly(
          COALESCE(MAX(actwork), 0)::text AS sample_act,
          COALESCE(MAX(untime::text), 'Min') AS sample_untime
        FROM app.view_order
-       WHERE COALESCE(wktype, '') <> 'ZB029'
+       WHERE ${sqlWktypeInList(SUMMARY_WEEKLY_PM_WKTYPES)}
          AND bscstart IS NOT NULL
          AND bscstart >= $1 AND bscstart <= $2
        GROUP BY wkctr`,
@@ -162,7 +184,7 @@ export async function getSummaryWeekly(
          COALESCE(MAX(actwork), 0)::text AS sample_act,
          COALESCE(MAX(untime::text), 'Min') AS sample_untime
        FROM app.view_order
-       WHERE wktype IN ('ZB01', 'ZB05')
+       WHERE ${sqlWktypeInList(SUMMARY_WEEKLY_REACTIVE_WKTYPES)}
          AND bscstart IS NOT NULL
          AND bscstart >= $1 AND bscstart <= $2
        GROUP BY wkctr`,
@@ -226,6 +248,7 @@ export async function getSummaryWeekly(
       wkctr: row.wkctr,
       idwkctr: row.idwkctr,
       displayName: row.display_name,
+      hasImage: Boolean(row.has_image),
       pmWork: pm ? Number(pm.sample_act) : 0,
       pmUnit: pm?.sample_untime?.trim() || 'Min',
       reactiveWork: rea ? Number(rea.sample_act) : 0,
@@ -233,6 +256,8 @@ export async function getSummaryWeekly(
       rcaWork: rcaHours,
       rcaUnit: 'Hr',
       woCount: woMap.get(row.wkctr) ?? 0,
+      pmHours,
+      reactiveHours: reaHours,
       hrHour,
       otHour: ot,
       ...percents,
@@ -241,5 +266,7 @@ export async function getSummaryWeekly(
 
   rows.sort((a, b) => b.hrHour - a.hrHour)
 
-  return { range, utilizationChart, rows }
+  const importCoverage = await getReportsImportCoverage(pool, range)
+
+  return { range, utilizationChart, rows, importCoverage }
 }

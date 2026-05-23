@@ -1,7 +1,7 @@
 # ลำดับที่ 14 — Administrator / ผู้ดูแลระบบ
 
-**สถานะรวม:** ยังไม่ทำ (ออกแบบขอบเขตเรียบร้อย — รอเริ่ม implement)  
-**Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ยังไม่มี — ดู [00-stack-target.md](00-stack-target.md)  
+**สถานะรวม:** แกนเสร็จ ✅ ~90% · UAT/Deploy ⏳ — Phase A–F + 13 หน้า + CHECKLIST §0–§14 ส่วนใหญ่ปิด · ค้าง §15–§16 (ทดสอบ CI, UAT มือ, docker) — ดู [**CHECKLIST — ปิดงาน Admin**](#checklist--ปิดงาน-admin-ทำต่อ)  
+**Stack เต็มรูปแบบ ([skills.md](../../skills.md)):** ใกล้ครบสำหรับ admin — ยังขาด deploy/docker, RBAC ทุก route นอก admin, บาง UX ใน spec  
 **Route หลัก:** `/admin` (Admin Console) + sub-route 12 หน้าตามตาราง §2  
 **Checklist หลัก:** [`PHP-REACT-PARITY-CHECKLIST.md`](../PHP-REACT-PARITY-CHECKLIST.md) §4 / §5 — แถวใหม่หมวด **Administrator**  
 **อ้างอิงลูกค้า:** [`skills.md`](../../skills.md) §Theme/Skin (Liquid Glass + Pepsi red/white/blue), §Logo customization (บรรทัด 52 — “สามารถ customize เปลี่ยนแปลงโลโก้ของ application ได้”), §3 Security (RBAC + Audit), §4 Deploy offline (Auto backup D:)
@@ -34,28 +34,32 @@
 
 ## 2) ผังเมนู Admin (Navigation map)
 
-> **เมนูเด่นใน sidebar (`menuright='A'`):** เพิ่มหัวข้อ **“ผู้ดูแลระบบ”** เป็น `heading` ใหม่ระหว่าง “รายงาน” กับ “ระบบ” ใน [`nav-config.ts`](../../PM-Pepsi-App/frontend/src/components/layout/nav-config.ts) + migration `0XX_admin_menu.sql` แทรกใน `tbmenu`
+> **หมายเหตุ (อัปเดตตามของที่ทำจริง):**
+>
+> - **Routes admin มีครบ** ภายใต้ prefix `/admin/*` (ดู `App.tsx`)
+> - **Sidebar** ใน `nav-config.ts` ปัจจุบันแสดง “เมนูเด่น” เฉพาะบางหน้า (เพื่อไม่ให้รก) แต่ยังสามารถเข้าหน้าอื่นได้ผ่าน URL/ลิงก์ในหน้า Console
+> - ค่า `menuright='A'` เป็น **fallback**; งานจริงใช้ RBAC ผ่าน `permission` (`admin.*.read`)
 
-| ลำดับ | Route React | เมนู | Icon (lucide) | menuright | สรุปฟังก์ชัน |
-|------|-------------|------|----------------|-----------|-------------|
-| 14.0 | `/admin` | **Admin Console** | `LayoutDashboard` | `A` | KPI 6 การ์ด + quick links + last 5 audit |
-| 14.1 | `/admin/users` | **ผู้ใช้งาน (Users)** | `UserCog` | `A` | List/CRUD `tbworkcenter` + `tbl_member`, reset password, lock, bulk import |
-| 14.2 | `/admin/roles` | **บทบาท & สิทธิ์ (Roles)** | `ShieldCheck` | `A` | Matrix role × menu/API, custom role builder |
-| 14.3 | `/admin/menu` | **เมนู (Menu Builder)** | `Menu` | `A` | CRUD `tbmenu` + DnD ลำดับ + map react_route |
-| 14.4 | `/admin/branding` | **ธีม & โลโก้ (Branding)** | `Palette` | `A` | Logo upload + color theme + favicon + app name + footer |
-| 14.5 | `/admin/settings` | **ตั้งค่าระบบ (System)** | `Settings2` | `A` | Timezone, locale, BE/AD, upload limit, default values, feature flags |
-| 14.6 | `/admin/master` | **Master Data Hub** | `Boxes` | `A` | redirect to `/master-data` + KPI rows-per-table |
-| 14.7 | `/admin/audit` | **บันทึกกิจกรรม (Audit)** | `History` | `A` | Filter + export CSV ของทุก action สำคัญ |
-| 14.8 | `/admin/backup` | **สำรอง & กู้คืน (Backup)** | `DatabaseBackup` | `A` | Manual `pg_dump` + schedule cron + download `.tar.gz` |
-| 14.9 | `/admin/health` | **สุขภาพระบบ (Health)** | `Activity` | `A` | DB ping, D: disk usage, container stat, error log tail |
-| 14.10 | `/admin/announcements` | **ประกาศ / โหมดบำรุงรักษา** | `Megaphone` | `A` | Banner + readonly toggle (กันแก้ข้อมูลตอน upgrade) |
-| 14.11 | `/admin/security` | **รายงานความปลอดภัย** | `Lock` | `A` | Failed login, RBAC denial, slow API |
-| 14.12 | `/admin/about` | **เกี่ยวกับระบบ (About)** | `Info` | `A` | Version, vendor, migration status, license |
+| ลำดับ | Route React | เมนู | Icon (lucide) | แสดงใน sidebar | Permission (RBAC) | menuright (fallback) | สรุปฟังก์ชัน |
+|------|-------------|------|----------------|------------------|------------------|---------------------|-------------|
+| 14.0 | `/admin` | **Admin Console** | `LayoutDashboard` | ✅ | `admin.settings.read` | `A` | ภาพรวม + quick links |
+| 14.1 | `/admin/branding` | **ธีม & โลโก้ (Branding)** | `Palette` | ✅ | `admin.branding.read` | `A` | โลโก้/สี/ธีม |
+| 14.2 | `/admin/settings` | **ตั้งค่าระบบ (System)** | `Settings2` | ✅ | `admin.settings.read` | `A` | ตั้งค่า public/system + policy ต่างๆ |
+| 14.3 | `/admin/audit` | **บันทึกกิจกรรม (Audit)** | `History` | ✅ | `admin.audit.read` | `A` | ดู/ค้น/เทียบ diff audit |
+| 14.4 | `/admin/health` | **สุขภาพระบบ (Health)** | `Activity` | ✅ | `admin.health.read` | `A` | health checks / metrics |
+| 14.5 | `/admin/users` | **จัดการผู้ใช้ (Users)** | `UserCog` | ✅ | `admin.users.read` | `A` | list/manage users |
+| 14.6 | `/admin/roles` | **บทบาท & สิทธิ์ (Roles)** | `ShieldCheck` | ✅ | `admin.roles.read` | `A` | role matrix + preview |
+| 14.7 | `/admin/menu` | **เมนู (Menu Builder)** | `LayoutList` | ✅ | `admin.menu.read` | `A` | แก้ `tbmenu` + preview |
+| 14.8 | `/admin/backup` | **สำรอง & กู้คืน (Backup)** | `Database` | ✅ | `admin.backup.read` | `A` | backup schedule + list |
+| 14.9 | `/admin/announcements` | **ประกาศ (Announcements)** | `Megaphone` | ✅ | `admin.announcement.read` | `A` | broadcast/ประกาศ |
+| 14.10 | `/admin/master` | **Master Data Hub** | (ดูในหน้า) | ❌ | `master-data.read` (ผ่าน admin) | `A` | hub count + last updated |
+| 14.11 | `/admin/security` | **Security** | (ดูในหน้า) | ❌ | `admin.security.read` | `A` | รายงานความปลอดภัย |
+| 14.12 | `/admin/about` | **About / License** | (ดูในหน้า) | ❌ | `admin.about.read` | `A` | เวอร์ชัน/ข้อมูลระบบ |
 
 **Navigation pattern (UI):**
 
-- หน้า `/admin` ใช้ layout **2-column** — ซ้าย vertical tabs (12 หัวข้อย่อย) + ขวา content area (ตามที่กดเลือก)  
-- บนมือถือ tabs ยุบเป็น `<Sheet>` (drawer) — เทียบ Shadcn pattern
+- โครงหลัก: `/admin/*` ใช้ `AdminLayout` + `<Outlet />` (route-based)
+- Sidebar ใช้ `NavMenuList` (แสดงเมนูเด่น 7 รายการตาม `nav-config.ts`)
 - ทุกหน้ามี **breadcrumb** `Home / ผู้ดูแลระบบ / [section]`
 - **React Joyride tour** เปิดอัตโนมัติครั้งแรก (เก็บ `seen_admin_tour=1` ใน `tbl_user_pref`)
 
@@ -246,6 +250,7 @@ CREATE TABLE app.tbl_user_pref (
 
 - ดึง `app.tbmenu` มาเป็นต้นไม้ — heading > items
 - **DnD reorder** ด้วย `@dnd-kit` (skills.md §2 “Interactions”) — update `menuon` ของแถวที่ย้าย
+- **รูปแบบเมนูหลัก (Navigation shell)** — admin เลือก `sidebar` | `navbar` | `hamburger` บันทึกที่ `nav.shell_mode` (`tbl_setting`) — ทุกผู้ใช้เห็น layout ตามที่ตั้ง
 - Modal **เพิ่ม/แก้** เมนู: `menutitle`, `menulink` (PHP legacy), `react_route`, `menuicon` (lucide name picker), `menuright` (multi-select role), `menu_kind`, `idmenusub` (parent), `end_exact`
 - ปุ่ม **Sync from PHP** — import จาก `database/seeds/generated/import_tbmenu_pg.sql` (เทียบเก่า)
 - Preview: แสดงตัวอย่าง sidebar ทางขวาแบบ real-time
@@ -280,7 +285,7 @@ CREATE TABLE app.tbl_user_pref (
 
 - ตารางสรุป 17 master entity (`activitytype`, `department`, `equipment`, `functional`, `reason`, `workstatus`, `worktype`, `zb`, `lineproduct`, `zone`, `machine`, `material`, `level`, `position`, `group`, `tasklist`, `lineschdul`)
   - คอลัมน์: ชื่อ, จำนวนแถว, แก้ครั้งสุดท้าย, ลิงก์ → หน้าเดิม `/master-data?entity=xxx`
-- ใช้ `fetchMasterData(entity)` + `count` endpoint (ใหม่: `GET /api/v1/master-data/:entity/count`)
+- ใช้ `fetchMasterData(entity)` + meta endpoint (ใหม่: `GET /api/v1/master-data/:entity/meta` → `count` + `lastUpdatedAt`)
 
 ### 4.7 Audit Log (`/admin/audit`)
 
@@ -327,7 +332,7 @@ CREATE TABLE app.tbl_user_pref (
 - กราฟ failed login per day (Chart.js — skills.md §2 “Charts”)
 - ตาราง RBAC denial (ดึงจาก `audit_log.status='denied'`)
 - รายการ IP ผิดปกติ (rate limit hit)
-- ปุ่ม **Block IP** (เพิ่มลง `tbl_blocked_ip` — future)
+- ปุ่ม **Block IP** (เพิ่มลง `tbl_blocked_ip` — migration `072`, UI `BlockedIpCard`)
 
 ### 4.12 About (`/admin/about`)
 
@@ -526,6 +531,18 @@ PM-Pepsi-App/frontend/src/features/admin/
 └── about/AdminAboutPage.tsx
 ```
 
+**สถานะ implement (2026-05-19):**
+
+- [x] ย้ายหน้าทั้งหมดเข้าโฟลเดอร์ย่อย + `features/admin/index.ts` barrel + `App.tsx` import จาก barrel
+- [x] `roles/PermissionMatrix.tsx` + `CreateRoleDialog.tsx` · `backup/CronInput.tsx` · `audit/AuditDiffViewer.tsx` · `security/FailedLoginChart.tsx`
+- [x] `master/AdminMasterHubPage.tsx` + route `/admin/master` + nav/tour `admin-master` (ใช้ `GET /api/v1/master-data/:entity/meta` สำหรับ count + “แก้ไขล่าสุด” จาก audit)
+- [x] ลิงก์ hub → `/master-data?entity=…` (+ `MasterDataPage` อ่าน query `entity`)
+- [x] `menu/MenuEditDialog.tsx` + `MenuTreeNode.tsx` + `menu-form-utils.ts`
+- [x] `branding/LogoUploadCard` · `ColorPickerCard` · `ThemePreviewCard` · `branding-constants.ts`
+- [x] §7.2 lib ใหม่: `admin-api.ts`, `settings-context.tsx`, `theme-provider.tsx`, `permissions.ts`
+- [x] §7.3 `RequireRole` ครอบ `/admin/*` (แสดง 403 เมื่อไม่มีสิทธิ์)
+- [x] §7.4 `SettingsProvider` + `ThemeProvider` ครอบทั้งแอปใน `main.tsx`
+
 ### 7.2 hook / lib ใหม่
 
 ```
@@ -575,16 +592,16 @@ useEffect(() => {
 
 | ประเด็น | มาตรการ |
 |---------|---------|
-| RBAC | ทุก route admin ใช้ `requirePermission` (ไม่ใช่ `requireAdmin` เดียว) — frontend สร้างเมนู/ปุ่มจาก permission ของ session เท่านั้น |
-| Audit | Write/Delete ทุกครั้ง → `tbl_audit_log` รวมถึง branding/setting/menu/role/permission/backup/restore/impersonate |
-| Impersonate | บันทึก `auth.impersonate.start/end` + แสดง banner สีส้มเตือนทุกหน้า "**ทำงานในนาม XXX**" + ปุ่ม "หยุดสวมรอย" + auto-timeout 30 นาที |
-| Maintenance mode | response 503 readonly สำหรับ non-admin + banner ทั้งแอป |
-| Password reset | สุ่ม password 12 ตัวอักษร (3 พิมพ์ใหญ่ + 3 พิมพ์เล็ก + 3 ตัวเลข + 3 อักขระพิเศษ) + ฟอร์ส change ครั้งถัดไป (column ใหม่ `tbworkcenter.must_change_password`) |
-| Restore | ห้ามทำงาน หาก maintenance mode ไม่เปิด; backend จะ open maintenance mode ให้อัตโนมัติ |
-| Upload limit | `tbl_setting.app.upload_max_mb` enforce ใน middleware multer (ตอนนี้ hard-code 15MB) |
-| Rate limit | ใช้ `express-rate-limit` เฉพาะ `/api/v1/auth/*` และ `/api/v1/admin/*` (default 100/min/IP) — skills.md §3 “rate limit” |
-| Secret mask | `tbl_setting.is_secret=true` ทำให้ value แสดงเป็น `••••` ใน UI + log (เช่น license key) |
-| Logo upload | scan magic bytes ก่อน sharp (กัน polyglot file) — type whitelist `image/png`, `image/jpeg`, `image/webp`, `image/svg+xml` (SVG sanitize ด้วย DOMPurify) |
+| RBAC | ✅ ทุก route admin ใช้ `requirePermission` — frontend จาก `user.permissions` |
+| Audit | ✅ Write/Delete → `tbl_audit_log` (branding, settings, menu, role, backup, restore, impersonate, user pref) |
+| Impersonate | ✅ `auth.impersonate.start` / `auth.impersonate.end` + banner **ทำงานในนาม XXX** + หยุดสวมรอย + TTL 30 นาที (token + FE timer) |
+| Maintenance mode | ✅ 503 mutating API + banner (`maintenance-mode` middleware) |
+| Password reset | ✅ `generateTemporaryPassword()` 12 ตัว (3+3+3+3) + `pass_must_change` (`053`) |
+| Restore | ✅ auto maintenance ระหว่าง restore (`admin-backup-restore`) |
+| Upload limit | ✅ `app.upload_max_mb` — `enforce-upload-size` + multer `getMulterFileSizeLimit()` refresh 60s |
+| Rate limit | ✅ `express-rate-limit` auth/admin + audit `security.rate_limit` |
+| Secret mask | ✅ `GET /admin/settings/secrets` masked •••• + migration `069_app.license_key_secret` |
+| Logo upload | ✅ magic bytes + SVG sanitize → rasterize WebP (`image-magic`, `svg-sanitize`) |
 
 ---
 
@@ -602,77 +619,236 @@ useEffect(() => {
 
 | ลำดับ | ไฟล์ | สรุป |
 |------|------|------|
-| 1 | `0XX_tbl_role.sql` | สร้าง `tbl_role` + seed A/H/U/W |
-| 2 | `0XX_tbl_permission.sql` | สร้าง `tbl_permission` + seed ~60 permission codes |
-| 3 | `0XX_tbl_role_permission.sql` | grant default per legacy: A=all, H=read+manager scope, U=planning subset, W=technician subset |
-| 4 | `0XX_tbl_setting.sql` | สร้าง `tbl_setting` + seed default (branding/system/feature) |
+| 1 | `044_tbl_role.sql` | สร้าง `tbl_role` + seed A/H/U/W |
+| 2 | `045_tbl_permission.sql` | สร้าง `tbl_permission` + seed 66 permission codes |
+| 3 | `046_tbl_role_permission.sql` | grant default per legacy: A=all, H=read+manager scope, U=planning subset, W=technician subset |
+| 4 | `047_tbl_setting.sql` | สร้าง `tbl_setting` + seed default (branding/system/feature/backup) |
 | 5 | `0XX_tbl_audit_log.sql` | สร้าง `tbl_audit_log` |
 | 6 | `0XX_tbl_backup_history.sql` | สร้าง `tbl_backup_history` |
 | 7 | `0XX_tbl_announcement.sql` | สร้าง `tbl_announcement` |
-| 8 | `0XX_tbl_user_pref.sql` | สร้าง `tbl_user_pref` |
+| 8 | `068_tbl_user_pref.sql` | สร้าง `tbl_user_pref` |
 | 9 | `0XX_admin_menu.sql` | INSERT 12 รายการ admin menu ลง `tbmenu` (`menuright='A'`) |
 | 10 | `0XX_tbworkcenter_must_change_password.sql` | ALTER เพิ่ม column |
 
-> ลำดับเลข `0XX` กำหนดต่อจาก migration ล่าสุดที่มีอยู่ในขณะ implement (ปัจจุบันรัน 038)
+> ลำดับเลข `0XX` กำหนดต่อจาก migration ล่าสุดที่มีอยู่ในขณะ implement (044–046 สำหรับ RBAC)
 
 ---
 
 ## 11) เกณฑ์ §3 (UI / Data / Business rules / Modal / Tests) — checklist
 
-- [ ] **3.1 UI** — 12 หน้า admin + AdminLayout + breadcrumb + tour + Liquid Glass theme + Pepsi color
-- [ ] **3.2 Data** — `tbl_role`, `tbl_permission`, `tbl_role_permission`, `tbl_setting`, `tbl_audit_log`, `tbl_backup_history`, `tbl_announcement`, `tbl_user_pref` + Zod schemas frontend/backend
-- [ ] **3.3 Business rules** — RBAC ทุก endpoint, audit ทุก write, maintenance mode 503, backup atomic, restore confirm
-- [ ] **3.4 Modal/Tabs** — Role create, Menu edit, Setting reset, Backup restore (confirm), Announcement edit, User reset/lock/impersonate
-- [ ] **3.5 Tests** — Vitest unit (`hasPermission`, `auditLog`), Supertest API (`/admin/users`, `/admin/branding/logo`, `/admin/backup`), Playwright E2E happy path admin tour
+- [x] **3.1 UI** — 12 หน้า admin + AdminLayout + breadcrumb + tour + Liquid Glass theme + Pepsi color — 2026-05-20
+  - 12 routes ใน `App.tsx` · `AdminPageRoot` + `data-tour` ทุกหน้า
+  - `AdminLayout` + `AdminBreadcrumb` + `admin-layout-glass` / `app-surface` / `--app-primary` (Pepsi)
+  - `AdminTour` นำทางอัตโนมัติครบ 12 หน้า (Joyride + `pm_seen_admin_tour`)
+  - Vitest: `admin-sections.test.ts`, `admin-ui-checklist.test.ts`
+- [x] **3.2 Data** — `tbl_role`, `tbl_permission`, `tbl_role_permission`, `tbl_setting`, `tbl_audit_log`, `tbl_backup_history`, `tbl_announcement`, `tbl_user_pref` + Zod schemas frontend/backend — 2026-05-20
+  - Migrations `044`–`047`, `050`, `062`, `064`, **`068_tbl_user_pref`**
+  - Backend: `schemas/admin-*.ts`, `user-pref.ts`, `lib/admin-data-tables.ts`
+  - Frontend: mirrors ใน `api/schemas.ts` + `admin-data-schemas.test.ts`
+  - API: `GET/PATCH /api/v1/user/preferences`, `POST .../tour-seen` (sync Joyride `seenTours.admin`)
+  - Verify: `database/scripts/verify_admin_data_tables.sql`
+- [x] **3.3 Business rules** — RBAC ทุก endpoint, audit ทุก write, maintenance mode 503, backup atomic, restore confirm — 2026-05-20
+  - Middleware `createMaintenanceMiddleware` → 503 `MAINTENANCE` สำหรับ POST/PUT/PATCH/DELETE (ยกเว้น login/logout + admin bypass permissions)
+  - `withBackupAdvisoryLock` + `hasRunningBackup` — backup/restore atomic
+  - `restoreConfirmBodySchema` (`confirmPhrase: 'RESTORE'`) + UI confirm
+  - `canAssign` / `canMovePlan` ใช้ `planning.assign` แทน `userst === 'A'`
+  - Audit: `user.pref.update`, `user.pref.tour_seen`; RBAC deny → `rbac.deny`
+  - Vitest: `admin-business-rules.test.ts`; FE `MaintenanceModeError` ใน `fetch-api.ts`
+  - **Rate limit** — `express-rate-limit` ที่ `/api/v1/auth/*` + `/api/v1/admin/*` (100/min/IP, env `RATE_LIMIT_*`, audit `security.rate_limit`)
+- [x] **3.4 Modal/Tabs** — Role create, Menu edit, Setting reset, Backup restore (confirm), Announcement edit, User reset/lock/impersonate — 2026-05-20
+  - `ConfirmPhraseDialog` — settings reset (`RESET`), role delete (role code), announcement delete (`DELETE`), users reset/lock/impersonate/delete (id/username)
+  - มีอยู่แล้ว: `CreateRoleDialog`, `MenuEditDialog`, backup restore (`RESTORE`), announcement create/edit
+- [x] **3.5 Tests** — Vitest unit (`hasPermission`, `auditLog`), Supertest API (`/admin/users`, `/admin/branding/logo`, `/admin/backup`), Playwright E2E happy path admin tour — 2026-05-20
+  - Unit (มีอยู่แล้ว): `has-permission.test.ts`, `audit-log.test.ts`, `admin-business-rules.test.ts`, `rate-limit.test.ts`
+  - Supertest: `backend/src/routes/admin-api.supertest.test.ts` (401/403/200 RBAC, branding logo, backup list, restore validate)
+  - FE unit: `admin-tour.test.ts` (`shouldAutoStartAdminTour`, `restartAdminTour`)
+  - Playwright: `frontend/e2e/admin-tour.spec.ts` — ต้องตั้ง `E2E_ADMIN_USER` + `E2E_ADMIN_PASSWORD` + dev servers (`npm run test:e2e`)
 
 ---
 
 ## 12) ทำแล้ว
 
-> (ว่าง — เริ่ม implement หลังลูกค้ายืนยัน scope)
+- [x] **§8 Security & Audit (defense in depth)** — 2026-05-20
+  - Impersonate: `auth.impersonate.start/end`, JWT TTL 30m, `ImpersonationBanner`
+  - Password: `lib/password-policy.ts` (12 chars, 4 classes)
+  - Upload: `enforce-upload-size` + dynamic multer limits from `app.upload_max_mb`
+  - Branding: `image-magic` + `svg-sanitize` before sharp
+  - Secrets: `GET /admin/settings/secrets`, migration `069`
+- [x] **Migration 044–046 (RBAC tables + seed)** — 2026-05-19
+  - [`044_tbl_role.sql`](../../database/migrations/044_tbl_role.sql) — `tbl_role` + seed A/H/U/W (system roles)
+  - [`045_tbl_permission.sql`](../../database/migrations/045_tbl_permission.sql) — `tbl_permission` + 66 codes
+  - [`046_tbl_role_permission.sql`](../../database/migrations/046_tbl_role_permission.sql) — default grants (A=all, H/U/W subsets)
+- [x] **RBAC engine (Phase A core)** — 2026-05-19
+  - [`has-permission.ts`](../../PM-Pepsi-App/backend/src/lib/has-permission.ts) — cache 60s + legacy fallback ถ้ายังไม่รัน migration
+  - [`require-permission.ts`](../../PM-Pepsi-App/backend/src/middleware/require-permission.ts) — `createRequirePermission` / `createRequireAnyPermission`
+  - `GET /api/v1/auth/me` → `user.permissions[]`
+  - Routes migrated: personnel admin, manhours admin, planning assign, WO planning batch, confirmation import
+- [x] **Frontend RBAC nav** — [`use-permission.ts`](../../PM-Pepsi-App/frontend/src/lib/use-permission.ts), [`nav-route-permissions.ts`](../../PM-Pepsi-App/frontend/src/lib/nav-route-permissions.ts), `filterNavForUser` ใช้ `user.permissions` จาก `/auth/me`
+- [x] **Migration 047 (`tbl_setting`)** — 2026-05-19 — [`047_tbl_setting.sql`](../../database/migrations/047_tbl_setting.sql) 21 keys (branding/system/feature/backup/maintenance)
 
 ---
 
-## 13) ยังไม่ทำ (สรุปลำดับ implement แนะนำ)
+## 13) สรุป Phase A–F (implement หลัก — ทำแล้ว)
 
-**Phase A — RBAC engine (จำเป็นก่อน)**
-- [ ] Migration 1–3 (`tbl_role`, `tbl_permission`, `tbl_role_permission`) + seed
-- [ ] `requirePermission` middleware + `hasPermission` helper + cache
-- [ ] Migrate 6 route ที่ใช้ `requireAdmin` → `requirePermission`
-- [ ] `useSession` ขยายให้ส่ง `permissions: string[]`
-- [ ] `usePermission(code)` hook + filter `nav-config` ตาม permission แทน menuright
+| Phase | สถานะ | หมายเหตุ |
+|-------|--------|----------|
+| A — RBAC | ✅ แกน | `044`–`046`, `requirePermission`, `/auth/me` → `permissions[]` — **ยังไม่** ครบทุก route นอก admin |
+| B — Settings & Branding | ✅ แกน | `047`, public settings, branding/settings pages — บางรายการ spec §4.4 ยังไม่ครบ |
+| C — Audit & Health | ✅ แกน | `050`, `/admin/audit`, `/admin/health` — ยังไม่มี error log / slow API / run migration จาก UI |
+| D — Users & Menu | ✅ แกน | users/roles/menu — bulk role ✅; ยังไม่มี sync menu PHP, UI `nav.shell_mode` |
+| E — Backup & Ops | ✅ แกน | `062`–`065`, backup/announcements/security/about |
+| F — UX | ✅ แกน | Layout, tour, cmdk, tests — E2E ต้องตั้ง env + CI |
 
-**Phase B — Settings & Branding**
-- [ ] Migration 4 (`tbl_setting`) + seed
-- [ ] `GET /api/v1/settings/public` + `SettingsProvider`
-- [ ] `/admin/branding` หน้า — logo / colors / favicon / app name
-- [ ] `/admin/settings` หน้า — timezone / BE-AD / upload limit / feature flags
-- [ ] CSS variable apply (theme-provider) + dark mode toggle
+รายการที่ยังต้องทำต่อ → [**§ CHECKLIST — ปิดงาน Admin**](#checklist--ปิดงาน-admin-ทำต่อ)
 
-**Phase C — Audit & Health**
-- [ ] Migration 5 (`tbl_audit_log`) + helper `auditLog()`
-- [ ] เรียก `auditLog` ทุก mutation (login, planning.assign, confirm, master edit, branding, setting, menu, role)
-- [ ] `/admin/audit` หน้า + filter + CSV export + diff viewer
-- [ ] `/admin/health` หน้า (disk D:, DB ping, migration status)
+---
 
-**Phase D — Users & Menu**
-- [ ] `/admin/users` ขยายจาก `/personnel/admin` + reset/lock/impersonate
-- [ ] `/admin/roles` matrix + custom role
-- [ ] `/admin/menu` DnD builder
+## CHECKLIST — ปิดงาน Admin (ทำต่อ)
 
-**Phase E — Backup & Operations**
-- [ ] Migration 6 (`tbl_backup_history`) + `pg_dump` integration
-- [ ] `/admin/backup` หน้า + manual + schedule + restore
-- [ ] `/admin/announcements` + maintenance mode banner
-- [ ] `/admin/security` + `/admin/about`
+ใช้ติ๊ก `[x]` เมื่อปิดงานจริง แล้วอัปเดต [`COMPLETION-MATRIX.md`](COMPLETION-MATRIX.md) แถวลำดับ 14 และ §7 ใน [`PHP-REACT-PARITY-CHECKLIST.md`](../PHP-REACT-PARITY-CHECKLIST.md)
 
-**Phase F — UX polish**
-- [ ] AdminLayout + Liquid Glass + Pepsi color preset
-- [ ] React Joyride admin tour 12 จุด
-- [ ] ⌘K command palette (`cmdk`)
-- [ ] Skeleton + Optimistic UI ทุกหน้า
-- [ ] A11y audit + responsive tablet
-- [ ] Vitest + Supertest + Playwright E2E
+### 0) ฐานข้อมูล & สภาพแวดล้อม (ทำก่อน — ไม่งั้นหน้า admin ว่าง/403)
+
+> **สคริปต์รวม (repo):**
+> - ครบ 001–069: [`database/scripts/run-all-migrations.ps1`](../../database/scripts/run-all-migrations.ps1)
+> - เฉพาะ admin 044–069: [`database/scripts/run-admin-migrations.ps1`](../../database/scripts/run-admin-migrations.ps1)
+> - ตรวจ §0 อัตโนมัติ: [`database/scripts/verify-admin-environment.ps1`](../../database/scripts/verify-admin-environment.ps1)
+>
+> **PG dev ที่ใช้กับ DBeaver:** `postgresql://pepsipm:***@127.0.0.1:5433/pepsi_pm` (PostgreSQL **11** · service `postgresql-x64-11`) — ไม่สลับพอร์ตกับ PG 18 ที่ `5432`
+
+- [x] รัน migration admin ครบบน PG เป้าหมาย: **`044`–`047`**, **`050`**, **`053`**, **`058`–`061`**, **`062`–`069`** (ต่อจาก `001`–`043`) — ตรวจ 2026-05-21: ตาราง §3.2 ครบทุก `ok=t`
+- [x] รัน [`database/scripts/verify_admin_data_tables.sql`](../../database/scripts/verify_admin_data_tables.sql) — ทุกแถว `ok = t`
+- [x] Login **`ADMIN01`/`admin`** แล้ว API admin ไม่ 503 `SCHEMA_NOT_READY` (`GET /admin/settings` ผ่าน)
+- [x] Backend `.env`: `DATABASE_URL` (5433), `SESSION_SECRET` · Frontend: `.env.local` + proxy (`VITE_API_URL` ว่าง)
+
+### 1) Admin Console & Navigation
+
+> **13 โมดูล** = Console + 12 หน้าย่อย (ตาราง §2 ลำดับ 14.0–14.12) · sidebar/command palette สร้างจาก [`admin-nav-entries.ts`](../../PM-Pepsi-App/frontend/src/lib/admin-nav-entries.ts)
+
+- [x] KPI บน `/admin` โหลดจาก `GET /admin/health` (เมื่อมี `admin.health.read`) + แสดง error ชัด · quick links 11 หน้าย่อย + KPI โมดูลตาม RBAC
+- [x] Sidebar กรองด้วย `user.permissions` (`filterNavForUser` + `rbacStrict` ใน `use-app-nav.ts`)
+- [x] Sidebar ครบ 13 รายการรวม **`/admin/master`**, **`/admin/security`**, **`/admin/about`** (จาก `buildAdminNavEntries()`)
+- [x] Breadcrumb + `AdminLayout` ทุก sub-route ใน `App.tsx`
+- [x] React Joyride: ทัวร์ Console + 11 หน้า + command hint · `markAdminTourSeen()` → `POST /user/preferences/tour-seen` + localStorage
+- [x] ⌘K / Ctrl+K → `AppCommandPalette` รายการ admin ตามสิทธิ์แต่ละโมดูล
+
+### 2) Users (`/admin/users`)
+
+- [x] แท็บ **Work center** + **Member** ในหน้าเดียว (`PersonnelAdminPage` variant `admin`)
+- [x] Reset password + `pass_must_change` (`053`) — API + badge ในตาราง
+- [x] Lock / Unlock (workcenter + member)
+- [x] Impersonate + `ImpersonationBanner` + audit `auth.impersonate.*`
+- [x] Filter บทบาท (`userrole`) + สถานะใช้งาน (`workstatus`)
+- [x] **Bulk เปลี่ยนบทบาท** — `POST /admin/users/bulk-userrole` + checkbox + dropdown
+- [x] `/personnel/admin` → redirect `/admin/users` (`App.tsx`); legacy nav ชี้ `/admin/users`
+
+### 3) Roles & Permissions (`/admin/roles`)
+
+- [x] Matrix grant/revoke บันทึก `tbl_role_permission` (`PUT .../permissions` + `PermissionMatrix`)
+- [x] สร้าง role ใหม่ (`is_system=false`) + ห้ามลบ system role (`CreateRoleDialog` + API 403 `SYSTEM_ROLE`)
+- [x] **Simulate role** — `GET/POST .../simulate` + `RbacPreviewBanner` + `RoleNavPreview` + `rbac-preview` กรองเมนู
+- [x] role **H/U/W** — Vitest `nav-rbac.test.ts`, `rbac-role-nav-preview.test.ts` (ไม่มี `/admin/*`, มี planning/confirmation ตามสิทธิ์)
+
+### 4) Menu Builder (`/admin/menu`)
+
+- [x] DnD เรียง `menuon` + CRUD modal (`MenuEditDialog`)
+- [x] Preview sidebar ตาม role / permissions matrix (`MenuPreviewPanel`)
+- [x] **UI `nav.shell_mode`** — `MenuNavLayoutCard` + `GET/PUT /admin/menu/layout` บันทึก `tbl_setting`
+- [x] `AppNavShell` อ่าน `navShellMode` จาก `GET /settings/public` (sidebar / navbar / hamburger)
+- [x] **Sync from PHP** — `POST /admin/menu/sync-from-php` + ปุ่มยืนยัน `SYNC_MENU`
+- [x] Audit: `admin.menu.create/update/delete/reorder/layout/sync`
+
+### 5) Branding (`/admin/branding`)
+
+- [x] อัปโหลดโลโก้ → WebP BYTEA + `GET /settings/public/logo`
+- [x] Favicon upload + `GET /settings/public/favicon`
+- [x] Preset Pepsi / Liquid Glass + **primary + accent** (`ColorPickerCard`, `COLOR_PRESETS`)
+- [x] **สี success / warning / danger / info** — `SemanticColorCard` + patch/public + `--admin-*` ใน `apply-theme.ts`
+- [x] App name, footer text, theme mode light/dark/system
+- [x] ปุ่มคืนค่า default Pepsi (`POST /admin/branding/reset`, `BRANDING_DEFAULTS` `#004C97` / `#E31837`)
+- [x] **Login background** — `POST/DELETE /admin/branding/login-background` + `GET /settings/public/login-background` + `LoginBackgroundCard`
+- [x] หน้า login ใช้ branding จาก `GET /settings/public` (โลโก้, ชื่อแอป, พื้นหลัง)
+
+### 6) System Settings (`/admin/settings`)
+
+- [x] Timezone, locale, พ.ศ./ค.ศ., date format (`AdminSettingsPage` + `tbl_setting`)
+- [x] Upload max MB, session TTL, password policy — `enforce-upload-size` + `session-ttl.ts` + `password_min_length` / `max_login_attempts` (migration 070)
+- [x] Maintenance mode + message (503 `MAINTENANCE` + `SettingsProvider` banner)
+- [x] Feature flags: IndexedDB offline, dashboard charts — UI ระบุ Joyride / Optimistic UI / DnD calendar ยังไม่มี toggle
+- [x] **คืนค่ามาตรฐาน** ต่อ section — `POST /admin/settings/reset/:section` + ปุ่มต่อการ์ด
+- [x] Masked secrets — `GET /admin/settings/secrets` + การ์ด UI (migration 069)
+
+### 7) Master Data Hub (`/admin/master`)
+
+- [x] ตาราง 17 entity + `GET /master-data/:entity/meta` (count + `lastUpdatedAt`) — `AdminMasterHubPage` + แถวรวม
+- [x] ลิงก์ไป `/master-data?entity=...` — `masterDataHref()` + แท็บตาม URL ใน `MasterDataPage`
+- [x] UI hub อัปเดตแล้ว (ไม่มีข้อความ “รอ meta API”) — แสดง legacy + audit ล่าสุด
+- [x] สิทธิ์ `master-data.read` — hub, nav, `nav-route-permissions` (ไม่ใช้ `admin.settings.read`)
+
+### 8) Audit (`/admin/audit`)
+
+- [x] Filter วันที่ / actor / action / resource / status (+ กลุ่ม action prefix, ค้นหา `q`)
+- [x] Diff viewer before/after (`AuditDiffViewer` + dialog)
+- [x] Export CSV + ลบเก่ากว่า X วัน (`admin.audit.delete`)
+- [x] `useInfiniteQuery` + skeleton แถวตาราง + โหลดเพิ่ม
+- [x] IndexedDB cache เมื่อ `feature.indexeddb_offline` เปิด (จาก `GET /settings/public`)
+- [x] **Audit master-data** — `auditMasterDataMutations` middleware (`master-data.create/update/delete/import`)
+
+### 9) Backup (`/admin/backup`)
+
+- [x] Manual backup → `pg_dump` → `.sql.gz` ใน `backup.target_dir` (default `D:/PM-Pepsi-App/backup`)
+- [x] ประวัติ + download + delete + SHA256 (`tbl_backup_history`)
+- [x] Cron schedule + retention (`startBackupScheduler` ทุก 60s + `purgeOldBackups`)
+- [x] Restore + confirm `RESTORE` + maintenance auto (`admin-backup-restore.ts`)
+- [x] UI แสดง `pg_dump`/`psql` path + สถานะพร้อม (Windows / `PG_DUMP_PATH`, `PSQL_PATH`)
+
+### 10) Health (`/admin/health`)
+
+- [x] Poll DB latency + pool (poll 10s)
+- [x] Disk path (เช่น `D:\`) free/used (`fs.statfs` + path picker)
+- [x] Migration probes list (applied/pending)
+- [x] แท็บ **Error log** — `GET /admin/health/errors` (tail `tbl_audit_log` status=error)
+- [x] แท็บ **Slow API** — `GET /admin/health/slow-apis` (middleware p95 > 1s)
+- [x] **Run pending migrations** — `POST /admin/health/migrate` + UI (phrase `MIGRATE`, ต้องเปิด maintenance)
+- [ ] Docker container CPU/RAM — spec ระบุ · ตอนนี้มีแค่ **process** metrics (RSS/heap)
+
+### 11) Announcements (`/admin/announcements`)
+
+- [x] CRUD `tbl_announcement` (`GET/POST/PUT/DELETE /admin/announcements` + audit)
+- [x] Banner ใน `AppShell` — `AnnouncementBanner` + `GET /announcements/active` (dismiss → localStorage)
+- [x] Shortcut maintenance — toggle + แก้ข้อความ (`patchAdminSettings`) · banner ระบบจาก `SettingsProvider` (`maintenance.enabled`)
+
+### 12) Security (`/admin/security`)
+
+- [x] กราฟ failed login รายวัน (Chart.js + `auth.login` denied)
+- [x] ตาราง RBAC deny — `action=rbac.deny` จาก `requirePermission` middleware
+- [x] รายการ IP rate limit — `action=security.rate_limit` + IP ผิดปกติ (denied ≥3)
+- [x] **Block IP** + `tbl_blocked_ip` — migration `072`, middleware 403 `IP_BLOCKED`, `/admin/security/blocked-ips`, UI `BlockedIpCard` + quick block จาก rate limit / suspicious IP (`admin.security.write`)
+
+### 13) About (`/admin/about`)
+
+- [x] Version, build hash, vendor S.Y. Interactive, client Pepsi — `GET /api/v1/admin/about`, `AdminAboutPage`, `BUILD_COMMIT` / `BUILD_TIME`
+- [x] Migration สรุป + disk จาก health API — reuse `getAdminHealth`, progress bar, link Health/Settings; license จาก `app.license_key` + env
+
+### 14) RBAC & Security ข้ามระบบ
+
+- [x] ย้าย route ที่ยังใช้แค่ `requireAuth` → **`requirePermission`** ครบ (dashboard, backlog, calendar, line-calendar, iw37n, master-data, reports, planning, scheduling, work-orders, personnel, manhours, user-log) — audit `rbac-route-audit.test.ts`
+- [x] Rate limit `/auth/*` + `/admin/*` + audit `security.rate_limit` — `registerRateLimiters` ใน `app.ts` + `rate-limit.ts`
+- [x] FE + BE สอดคล้อง — `NavRouteGuard` + `permissionForRoute` (403), Master Data / IW37N ซ่อนปุ่ม mutate, `nav-route-permissions` ปรับ `/personnel/admin`
+
+### 15) ทดสอบ & ส่งมอบ
+
+- [ ] Backend: `npm test` ใน `PM-Pepsi-App/backend` ผ่าน (ปัจจุบัน ~89 tests)
+- [ ] Frontend: `npm test` ผ่าน (admin-tour, schemas, …)
+- [ ] Playwright `e2e/admin-tour.spec.ts` — ตั้ง `E2E_ADMIN_USER` / `E2E_ADMIN_PASSWORD` + รันใน CI
+- [ ] UAT มือ: branding → reload ทั้งแอป · backup บน D: · restore บน staging เท่านั้น
+- [ ] อัปเดต [`COMPLETION-MATRIX.md`](COMPLETION-MATRIX.md) แถว 14 เป็น **เสร็จ** เมื่อ §0–§14 ครบตามที่ทีมตกลง “ปิด admin”
+
+### 16) Deploy offline (ลำดับ 13 — คู่กับ admin)
+
+- [ ] `docker-compose.yml` (db + api + web) + bind mount `database/postgres` และ `backup/`
+- [ ] `BACKUP_CRON` ใน container `api`
+- [ ] Manifest + SHA256 ส่งมอบ — ดู [`13-deploy-offline.md`](13-deploy-offline.md)
 
 ---
 
@@ -684,7 +860,7 @@ useEffect(() => {
 | Tailwind | ✅ |
 | Lucide icons | ✅ |
 | Framer Motion | ✅ tour transitions, modal |
-| Anime.js | 🟡 micro-animation บน color picker |
+| Anime.js | ✅ micro-animation บน color picker |
 | DnD-kit | ✅ `/admin/menu`, `/admin/roles` row reorder |
 | Skeleton screens | ✅ ทุก list |
 | Optimistic UI | ✅ toggle setting/permission |
@@ -693,7 +869,7 @@ useEffect(() => {
 | React Joyride | ✅ admin tour ครั้งแรก |
 | TanStack Query | ✅ ทุก fetch |
 | Highcharts / Chart.js | ✅ `/admin/security`, `/admin/health` |
-| IndexedDB | 🟡 cache audit/backup readonly |
+| IndexedDB | ✅ cache audit/backup readonly |
 | Backend Express + Zod | ✅ + Helmet, rate limit (skills.md §3) |
 | RBAC enforcement | ✅ ทุก endpoint |
 | Audit trail | ✅ login, import, confirm, master, admin write |
@@ -715,7 +891,7 @@ useEffect(() => {
 | Logo customize ได้ | `/admin/branding` + `tbl_setting.app.logo_bytes` + endpoint public + restore default |
 | ไม่ remote เข้า server | ทุกฟังก์ชัน admin ทำผ่าน UI ของแอปได้ — ไม่ต้องเข้า DBeaver/SSH (รวมถึง migration runner ใน `/admin/health`) |
 | Auto backup | `/admin/backup` schedule + run cron ใน container `api` + บันทึก `tbl_backup_history` |
-| PDPA / นโยบาย client cache | `tbl_user_pref` + IndexedDB clear policy (admin reset ผ่าน UI ได้) |
+| PDPA / นโยบาย client cache | `tbl_user_pref` + IndexedDB clear policy (admin reset ผ่าน UI ได้) ✅ |
 | Audit trail ตามนโยบายลูกค้า | `tbl_audit_log` + retention setting + export CSV |
 
 ---
@@ -724,4 +900,14 @@ useEffect(() => {
 
 | วันที่ | สรุป |
 |--------|------|
-| 2026-05-19 | **สร้างเอกสารออกแบบ ลำดับ 14 — Administrator** ครอบคลุม 12 หน้าย่อย + 8 ตารางใหม่ + ~40 endpoint + UI/UX ตาม Liquid Glass + Pepsi palette + integration กับ skills.md §1–§4 (offline, Auto backup D:, RBAC, audit, customize logo); แบ่ง implementation เป็น 6 phase A–F; ยังไม่เริ่ม implement |
+| 2026-05-19 | **§7.1 Frontend structure** — โฟลเดอร์ admin ตามแผน, barrel export, Master Hub, แยก PermissionMatrix/CronInput, 13 routes |
+| 2026-05-20 | **§8 Security & Audit** — impersonate TTL/audit, password policy, upload limit จาก settings, logo magic bytes, secret mask API |
+| 2026-05-20 | **§3.5 Tests** — Supertest admin API, Playwright admin tour E2E, `admin-tour.test.ts` |
+| 2026-05-20 | **§3.4 Modal/Tabs + rate limit** — `ConfirmPhraseDialog` ทุก destructive action; `express-rate-limit` auth/admin + audit `security.rate_limit` |
+| 2026-05-20 | **§3.2 Data checklist** — migration `068_tbl_user_pref`, user preferences API, schema contract tests BE/FE, `verify_admin_data_tables.sql` |
+| 2026-05-20 | **§3.1 UI checklist** — ยืนยัน 13 หน้า admin (รวม `/admin/master`), tour นำทางอัตโนมัติ, `AdminPageRoot`, อัปเดต Console |
+| 2026-05-21 | **CHECKLIST ปิดงาน** — ปรับสถานะรวมเป็น “แกน ~90%”; เพิ่ม § CHECKLIST 16 กลุ่ม (0–16) แยกสิ่งที่ทำแล้ว vs ค้าง (nav shell UI, bulk role, sync menu, สี 6 ตัว, health tabs/migrate, audit master-data, RBAC ทุก route, deploy) |
+| 2026-05-21 | อัปเดต [`PLAN.md`](PLAN.md) §3.2 — Admin `/admin/*` แกน ✅ · UAT ⏳ (สอดคล้อง parity ธุรกิจ) |
+| 2026-05-19 | **สร้างเอกสารออกแบบ ลำดับ 14 — Administrator** ครอบคลุม 12 หน้าย่อย + 8 ตารางใหม่ + ~40 endpoint + UI/UX ตาม Liquid Glass + Pepsi palette + integration กับ skills.md §1–§4 (offline, Auto backup D:, RBAC, audit, customize logo); แบ่ง implementation เป็น 6 phase A–F |
+| 2026-05-19 | **Phase A — Migration 044–046** — `tbl_role` (4 system roles), `tbl_permission` (66 codes), `tbl_role_permission` (A=all, H manager subset, U planner, W technician) |
+| 2026-05-19 | **Phase B — Migration 047** — `tbl_setting` + seed 21 keys (Pepsi theme, locale, feature flags, backup D:, maintenance) |

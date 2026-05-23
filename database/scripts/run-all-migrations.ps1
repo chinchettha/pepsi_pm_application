@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  รัน migration 001–026 ต่อเนื่องบน PostgreSQL (schema app)
+  รัน migration 001–069 ต่อเนื่องบน PostgreSQL (schema app)
 
 .PARAMETER DatabaseUrl
   connection string — ถ้าไม่ระบุ อ่านจาก PM-Pepsi-App/backend/.env (DATABASE_URL)
@@ -11,9 +11,7 @@
   pwsh -File database/scripts/run-all-migrations.ps1 -DatabaseUrl "postgresql://pepsipm:pepsipm@127.0.0.1:5433/pepsi_pm"
 #>
 
-param(
-  [string]$DatabaseUrl = ''
-)
+param([string]$DatabaseUrl = '')
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
@@ -37,52 +35,34 @@ if (-not $DatabaseUrl) {
 
 $psql = Get-Command psql -ErrorAction SilentlyContinue
 if (-not $psql) {
-  Write-Error 'psql not in PATH. Use DBeaver to run files in database/migrations/ in order, or install PostgreSQL client.'
+  $pg11 = 'C:\Program Files\PostgreSQL\11\bin\psql.exe'
+  if (Test-Path $pg11) { $psql = Get-Command $pg11 }
+}
+if (-not $psql) {
+  Write-Error 'psql not in PATH. Use DBeaver to run files in database/migrations/ in order.'
 }
 
-$files = @(
-  '001_init_auth_tables.sql',
-  '002_tbactivitytype.sql',
-  '003_tblineschdul.sql',
-  '004_tbiw37n_calendar.sql',
-  '005_tbwkzb_tbfunctional.sql',
-  '006_tbiw37n_import_batch.sql',
-  '007_tbplangingwork_view_planwork.sql',
-  '008_auth_tbmenu_member.sql',
-  '009_tbreason.sql',
-  '010_tbmanhours.sql',
-  '011_tbdepartment.sql',
-  '012_tbequipment.sql',
-  '013_tbwkstatus_add_wkstreason.sql',
-  '014_tbwkctrtype.sql',
-  '015_tbproductline.sql',
-  '016_tbzone.sql',
-  '017_tbmainteanance.sql',
-  '018_tbmaterial.sql',
-  '019_tbwklevel.sql',
-  '020_tbposition.sql',
-  '021_tbwkctrgroup.sql',
-  '022_tbtasklist.sql',
-  '023_tblineschdul_unique.sql',
-  '024_tbzone_extend.sql',
-  '025_tbmenu_userlog.sql',
-  '026_confirmation_tables.sql',
-  '030_tbiw37n_import_row.sql'
-)
+$files =
+  Get-ChildItem -Path $MigrationsDir -Filter '*.sql' |
+  ForEach-Object {
+    if ($_.Name -match '^(\d{3})_') {
+      [PSCustomObject]@{ Num = [int]$Matches[1]; File = $_ }
+    }
+  } |
+  Sort-Object Num |
+  ForEach-Object { $_.File }
 
-Write-Host "Target: $DatabaseUrl"
-Write-Host "Running $($files.Count) migrations..."
+Write-Host "Target: $($DatabaseUrl -replace ':[^:@]+@', ':***@')"
+Write-Host "Running $($files.Count) migrations (001–069)..."
 
 foreach ($f in $files) {
-  $path = Join-Path $MigrationsDir $f
-  if (-not (Test-Path $path)) {
-    Write-Error "Missing: $path"
-  }
-  Write-Host "  -> $f"
-  & psql $DatabaseUrl -v ON_ERROR_STOP=1 -f $path
+  Write-Host "  -> $($f.Name)"
+  & $psql.Source -d $DatabaseUrl -v ON_ERROR_STOP=1 -f $f.FullName
   if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed: $f (exit $LASTEXITCODE)"
+    Write-Error "Failed: $($f.Name) (exit $LASTEXITCODE)"
   }
 }
 
-Write-Host 'Migrations OK. Next: database/seeds/009 + 010 (see database/seeds/README.md)'
+Write-Host 'Migrations OK. Next:'
+Write-Host '  pwsh -File database/scripts/run-all-seeds.ps1'
+Write-Host '  pwsh -File database/scripts/verify-admin-environment.ps1'

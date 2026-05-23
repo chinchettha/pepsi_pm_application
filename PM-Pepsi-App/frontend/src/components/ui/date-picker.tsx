@@ -41,7 +41,7 @@ export function DatePicker({
           disabled={disabled}
           className={cn(
             'w-40 justify-start text-left font-normal',
-            !value && 'text-zinc-500',
+            !value && 'text-app-muted',
             className,
           )}
         >

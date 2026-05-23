@@ -16,12 +16,20 @@
 
 1. สร้าง role/database สำหรับแอป (ครั้งเดียว) เช่น `pm_dev` และ user `pm_app`  
 2. ตั้งค่า `DATABASE_URL` หรือค่าใน `database.env.example` แล้วโหลดเป็น env  
-3. **แนะนำ:** รันครบ 001–008 + seed 009–010:
+3. **แนะนำ:** รันครบ migration + seed + ตรวจ admin (ลำดับ 14 §0):
 
 ```powershell
-pwsh -File database/scripts/run-all-migrations.ps1
-pwsh -File database/scripts/run-all-seeds.ps1
-psql "postgresql://pepsipm:YOUR_PASSWORD@127.0.0.1:5433/pepsi_pm" -f database/scripts/verify_app_schema.sql
+# ใช้ DATABASE_URL จาก PM-Pepsi-App/backend/.env (DBeaver: 127.0.0.1:5433/pepsi_pm)
+powershell -File database/scripts/run-all-migrations.ps1
+powershell -File database/scripts/run-all-seeds.ps1
+powershell -File database/scripts/verify-admin-environment.ps1
+```
+
+เฉพาะชุด admin (มี 001–043 แล้ว):
+
+```powershell
+powershell -File database/scripts/run-admin-migrations.ps1
+psql "%DATABASE_URL%" -f database/scripts/verify_admin_data_tables.sql
 ```
 
 ติดตั้ง on-site: [`docs/ON-SITE-DATABASE-SETUP.md`](../docs/ON-SITE-DATABASE-SETUP.md)

@@ -241,16 +241,16 @@
 | เสร็จ | `M_equipment_imports.php` | รวมกับ **`M_equipment.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
 | เสร็จ | `M_Export_confirm.php` | **React:** หน้า `/confirmation/export` ([`ConfirmationExportParityPage`](../PM-Pepsi-App/frontend/src/features/parity/SidebarParityPages.tsx)) — preview ตาราง 14 คอลัมน์เทียบ PHP, badge สิทธิ์ ALL (PAC007/PRO005) / OWN (`wkctr` ตนเอง), ปุ่ม `Download Excel` + `รีเฟรช`; API `GET /api/v1/confirmation/export` (JSON) คู่กับ `.xlsx`; ลิงก์เข้าจาก `/confirmation` ปุ่ม `Preview Export` |
 | เสร็จ | `M_Export_confirm_excel.php` | **BE:** migration [`033_view_exportconfirm.sql`](../database/migrations/033_view_exportconfirm.sql) + `GET /api/v1/confirmation/export.xlsx` สร้าง `Export_Confirm.xlsx` ด้วย column เดิม: `Comfirmation`, `Order`, `Operation`, `SubO`, `Ca..`, `Split`, `Wrk Ctr`, `Act.Work`, `unit`, `Start/End date Exe.`, `Start/End Execute`; `PAC007`/`PRO005` export ได้ทุกใบ, user อื่นกรอง `cwkctr = authUser.wkctr` |
-| ยังไม่ทำ | `M_filter_iw37.php` | |
+| เสร็จ | `M_filter_iw37.php` | รวมใน **`/calendar`** ([`CalendarPage`](../PM-Pepsi-App/frontend/src/features/calendar/CalendarPage.tsx)) + **`/work-orders`** — filter-options/search; ไม่พอร์ต include แยก |
 | เสร็จ | `M_functional.php` | **PHP:** `tbfunctional` + Excel import/CRUD — **React/BE:** ใช้ migration [`005_tbwkzb_tbfunctional.sql`](../database/migrations/005_tbwkzb_tbfunctional.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/functional` + `POST /api/v1/master-data/functional/import` + แท็บ `functional` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete + import file, English-first validation+errors; Excel skip 2 rows) |
 | เสร็จ | `M_functional_form.php` | รวมกับ **`M_functional.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
 | เสร็จ | `M_functional_imports.php` | รวมกับ **`M_functional.php`** — modal import file ใน React (file upload เป็นหลัก + CSV paste สำรอง) |
 | เสร็จ | `M_Group.php` | **PHP:** `tbwkctrgroup` CRUD — **React/BE:** migration [`021_tbwkctrgroup.sql`](../database/migrations/021_tbwkctrgroup.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/group` + แท็บ `group` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
 | เสร็จ | `M_group_form.php` | รวมกับ **`M_Group.php`** — modal ฟอร์มใน React: create/edit/delete |
-| ยังไม่ทำ | `M_importConfrim.php` | |
-| กำลังทำ | `M_iw37n.php` | **PHP:** Excel → `tbiw37n` (upsert wkorder+opac) — **React/BE:** [`006_tbiw37n_import_batch.sql`](../database/migrations/006_tbiw37n_import_batch.sql) + [`030_tbiw37n_import_row.sql`](../database/migrations/030_tbiw37n_import_row.sql) + `POST /api/v1/iw37n/import` (multipart; คืน `batch` + `rows[]`; **รองรับ duplicate SHA256**: allow upload แต่ไม่ upsert และลิงก์ไป batch เดิม) + `GET /api/v1/iw37n/batches/:id/rows` + `GET /api/v1/iw37n/batches/:id/export.csv` (export) + [`Iw37nPage`](../PM-Pepsi-App/frontend/src/features/iw37n/Iw37nPage.tsx) (download CSV/XLSX) — **คู่มือคอลัมน์:** ดู [`parity-pending/07-iw37n.md`](parity-pending/07-iw37n.md) (ต้องมี: `wkorder`, `opac`, `operationshorttext`, `equipment`, `functionalloc`) — **เหลือ:** `M_iw37n_imports.php` (ถ้าต้องการ modal แยกเหมือน PHP) |
+| ข้าม | `M_importConfrim.php` | ชื่อผิด (Confrim) — โค้ด = **`M_iw37n`** import `iw37n.xlsx` → **`/iw37n`** + `POST /api/v1/iw37n/import` ([`07-iw37n.md`](parity-pending/07-iw37n.md)); ไม่สับกับ Confirm import (`M_Confirm.php` → `POST /confirmation/import`) |
+| เสร็จ | `M_iw37n.php` | **PHP:** Excel → `tbiw37n` (upsert wkorder+opac) — **React/BE:** [`006_tbiw37n_import_batch.sql`](../database/migrations/006_tbiw37n_import_batch.sql) + [`030_tbiw37n_import_row.sql`](../database/migrations/030_tbiw37n_import_row.sql) + `POST /api/v1/iw37n/import` (multipart; คืน `batch` + `rows[]`; **รองรับ duplicate SHA256**: allow upload แต่ไม่ upsert และลิงก์ไป batch เดิม) + `GET /api/v1/iw37n/batches/:id/rows` + `GET /api/v1/iw37n/batches/:id/export.csv` (export) + [`Iw37nPage`](../PM-Pepsi-App/frontend/src/features/iw37n/Iw37nPage.tsx) (download CSV/XLSX) — **คู่มือคอลัมน์:** ดู [`parity-pending/07-iw37n.md`](parity-pending/07-iw37n.md) (ต้องมี: `wkorder`, `opac`, `operationshorttext`, `equipment`, `functionalloc`) |
 | เสร็จ | `M_iw37n_form.php` | **React/BE:** เพิ่ม list + edit dialog ในหน้า [`Iw37nPage`](../PM-Pepsi-App/frontend/src/features/iw37n/Iw37nPage.tsx) — **API:** `GET /api/v1/iw37n/items`, `GET /api/v1/iw37n/items/:id`, `PUT /api/v1/iw37n/items/:id` (แก้ 1 แถวใน `tbiw37n`, กันคีย์ซ้ำ wkorder+opac) |
-| กำลังทำ | `M_iw37n_imports.php` | รวมกับ **`M_iw37n.php`** — modal upload ใน React |
+| เสร็จ | `M_iw37n_imports.php` | รวมกับ **`M_iw37n.php`** — modal upload ใน React |
 | เสร็จ | `M_level.php` | **PHP:** `tbwklevel` CRUD — **React/BE:** migration [`019_tbwklevel.sql`](../database/migrations/019_tbwklevel.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/level` + แท็บ `level` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
 | เสร็จ | `M_level_form.php` | รวมกับ **`M_level.php`** — modal ฟอร์มใน React: create/edit/delete โหมดเดียวกับ PHP |
 | เสร็จ | `M_lineproduct.php` | **PHP:** `tbproductline` + Excel import/CRUD — **React/BE:** migration [`015_tbproductline.sql`](../database/migrations/015_tbproductline.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/lineproduct` + `POST /api/v1/master-data/lineproduct/import` + แท็บ `lineproduct` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete + import file; Excel skip 2 rows) |
@@ -276,9 +276,9 @@
 | เสร็จ | `M_personel_confirm_form.php` | รวมกับ **`M_personel_confirm.php`** — ปุ่ม Confirm ในตารางเปิด `WorkOrderDetailDialog` ด้วย `initialTab="confirm"` (เทียบ legacy modal 4 แท็บ `confirmTab1/2/3/4.php`); ปิด modal แล้ว refetch รายการอัตโนมัติ — 2026-05-19 |
 | เสร็จ | `M_personel_form.php` | รวมกับ **`M_personel.php`** — modal 4 แท็บใน [`PersonnelAdminPage`](../PM-Pepsi-App/frontend/src/features/personnel/PersonnelAdminPage.tsx) (`personel_form_tab1/2/3` + แท็บรูป WebP); password hash ด้วย bcrypt ถ้าไม่ใช่ bcrypt hash อยู่แล้ว — 2026-05-19 |
 | เสร็จ | `M_personel_imports.php` | Service [`personnel-import.ts`](../PM-Pepsi-App/backend/src/services/personnel-import.ts) + route `POST /api/v1/personnel/admin/import` — skip 2 rows แรก, แปลง พ.ศ. → ค.ศ., lookup `position`/`wkctrgroup`/`wkctrtype`/`wklevel` ตามชื่อ → id (เทียบ `ShowDetail()`), transactional + per-row result; UI แสดงผลทีละแถวใน `PersonnelAdminPage` — 2026-05-19 |
-| ยังไม่ทำ | `M_plan_calendar.php` | |
+| เสร็จ | `M_plan_calendar.php` | **React:** `/plan-calendar` + `GET /api/v1/plan-calendar/events` · login WC → `/plan-calendar` · [`PlanCalendarPage`](../PM-Pepsi-App/frontend/src/features/plan-calendar/PlanCalendarPage.tsx) |
 | เสร็จ | `M_planwork_close.php` | **React:** `/planning` toggle “งานปิดแล้ว” → `GET /api/v1/planning/orders?status=closed` (`syst NOT IN ('CRTD','REL')`) + แสดง `Plan Close` จาก `actfinish`; ปุ่ม `ดูปิดงาน` เปิด [`WorkOrderDetailDialog`](../PM-Pepsi-App/frontend/src/components/scheduling/WorkOrderDetailDialog.tsx) ที่แท็บ Confirm |
-| กำลังทำ | `M_planwork_view.php` | React **`/planning`** + `007_tbplangingwork_view_planwork.sql` + `GET /api/v1/planning/orders?status=open|closed` + Assign dialog (Admin) ใน [`PlanningPage`](../PM-Pepsi-App/frontend/src/features/planning/PlanningPage.tsx) + ปุ่มบันทึก/ดูปิดงานเปิด `WorkOrderDetailDialog` Confirm tab + เลข WO ลิงก์ `/work-orders/:id`; data visibility ต้อง map `tbiw37n.wkctr`/`tbplangingwork.wkctr` → `tbworkcenter.idwkctr` ของ user login (มี query ตรวจใน [`verify_app_schema.sql`](../database/scripts/verify_app_schema.sql)); เหลือทดสอบบนข้อมูลจริงครบทุกสถานะ |
+| เสร็จ (แกน) | `M_planwork_view.php` | React **`/planning`** + `007_tbplangingwork_view_planwork.sql` + `GET /api/v1/planning/orders?status=open|closed` + Assign dialog (Admin) ใน [`PlanningPage`](../PM-Pepsi-App/frontend/src/features/planning/PlanningPage.tsx) + ปุ่มบันทึก/ดูปิดงานเปิด `WorkOrderDetailDialog` Confirm tab + เลข WO ลิงก์ `/work-orders/:id`; data visibility ต้อง map `tbiw37n.wkctr`/`tbplangingwork.wkctr` → `tbworkcenter.idwkctr` ของ user login (มี query ตรวจใน [`verify_app_schema.sql`](../database/scripts/verify_app_schema.sql)); เหลือทดสอบบนข้อมูลจริงครบทุกสถานะ |
 | เสร็จ | `M_planwork_view_form.php` | **แกนเสร็จ:** Assign dialog ใน [`PlanningPage`](../PM-Pepsi-App/frontend/src/features/planning/PlanningPage.tsx) — เลือก WC ปลายทาง (`fetchWorkcenters`) / Team `P`/`G` / `pwcomment` + shortcut “จ่ายให้ฉัน” → **API:** `POST /api/v1/planning/assign` ใน [`routes/planning.ts`](../PM-Pepsi-App/backend/src/routes/planning.ts) (Admin-only 403, zod 400, 404 ถ้าไม่อยู่ใน CRTD/REL, 503 ถ้ายังไม่รัน `007_*`) + service [`assignPlanningWork`](../PM-Pepsi-App/backend/src/services/planning.ts) upsert `tbplangingwork` ตาม `idiw37`; 4 tabs ฟอร์มเดิมรวมกับ `WorkOrderDetailDialog` (§5 `plan_confirmTab*`) |
 | เสร็จ | `M_planwork_view_form_close.php` | **React:** `WorkOrderDetailDialog` รองรับ `initialTab="confirm"` จาก `/planning` — เทียบ close form: Close Work (`POST/DELETE /api/v1/confirmation/...close`), Close Detail comments, Close Images upload/list/delete/view |
 | เสร็จ | `M_position.php` | **PHP:** `tbposition` CRUD — **React/BE:** migration [`020_tbposition.sql`](../database/migrations/020_tbposition.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/position` + แท็บ `position` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (modal create/edit/delete, English-first validation+errors) |
@@ -298,89 +298,89 @@
 | เสร็จ | `M_zone.php` | **Dependency สำหรับ Machine:** migration [`016_tbzone.sql`](../database/migrations/016_tbzone.sql) + `GET/POST/PUT/DELETE /api/v1/master-data/zone` + แท็บ `zone` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) |
 | เสร็จ | `M_zone_form.php` | รวมกับ **`M_zone.php`** — modal ฟอร์มใน React: create/edit/delete |
 | เสร็จ | `M_zone_imports.php` | **PHP:** Excel import `tbzone` (skip 2 rows; map `productline` → `idproductline`) — **React/BE:** migration [`016_tbzone.sql`](../database/migrations/016_tbzone.sql) + extend [`024_tbzone_extend.sql`](../database/migrations/024_tbzone_extend.sql) + `POST /api/v1/master-data/zone/import` + แท็บ `zone` ใน [`MasterDataPage`](../PM-Pepsi-App/frontend/src/features/master-data/MasterDataPage.tsx) (import file รองรับ CSV/Excel + skip 2 rows; เพิ่มฟิลด์ `zonedescrip` + `idproductline`) |
-| ยังไม่ทำ | `member.php` | |
-| ยังไม่ทำ | `member_change_password.php` | |
-| ยังไม่ทำ | `member_change_password_process.php` | |
-| ยังไม่ทำ | `member_chk_password.php` | |
-| ยังไม่ทำ | `member_edit.php` | |
-| ยังไม่ทำ | `member_export.php` | |
-| ยังไม่ทำ | `member_form.php` | |
-| ยังไม่ทำ | `member_import.php` | |
-| ยังไม่ทำ | `member_import_process.php` | |
-| ยังไม่ทำ | `navbar.php` | shell |
-| ยังไม่ทำ | `password.php` | |
-| ยังไม่ทำ | `personel_form_tab1.php` | |
-| ยังไม่ทำ | `personel_form_tab2.php` | |
-| ยังไม่ทำ | `personel_form_tab3.php` | |
-| ยังไม่ทำ | `register.php` | |
-| ยังไม่ทำ | `Scheduing.php` | |
-| ยังไม่ทำ | `select_equipment.php` | |
-| ยังไม่ทำ | `selectMunti.php` | |
-| ยังไม่ทำ | `show_form.php` | |
-| ยังไม่ทำ | `slectall.php` | |
-| ยังไม่ทำ | `tables.php` | |
-| ยังไม่ทำ | `tabs.php` | |
-| ยังไม่ทำ | `tb_confirm.php` | |
-| ยังไม่ทำ | `tb_equipment.php` | |
-| ยังไม่ทำ | `tb_equipment_delete.php` | |
-| ยังไม่ทำ | `tb_equipment_export.php` | |
-| ยังไม่ทำ | `tb_equipment_exports.php` | |
-| ยังไม่ทำ | `tb_equipment_form.php` | |
-| ยังไม่ทำ | `tb_equipment_form_process.php` | |
-| ยังไม่ทำ | `tb_equipment_import.php` | |
-| ยังไม่ทำ | `tb_equipment_import_process.php` | |
-| ยังไม่ทำ | `tb_equipment_imports.php` | |
-| ยังไม่ทำ | `tb_equipment_imports_process.php` | |
-| ยังไม่ทำ | `tb_equipment-bk.php` | สำรอง |
-| ยังไม่ทำ | `tb_functional.php` | |
-| ยังไม่ทำ | `tb_functional_delete.php` | |
-| ยังไม่ทำ | `tb_functional_form.php` | |
-| ยังไม่ทำ | `tb_ip19.php` | |
-| ยังไม่ทำ | `tb_ip19_form.php` | |
-| ยังไม่ทำ | `tb_iw37n.php` | |
-| ยังไม่ทำ | `tb_iw37n_form.php` | |
-| ยังไม่ทำ | `tb_machine.php` | |
-| ยังไม่ทำ | `tb_machine_form.php` | |
-| ยังไม่ทำ | `tb_manhour_imports.php` | |
-| ยังไม่ทำ | `tb_mc_work.php` | |
-| ยังไม่ทำ | `tb_mc_work_form.php` | |
-| ยังไม่ทำ | `tb_mntplan.php` | |
-| ยังไม่ทำ | `tb_mntplan_form.php` | |
-| ยังไม่ทำ | `tb_striped_product.php` | |
-| ยังไม่ทำ | `tb_striped_product_form.php` | |
-| ยังไม่ทำ | `tb_workcentre.php` | |
-| ยังไม่ทำ | `tb_workcentre_form.php` | |
-| ยังไม่ทำ | `tb_workcentretype.php` | |
-| ยังไม่ทำ | `tb_workcentretype_form.php` | |
-| ยังไม่ทำ | `tb_zone.php` | |
-| ยังไม่ทำ | `tb_zone_form.php` | |
-| ยังไม่ทำ | `tbdepartment.php` | |
-| ยังไม่ทำ | `tbdepartment_form.php` | |
-| ยังไม่ทำ | `tbposition.php` | |
-| ยังไม่ทำ | `tbposition_form.php` | |
-| ยังไม่ทำ | `tbwkctrgroup.php` | |
-| ยังไม่ทำ | `tbwkctrgroup_form.php` | |
-| ยังไม่ทำ | `tbwkctrtype.php` | |
-| ยังไม่ทำ | `tbwkctrtype_form.php` | |
-| ยังไม่ทำ | `test_date.php` | ทดสอบ |
-| ยังไม่ทำ | `test_date3.php` | ทดสอบ |
-| ยังไม่ทำ | `Test_fileinput.php` | ทดสอบ |
-| ยังไม่ทำ | `user.php` | |
-| ยังไม่ทำ | `user_form.php` | |
-| ยังไม่ทำ | `user_form_tab1.php` | |
-| ยังไม่ทำ | `user_form_tab2.php` | |
-| ยังไม่ทำ | `user_form_tab4.php` | |
-| ยังไม่ทำ | `user_form-bk.php` | สำรอง |
-| ยังไม่ทำ | `user_profile.php` | |
-| ยังไม่ทำ | `view_confirm.php` | |
-| ยังไม่ทำ | `view_planwork.php` | |
-| ยังไม่ทำ | `W_add_image.php` | |
-| ยังไม่ทำ | `W_add_image_upload.php` | |
-| ยังไม่ทำ | `W_calc_birthday.php` | |
-| ยังไม่ทำ | `W_calc_birthday_worktime.php` | |
-| ยังไม่ทำ | `W_calc_worktime.php` | |
-| ยังไม่ทำ | `W_calendar.php` | |
-| ยังไม่ทำ | `W_calendar_wkctr.php` | |
+| ข้าม | `member.php` | Legacy `pages/member*` → **`/personnel`**, **`/admin/users`** (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 2026-05-21) |
+| เสร็จ | `member_change_password.php` | `/settings` → โปรไฟล์ + [`ChangePasswordForm`](../../PM-Pepsi-App/frontend/src/features/settings/ChangePasswordForm.tsx) |
+| เสร็จ | `member_change_password_process.php` | `POST /api/v1/auth/change-password` (WC + member) |
+| ข้าม | `member_chk_password.php` | Legacy `pages/member*` → **`/personnel`**, **`/admin/users`** (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 2026-05-21) |
+| ข้าม | `member_edit.php` | Legacy `pages/member*` → **`/personnel`**, **`/admin/users`** (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 2026-05-21) |
+| ข้าม | `member_export.php` | Legacy `pages/member*` → **`/personnel`**, **`/admin/users`** (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 2026-05-21) |
+| ข้าม | `member_form.php` | Legacy `pages/member*` → **`/personnel`**, **`/admin/users`** (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 2026-05-21) |
+| ข้าม | `member_import.php` | Legacy `pages/member*` → **`/personnel`**, **`/admin/users`** (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 2026-05-21) |
+| ข้าม | `member_import_process.php` | Legacy `pages/member*` → **`/personnel`**, **`/admin/users`** (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 2026-05-21) |
+| ข้าม | `navbar.php` | **React:** `AppShell` / `AppNavShell` — ไม่พอร์ตไฟล์แยก |
+| ข้าม | `password.php` | SB Admin template (`password.html` / `password.pug`) — ฟอร์ม email + ปุ่มลิงก์ `login.html` ไม่มี backend; ไม่ถูกเรียกจากเมนู production (`login.php` คอมเมนต์ Forgot Password) — **ไม่พอร์ต**; เปลี่ยนรหัสจริง → `member_change_password.php` → **`/settings`** |
+| ข้าม | `personel_form_tab1.php` | รวมใน **`/personnel`** + `M_personel*` (ไม่พอร์ต `pages/personel_*` แยก — ขั้นที่ 1 2026-05-21) |
+| ข้าม | `personel_form_tab2.php` | รวมใน **`/personnel`** + `M_personel*` (ไม่พอร์ต `pages/personel_*` แยก — ขั้นที่ 1 2026-05-21) |
+| ข้าม | `personel_form_tab3.php` | รวมใน **`/personnel`** + `M_personel*` (ไม่พอร์ต `pages/personel_*` แยก — ขั้นที่ 1 2026-05-21) |
+| ข้าม | `register.php` | ไม่ใช่ flow production |
+| ข้าม | `Scheduing.php` | สะกดผิด/ไม่ใช้เมนูหลัก |
+| ข้าม | `select_equipment.php` | UI helper เก่า — ไม่พอร์ต (ฟิลเตอร์ equipment อยู่ใน `/calendar`, `/work-orders`) |
+| ข้าม | `selectMunti.php` | typo / multi-select demo — ไม่พอร์ต |
+| ข้าม | `show_form.php` | template form — ไม่พอร์ต |
+| ข้าม | `slectall.php` | typo / select-all helper — ไม่พอร์ต |
+| ข้าม | `tables.php` | demo tables — ไม่พอร์ต |
+| ข้าม | `tabs.php` | demo tabs — ไม่พอร์ต |
+| ข้าม | `tb_confirm.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment_delete.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment_export.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment_exports.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment_form_process.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment_import.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment_import_process.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment_imports.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment_imports_process.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_equipment-bk.php` | สำรอง — Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_functional.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_functional_delete.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_functional_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_ip19.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_ip19_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_iw37n.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_iw37n_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_machine.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_machine_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_manhour_imports.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_mc_work.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_mc_work_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_mntplan.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_mntplan_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_striped_product.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_striped_product_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_workcentre.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_workcentre_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_workcentretype.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_workcentretype_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_zone.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tb_zone_form.php` | Legacy `pages/tb_*` → **`/master-data`** + `M_*` API (ไม่พอร์ตไฟล์แยก — ขั้นที่ 1 เอกสาร 2026-05-21) |
+| ข้าม | `tbdepartment.php` | Legacy `pages/tb_*` → แท็บ **department** ใน **`/master-data`** (`M_department`) |
+| ข้าม | `tbdepartment_form.php` | รวมใน **`/master-data`** |
+| ข้าม | `tbposition.php` | แท็บ **position** ใน **`/master-data`** (`M_position`) |
+| ข้าม | `tbposition_form.php` | รวมใน **`/master-data`** |
+| ข้าม | `tbwkctrgroup.php` | แท็บ **group** ใน **`/master-data`** (`M_wkctrgroup`) |
+| ข้าม | `tbwkctrgroup_form.php` | รวมใน **`/master-data`** |
+| ข้าม | `tbwkctrtype.php` | แท็บ **work type** ใน **`/master-data`** (`M_wkctrtype`) |
+| ข้าม | `tbwkctrtype_form.php` | รวมใน **`/master-data`** |
+| ข้าม | `test_date.php` | ทดสอบ — ไม่พอร์ต |
+| ข้าม | `test_date3.php` | ทดสอบ — ไม่พอร์ต |
+| ข้าม | `Test_fileinput.php` | ทดสอบ — ไม่พอร์ต |
+| ข้าม | `user.php` | Legacy profile tabs → **`/settings`** (เทียบ `PLAN.md` P2) |
+| ข้าม | `user_form.php` | รวมใน **`/settings`** |
+| ข้าม | `user_form_tab1.php` | รวมใน **`/settings`** |
+| ข้าม | `user_form_tab2.php` | รวมใน **`/settings`** |
+| ข้าม | `user_form_tab4.php` | รวมใน **`/settings`** |
+| ข้าม | `user_form-bk.php` | สำรอง — ไม่พอร์ต |
+| ข้าม | `user_profile.php` | รวมใน **`/settings`** |
+| ข้าม | `view_confirm.php` | นิยาม SQL view — ข้อมูลผ่าน API (`view_confirmation`, `/confirmation`, `/personnel`) |
+| ข้าม | `view_planwork.php` | นิยาม SQL view — ข้อมูลผ่าน API (`view_planwork`, `/planning`, `/plan-calendar`) |
+| ข้าม | `W_add_image.php` | รวมใน Confirm images (`WorkOrderDetailDialog` + `POST confirmation/.../images`) |
+| ข้าม | `W_add_image_upload.php` | รวมใน Confirm images upload handler |
+| ข้าม | `W_calc_birthday.php` | calc helper เก่า — ไม่พอร์ต |
+| ข้าม | `W_calc_birthday_worktime.php` | รวมใน **`/worktime`** / manhour calc |
+| ข้าม | `W_calc_worktime.php` | รวมใน **`/worktime`** |
+| ข้าม | `W_calendar.php` | Worker FullCalendar ซ้ำ → **`/plan-calendar`** + **`/calendar`** + dialog |
+| ข้าม | `W_calendar_wkctr.php` | Worker calendar ตาม `wkctr` → **`/calendar/wc/:code`** + dialog |
 | เสร็จ | `W_confirm_form.php` | **React:** แท็บ `Confirm` ใน `WorkOrderDetailDialog` รวม 3 แท็บ (Close Images/Close Detail/Close Work) |
 | เสร็จ | `W_confirm_formcom.php` | **React:** Close Detail (comment) — API: `GET/POST/PUT/DELETE /api/v1/confirmation/...comments...` (migration `029_confirmation_comments_images.sql`) |
 | เสร็จ | `W_confirm_formcom_edit.php` | **React:** edit comment ใน Close Detail |
@@ -398,13 +398,13 @@
 | เสร็จ (แกน) | `W_summary_weekly_chart_full.php` | **React:** `/summary-weekly/chart/full?variant=chart` |
 | เสร็จ (แกน) | `W_summary_weekly_chart2.php` | **React:** bar chart ใน `/summary-weekly` |
 | เสร็จ (แกน) | `W_summary_weekly_chart2_full.php` | **React:** `/summary-weekly/chart/full?variant=chart2` |
-| ยังไม่ทำ | `W_worktime_count.php` | |
+| ข้าม | `W_worktime_count.php` | เนื้อหาเดียวกับ `worktime_count.php` (ไฟล์ซ้ำ) — ไม่พอร์ตแยก |
 | เสร็จ | `W_worktime_view.php` | **React:** `/worktime` แท็บ "มอบหมายงาน" — `GET /api/v1/worktime/planning` (tbplangingwork + tbiw37n) |
 | เสร็จ | `Work_Order_Status.php` | **React:** `/work-orders` แสดงตาราง status จาก `app.tbwkstatus` (syst/wkstreason/wkstcolor) |
 | เสร็จ | `workorder.php` | **React:** `/work-orders` ฟิลเตอร์แบบ `M_filter_iw37` + ตารางรายการจาก `app.view_order` + เลือก Team A/B/P ต่อแถว (API: `GET /api/v1/work-orders/filter-options`, `POST /api/v1/work-orders/search`, `PUT /api/v1/work-orders/:id/team`) |
-| ยังไม่ทำ | `worktime_count.php` | |
+| ข้าม | `worktime_count.php` | fragment — `SUM(wh+ot1+ot15+ot1hol+ot2+ot3)` จาก `tbmanhours` ตาม `idwkctr`; เคย `include` ใน `navbar.php` → แทนด้วย `getWorktimeTotal` → `worktimeTotalHours` ใน `GET /auth/me` + `worktime` ใน `GET /personnel/me/dashboard` |
 | เสร็จ | `worktime_manhours.php` | **React:** `/worktime` — `GET /api/v1/worktime/me` รายวัน + สรุปชั่วโมง — §3 แกน 2026-05-19 |
-| ยังไม่ทำ | `worktime_view.php` | |
+| ข้าม | `worktime_view.php` | ร่าง/ซ้ำ `W_worktime_view` (join `tbplangingwork`+`view_workcenter` แต่แสดงฟิลด์ `tbiw37n` ผิด) — ไม่มีเมนู `module=worktime_view`; production = **`W_worktime_view`** → **`/worktime`** |
 
 ---
 
@@ -412,22 +412,22 @@
 
 | สถานะ | ไฟล์ PHP | หมายเหตุ |
 |--------|----------|---------|
-| ยังไม่ทำ | `AddClose.php` | |
-| ยังไม่ทำ | `AddClosePersonel.php` | |
-| ยังไม่ทำ | `AddPlan.php` | |
-| ยังไม่ทำ | `AddTeam.php` | |
+| เสร็จ | `AddClose.php` | `WorkOrderDetailDialog` แท็บ Confirm → Close Work + `POST /api/v1/confirmation/:idiw37/close` |
+| เสร็จ | `AddClosePersonel.php` | แท็บ Personnel Close + `POST/DELETE /api/v1/confirmation/.../personnel-close` (`073_tbwrkclose.sql`) |
+| เสร็จ (แกน) | `AddPlan.php` | **React:** `POST /api/v1/planning/assign` + `PUT/DELETE /api/v1/work-orders/:id/planning` |
+| เสร็จ | `AddTeam.php` | **React:** `PUT /api/v1/work-orders/:id/team` — ตาราง [`/work-orders`](../../PM-Pepsi-App/frontend/src/features/work-orders/WorkOrdersPage.tsx) (radio A/B/P) + แท็บ Work Order ใน [`WorkOrderDetailDialog`](../../PM-Pepsi-App/frontend/src/components/scheduling/WorkOrderDetailDialog.tsx) (เทียบ `workorder.php` → `AddTeam.php`) |
 | เสร็จ | `autocomplete.php` | **React/BE:** แทนด้วย [`WorkOrderAutocomplete`](../PM-Pepsi-App/frontend/src/components/scheduling/WorkOrderAutocomplete.tsx) ใน `/confirmation` เรียก `GET /api/v1/work-orders/suggestions?q=` (จำกัด 50 แถวจาก `view_order`, แสดง `wkorder` / `wktype` / `operationshorttext`) |
-| ยังไม่ทำ | `ChackStatus.php` | |
+| เสร็จ | `ChackStatus.php` | **React:** [`WorkOrderWorkflowSteps`](../PM-Pepsi-App/frontend/src/components/scheduling/WorkOrderWorkflowSteps.tsx) ใน `WorkOrderDetailDialog` + suffix ใน title ปฏิทิน (`/calendar`, `/backlog`, `/plan-calendar`) — **API:** `workflow` ใน `GET /api/v1/work-orders/:id` + [`work-order-workflow.ts`](../PM-Pepsi-App/backend/src/services/work-order-workflow.ts) |
 | เสร็จ | `confirmTab1.php` | รวมใน [`ConfirmationParityPage`](../PM-Pepsi-App/frontend/src/features/parity/SidebarParityPages.tsx) แท็บ Work Order + Tasklist — แสดง WO detail จาก `GET /api/v1/work-orders/:id` และ PM Task List จาก `GET /api/v1/work-orders/:id/modal-detail` (`taskList.summary/items`) เทียบ `view_tarklist` |
 | เสร็จ | `confirmTab2.php` | รวมใน [`ConfirmationParityPage`](../PM-Pepsi-App/frontend/src/features/parity/SidebarParityPages.tsx) แท็บ Confirmation — เพิ่ม/ลบช่าง+เวลา ผ่าน `POST /api/v1/confirmation/:idiw37/close`, `GET /api/v1/confirmation/by-wkorder/:wkorder`, `DELETE /api/v1/confirmation/close/:idclose` |
 | เสร็จ | `confirmTab3.php` | รวมใน [`ConfirmationParityPage`](../PM-Pepsi-App/frontend/src/features/parity/SidebarParityPages.tsx) แท็บ Images — JPEG upload/list/preview/delete ผ่าน `confirmation/images*` API + `tbconfirmimg` จาก migration `029_confirmation_comments_images.sql` |
 | เสร็จ | `confirmTab4.php` | รวมใน [`ConfirmationParityPage`](../PM-Pepsi-App/frontend/src/features/parity/SidebarParityPages.tsx) แท็บ Planning — แสดงผู้รับผิดชอบจาก `GET /api/v1/work-orders/:id/modal-detail` (`planning.assigned`) เทียบ `view_planwork`; Admin assign/delete ผ่าน `PUT/DELETE /api/v1/work-orders/:id/planning` |
 | เสร็จ | `FilterDetail.php` | **React:** `/backlog` แสดง “สรุปตัวกรอง” (WorkOrder + breakdown ตาม `tbwkzb` + completion + Team A/B/P + sum(work)) — **API:** `POST /api/v1/backlog/filter-detail` |
-| ยังไม่ทำ | `FilterDetail_AddTeam.php` | |
+| เสร็จ | `FilterDetail_AddTeam.php` | **React:** Team A/B/P count + Work (Min) — [`/backlog`](../../PM-Pepsi-App/frontend/src/features/backlog/BacklogPage.tsx) `POST /api/v1/backlog/filter-detail` + [`/work-orders`](../../PM-Pepsi-App/frontend/src/features/work-orders/WorkOrdersPage.tsx) `POST /api/v1/work-orders/filter-detail` · [`FilterDetailSummary`](../../PM-Pepsi-App/frontend/src/components/scheduling/FilterDetailSummary.tsx) |
 | เสร็จ | `ModalMHshow.php` | **React:** `/backlog` manhour dialog (เลือกช่วงวันจาก FullCalendar / DatePicker) → **API:** `POST /api/v1/backlog/manhour-summary` (รวม plan/action, breakdown ตาม `tbwkzb`, completion, ตารางรายการจาก `view_order`) |
 | เสร็จ | `ModalOrderDetail.php` | **React:** `WorkOrderDetailDialog` (แท็บ Work Order / Task List / Machine / Planning / Material / Confirm) — **API:** `GET /api/v1/work-orders/:id/modal-detail` + **Planning:** `PUT/DELETE /api/v1/work-orders/:id/planning` |
-| ยังไม่ทำ | `ModalOrderDetailXXX.php` | |
-| ยังไม่ทำ | `MovePlant.php` | |
+| ข้าม | `ModalOrderDetailXXX.php` | ไม่ใช้ production — ใช้ `ModalOrderDetail.php` → `WorkOrderDetailDialog` |
+| เสร็จ | `MovePlant.php` | **React:** [`MovePlanDialog`](../PM-Pepsi-App/frontend/src/components/scheduling/MovePlanDialog.tsx) ใน `/calendar`, `/backlog`, `WorkOrderDetailDialog` — `POST /api/v1/scheduling/move-plan` |
 | เสร็จ | `plan_confirmTab1.php` | รวมใน `WorkOrderDetailDialog` แท็บ Work Order / Task List — แสดง WO detail + task list จาก `GET /api/v1/work-orders/:id` และ `GET /api/v1/work-orders/:id/modal-detail` |
 | เสร็จ | `plan_confirmTab1_close.php` | รวมใน `WorkOrderDetailDialog` แท็บ Work Order / Task List สำหรับ flow ปิดงาน |
 | เสร็จ | `plan_confirmTab2.php` | รวมใน `WorkOrderDetailDialog` แท็บ Confirm → Close Work — `POST /api/v1/confirmation/:idiw37/close` + `GET /api/v1/confirmation/by-wkorder/:wkorder` |
@@ -437,18 +437,31 @@
 | เสร็จ | `plan_ShowClose_close.php` | รวมใน `WorkOrderDetailDialog` แท็บ Confirm → Close Work list (`confirmation/by-wkorder`) |
 | เสร็จ | `plan_ShowImgUpload_close.php` | รวมใน `WorkOrderDetailDialog` แท็บ Confirm → Close Images list/view (`confirmation/images*`) |
 | เสร็จ | `plan_submit_upload_file.php` | แทนด้วย `POST /api/v1/confirmation/:idiw37/images`, `DELETE /api/v1/confirmation/images/:idcimg`, `GET /api/v1/confirmation/images/:idcimg/data` |
-| ยังไม่ทำ | `ShowClose.php` | |
-| ยังไม่ทำ | `ShowImgUpload.php` | |
-| ยังไม่ทำ | `ShowPlan.php` | |
+| เสร็จ | `ShowClose.php` | fragment ใน `confirmTab2.php` → [`WorkOrderDetailDialog`](../PM-Pepsi-App/frontend/src/components/scheduling/WorkOrderDetailDialog.tsx) แท็บ Confirm → Close Work (`GET /api/v1/confirmation/by-wkorder/:wkorder`, `DELETE .../close/:idclose`) |
+| เสร็จ | `ShowImgUpload.php` | fragment ใน `confirmTab3.php` → แท็บ Confirm → Images (`POST/GET/DELETE confirmation/images*`) — เทียบ `plan_ShowImgUpload_close` |
+| เสร็จ | `ShowPlan.php` | `WorkOrderDetailDialog` แท็บ Planning — ตารางผู้รับผิดชอบรายบุคคล (wkctr, ชื่อ, กลุ่มงาน, ตำแหน่ง) |
 | เสร็จ | `ShowPlan_Close.php` | รวมใน `WorkOrderDetailDialog` แท็บ Planning — แสดงผู้รับผิดชอบจาก `tbplangingwork` ผ่าน `work-orders/:id/modal-detail` |
-| ยังไม่ทำ | `ShowPlanGroup.php` | |
-| ยังไม่ทำ | `ShowWorkClose.php` | |
-| ยังไม่ทำ | `submit_upload_file.php` | |
-| ยังไม่ทำ | `TabMachine.php` | |
-| ยังไม่ทำ | `TabMaterial.php` | |
-| ยังไม่ทำ | `TabPlanning.php` | |
-| ยังไม่ทำ | `TabTarkList.php` | |
-| ยังไม่ทำ | `TabWorkOrder.php` | |
+| เสร็จ | `ShowPlanGroup.php` | ตารางผู้รับผิดชอบรายกลุ่ม (`pwteam=G`) ในแท็บ Planning เดียวกัน |
+| เสร็จ | `ShowWorkClose.php` | รายการใน Confirm → Personnel Close (`view_personelclose`) |
+| เสร็จ | `submit_upload_file.php` | รวมใน `confirmTab3` + `POST /api/v1/confirmation/:idiw37/images` (เทียบ `plan_submit_upload_file.php`) |
+| เสร็จ | `TabMachine.php` | รวมใน `WorkOrderDetailDialog` |
+| เสร็จ | `TabMaterial.php` | รวมใน `WorkOrderDetailDialog` |
+| เสร็จ | `TabPlanning.php` | รวมใน `WorkOrderDetailDialog` |
+| เสร็จ | `TabTarkList.php` | รวมใน `WorkOrderDetailDialog` |
+| เสร็จ | `TabWorkOrder.php` | รวมใน `WorkOrderDetailDialog` |
+
+### 5.1) utility §5 — `sap/pages/` helper (ข้ามทั้งกลุ่ม)
+
+ไฟล์เหล่านี้อยู่ **`pages/`** ไม่ใช่ `modalPages/` — ไม่พอร์ต route แยก; ฟังก์ชันรวมใน route หลักแล้ว (ดูตารางขยายใน [`parity-pending/PLAN.md`](parity-pending/PLAN.md) §4 P1)
+
+| สถานะ | กลุ่ม | ไฟล์ | React แทน |
+|--------|--------|------|-----------|
+| ข้าม | UI helper | `select_equipment`, `selectMunti`, `show_form`, `slectall`, `tables`, `tabs` | `/calendar`, `/work-orders`, Shadcn |
+| ข้าม | SQL view | `view_confirm`, `view_planwork` | API ใช้ `view_confirmation` / `view_planwork` |
+| ข้าม | รูป | `W_add_image`, `W_add_image_upload` | Confirm images ใน `WorkOrderDetailDialog` |
+| ข้าม | calc | `W_calc_birthday*`, `W_calc_worktime` | `/worktime`, `/manhours`, personnel |
+| ข้าม | โปรไฟล์ | `user*`, `user_profile` | `/settings` |
+| ข้าม | worktime | `worktime_view`, `worktime_count`, `W_worktime_count` | `/worktime`, personnel dashboard |
 
 ---
 
@@ -459,8 +472,9 @@
 | `sap/pages/*.php` | 204 |
 | `sap/modalPages/*.php` | 37 |
 | **รวมรายการใน checklist** | 241 |
+| **ยังไม่ทำ (§4+§5)** | **0** — กลุ่ม D ข้ามครบ; P1–P3 เสร็จ/ข้าม; เหลือ **UAT ขั้น 5** + track **E** (deploy) |
 
-เมื่อทำงานจริง อาจลดจำนวนแถวโดยรวม `_form` + list หลักเป็น “ชุดเดียว” แต่ **ต้องระบุในหมายเหตุ** ว่ารวมแล้ว
+เมื่อทำงานจริง อาจลดจำนวนแถวโดยรวม `_form` + list หลักเป็น “ชุดเดียว” แต่ **ต้องระบุในหมายเหตุ** ว่ารวมแล้ว — **ขั้นที่ 1 (2026-05-21):** มาร์ก `tb_*`, `member*`, `M_iw37n*`, `M_planwork_view`, `M_filter_iw37`, modal แกนหลัก → **เสร็จ/ข้าม**
 
 ---
 
@@ -468,6 +482,8 @@
 
 | วันที่ | ผู้แก้ | สรุป |
 |--------|--------|------|
+| 2026-05-21 | — | **ขั้นที่ 3.1 `ChackStatus`** — workflow 4 ขั้น (Team/Assign/Worktime/Confirm) ใน `WorkOrderDetailDialog` + suffix ปฏิทิน |
+| 2026-05-21 | — | **ขั้นที่ 1 เอกสาร** — §4: `M_iw37n*`, `M_planwork_view`, `M_filter_iw37`, `M_plan_calendar` → เสร็จ; legacy `pages/tb_*`, `member*`, `personel_*` → ข้าม (`/master-data`, `/personnel`); §5: `MovePlant`, `confirmTab*`, `plan_confirmTab*`, `Modal*` แกน → เสร็จ; ซิงค์ [`COMPLETION-MATRIX`](parity-pending/COMPLETION-MATRIX.md) ลำดับ 7–8 |
 | 2026-05-16 | — | สร้างเอกสารครั้งแรก — เติมรายการครบจาก `sap/pages` และ `sap/modalPages` |
 | 2026-05-16 | — | `aa.php` — วิเคราะห์แล้ว: stub ว่าง → สถานะ **ข้าม** (ไม่พอร์ต) |
 | 2026-05-16 | — | `pages/autocomplete.php` — ตัวอย่าง/ทดลอง → **ข้าม**; `modalPages/autocomplete.php` — endpoint ค้น work order → พอร์ตแล้วใน `/confirmation` ด้วย `WorkOrderAutocomplete` + `GET /api/v1/work-orders/suggestions` เมื่อ 2026-05-19 |
