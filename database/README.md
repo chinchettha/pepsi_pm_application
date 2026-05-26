@@ -32,7 +32,8 @@ powershell -File database/scripts/run-admin-migrations.ps1
 psql "%DATABASE_URL%" -f database/scripts/verify_admin_data_tables.sql
 ```
 
-ติดตั้ง on-site: [`docs/ON-SITE-DATABASE-SETUP.md`](../docs/ON-SITE-DATABASE-SETUP.md)
+ติดตั้ง on-site: [`docs/ON-SITE-DATABASE-SETUP.md`](../docs/ON-SITE-DATABASE-SETUP.md)  
+ย้ายเครื่องใหม่ / restore backup: [`docs/SETUP-NEW-MACHINE.md`](../docs/SETUP-NEW-MACHINE.md)
 
 4. หรือรัน migration ทีละไฟล์ (แทนที่ **host**, **พอร์ต**, **user**, **database**, **รหัส** ให้ตรงกับ instance ของคุณ):
 

@@ -53,7 +53,8 @@ $files =
   ForEach-Object { $_.File }
 
 Write-Host "Target: $($DatabaseUrl -replace ':[^:@]+@', ':***@')"
-Write-Host "Running $($files.Count) migrations (001–069)..."
+$lastNum = ($files | ForEach-Object { if ($_.Name -match '^(\d{3})_') { [int]$Matches[1] } } | Measure-Object -Maximum).Maximum
+Write-Host "Running $($files.Count) migrations (001–$('{0:000}' -f $lastNum))..."
 
 foreach ($f in $files) {
   Write-Host "  -> $($f.Name)"

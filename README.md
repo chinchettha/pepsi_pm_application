@@ -15,7 +15,7 @@ Migration ระบบวางแผน PM/CM จาก PHP (`sap/`) เป็�
 
 ## เริ่มต้น (dev)
 
-1. PostgreSQL — รัน migration `001`–`010` และ seed `009`–`011` (ดู `database/seeds/README.md`)
+1. PostgreSQL — รัน migration + seed (ดู [`docs/SETUP-NEW-MACHINE.md`](docs/SETUP-NEW-MACHINE.md))
 2. Backend — คัดลอก `PM-Pepsi-App/backend/.env.example` → `.env` แล้ว `npm install && npm run dev`
 3. Frontend — คัดลอก `PM-Pepsi-App/frontend/.env.example` → `.env` แล้ว `npm install && npm run dev`
 
@@ -23,5 +23,6 @@ Migration ระบบวางแผน PM/CM จาก PHP (`sap/`) เป็�
 
 ## เอกสาร
 
+- **[`docs/SETUP-NEW-MACHINE.md`](docs/SETUP-NEW-MACHINE.md)** — ติดตั้งเครื่องใหม่ / ย้าย PostgreSQL / backend / frontend
 - [`docs/PHP-REACT-PARITY-CHECKLIST.md`](docs/PHP-REACT-PARITY-CHECKLIST.md)
 - [`docs/ON-SITE-DATABASE-SETUP.md`](docs/ON-SITE-DATABASE-SETUP.md)

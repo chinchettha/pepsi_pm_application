@@ -6,6 +6,7 @@
 |--------|---------|
 | [**MEETING-MINUTES.md**](MEETING-MINUTES.md) | **รายงานประชุมครั้งที่ 1–2** (เม.ย.–พ.ค. 2569) — requirement ล่าสุดจากลูกค้า |
 | [**../USER-MANUAL-TH.md**](../USER-MANUAL-TH.md) | **คู่มือการใช้งานภาษาไทย** — ครบทุกหน้า/route |
+| [**../SETUP-NEW-MACHINE.md**](../SETUP-NEW-MACHINE.md) | **ติดตั้งเครื่องใหม่** — PostgreSQL, migration, backend, frontend, E2E |
 | [**CATALOG.md**](CATALOG.md) | สารบัญไฟล์ทั้งหมด + แมปไป parity 01–15 |
 | [**LEGACY-ISSUES-CHECKLIST.md**](LEGACY-ISSUES-CHECKLIST.md) | บั๊ก/UX จาก Problem PM + screenshot ระบบเก่า (Must/Should) |
 | [**SAP-SAMPLE-PROBE.md**](SAP-SAMPLE-PROBE.md) | ผลตรวจ parser กับไฟล์ตัวอย่างลูกค้า (รัน 2026-05-21) |
