@@ -1,4 +1,4 @@
-import { MaintenanceModeError, isMaintenanceModeError } from '@/lib/maintenance-error'
+import { isMaintenanceModeError } from '@/lib/maintenance-error'
 
 export type AuthFeedbackKind =
   | 'success'

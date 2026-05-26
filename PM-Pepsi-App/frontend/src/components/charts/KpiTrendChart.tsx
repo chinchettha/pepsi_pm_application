@@ -115,7 +115,7 @@ export function KpiTrendChart({ labels, data, tone, datasetLabel, className }: P
           fill: true,
           tension: 0.42,
           cubicInterpolationMode: 'monotone' as const,
-          backgroundColor(context) {
+          backgroundColor(context: { chart: { ctx: CanvasRenderingContext2D; chartArea?: ChartArea } }) {
             const { ctx, chartArea } = context.chart
             if (!chartArea) return palette.fillBottom
             return areaGradient(ctx, chartArea, palette)
@@ -147,7 +147,7 @@ export function KpiTrendChart({ labels, data, tone, datasetLabel, className }: P
           padding: 12,
           cornerRadius: 10,
           displayColors: false,
-          titleFont: { size: 12, weight: '600' },
+          titleFont: { size: 12, weight: 600 },
           bodyFont: { size: 13 },
           callbacks: {
             title: (items) => items[0]?.label ?? '',
@@ -167,7 +167,7 @@ export function KpiTrendChart({ labels, data, tone, datasetLabel, className }: P
             autoSkip: true,
             maxTicksLimit: 4,
             padding: 6,
-            font: { size: 10, weight: '500' },
+            font: { size: 10, weight: 500 },
             color: '#94a3b8',
           },
         },

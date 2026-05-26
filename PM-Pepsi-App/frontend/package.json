@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test api-smoke.spec.ts app-smoke.spec.ts confirmation-export-api.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "audit:ui": "node scripts/audit-hardcode-mock.mjs"
   },

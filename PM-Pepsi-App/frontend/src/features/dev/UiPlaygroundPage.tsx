@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Spinner, SpinnerBlock } from '@/components/ui/spinner'
+import { SpinnerBlock } from '@/components/ui/spinner'
 import {
   Table,
   TableBody,

@@ -1,5 +1,4 @@
 import { PepsiStripe } from '@/components/brand/PepsiStripe'
-import { cn } from '@/lib/utils'
 import { Compass } from 'lucide-react'
 import type { TooltipRenderProps } from 'react-joyride'
 import './admin-tour.css'
@@ -21,7 +20,7 @@ export function AdminTourTooltip({
   return (
     <div
       {...tooltipProps}
-      className={cn('admin-tour-tooltip', tooltipProps.className)}
+      className="admin-tour-tooltip"
       role="dialog"
       aria-labelledby="admin-tour-title"
       aria-describedby="admin-tour-body"

@@ -26,7 +26,6 @@ export function buildAdminTourSteps(): Step[] {
           เพื่อค้นหาและกระโดดไปหน้าใดก็ได้ในแอป — เหมือน Spotlight
         </span>
       ),
-      disableBeacon: true,
       placement: 'bottom',
     },
     {

@@ -18,6 +18,8 @@
 
 **Backend:** mock มีเฉพาะใน `*.test.ts` / `vi.mock` — ไม่รวม production handler
 
+**Confirmation export scope (2026-05-26):** ไม่ hardcode `PAC007`/`PRO005` แล้ว — ใช้ permission `confirmation.export.all` ใน `tbl_role_permission` (migration `084_confirmation_export_all_permission.sql`); ค่าเริ่มต้น grant ให้ role `A` และ `H`; ปรับสิทธิ์ได้ที่ Admin → Roles
+
 ---
 
 ## 1) ทุก route ใน `App.tsx` — แหล่งข้อมูล

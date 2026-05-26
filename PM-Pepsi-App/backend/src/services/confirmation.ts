@@ -4,6 +4,7 @@ import type { Pool, PoolClient } from 'pg'
 import type { ConfirmImagePhase } from '../lib/confirm-image-phase.js'
 import { touchConfirmQcPending } from './confirm-qc.js'
 import { SAP_MASS_CONFIRM_MAX, assertMassConfirmBatchSize } from '../lib/mass-confirm-limit.js'
+import type { ConfirmationExportScope } from '../lib/confirmation-export-scope.js'
 import { FACTORY_CODE } from './scheduling-shared.js'
 import { parseConfirmFile, type ConfirmImportRow } from './confirmation-import.js'
 
@@ -475,9 +476,9 @@ export async function listConfirmationExportRows(
   pool: Pool,
   actorWkctr: string | undefined,
   idiw37n?: number[],
+  scope: ConfirmationExportScope = 'OWN',
 ): Promise<ConfirmationExportRow[]> {
   const wkctr = (actorWkctr ?? '').trim()
-  const canExportAll = wkctr === 'PAC007' || wkctr === 'PRO005'
   const params: unknown[] = []
   const where: string[] = [
     `e.syst IN ('CRTD', 'REL')`,
@@ -487,7 +488,7 @@ export async function listConfirmationExportRows(
     params.push(idiw37n)
     where.push(`e.idiw37 = ANY($${params.length}::int[])`)
   }
-  if (!canExportAll) {
+  if (scope === 'OWN') {
     params.push(wkctr)
     where.push(`e.cwkctr = $${params.length}`)
   }

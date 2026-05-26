@@ -16,8 +16,12 @@ export class AdminTourPage {
   constructor(readonly page: Page) {}
 
   async openFromConsole() {
-    await this.page.getByRole('button', { name: /ทัวร์ Admin/i }).click()
-    await expect(adminTourTooltip(this.page)).toBeVisible({ timeout: 10_000 })
+    const startBtn = this.page.getByRole('button', {
+      name: /เริ่มทัวร์แนะนำ Admin/i,
+    })
+    await startBtn.scrollIntoViewIfNeeded()
+    await startBtn.click()
+    await expect(adminTourTooltip(this.page)).toBeVisible({ timeout: 15_000 })
   }
 
   async expectProgress(current: number, total = ADMIN_TOUR_STEP_COUNT) {
@@ -27,15 +31,15 @@ export class AdminTourPage {
   }
 
   skipButton() {
-    return adminTourFooter(this.page).getByRole('button', { name: 'ข้าม' })
+    return adminTourTooltip(this.page).getByRole('button', { name: /ข้าม|Skip/i })
   }
 
   nextButton() {
-    return adminTourFooter(this.page).getByRole('button', { name: 'ถัดไป' })
+    return adminTourTooltip(this.page).locator('button.admin-tour-btn--primary')
   }
 
   finishButton() {
-    return adminTourFooter(this.page).getByRole('button', { name: 'เสร็จสิ้น' })
+    return adminTourTooltip(this.page).getByRole('button', { name: /เสร็จสิ้น|Last/i })
   }
 
   async skipTour() {
@@ -44,17 +48,16 @@ export class AdminTourPage {
   }
 
   async advanceToFinish(maxClicks = ADMIN_TOUR_STEP_COUNT + 2) {
-    const next = this.nextButton()
-    const finish = this.finishButton()
     let clicks = 0
     while (clicks < maxClicks) {
+      const finish = this.finishButton()
       if (await finish.isVisible()) {
         await finish.click()
         return clicks
       }
-      await next.click()
+      await this.nextButton().click()
       clicks += 1
-      await this.page.waitForTimeout(350)
+      await this.page.waitForTimeout(400)
     }
     throw new Error(`Tour did not reach finish within ${maxClicks} clicks`)
   }

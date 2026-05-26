@@ -42,6 +42,7 @@ export function legacyHasPermission(userst: string | null | undefined, perm: str
       perm === 'work-orders.write' ||
       perm === 'confirmation.write' ||
       perm === 'confirmation.close' ||
+      perm === 'confirmation.export.all' ||
       perm === 'manhours.write'
     ) {
       return true

@@ -13,6 +13,7 @@ import {
   massConfirmAuditFields,
 } from '../lib/audit-bulk-payload.js'
 import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
+import { resolveConfirmationExportScope } from '../lib/confirmation-export-scope.js'
 import { createRequirePermission } from '../middleware/require-permission.js'
 import {
   confirmationAddCloseBodySchema,
@@ -1064,14 +1065,13 @@ export function registerWorkOrderRoutes(
         return
       }
       const actorWkctr = (user.wkctr || user.username || '').trim()
-      const scope: 'ALL' | 'OWN' =
-        actorWkctr === 'PAC007' || actorWkctr === 'PRO005' ? 'ALL' : 'OWN'
+      const scope = await resolveConfirmationExportScope(pool, user.userst)
       const batchIds = parseIdiw37nQuery(req.query.idiw37n)
 
       try {
         const items = batchIds?.length
-          ? await listConfirmationExportRowsForBatch(pool, actorWkctr, batchIds)
-          : await listConfirmationExportRows(pool, actorWkctr)
+          ? await listConfirmationExportRowsForBatch(pool, actorWkctr, batchIds, scope)
+          : await listConfirmationExportRows(pool, actorWkctr, undefined, scope)
         res.json(
           confirmationExportResponseSchema.parse({
             scope,
@@ -1106,11 +1106,12 @@ export function registerWorkOrderRoutes(
 
       const batchIds = parseIdiw37nQuery(req.query.idiw37n)
       const actor = user.wkctr || user.username || ''
+      const scope = await resolveConfirmationExportScope(pool, user.userst)
 
       try {
         const rows = batchIds?.length
-          ? await listConfirmationExportRowsForBatch(pool, actor, batchIds)
-          : await listConfirmationExportRows(pool, actor)
+          ? await listConfirmationExportRowsForBatch(pool, actor, batchIds, scope)
+          : await listConfirmationExportRows(pool, actor, undefined, scope)
         const data = [
           [
             '',
@@ -1189,11 +1190,12 @@ export function registerWorkOrderRoutes(
 
       const batchIds = parseIdiw37nQuery(req.query.idiw37n)
       const actor = user.wkctr || user.username || ''
+      const scope = await resolveConfirmationExportScope(pool, user.userst)
 
       try {
         const rows = batchIds?.length
-          ? await listConfirmationExportRowsForBatch(pool, actor, batchIds)
-          : await listConfirmationExportRows(pool, actor)
+          ? await listConfirmationExportRowsForBatch(pool, actor, batchIds, scope)
+          : await listConfirmationExportRows(pool, actor, undefined, scope)
         const csv = buildConfirmationExportSapCsv(rows)
         const filename = confirmationSapCsvFilename()
         res.setHeader('Content-Type', 'text/csv; charset=utf-8')

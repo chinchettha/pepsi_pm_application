@@ -146,7 +146,7 @@ try {
   )
 
   // --- 5) Export Confirm CSV ---
-  const exportRows = await listConfirmationExportRows(pool, 'PAC007')
+  const exportRows = await listConfirmationExportRows(pool, '', undefined, 'ALL')
   const csv = buildConfirmationExportSapCsv(exportRows)
   const headerLine = csv.replace(/^\ufeff/, '').split('\r\n')[0] ?? ''
   const hasSapHeaders =

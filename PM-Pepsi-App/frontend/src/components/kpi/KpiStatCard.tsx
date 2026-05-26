@@ -1,5 +1,4 @@
 import { kpiStatToneClass, type KpiStatTone } from '@/components/kpi/kpi-tone'
-import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
 export function KpiStatCard({

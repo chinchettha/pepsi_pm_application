@@ -94,7 +94,7 @@ export function ConfirmQcPanel({
         <div>
           <h4 className="text-body-sm font-semibold text-app">Admin QC — ก่อนนับปิดงานในระบบ</h4>
           <p className="text-xs text-app-muted">
-            WO {wkorder ?? data.wkorder} · อนุมัติแล้วจึงนับใน Personnel Confirm / Export / workflow ขั้น 4
+            WO {wkorder ?? '—'} · อนุมัติแล้วจึงนับใน Personnel Confirm / Export / workflow ขั้น 4
           </p>
         </div>
         <Badge variant={statusVariant(data.status)} role="status">

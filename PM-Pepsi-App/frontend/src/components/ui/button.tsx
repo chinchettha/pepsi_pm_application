@@ -13,6 +13,8 @@ const buttonVariants = cva(
           'bg-[var(--app-text)] text-[var(--app-surface)] hover:bg-[color-mix(in_srgb,var(--app-text)_90%,white)] active:bg-[color-mix(in_srgb,var(--app-text)_94%,black)]',
         outline:
           'border border-app bg-[var(--app-surface)] text-app shadow-app-button hover:bg-app-subtle active:bg-app-muted',
+        secondary:
+          'border-transparent bg-app-muted text-app shadow-app-button hover:bg-app-subtle active:bg-app-muted',
         ghost: 'text-app hover:bg-app-muted active:bg-app-subtle',
         destructive:
           'bg-red-600 text-white hover:bg-red-700 active:bg-red-800',

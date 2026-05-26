@@ -505,7 +505,7 @@ function IntegrationConfirmTab() {
             <p className="mt-1 text-xs text-app-muted">
               คอลัมน์ตาม M_Export_confirm_excel.php · syst CRTD/REL
               {scope === 'ALL'
-                ? ' · สิทธิ์ ALL (PAC007/PRO005)'
+                ? ' · สิทธิ์ ALL (confirmation.export.all)'
                 : scope === 'OWN'
                   ? ` · OWN wkctr=${actorWkctr || '-'}`
                   : ''}
@@ -848,7 +848,7 @@ function IntegrationGuideTab() {
         <ul className="mt-2 list-inside list-disc space-y-1 text-xs">
           <li>ดาวน์โหลดจากแท็บ Confirm หรือ <Link to="/confirmation">/confirmation</Link></li>
           <li>ชื่อไฟล์: <code>CONFIRM_OUT_YYYYMMDD_HHmmss.csv</code></li>
-          <li>กรอง syst CRTD/REL · PAC007/PRO005 = ทุกแถว</li>
+          <li>กรอง syst CRTD/REL · สิทธิ์ confirmation.export.all = ทุกแถว</li>
         </ul>
       </section>
 

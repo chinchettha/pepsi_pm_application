@@ -2,7 +2,11 @@ import type { PublicSettings } from '@/api/schemas'
 import type { CSSProperties } from 'react'
 
 /** CSS variables สำหรับขนาดโลโก้ / favicon preview */
-export function applyBrandingAssetCss(settings: PublicSettings | undefined): void {
+export function applyBrandingAssetCss(
+  settings:
+    | Pick<PublicSettings, 'logoNavHeightPx' | 'logoLoginHeightPx' | 'faviconSizePx'>
+    | undefined,
+): void {
   const root = document.documentElement
   const nav = settings?.logoNavHeightPx ?? 40
   const login = settings?.logoLoginHeightPx ?? 56

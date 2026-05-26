@@ -39,7 +39,7 @@ import { idbGet, idbSet } from '@/lib/idb-cache'
 import { usePublicSettings } from '@/providers/SettingsProvider'
 import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import { AlertCircle, History, RefreshCcw, Search, Trash2 } from 'lucide-react'
+import { AlertCircle, History, Loader2, RefreshCcw, Search, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 

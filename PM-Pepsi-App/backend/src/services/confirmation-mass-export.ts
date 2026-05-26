@@ -1,6 +1,7 @@
 import type { Pool } from 'pg'
 import { assertMassConfirmBatchSize } from '../lib/mass-confirm-limit.js'
 import { isConfirmQcApproved, parseConfirmQcStatus } from '../lib/confirm-qc-status.js'
+import type { ConfirmationExportScope } from '../lib/confirmation-export-scope.js'
 import { listConfirmationExportRows, type ConfirmationExportRow } from './confirmation.js'
 import { setConfirmQcStatus } from './confirm-qc.js'
 
@@ -103,11 +104,12 @@ export async function listConfirmationExportRowsForBatch(
   pool: Pool,
   actorWkctr: string | undefined,
   idiw37n: number[],
+  scope: ConfirmationExportScope = 'OWN',
 ): Promise<ConfirmationExportRow[]> {
   const ids = [...new Set(idiw37n.filter((n) => Number.isFinite(n) && n > 0))]
   if (ids.length === 0) return []
   assertMassConfirmBatchSize(ids.length)
-  return listConfirmationExportRows(pool, actorWkctr, ids)
+  return listConfirmationExportRows(pool, actorWkctr, ids, scope)
 }
 
 export type QcApproveBatchResult = {

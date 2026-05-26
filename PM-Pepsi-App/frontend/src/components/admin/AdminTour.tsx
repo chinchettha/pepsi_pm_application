@@ -6,21 +6,12 @@ import {
 } from '@/components/admin/admin-tour-steps'
 import { AdminTourTooltip } from '@/components/admin/AdminTourTooltip'
 import { toastSuccess } from '@/lib/app-toast'
-import { EVENTS, Joyride, STATUS, type EventData } from 'react-joyride'
+import { EVENTS, Joyride, STATUS, type EventHandler } from 'react-joyride'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 export { ADMIN_TOUR_STEP_COUNT, buildAdminTourSteps, routeForAdminTourStepIndex }
-
-const joyrideOptions = {
-  primaryColor: 'var(--brand-pepsi-blue, #004c97)',
-  zIndex: 10000,
-  arrowColor: 'var(--admin-tour-arrow, #ffffff)',
-  backgroundColor: 'var(--admin-tour-surface, #ffffff)',
-  textColor: 'var(--admin-tour-text, #18181b)',
-  overlayColor: 'var(--admin-tour-overlay, rgba(15, 23, 42, 0.52))',
-} as const
 
 export function AdminTour({
   run,
@@ -32,7 +23,7 @@ export function AdminTour({
   const navigate = useNavigate()
   const steps = useMemo(() => buildAdminTourSteps(), [])
 
-  const handleEvent = (data: EventData) => {
+  const handleEvent: EventHandler = (data) => {
     if (data.type === EVENTS.STEP_BEFORE) {
       const to = routeForAdminTourStepIndex(data.index)
       if (to) navigate(to)
@@ -55,21 +46,29 @@ export function AdminTour({
       run={run}
       continuous
       scrollToFirstStep
-      scrollDuration={400}
-      showProgress
-      showSkipButton
-      disableOverlayClose
-      disableScrolling={false}
-      spotlightClicks={false}
-      spotlightPadding={12}
-      callback={handleEvent}
+      onEvent={handleEvent}
       tooltipComponent={AdminTourTooltip}
-      floaterProps={{ disableAnimation: false }}
+      locale={{
+        back: 'กลับ',
+        close: 'ปิด',
+        last: 'เสร็จสิ้น',
+        next: 'ถัดไป',
+        skip: 'ข้าม',
+      }}
+      options={{
+        primaryColor: 'var(--brand-pepsi-blue, #004c97)',
+        zIndex: 10000,
+        arrowColor: 'var(--admin-tour-arrow, #ffffff)',
+        backgroundColor: 'var(--admin-tour-surface, #ffffff)',
+        textColor: 'var(--admin-tour-text, #18181b)',
+        overlayColor: 'var(--admin-tour-overlay, rgba(15, 23, 42, 0.52))',
+        showProgress: true,
+        skipBeacon: true,
+        overlayClickAction: false,
+        spotlightPadding: 12,
+        buttons: ['back', 'close', 'primary', 'skip'],
+      }}
       styles={{
-        options: joyrideOptions,
-        spotlight: {
-          borderRadius: 'var(--app-radius-card, 12px)',
-        },
         tooltip: {
           padding: 0,
           borderRadius: 'var(--app-radius-dialog, 16px)',
@@ -77,13 +76,6 @@ export function AdminTour({
         tooltipContainer: {
           textAlign: 'left',
         },
-      }}
-      locale={{
-        back: 'กลับ',
-        close: 'ปิด',
-        last: 'เสร็จสิ้น',
-        next: 'ถัดไป',
-        skip: 'ข้าม',
       }}
     />
   )

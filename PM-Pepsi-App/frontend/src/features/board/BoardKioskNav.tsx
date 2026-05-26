@@ -58,7 +58,6 @@ export function BoardKioskNav({ collapsed = false }: { collapsed?: boolean }) {
           <Link
             key={entry.to}
             to={entry.to}
-            end={entry.end}
             title={collapsed ? entry.label : undefined}
             className={cn(
               'flex items-center rounded-card text-body-sm font-medium transition-colors',

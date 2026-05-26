@@ -983,7 +983,7 @@ export function ConfirmationParityPage() {
 }
 
 /** `M_Export_confirm.php` + `M_Export_confirm_excel.php` — preview table + download Excel
- *  ใช้ view `app.view_exportconfirm` กรองตามสิทธิ์ผู้ใช้ (PAC007/PRO005 = ALL, อื่นๆ = OWN wkctr)
+ *  ใช้ view `app.view_exportconfirm` กรองตามสิทธิ์ (confirmation.export.all = ALL, อื่นๆ = OWN wkctr)
  */
 export function ConfirmationExportParityPage() {
   const navigate = useNavigate()
@@ -1064,7 +1064,7 @@ export function ConfirmationExportParityPage() {
         <>
           {scope ? (
             <Badge variant={scope === 'ALL' ? 'default' : 'outline'} className="text-xs">
-              {scope === 'ALL' ? 'เห็นทั้งหมด (PAC007/PRO005)' : `เฉพาะ wkctr: ${actorWkctr || '—'}`}
+              {scope === 'ALL' ? 'เห็นทั้งหมด (export.all)' : `เฉพาะ wkctr: ${actorWkctr || '—'}`}
             </Badge>
           ) : null}
           <CanPermission permission="confirmation.read">
@@ -1124,7 +1124,7 @@ export function ConfirmationExportParityPage() {
       ) : (
         <AppCard pad="compact" className="space-y-3">
           <p className="text-caption rounded-button border border-dashed border-app bg-app-subtle/50 px-3 py-2">
-            สิทธิ์ PAC007 / PRO005 เห็นทุกแถว · ผู้ใช้อื่นเห็นเฉพาะ wkctr ของตน (เทียบ PHP M_Export_confirm.php)
+            สิทธิ์ confirmation.export.all เห็นทุกแถว · ผู้ใช้อื่นเห็นเฉพาะ wkctr ของตน (Admin → Roles)
           </p>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-caption">

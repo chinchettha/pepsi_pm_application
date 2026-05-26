@@ -5,6 +5,8 @@
 
 **คู่มือผู้ใช้ (ภาษาไทย ครบทุกหน้า):** [`USER-MANUAL-TH.md`](USER-MANUAL-TH.md)
 
+**Workflow AI (Superpowers):** [`SUPERPOWERS-PM-APP.md`](SUPERPOWERS-PM-APP.md) · [`AGENTS.md`](../AGENTS.md)
+
 **อัปเดต:** 2026-05-22
 
 ---

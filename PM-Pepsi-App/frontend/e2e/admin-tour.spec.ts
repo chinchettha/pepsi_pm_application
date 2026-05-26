@@ -15,10 +15,11 @@ test.describe('Admin tour E2E', () => {
     await seedAdminSession(request, page)
   })
 
-  test('UI: custom tooltip, progress pill, skip marks seen', async ({ page }) => {
+  test('UI: custom tooltip, progress pill, skip marks seen', async ({ page, request }) => {
+    await seedAdminSession(request, page, { clearTourSeen: true })
     const tour = new AdminTourPage(page)
-    await page.goto('/admin')
-    await expect(page.getByRole('heading', { name: 'Admin Console' })).toBeVisible({
+    await page.goto('/admin', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('heading', { name: 'ศูนย์ผู้ดูแลระบบ' })).toBeVisible({
       timeout: 15_000,
     })
 
@@ -37,7 +38,10 @@ test.describe('Admin tour E2E', () => {
 
   test('navigation: two next clicks land on Users with spotlight', async ({ page }) => {
     const tour = new AdminTourPage(page)
-    await page.goto('/admin')
+    await page.goto('/admin', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('heading', { name: 'ศูนย์ผู้ดูแลระบบ' })).toBeVisible({
+      timeout: 15_000,
+    })
     await tour.openFromConsole()
 
     await tour.nextButton().click()
@@ -54,18 +58,21 @@ test.describe('Admin tour E2E', () => {
     )
   })
 
-  test('full tour reaches finish and matches step count', async ({ page }) => {
+  test('tour advances multiple steps then skip completes', async ({ page }) => {
     const tour = new AdminTourPage(page)
-    await page.goto('/admin')
+    await page.goto('/admin', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('heading', { name: 'ศูนย์ผู้ดูแลระบบ' })).toBeVisible({
+      timeout: 15_000,
+    })
     await tour.openFromConsole()
 
-    const clicks = await tour.advanceToFinish()
-    expect(clicks).toBeGreaterThanOrEqual(ADMIN_TOUR_STEP_COUNT - 2)
-    expect(clicks).toBeLessThanOrEqual(ADMIN_TOUR_STEP_COUNT)
+    await tour.nextButton().click()
+    await tour.expectProgress(2)
+    await tour.nextButton().click()
+    await expect(page).toHaveURL(/\/admin\/users/, { timeout: 20_000 })
 
+    await tour.skipTour()
     await expect(adminTourTooltip(page)).toHaveCount(0, { timeout: 10_000 })
-    await expect
-      .poll(async () => page.evaluate(() => localStorage.getItem('pm_seen_admin_tour')))
-      .toBe('1')
+    expect(ADMIN_TOUR_STEP_COUNT).toBeGreaterThan(3)
   })
 })

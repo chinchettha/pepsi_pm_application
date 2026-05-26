@@ -38,6 +38,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   applyPendingTeamToFilterDetail,
+  type FilterDetailData,
   normalizeTeamCode,
   patchRowsTeam,
 } from '@/lib/filter-detail-team-live'
@@ -228,11 +229,14 @@ export function WorkOrdersPage() {
 
   const patchTeamInCaches = useCallback(
     (updates: Map<string, TeamCode>) => {
-      queryClient.setQueryData(searchQueryKey, (old) => {
-        if (!old) return old
-        return patchRowsTeam(old, updates)
-      })
-      queryClient.setQueryData(filterDetailQueryKey, (old) => {
+      queryClient.setQueryData(
+        searchQueryKey,
+        (old: Awaited<ReturnType<typeof postWorkOrdersSearch>> | undefined) => {
+          if (!old) return old
+          return patchRowsTeam(old, updates)
+        },
+      )
+      queryClient.setQueryData(filterDetailQueryKey, (old: FilterDetailData | undefined) => {
         if (!old || rows.length === 0) return old
         const patchedRows = patchRowsTeam(rows, updates)
         return applyPendingTeamToFilterDetail(old, patchedRows, {}).data

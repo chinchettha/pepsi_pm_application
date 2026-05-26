@@ -510,7 +510,7 @@ export const integrationJobItemSchema = z.object({
   fileName: z.string().nullable(),
   sha256: z.string().nullable(),
   batchId: z.string().nullable(),
-  summary: z.record(z.unknown()),
+  summary: z.record(z.string(), z.unknown()),
   errorText: z.string().nullable(),
   startedBy: z.string().nullable(),
   startedAt: z.string(),
@@ -567,6 +567,7 @@ export const iw37nImportSummarySchema = z.object({
   errorGroups: z.array(z.object({ message: z.string(), count: z.number() })),
 })
 
+export type Iw37nBatchItem = z.infer<typeof iw37nBatchItemSchema>
 export type Iw37nImportSummary = z.infer<typeof iw37nImportSummarySchema>
 
 export const iw37nImportPreviewResponseSchema = z.object({
@@ -2021,6 +2022,8 @@ export const slowApiMetricSchema = z.object({
   p95Ms: z.number(),
   maxMs: z.number(),
 })
+
+export type SlowApiMetric = z.infer<typeof slowApiMetricSchema>
 
 export const healthSlowApiResponseSchema = z.object({
   thresholdMs: z.number().int(),
