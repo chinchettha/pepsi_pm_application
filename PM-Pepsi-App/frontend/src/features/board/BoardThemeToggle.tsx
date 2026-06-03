@@ -1,14 +1,16 @@
-import { boardThemeLabel, type BoardThemeId } from '@/lib/board-theme'
+import type { BoardThemeId } from '@/lib/board-theme'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   value: BoardThemeId
   onChange: (theme: BoardThemeId) => void
 }
 
-/** สลับธีมมืด / สว่าง */
 export function BoardThemeToggle({ value, onChange }: Props) {
+  const { t } = useTranslation('board')
+
   return (
-    <div className="engineering-board__theme-toggle" role="group" aria-label="ธีม Engineering Board">
+    <div className="engineering-board__theme-toggle" role="group" aria-label={t('theme.toggle')}>
       {(['dark', 'light'] as const).map((id) => (
         <button
           key={id}
@@ -21,7 +23,7 @@ export function BoardThemeToggle({ value, onChange }: Props) {
           aria-pressed={value === id}
           onClick={() => onChange(id)}
         >
-          {id === 'dark' ? '🌙' : '☀️'} {boardThemeLabel(id)}
+          {id === 'dark' ? '🌙' : '☀️'} {t(`theme.${id}`)}
         </button>
       ))}
     </div>

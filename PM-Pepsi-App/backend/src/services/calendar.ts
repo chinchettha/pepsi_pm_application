@@ -5,13 +5,39 @@ import {
   FACTORY_CODE,
   sqlFactoryScope,
   getMoveOverColor,
-  mapOrderRowToEvent,
   monthRangeSec,
   type CalendarEvent,
-  type OrderRow,
 } from './scheduling-shared.js'
-import { buildWktypeFilterOptions } from '../lib/wktype-zd-mapping.js'
-import { loadWorkflowSuffixMap } from './work-order-workflow.js'
+import {
+  expandActivityFilterCodes,
+  listActivityFilterOptions,
+  PM_PLAN_TEAM_FILTER_OPTIONS,
+} from '../lib/activity-type-label.js'
+import {
+  buildCalendarDayHourTotals,
+  buildCalendarDayOrderCounts,
+  mapCalendarOrderRowToEvent,
+  mergeCalendarDayHourTotals,
+  type CalendarOrderRow,
+} from '../lib/calendar-event-display.js'
+import {
+  appendWorkTypeFilter,
+} from '../lib/maint-activity-type.js'
+import { listWktypeZdFilterOptions } from '../lib/wktype-zd-mapping.js'
+import {
+  appendCalendarDisplayStatusFilter,
+  CALENDAR_DISPLAY_STATUS_OPTIONS,
+} from '../lib/calendar-display-status-filter.js'
+import {
+  appendPmPhaseFilter,
+  PM_PHASE_FILTER_OPTIONS,
+} from '../lib/pm-phase-filter.js'
+import { formatWorkcenterFilterLabel } from '../data/eng-technician-codes.js'
+import { listWorkcenters } from './confirmation.js'
+import {
+  finalizeSystemStatusFilterOptions,
+  formatSystemStatusFilterLabel,
+} from '../lib/system-status-filter.js'
 import type {
   calendarFilterDetailResponseSchema,
   calendarFilterOptionsResponseSchema,
@@ -21,12 +47,6 @@ import type {
 type CalendarSearch = z.infer<typeof calendarSearchBodySchema>
 type FilterOptions = z.infer<typeof calendarFilterOptionsResponseSchema>
 type CalendarFilterDetail = z.infer<typeof calendarFilterDetailResponseSchema>
-
-function padMatLabel(mat: string, descrip: string | null): string {
-  const n = Number(mat)
-  const code = Number.isFinite(n) ? String(n).padStart(2, '0') : mat
-  return descrip ? `${code} = ${descrip}` : code
-}
 
 function parseIsoYyyyMmDdToSec(v: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim())
@@ -48,10 +68,12 @@ async function listStatusOptions(pool: Pool): Promise<{ code: string; label: str
        WHERE syst <> 'MOVE OVER'
        ORDER BY syst`,
     )
-    return r.rows.map((row) => ({
-      code: row.syst,
-      label: row.wkstreason ? `${row.syst} = ${row.wkstreason}` : row.syst,
-    }))
+    return finalizeSystemStatusFilterOptions(
+      r.rows.map((row) => ({
+        code: row.syst,
+        label: formatSystemStatusFilterLabel(row.syst, row.wkstreason),
+      })),
+    )
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     if (!message.includes('wkstreason')) throw err
@@ -60,32 +82,19 @@ async function listStatusOptions(pool: Pool): Promise<{ code: string; label: str
        WHERE syst <> 'MOVE OVER'
        ORDER BY syst`,
     )
-    return r.rows.map((row) => ({ code: row.syst, label: row.syst }))
+    return finalizeSystemStatusFilterOptions(
+      r.rows.map((row) => ({ code: row.syst, label: row.syst })),
+    )
   }
 }
 
 export async function listCalendarFilterOptions(pool: Pool): Promise<FilterOptions> {
+  // กิจกรรม: Z1/Z2/Z5 คงที่ — ไม่อ่าน tbactivitytype (ดู activity-type-label.ts)
   const factory = `%${FACTORY_CODE}%`
 
-  const [activitiesR, wktypesR, wktypesMasterR, statusOpts, wcR, fnR, fnMasterR, eqR] = await Promise.all([
-    pool.query<{ mat: string; matdescrip: string | null }>(
-      `SELECT mat, matdescrip FROM app.tbactivitytype ORDER BY mat`,
-    ),
-    pool.query<{ wktype: string }>(
-      `SELECT DISTINCT wktype
-       FROM app.tbiw37n
-       WHERE wktype IS NOT NULL AND wktype <> ''
-         AND ${sqlFactoryScope('', '$1')}
-       ORDER BY wktype`,
-      [factory],
-    ),
-    pool.query<{ wkzb: string; zbdescrip: string | null }>(
-      `SELECT wkzb, zbdescrip FROM app.tbwkzb ORDER BY wkzb`,
-    ),
+  const [statusOpts, workcenterItems, fnR, fnMasterR, eqR, priorityR] = await Promise.all([
     listStatusOptions(pool),
-    pool.query<{ wkctr: string; namewkctr: string | null; surnamewkctr: string | null }>(
-      `SELECT wkctr, namewkctr, surnamewkctr FROM app.tbworkcenter ORDER BY wkctr`,
-    ),
+    listWorkcenters(pool),
     pool.query<{ functionalloc: string; funcdescrip: string | null }>(
       `SELECT DISTINCT functionalloc, funcdescrip
        FROM app.tbiw37n
@@ -105,24 +114,34 @@ export async function listCalendarFilterOptions(pool: Pool): Promise<FilterOptio
        ORDER BY equipment`,
       [factory],
     ),
+    pool.query<{ opac: string }>(
+      `SELECT DISTINCT TRIM(opac) AS opac
+       FROM app.tbiw37n
+       WHERE opac IS NOT NULL AND TRIM(opac) <> ''
+         AND ${sqlFactoryScope('', '$1')}
+       ORDER BY opac`,
+      [factory],
+    ),
   ])
 
   return {
-    activities: activitiesR.rows.map((r) => ({
-      code: r.mat,
-      label: padMatLabel(r.mat, r.matdescrip),
-    })),
-    wktypes: buildWktypeFilterOptions(wktypesMasterR.rows, wktypesR.rows),
+    activities: listActivityFilterOptions(),
+    wktypes: listWktypeZdFilterOptions(),
     statuses: statusOpts,
-    workcenters: wcR.rows.map((r) => {
-      const name = [r.namewkctr, r.surnamewkctr].filter(Boolean).join(' ').trim()
-      return { code: r.wkctr, label: name ? `${r.wkctr} = ${name}` : r.wkctr }
-    }),
-    teams: [
-      { code: 'A', label: 'A' },
-      { code: 'B', label: 'B' },
-      { code: '', label: 'Null' },
-    ],
+    displayStatuses: CALENDAR_DISPLAY_STATUS_OPTIONS.map((o) => ({
+      code: o.code,
+      label: o.label,
+    })),
+    pmPhases: PM_PHASE_FILTER_OPTIONS.map((o) => ({ code: o.code, label: o.label })),
+    priorities: priorityR.rows.map((r) => ({
+      code: r.opac,
+      label: `Priority ${r.opac}`,
+    })),
+    workcenters: workcenterItems.map((w) => ({
+      code: w.wkctr,
+      label: formatWorkcenterFilterLabel(w.wkctr, w.displayName),
+    })),
+    teams: [...PM_PLAN_TEAM_FILTER_OPTIONS],
     functionals:
       fnMasterR.rows.length > 0
         ? fnMasterR.rows.map((r) => ({
@@ -140,19 +159,21 @@ export async function listCalendarFilterOptions(pool: Pool): Promise<FilterOptio
   }
 }
 
-function appendTeamFilter(values: string[], params: unknown[]): string {
-  if (values.length === 0) return ''
-  const includeNull = values.includes('')
-  const nonEmpty = values.filter((x) => x !== '')
+function appendTeamFilter(values: string[] | undefined, params: unknown[], tableAlias = ''): string {
+  const col = tableAlias ? `${tableAlias}.team` : 'team'
+  const list = values ?? []
+  if (list.length === 0) return ''
+  const includeNull = list.includes('')
+  const nonEmpty = list.filter((x) => x !== '')
   let sql = ''
   if (nonEmpty.length > 0) {
     const start = params.length + 1
     const placeholders = nonEmpty.map((_, i) => `$${start + i}`).join(', ')
     params.push(...nonEmpty)
-    sql += ` AND team IN (${placeholders})`
+    sql += ` AND ${col} IN (${placeholders})`
   }
   if (includeNull) {
-    sql += nonEmpty.length > 0 ? ` OR (team IS NULL OR team = '')` : ` AND (team IS NULL OR team = '')`
+    sql += nonEmpty.length > 0 ? ` OR (${col} IS NULL OR ${col} = '')` : ` AND (${col} IS NULL OR ${col} = '')`
     if (nonEmpty.length > 0) sql = ` AND (${sql.slice(5)})`
   }
   return sql
@@ -169,12 +190,16 @@ export async function listCalendarEvents(
     activity: [],
     wktype: [],
     status: [],
+    displayStatus: [],
+    pmPhase: [],
     wkctr: [],
     team: [],
     functionalloc: [],
     equipment: [],
+    priority: [],
   }
-  return listCalendarEventsFiltered(pool, body)
+  const { items } = await listCalendarEventsFiltered(pool, body)
+  return items
 }
 
 function buildCalendarFilteredFrom(
@@ -189,26 +214,52 @@ function buildCalendarFilteredFrom(
   const endSec = toSec != null ? toSec + 86400 : monthEnd
 
   const params: unknown[] = [startSec, endSec, `%${FACTORY_CODE}%`]
-  const source = body.wkctr.length > 0 ? 'app.view_confrim' : 'app.view_order'
   let where = `
-    FROM ${source}
-    WHERE ${sqlFactoryScope('', '$3')}
-      AND bscstart IS NOT NULL
-      AND bscstart > 0
+    FROM app.view_order o
+    LEFT JOIN app.tbmoveplan mp ON mp.idiw37 = o.idiw37
+    LEFT JOIN app.tbiw37n ti ON ti.idiw37 = o.idiw37
+    LEFT JOIN app.tbworkcenter wc ON wc.wkctr = o.wkctr
+    LEFT JOIN app.view_countpersonelclose v ON v.idiw37 = o.idiw37
+    WHERE ${sqlFactoryScope('o', '$3')}
+      AND o.bscstart IS NOT NULL
+      AND o.bscstart > 0
       AND (
-        (bscstart >= $1 AND bscstart < $2)
-        OR (actfinish >= $1 AND actfinish < $2)
-        OR (cday >= $1 AND cday < $2)
+        (o.bscstart >= $1 AND o.bscstart < $2)
+        OR (o.actfinish >= $1 AND o.actfinish < $2)
+        OR (o.cday >= $1 AND o.cday < $2)
       )`
 
-  where += appendInFilter('mat', body.activity, params)
-  if (includeWktype) where += appendInFilter('wktype', body.wktype, params)
-  where += appendInFilter('syst', body.status, params)
-  where += appendInFilter('wkctr', body.wkctr, params)
-  where += appendInFilter('functionalloc', body.functionalloc, params)
-  where += appendInFilter('equipment', body.equipment, params)
-  where += appendTeamFilter(body.team, params)
+  where += appendInFilter('o.mat', expandActivityFilterCodes(body.activity), params)
+  if (includeWktype) {
+    where += appendWorkTypeFilter('o', body.wktype, params, appendInFilter)
+  }
+  where += appendInFilter('o.syst', body.status, params)
+  where += appendCalendarDisplayStatusFilter(body.displayStatus ?? [], 'o', 'v', params)
+  where += appendPmPhaseFilter(body.pmPhase ?? [], 'o', params)
+  where += appendAssignedWkctrFilter(body.wkctr, params)
+  where += appendInFilter('o.functionalloc', body.functionalloc, params)
+  where += appendInFilter('o.equipment', body.equipment, params)
+  where += appendInFilter('o.opac', body.priority, params)
+  where += appendTeamFilter(body.team, params, 'o')
   return { where, params }
+}
+
+/** ช่างที่ถูกจ่ายงาน (tbplangingwork) หรือ wkctr บนใบงาน */
+function appendAssignedWkctrFilter(wkctrs: string[] | undefined, params: unknown[]): string {
+  const list = wkctrs ?? []
+  if (list.length === 0) return ''
+  const start = params.length + 1
+  const placeholders = list.map((_, i) => `$${start + i}`).join(', ')
+  params.push(...list)
+  return ` AND (
+    o.wkctr IN (${placeholders})
+    OR EXISTS (
+      SELECT 1 FROM app.tbplangingwork mpw
+      WHERE mpw.idiw37 = o.idiw37
+        AND mpw.wkctr IN (${placeholders})
+        AND COALESCE(TRIM(mpw.pwteam), '') <> 'G'
+    )
+  )`
 }
 
 /** สรุปตัวกรองปฏิทิน — เทียบ `#OrderDetail` ใน `M_filter_iw37.php` / W_calendar.php */
@@ -226,18 +277,22 @@ export async function getCalendarFilterDetail(
     team_a_work: string
     team_b_count: string
     team_b_work: string
-    team_p_count: string
-    team_p_work: string
+    team_ee_count: string
+    team_ee_work: string
+    team_ut_count: string
+    team_ut_work: string
   }>(
     `SELECT
        COUNT(*)::text AS total_orders,
-       COUNT(*) FILTER (WHERE syst NOT IN ('CRTD', 'REL'))::text AS completion_count,
-       COUNT(*) FILTER (WHERE team = 'A')::text AS team_a_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'A'), 0)::text AS team_a_work,
-       COUNT(*) FILTER (WHERE team = 'B')::text AS team_b_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'B'), 0)::text AS team_b_work,
-       COUNT(*) FILTER (WHERE team = 'P')::text AS team_p_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'P'), 0)::text AS team_p_work
+       COUNT(*) FILTER (WHERE o.syst NOT IN ('CRTD', 'REL'))::text AS completion_count,
+       COUNT(*) FILTER (WHERE o.team = 'A')::text AS team_a_count,
+       COALESCE(SUM(COALESCE(o.work, 0)) FILTER (WHERE o.team = 'A'), 0)::text AS team_a_work,
+       COUNT(*) FILTER (WHERE o.team = 'B')::text AS team_b_count,
+       COALESCE(SUM(COALESCE(o.work, 0)) FILTER (WHERE o.team = 'B'), 0)::text AS team_b_work,
+       COUNT(*) FILTER (WHERE o.team = 'EE')::text AS team_ee_count,
+       COALESCE(SUM(COALESCE(o.work, 0)) FILTER (WHERE o.team = 'EE'), 0)::text AS team_ee_work,
+       COUNT(*) FILTER (WHERE o.team = 'UT')::text AS team_ut_count,
+       COALESCE(SUM(COALESCE(o.work, 0)) FILTER (WHERE o.team = 'UT'), 0)::text AS team_ut_work
      ${whereAll}`,
     paramsAll,
   )
@@ -257,9 +312,9 @@ export async function getCalendarFilterDetail(
     `SELECT z.wkzb, z.zbdescrip, COALESCE(x.cnt, 0)::text AS cnt
      FROM app.tbwkzb z
      LEFT JOIN (
-       SELECT wktype, COUNT(*)::int AS cnt
+       SELECT o.wktype, COUNT(*)::int AS cnt
        ${whereNoType}
-       GROUP BY wktype
+       GROUP BY o.wktype
      ) x ON x.wktype = z.wkzb
      ORDER BY z.wkzb`,
     paramsNoType,
@@ -284,41 +339,102 @@ export async function getCalendarFilterDetail(
       count: Number(totalsR.rows[0]?.team_b_count ?? 0) || 0,
       workSumMinutes: Number(totalsR.rows[0]?.team_b_work ?? 0) || 0,
     },
-    teamP: {
-      count: Number(totalsR.rows[0]?.team_p_count ?? 0) || 0,
-      workSumMinutes: Number(totalsR.rows[0]?.team_p_work ?? 0) || 0,
+    teamEE: {
+      count: Number(totalsR.rows[0]?.team_ee_count ?? 0) || 0,
+      workSumMinutes: Number(totalsR.rows[0]?.team_ee_work ?? 0) || 0,
+    },
+    teamUT: {
+      count: Number(totalsR.rows[0]?.team_ut_count ?? 0) || 0,
+      workSumMinutes: Number(totalsR.rows[0]?.team_ut_work ?? 0) || 0,
     },
   }
+}
+
+export type CalendarEventsFilteredResult = {
+  items: CalendarEvent[]
+  dayHourTotals: Record<string, number>
+  dayOrderCounts: Record<string, number>
+}
+
+/** ชั่วโมง confirm จริง (tbwrkclose + tbcofirm) ต่อวัน yyyy-mm-dd */
+async function loadCalendarConfirmedHoursByDay(
+  pool: Pool,
+  startSec: number,
+  endSec: number,
+): Promise<Record<string, number>> {
+  const factory = `%${FACTORY_CODE}%`
+  const totals: Record<string, number> = {}
+
+  const dayExpr = (col: string) =>
+    `to_char(date_trunc('day', to_timestamp(${col})), 'YYYY-MM-DD')`
+
+  const [personnelR, supervisorR] = await Promise.all([
+    pool.query<{ day: string; mins: string }>(
+      `SELECT ${dayExpr('w.cstdate')} AS day, COALESCE(SUM(w.wktimewk), 0)::text AS mins
+       FROM app.tbwrkclose w
+       INNER JOIN app.tbiw37n i ON i.idiw37 = w.idiw37
+       WHERE w.cstdate >= $1 AND w.cstdate < $2
+         AND ${sqlFactoryScope('i', '$3')}
+       GROUP BY 1`,
+      [startSec, endSec, factory],
+    ),
+    pool.query<{ day: string; mins: string }>(
+      `SELECT ${dayExpr('c.stdate')} AS day, COALESCE(SUM(c.timewk), 0)::text AS mins
+       FROM app.tbcofirm c
+       INNER JOIN app.tbiw37n i ON i.idiw37 = c.idiw37
+       WHERE c.stdate >= $1 AND c.stdate < $2
+         AND ${sqlFactoryScope('i', '$3')}
+       GROUP BY 1`,
+      [startSec, endSec, factory],
+    ).catch(() => ({ rows: [] as { day: string; mins: string }[] })),
+  ])
+
+  for (const row of [...personnelR.rows, ...supervisorR.rows]) {
+    const mins = Number(row.mins) || 0
+    if (mins <= 0) continue
+    totals[row.day] = Math.round(((totals[row.day] ?? 0) + mins / 60) * 100) / 100
+  }
+  return totals
 }
 
 export async function listCalendarEventsFiltered(
   pool: Pool,
   body: CalendarSearch,
-): Promise<CalendarEvent[]> {
+): Promise<CalendarEventsFilteredResult> {
   const { year, month } = body
   const { prefix } = monthRangeSec(year, month)
   const moveColor = await getMoveOverColor(pool)
 
   const { where, params } = buildCalendarFilteredFrom(body, true)
-  const sql = `
-    SELECT idiw37, wkorder, wktype, bscstart, actfinish, cday, syst, operationshorttext, wkstcolor
-    ${where}
-    ORDER BY bscstart DESC LIMIT 2500`
+  const { startSec: monthStart, endSec: monthEnd } = monthRangeSec(year, month)
+  const fromSec = body.fromDate ? parseIsoYyyyMmDdToSec(body.fromDate) : null
+  const toSec = body.toDate ? parseIsoYyyyMmDdToSec(body.toDate) : null
+  const rangeStart = fromSec != null ? fromSec : monthStart
+  const rangeEnd = toSec != null ? toSec + 86400 : monthEnd
 
-  const r = await pool.query<OrderRow>(sql, params)
+  const sql = `
+    SELECT o.idiw37, o.wkorder, o.wktype, o.bscstart, o.actfinish, o.cday, o.syst,
+           o.work, o.untime,
+           o.operationshorttext, o.wkstcolor, o.equipment, o.equdescrip,
+           o.functionalloc, o.funcdescrip, o.wkctr, o.opac,
+           ti.mat, ti.ostdescription, ti.confirm_qc_status,
+           mp.mpcount, mp.mday, mp.resoncom,
+           wc.namewkctr, wc.surnamewkctr,
+           COALESCE(v.percent_close, 0) AS percent_close,
+           COALESCE(v.has_confirm, 0) AS has_confirm
+    ${where}
+    ORDER BY o.bscstart DESC LIMIT 2500`
+
+  const r = await pool.query<CalendarOrderRow>(sql, params)
 
   const items: CalendarEvent[] = []
   for (const row of r.rows) {
-    const ev = mapOrderRowToEvent(row, moveColor)
+    const ev = mapCalendarOrderRowToEvent(row, moveColor)
     if (ev && ev.date.startsWith(prefix)) items.push(ev)
   }
-  const suffixMap = await loadWorkflowSuffixMap(
-    pool,
-    items.map((e) => Number(e.id)).filter((n) => Number.isFinite(n)),
-  )
-  return items.map((ev) => {
-    const suffix = suffixMap.get(Number(ev.id))
-    if (!suffix) return ev
-    return { ...ev, title: `${ev.title}/${suffix}` }
-  })
+  const dayOrderCounts = buildCalendarDayOrderCounts(items)
+  const plannedTotals = buildCalendarDayHourTotals(items)
+  const confirmedTotals = await loadCalendarConfirmedHoursByDay(pool, rangeStart, rangeEnd)
+  const dayHourTotals = mergeCalendarDayHourTotals(plannedTotals, confirmedTotals)
+  return { items, dayHourTotals, dayOrderCounts }
 }

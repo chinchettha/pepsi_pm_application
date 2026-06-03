@@ -14,7 +14,7 @@ export function CronInput({
   value,
   disabled,
   onChange,
-  hint = 'cron แบบนาที+ชั่วโมง (เช่น 0 2 * * * = 02:00 ทุกวัน)',
+  hint,
 }: CronInputProps) {
   return (
     <div className="space-y-1">

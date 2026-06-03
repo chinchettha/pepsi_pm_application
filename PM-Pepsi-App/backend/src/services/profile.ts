@@ -2,6 +2,7 @@ import type { Pool } from 'pg'
 import type { AuthUser } from '../schemas/auth.js'
 import type { z } from 'zod'
 import type { userProfileSchema } from '../schemas/profile.js'
+import { resolveRoleLabelsForUser } from '../lib/role-labels.js'
 import { timespanThai } from '../lib/timespan.js'
 import { getWorktimeTotal } from './manhours.js'
 
@@ -25,12 +26,15 @@ export async function getProfileForUser(pool: Pool, user: AuthUser): Promise<Pro
     )
     const row = r.rows[0]
     const displayName = row?.fullname?.trim() || user.username
+    const roleLabels = await resolveRoleLabelsForUser(pool, user.userst, 'member')
     return {
       accountType: 'member',
       userId: user.memId,
       username: user.username,
       displayName,
-      sysstatus: user.sysstatus,
+      sysstatus: roleLabels.roleNameTh,
+      roleNameTh: roleLabels.roleNameTh,
+      roleNameEn: roleLabels.roleNameEn,
       userst: user.userst,
       fullnameTh: displayName,
       idcard: row?.idcard ?? undefined,
@@ -84,14 +88,19 @@ export async function getProfileForUser(pool: Pool, user: AuthUser): Promise<Pro
     /* tbmanhours ยังไม่ migrate */
   }
 
+  const userst = row?.userst ?? user.userst
+  const roleLabels = await resolveRoleLabelsForUser(pool, userst, 'workcenter')
+
   return {
     accountType: 'workcenter',
     userId: user.idwkctr,
     username: user.username,
     wkctr: row?.wkctr ?? user.wkctr,
     displayName: user.fullnameTh?.trim() || `${titleTh}${nameTh} ${surnameTh}`.trim(),
-    sysstatus: user.sysstatus,
-    userst: row?.userst ?? user.userst,
+    sysstatus: roleLabels.roleNameTh,
+    roleNameTh: roleLabels.roleNameTh,
+    roleNameEn: roleLabels.roleNameEn,
+    userst,
     plnt: row?.plnt,
     fullnameTh: user.fullnameTh,
     fullnameEng: user.fullnameEng,

@@ -54,6 +54,7 @@ export const workOrderSearchBodySchema = z.object({
 })
 
 export const woPmPhaseSchema = z.enum(['create', 'rel', 'confirm'])
+export const pmExecutionStatusSchema = z.enum(['in_progress', 'done', 'closed'])
 
 export const workOrderSearchRowSchema = z.object({
   id: z.string(),
@@ -71,6 +72,8 @@ export const workOrderSearchRowSchema = z.object({
   operationshorttext: z.string(),
   syst: z.string(),
   pmPhase: woPmPhaseSchema,
+  confirmQcStatus: z.enum(['pending', 'approved', 'rejected']).nullable(),
+  qcReadyForReview: z.boolean(),
 })
 
 export const workOrderSearchResponseSchema = z.object({
@@ -95,11 +98,12 @@ export const workOrderFilterDetailResponseSchema = z.object({
   ),
   teamA: workOrderFilterDetailTeamSchema,
   teamB: workOrderFilterDetailTeamSchema,
-  teamP: workOrderFilterDetailTeamSchema,
+  teamEE: workOrderFilterDetailTeamSchema,
+  teamUT: workOrderFilterDetailTeamSchema,
 })
 
 export const workOrderTeamPatchSchema = z.object({
-  team: z.enum(['', 'A', 'B', 'P']),
+  team: z.enum(['', 'A', 'B', 'EE', 'UT']),
 })
 
 export const workOrderTeamPatchResponseSchema = z.object({
@@ -108,19 +112,19 @@ export const workOrderTeamPatchResponseSchema = z.object({
 
 export const workOrderTeamBulkBodySchema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(100),
-  team: z.enum(['', 'A', 'B', 'P']),
+  team: z.enum(['', 'A', 'B', 'EE', 'UT']),
 })
 
 export const workOrderTeamBulkResponseSchema = z.object({
   ok: z.literal(true),
-  team: z.enum(['', 'A', 'B', 'P']),
+  team: z.enum(['', 'A', 'B', 'EE', 'UT']),
   updated: z.array(z.string()),
   notFound: z.array(z.string()),
 })
 
 export const workOrderWorkflowStepSchema = z.object({
-  step: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
-  key: z.enum(['team', 'assign', 'worktime', 'confirm']),
+  step: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  key: z.enum(['team', 'assign', 'worktime']),
   label: z.string(),
   done: z.boolean(),
 })
@@ -191,6 +195,35 @@ export const workOrderDetailSchema = z.object({
   }),
 })
 
+export const pmMeasurementKindSchema = z.enum([
+  'current_3phase',
+  'vibration_3axis',
+  'none',
+])
+
+export const woPmReadingSchema = z.object({
+  idreading: z.number().int(),
+  machine: z.string(),
+  pmlist: z.string(),
+  kind: z.enum(['current_3phase', 'vibration_3axis']),
+  measuredAt: z.string(),
+  v1: z.number(),
+  v2: z.number(),
+  v3: z.number(),
+  unit: z.string(),
+  warningLimit: z.number().nullable(),
+  alarmLimit: z.number().nullable(),
+  wkctr: z.string(),
+})
+
+export const woPmExecutionSchema = z.object({
+  note: z.string(),
+  noteUpdatedAt: z.string().nullable(),
+  noteWkctr: z.string(),
+  canEdit: z.boolean(),
+  readings: z.array(woPmReadingSchema),
+})
+
 export const workOrderTaskListItemSchema = z.object({
   tasklist: z.string(),
   machine: z.string(),
@@ -198,6 +231,11 @@ export const workOrderTaskListItemSchema = z.object({
   machinestatus: z.number().nullable(),
   mat: z.string(),
   matdescrip: z.string(),
+  measurementKind: pmMeasurementKindSchema,
+  mpoint: z.string(),
+  measurementTitle: z.string(),
+  axisLabels: z.tuple([z.string(), z.string(), z.string()]),
+  unit: z.string(),
 })
 
 export const workOrderTaskListSchema = z.object({
@@ -258,6 +296,9 @@ export const workOrderPlanningSchema = z.object({
     z.object({
       wkctr: z.string(),
       displayName: z.string(),
+      hrHours: z.number().nullable().optional(),
+      plannedHours: z.number().nullable().optional(),
+      availableHours: z.number().nullable().optional(),
     }),
   ),
   groups: z.array(workOrderPlanningGroupSchema),
@@ -269,6 +310,99 @@ export const workOrderModalDetailSchema = z.object({
   machine: workOrderMachineSchema,
   planning: workOrderPlanningSchema,
   materials: workOrderMaterialsSchema,
+  pmExecution: woPmExecutionSchema,
+})
+
+export const woPmNoteBodySchema = z.object({
+  note: z.string().max(4000),
+})
+
+export const woPmNoteResponseSchema = z.object({
+  ok: z.literal(true),
+  noteUpdatedAt: z.string(),
+})
+
+export const woPmReadingBodySchema = z.object({
+  machine: z.string().min(1).max(128),
+  pmlist: z.string().min(1).max(128),
+  kind: z.enum(['current_3phase', 'vibration_3axis']),
+  measuredAt: z.string().datetime().optional(),
+  v1: z.number().finite(),
+  v2: z.number().finite(),
+  v3: z.number().finite(),
+  warningLimit: z.number().finite().nullable().optional(),
+  alarmLimit: z.number().finite().nullable().optional(),
+})
+
+export const woPmReadingResponseSchema = z.object({
+  item: woPmReadingSchema,
+})
+
+export const pmReadingBatchItemSchema = z.object({
+  machine: z.string().min(1).max(128),
+  pmlist: z.string().min(1).max(128),
+  kind: z.enum(['current_3phase', 'vibration_3axis']),
+  measuredAt: z.string().datetime().optional(),
+  v1: z.number().finite(),
+  v2: z.number().finite(),
+  v3: z.number().finite(),
+  warningLimit: z.number().finite().nullable().optional(),
+  alarmLimit: z.number().finite().nullable().optional(),
+})
+
+export const pmReadingBatchBodySchema = z.object({
+  wkorder: z.string().min(1).optional(),
+  orderId: z.string().min(1).optional(),
+  items: z.array(pmReadingBatchItemSchema).min(1).max(200),
+})
+
+export const pmReadingImportResultSchema = z.object({
+  ok: z.literal(true),
+  imported: z.number().int(),
+  failed: z.number().int(),
+  errors: z.array(
+    z.object({
+      rowNo: z.number().int(),
+      wkorder: z.string(),
+      message: z.string(),
+    }),
+  ),
+})
+
+export type WoPmReading = z.infer<typeof woPmReadingSchema>
+export type WoPmExecution = z.infer<typeof woPmExecutionSchema>
+export type WorkOrderTaskListItemApi = z.infer<typeof workOrderTaskListItemSchema>
+
+export const boardPmReadingPointSchema = z.object({
+  label: z.string(),
+  v1: z.number(),
+  v2: z.number(),
+  v3: z.number(),
+})
+
+export const boardPmReadingGroupSchema = z.object({
+  wkorder: z.string(),
+  machine: z.string(),
+  pmlist: z.string(),
+  kind: z.enum(['current_3phase', 'vibration_3axis']),
+  kindLabel: z.string(),
+  unit: z.string(),
+  axisLabels: z.tuple([z.string(), z.string(), z.string()]),
+  latestAt: z.string(),
+  latestV1: z.number(),
+  latestV2: z.number(),
+  latestV3: z.number(),
+  points: z.array(boardPmReadingPointSchema),
+})
+
+export const boardPmReadingsResponseSchema = z.object({
+  period: z.enum(['today', '7d', 'week']),
+  range: z.object({ from: z.string(), to: z.string() }),
+  summary: z.object({
+    totalReadings: z.number().int(),
+    groupCount: z.number().int(),
+  }),
+  groups: z.array(boardPmReadingGroupSchema),
 })
 
 export const workOrderPlanningUpsertBodySchema = z.object({
@@ -316,7 +450,7 @@ export const movePlanReasonsResponseSchema = z.object({
 export const movePlanRequestSchema = z.object({
   idiw37: z.string(),
   targetDate: z.string(),
-  reasonCode: z.string(),
+  reasonCode: z.string().optional(),
   comment: z.string().optional(),
 })
 
@@ -352,6 +486,26 @@ export const dashboardSummarySchema = z.object({
   }),
 })
 
+export const calendarEventHoverDetailSchema = z.object({
+  zoneTitle: z.string().optional(),
+  workOrder: z.string(),
+  wktype: z.string().optional(),
+  wktypeLabel: z.string().optional(),
+  pmPhase: woPmPhaseSchema.optional(),
+  syst: z.string().optional(),
+  resourceName: z.string().optional(),
+  wkctr: z.string().optional(),
+  functionalDesc: z.string().optional(),
+  planDate: z.string().optional(),
+  finishDate: z.string().optional(),
+  orderFrameStart: z.string().optional(),
+  orderFrameEnd: z.string().optional(),
+  movedToDate: z.string().optional(),
+  moveReason: z.string().optional(),
+})
+
+export type CalendarEventHoverDetail = z.infer<typeof calendarEventHoverDetailSchema>
+
 export const calendarEventItemSchema = z.object({
   id: z.string(),
   date: z.string(),
@@ -359,15 +513,27 @@ export const calendarEventItemSchema = z.object({
   orderId: z.string(),
   color: z.string(),
   description: z.string().optional(),
+  hoverDetail: calendarEventHoverDetailSchema.optional(),
   canMovePlan: z.boolean().default(true),
   syst: z.string().optional(),
   pmPhase: woPmPhaseSchema.optional(),
+  pmExecutionStatus: pmExecutionStatusSchema.optional(),
+  activityCode: z.string().optional(),
+  moveCount: z.number().int().positive().optional(),
+  wkctr: z.string().optional(),
+  workHours: z.number().positive().optional(),
+  planStartIso: z.string().optional(),
+  planEndIso: z.string().optional(),
+  moveReasonRequired: z.boolean().optional(),
+  tecoBellAlert: z.boolean().optional(),
 })
 
 export const calendarEventsResponseSchema = z.object({
   items: z.array(calendarEventItemSchema),
   year: z.number(),
   month: z.number(),
+  dayHourTotals: z.record(z.string(), z.number()).optional(),
+  dayOrderCounts: z.record(z.string(), z.number()).optional(),
 })
 
 export const backlogFilterOptionSchema = z.object({
@@ -379,6 +545,9 @@ export const calendarFilterOptionsResponseSchema = z.object({
   activities: z.array(backlogFilterOptionSchema),
   wktypes: z.array(backlogFilterOptionSchema),
   statuses: z.array(backlogFilterOptionSchema),
+  displayStatuses: z.array(backlogFilterOptionSchema),
+  pmPhases: z.array(backlogFilterOptionSchema),
+  priorities: z.array(backlogFilterOptionSchema),
   workcenters: z.array(backlogFilterOptionSchema),
   teams: z.array(backlogFilterOptionSchema),
   functionals: z.array(backlogFilterOptionSchema),
@@ -391,10 +560,13 @@ export const calendarSearchBodySchema = z.object({
   activity: z.array(z.string()),
   wktype: z.array(z.string()),
   status: z.array(z.string()),
+  displayStatus: z.array(z.string()),
+  pmPhase: z.array(woPmPhaseSchema),
   wkctr: z.array(z.string()),
   team: z.array(z.string()),
   functionalloc: z.array(z.string()),
   equipment: z.array(z.string()),
+  priority: z.array(z.string()),
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
 })
@@ -463,6 +635,13 @@ export const backlogFilterDetailTeamSchema = z.object({
   workSumMinutes: z.number(),
 })
 
+export const backlogFilterDetailWorkcenterSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  count: z.number(),
+  workSumMinutes: z.number(),
+})
+
 export const backlogFilterDetailResponseSchema = z.object({
   year: z.number(),
   month: z.number(),
@@ -476,9 +655,11 @@ export const backlogFilterDetailResponseSchema = z.object({
       count: z.number(),
     }),
   ),
+  byWorkcenter: z.array(backlogFilterDetailWorkcenterSchema),
   teamA: backlogFilterDetailTeamSchema,
   teamB: backlogFilterDetailTeamSchema,
-  teamP: backlogFilterDetailTeamSchema,
+  teamEE: backlogFilterDetailTeamSchema,
+  teamUT: backlogFilterDetailTeamSchema,
 })
 
 export const iw37nBatchItemSchema = z.object({
@@ -657,6 +838,8 @@ export const authUserSchema = z.object({
   plnt: z.string().nullable().optional(),
   userst: z.string(),
   sysstatus: z.string(),
+  roleNameTh: z.string().optional(),
+  roleNameEn: z.string().optional(),
   userLevel: z.number().optional(),
   fullnameTh: z.string().optional(),
   fullnameEng: z.string().optional(),
@@ -776,6 +959,8 @@ export const userProfileSchema = z.object({
   username: z.string(),
   displayName: z.string(),
   sysstatus: z.string(),
+  roleNameTh: z.string().optional(),
+  roleNameEn: z.string().optional(),
   userst: z.string().optional(),
   plnt: z.string().nullable().optional(),
   wkctr: z.string().optional(),
@@ -816,6 +1001,8 @@ export const planningItemSchema = z.object({
   planDate: z.string().optional(),
   movedDate: z.string().optional(),
   closedDate: z.string().optional(),
+  workHours: z.number().positive().optional(),
+  importWkctr: z.string().optional(),
 })
 
 export const planningResponseSchema = z.object({
@@ -849,6 +1036,7 @@ export const manhourChartPerformanceResponseSchema = z.object({
     position: z.string().nullable(),
     wkctrtype: z.string().nullable(),
     imgmember: z.string().nullable(),
+    hasImage: z.boolean(),
   }),
   totalPlannedOrders: z.number(),
   utilizationPercent: z.number(),
@@ -873,6 +1061,45 @@ export const manhourChartBreakdownResponseSchema = z.object({
   ot2: z.number(),
   ot3: z.number(),
   confirmHours: z.number(),
+})
+
+export const manhourHrConfirmRowSchema = z.object({
+  idwkctr: z.string(),
+  wkctr: z.string(),
+  displayName: z.string().nullable(),
+  wh: z.number(),
+  ot1: z.number(),
+  ot15: z.number(),
+  ot1hol: z.number(),
+  ot2: z.number(),
+  ot3: z.number(),
+  totalManhours: z.number(),
+  confirmHours: z.number(),
+  utilizationPercent: z.number(),
+})
+
+export const manhourHrConfirmReportResponseSchema = z.object({
+  range: manhourChartRangeSchema,
+  period: z.enum(['month', 'week']),
+  periodLabel: z.string(),
+  totals: manhourChartBreakdownResponseSchema,
+  rows: z.array(manhourHrConfirmRowSchema),
+})
+
+export const manhourZbByPersonRowSchema = z.object({
+  wkctr: z.string(),
+  displayName: z.string().nullable(),
+  zb01Planned: z.number(),
+  zb01Confirmed: z.number(),
+  zb02Planned: z.number(),
+  zb02Confirmed: z.number(),
+  zb05Planned: z.number(),
+  zb05Confirmed: z.number(),
+})
+
+export const manhourZbByPersonResponseSchema = z.object({
+  range: manhourChartRangeSchema,
+  rows: z.array(manhourZbByPersonRowSchema),
 })
 
 export const manhourItemSchema = z.object({
@@ -990,6 +1217,85 @@ export const worktimePlanningItemSchema = z.object({
 export const worktimePlanningResponseSchema = z.object({
   idwkctr: z.string(),
   items: z.array(worktimePlanningItemSchema),
+})
+
+export const worktimeSummaryOverallResponseSchema = z.object({
+  range: manhourChartRangeSchema,
+  year: z.number().int(),
+  pmYear: z.object({
+    label: z.string(),
+    totalPmPlanned: z.number(),
+    totalPmCompleted: z.number(),
+    backlog: z.number(),
+  }),
+  pmMonth: z.object({
+    label: z.string(),
+    totalPmPlanned: z.number(),
+    totalPmCompleted: z.number(),
+    backlog: z.number(),
+  }),
+  pmWeek: z.object({
+    label: z.string(),
+    totalPmPlanned: z.number(),
+    totalPmCompleted: z.number(),
+    backlog: z.number(),
+  }),
+  hoursYear: z.object({
+    hrHours: z.number(),
+    confirmHours: z.number(),
+  }),
+  pmByLine: z.array(
+    z.object({
+      productline: z.string(),
+      prolinedescrip: z.string().nullable(),
+      planned: z.number(),
+    }),
+  ),
+  zb: z.array(
+    z.object({
+      wktype: z.enum(['ZB01', 'ZB02', 'ZB05']),
+      planned: z.number(),
+      completed: z.number(),
+      percentCompleted: z.number(),
+    }),
+  ),
+  technicians: z.array(
+    z.object({
+      idwkctr: z.string(),
+      wkctr: z.string(),
+      displayName: z.string().nullable(),
+      hasImage: z.boolean(),
+      completedOrders: z.number(),
+      confirmHours: z.number(),
+    }),
+  ),
+})
+
+export const engUtilizationDailyRowSchema = z.object({
+  idwkctr: z.string().nullable(),
+  wkctr: z.string(),
+  label: z.string(),
+  hasImage: z.boolean(),
+  displayName: z.string().nullable(),
+  pmHours: z.number(),
+  reactiveHours: z.number(),
+  rcaHours: z.number(),
+  hrHours: z.number(),
+  pmPercent: z.number(),
+  reactivePercent: z.number(),
+  totalPercent: z.number(),
+})
+
+export const engUtilizationDailyResponseSchema = z.object({
+  source: z.enum(['db', 'xlsx']),
+  range: manhourChartRangeSchema.optional(),
+  period: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
+  periodLabel: z.string().optional(),
+  file: z.string().optional(),
+  sheet: z.string().optional(),
+  dateLabel: z.string().nullable().optional(),
+  averagePercent: z.number(),
+  rows: z.array(engUtilizationDailyRowSchema),
 })
 
 export type ManhourItem = z.infer<typeof manhourItemSchema>
@@ -1615,6 +1921,10 @@ export const activityLogItemSchema = z.object({
   actorDisplayName: z.string().nullable(),
   productLine: z.string().nullable(),
   workOrder: z.string().nullable(),
+  jobDetail: z.string().nullable(),
+  resourceLabel: z.string().nullable(),
+  startedAt: z.string().nullable(),
+  endedAt: z.string().nullable(),
   action: z.string(),
   actionLabel: z.string(),
   resource: z.string().nullable(),
@@ -1925,7 +2235,36 @@ export const auditHubResponseSchema = z.object({
       count: z.number().int(),
     }),
   ),
+  planWo: z.object({
+    year: z.number().int(),
+    month: z.number().int(),
+    monthLabel: z.string(),
+    totalWo: z.number().int(),
+    pmWo: z.number().int(),
+    reactiveWo: z.number().int(),
+    openWo: z.number().int(),
+    assignedWo: z.number().int(),
+    movedWo: z.number().int(),
+  }),
+  recentRevisions: z.array(
+    z.object({
+      id: z.string(),
+      revisionNo: z.number().int(),
+      changeKind: z.string(),
+      changeLabel: z.string(),
+      summary: z.string(),
+      workOrder: z.string().nullable(),
+      jobDetail: z.string().nullable(),
+      actorId: z.string().nullable(),
+      actorRole: z.string().nullable(),
+      createdAt: z.string(),
+    }),
+  ),
 })
+
+export type AuditHubRevisionItem = z.infer<
+  typeof auditHubResponseSchema
+>['recentRevisions'][number]
 
 export type AuditHubResponse = z.infer<typeof auditHubResponseSchema>
 
@@ -2052,6 +2391,7 @@ export type HealthMigrateResult = z.infer<typeof healthMigrateResultSchema>
 export const adminRoleSchema = z.object({
   roleCode: z.string(),
   roleName: z.string(),
+  roleNameEn: z.string(),
   roleColor: z.string(),
   isSystem: z.boolean(),
   description: z.string().nullable(),
@@ -2092,6 +2432,7 @@ export const createAdminRoleBodySchema = z.object({
     .toUpperCase()
     .regex(/^[A-Z][A-Z0-9_]{0,15}$/),
   roleName: z.string().trim().min(1).max(120),
+  roleNameEn: z.string().trim().min(1).max(120),
   roleColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -2101,6 +2442,7 @@ export const createAdminRoleBodySchema = z.object({
 
 export const updateAdminRoleBodySchema = z.object({
   roleName: z.string().trim().min(1).max(120).optional(),
+  roleNameEn: z.string().trim().min(1).max(120).optional(),
   roleColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -2292,6 +2634,15 @@ export const confirmationImportResponseSchema = z.object({
   errors: z.number().int(),
   rows: z.array(confirmationImportRowResultSchema),
 })
+
+export const confirmationImportPreviewResponseSchema = confirmationImportResponseSchema.extend({
+  preview: z.literal(true),
+  layout: z.enum(['legacy', 'sap_alv']),
+  parseOk: z.number().int(),
+  matchWoInDb: z.number().int(),
+})
+
+export type ConfirmationImportPreviewResponse = z.infer<typeof confirmationImportPreviewResponseSchema>
 
 export type ConfirmationImportRowResult = z.infer<typeof confirmationImportRowResultSchema>
 export type ConfirmationImportResponse = z.infer<typeof confirmationImportResponseSchema>

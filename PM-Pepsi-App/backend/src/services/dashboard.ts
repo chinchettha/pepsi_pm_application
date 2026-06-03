@@ -1,5 +1,6 @@
 import type { Pool } from 'pg'
 import type { z } from 'zod'
+import { dashboardClosedWhere } from '../lib/dashboard-closed-filter.js'
 import type { dashboardSummarySchema } from '../schemas/dashboard.js'
 
 type Summary = z.infer<typeof dashboardSummarySchema>
@@ -44,6 +45,7 @@ async function fetchDailyTrends(
   pool: Pool,
   rangeStart: number,
   rangeEnd: number,
+  team: string | null,
 ): Promise<Summary['trends']> {
   const dayBucket = (col: string) =>
     `FLOOR((${col} - $1::bigint) / 86400)::int`
@@ -54,28 +56,31 @@ async function fetchDailyTrends(
       `SELECT ${dayBucket('i.bscstart')} AS day_offset, COUNT(*)::text AS n
        FROM app.tbiw37n i
        WHERE i.syst IN ('CRTD', 'REL')
+         AND ($3::text IS NULL OR i.team = $3::text)
          AND i.bscstart IS NOT NULL
          AND i.bscstart >= $1 AND i.bscstart < $2
        GROUP BY 1`,
-      [rangeStart, rangeEnd],
+      [rangeStart, rangeEnd, team],
     ),
     pool.query<{ day_offset: number; n: string }>(
       `SELECT ${dayBucket('i.actfinish')} AS day_offset, COUNT(*)::text AS n
        FROM app.tbiw37n i
-       WHERE i.actfinish IS NOT NULL
+       WHERE ${dashboardClosedWhere('i')}
+         AND ($3::text IS NULL OR i.team = $3::text)
          AND i.actfinish >= $1 AND i.actfinish < $2
        GROUP BY 1`,
-      [rangeStart, rangeEnd],
+      [rangeStart, rangeEnd, team],
     ),
     pool.query<{ day_offset: number; n: string }>(
       `SELECT ${dayBucket('i.bscstart')} AS day_offset, COUNT(*)::text AS n
        FROM app.tbiw37n i
        WHERE i.syst IN ('CRTD', 'REL')
+         AND ($3::text IS NULL OR i.team = $3::text)
          AND i.bscstart IS NOT NULL
          AND i.bscstart >= $1 AND i.bscstart < $2
          AND NOT EXISTS (SELECT 1 FROM app.tbplangingwork p WHERE p.idiw37 = i.idiw37)
        GROUP BY 1`,
-      [rangeStart, rangeEnd],
+      [rangeStart, rangeEnd, team],
     ),
     pool.query<{ day_offset: number; n: string }>(
       `SELECT ${dayBucket('FLOOR(EXTRACT(EPOCH FROM b.imported_at))::bigint')} AS day_offset,
@@ -99,34 +104,46 @@ async function fetchDailyTrends(
   }
 }
 
-export async function getDashboardSummary(pool: Pool): Promise<Summary> {
+export async function getDashboardSummary(
+  pool: Pool,
+  opts: { team?: 'A' | 'B' | 'EE' | 'UT' } = {},
+): Promise<Summary> {
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
   const startSec = Math.floor(monthStart.getTime() / 1000)
   const endSec = Math.floor(monthEnd.getTime() / 1000)
+  const team = opts.team?.trim() || null
 
   const { rangeStart, rangeEnd } = last7DayUnixBounds()
 
   const [openR, closedR, pendingR, importR, trends] = await Promise.all([
     pool.query<{ n: string }>(
-      `SELECT COUNT(*)::text AS n FROM app.tbiw37n WHERE syst IN ('CRTD', 'REL')`,
+      `SELECT COUNT(*)::text AS n
+       FROM app.tbiw37n
+       WHERE syst IN ('CRTD', 'REL')
+         AND ($1::text IS NULL OR team = $1::text)`,
+      [team],
     ),
     pool.query<{ n: string }>(
-      `SELECT COUNT(*)::text AS n FROM app.tbiw37n
-       WHERE actfinish IS NOT NULL AND actfinish >= $1 AND actfinish < $2`,
-      [startSec, endSec],
+      `SELECT COUNT(*)::text AS n FROM app.tbiw37n i
+       WHERE ${dashboardClosedWhere('i')}
+         AND i.actfinish >= $1 AND i.actfinish < $2
+         AND ($3::text IS NULL OR i.team = $3::text)`,
+      [startSec, endSec, team],
     ),
     pool.query<{ n: string }>(
       `SELECT COUNT(*)::text AS n
        FROM app.tbiw37n i
        WHERE i.syst IN ('CRTD', 'REL')
+         AND ($1::text IS NULL OR i.team = $1::text)
          AND NOT EXISTS (SELECT 1 FROM app.tbplangingwork p WHERE p.idiw37 = i.idiw37)`,
+      [team],
     ),
     pool.query<{ t: Date | null }>(
       `SELECT MAX(imported_at) AS t FROM app.tbiw37n_import_batch`,
     ),
-    fetchDailyTrends(pool, rangeStart, rangeEnd),
+    fetchDailyTrends(pool, rangeStart, rangeEnd, team),
   ])
 
   const last = importR.rows[0]?.t

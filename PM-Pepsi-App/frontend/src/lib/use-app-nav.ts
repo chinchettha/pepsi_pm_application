@@ -3,6 +3,7 @@ import {
   collectNavPaths,
   fetchNavMenu,
   getFallbackNav,
+  stripDeprecatedNavEntries,
   supplementNavFromFallback,
 } from '@/lib/nav-menu-api'
 import { effectivePermissions } from '@/lib/permissions'
@@ -11,13 +12,18 @@ import { getRbacPreviewSnapshot, subscribeRbacPreview } from '@/lib/rbac-preview
 import { useAuthUser } from '@/lib/use-permission'
 import type { NavEntry } from '@/components/layout/nav-config'
 import { useQuery } from '@tanstack/react-query'
+import { localizeNavEntries } from '@/lib/localize-nav'
+import { useAppLocale } from '@/providers/I18nProvider'
 import { useMemo, useSyncExternalStore } from 'react'
+import { useTranslation } from 'react-i18next'
 
 function useRbacPreview() {
   return useSyncExternalStore(subscribeRbacPreview, getRbacPreviewSnapshot, () => null)
 }
 
 export function useAppNav() {
+  const { t, i18n } = useTranslation()
+  const { locale } = useAppLocale()
   const authUser = useAuthUser()
   const preview = useRbacPreview()
   const navPerms = effectivePermissions(authUser)
@@ -38,15 +44,22 @@ export function useAppNav() {
         ? supplementNavFromFallback(apiNavItemsToEntries(q.data.items), getFallbackNav())
         : getFallbackNav()
     const navUserst = preview?.roleCode ?? authUser.userst
-    return filterNavForUser(navUserst, base, navPerms, {
-      rbacStrict: (navPerms?.length ?? 0) > 0,
-    })
+    return stripDeprecatedNavEntries(
+      filterNavForUser(navUserst, base, navPerms, {
+        rbacStrict: (navPerms?.length ?? 0) > 0,
+      }),
+    )
   }, [authUser, permissionKey, q.data])
 
-  const allowedPaths = useMemo(() => collectNavPaths(entries), [entries])
+  const localizedEntries = useMemo(
+    () => localizeNavEntries(entries, t, locale),
+    [entries, t, locale, i18n.language],
+  )
+
+  const allowedPaths = useMemo(() => collectNavPaths(localizedEntries), [localizedEntries])
 
   return {
-    entries,
+    entries: localizedEntries,
     allowedPaths,
     isLoading: q.isLoading,
     isError: q.isError,

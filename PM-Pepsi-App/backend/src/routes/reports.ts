@@ -35,11 +35,13 @@ export function registerReportsRoutes(app: Express, pool: Pool, sessionSecret: s
     const weeksBack = Number(req.query.weeksBack ?? 8)
     const from = typeof req.query.from === 'string' ? req.query.from : undefined
     const to = typeof req.query.to === 'string' ? req.query.to : undefined
+    const team = typeof req.query.team === 'string' ? req.query.team : undefined
     try {
       const data = await getReportsKpi(pool, {
         fromInput: from,
         toInput: to,
         weeksBack: Number.isFinite(weeksBack) ? weeksBack : 8,
+        team,
       })
       res.json(reportsKpiResponseSchema.parse(data))
     } catch (err) {
@@ -101,11 +103,13 @@ export function registerReportsRoutes(app: Express, pool: Pool, sessionSecret: s
     const weeksBack = Number(req.query.weeksBack ?? 8)
     const from = typeof req.query.from === 'string' ? req.query.from : undefined
     const to = typeof req.query.to === 'string' ? req.query.to : undefined
+    const team = typeof req.query.team === 'string' ? req.query.team : undefined
     try {
       const data = await getSummaryWeekly(pool, {
         fromInput: from,
         toInput: to,
         weeksBack: Number.isFinite(weeksBack) ? weeksBack : 8,
+        team,
       })
       res.json(summaryWeeklyResponseSchema.parse(data))
     } catch (err) {

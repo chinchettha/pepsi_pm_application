@@ -2,7 +2,16 @@
  * กราฟขยายเต็มจอ — เทียบ `W_summary_weekly_chart_full.php`, `W_summary_weekly_chart2_full.php`
  * เปิดแท็บใหม่จาก `/summary-weekly` (ลิงก์ "ดูกราฟแบบขยาย")
  */
-import { AppCard } from '@/components/layout/AppCard'
+import {
+  AppPageHero,
+  AppPageHeroActions,
+  appPageHeroBtnClass,
+} from '@/components/layout/AppPageHero'
+import { AppPageContent } from '@/components/layout/AppPageContent'
+import {
+  AppPageSection,
+  AppPageSectionCard,
+} from '@/components/layout/AppPageShell'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,8 +26,11 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { AlertCircle, ArrowLeft, Maximize2, Printer, RefreshCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 export function SummaryWeeklyChartFullPage() {
+  const { t } = useTranslation('reports')
+  const { t: tc } = useTranslation('common')
   const navigate = useNavigate()
   const canRead = usePermission('reports.read')
   const [params] = useSearchParams()
@@ -45,114 +57,133 @@ export function SummaryWeeklyChartFullPage() {
 
   const chart = q.data?.utilizationChart ?? []
   const variantLabel =
-    variant === 'chart2'
-      ? 'กราฟชั่วโมงรวม (chart2)'
-      : 'กราฟ utilization (legacy chart)'
+    variant === 'chart2' ? t('engUtil.fullVariantChart2') : t('engUtil.fullVariantChart')
 
   if (!canRead) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-app-subtle p-6">
+      <div className="summary-weekly-chart-full flex min-h-screen items-center justify-center p-6">
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('engUtil.fullAccessDenied')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">reports.read</code>
+              {tc('rbac.requiresPermission')}{' '}
+              <code className="text-xs">reports.read</code>
             </>
           }
+          action={{
+            label: t('engUtil.fullBack'),
+            onClick: () => navigate('/summary-weekly'),
+          }}
         />
-        <Button variant="outline" size="sm" className="mt-4" asChild>
-          <Link to="/summary-weekly">กลับ Eng Utilization</Link>
-        </Button>
       </div>
     )
   }
 
-  const printTitle = `กราฟ Utilization — ${variantLabel}`
-  const printRange =
-    q.data?.range != null
-      ? `${q.data.range.fromDate} – ${q.data.range.toDate}`
-      : `${submitted.from} – ${submitted.to}`
+  const printTitle = t('engUtil.fullPrintTitle', { variant: variantLabel })
 
   return (
-    <div className="summary-weekly-chart-full min-h-screen bg-app-subtle">
-      <header className="print-hidden flex flex-wrap items-center justify-between gap-3 border-b border-app bg-white px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Maximize2 className="size-5 text-app-muted" aria-hidden />
-          <div>
-            <h1 className="text-lg font-semibold text-app">กราฟ Utilization แบบขยาย</h1>
-            <p className="text-xs text-app-muted">{variantLabel}</p>
+    <div className="summary-weekly-chart-full dashboard-page min-h-screen">
+      <AppPageHero
+        eyebrow={t('engUtil.fullEyebrow')}
+        title={t('engUtil.fullTitle')}
+        description={variantLabel}
+        hints={t('engUtil.fullHints', { returnObjects: true }) as string[]}
+        meta={
+          <p className="dashboard-hero__subtitle mt-1 flex items-center gap-2 text-sm opacity-90">
+            <Maximize2 className="size-4 shrink-0" aria-hidden />
+            {t('engUtil.fullMeta')}
+          </p>
+        }
+        actions={
+          <AppPageHeroActions>
+            <Button
+              variant="outline"
+              size="sm"
+              className={appPageHeroBtnClass}
+              onClick={() => window.print()}
+              disabled={!chart.length}
+            >
+              <Printer className="mr-1 size-4" aria-hidden />
+              {t('engUtil.fullPrint')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={appPageHeroBtnClass}
+              onClick={() => void q.refetch()}
+              disabled={q.isFetching}
+            >
+              <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
+              {t('engUtil.refresh')}
+            </Button>
+            <Button variant="outline" size="sm" className={appPageHeroBtnClass} asChild>
+              <Link to="/summary-weekly">
+                <ArrowLeft className="mr-1 size-4" aria-hidden />
+                {t('engUtil.fullBack')}
+              </Link>
+            </Button>
+          </AppPageHeroActions>
+        }
+      />
+
+      <AppPageContent className="scheduling-page pb-8">
+        <AppPageSection index={0}>
+          <div className="print-hidden">
+            <ReportsDateFilter initial={submitted} onSearch={setSubmitted} />
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.print()}
-            disabled={!chart.length}
-          >
-            <Printer className="mr-1 size-4" aria-hidden />
-            พิมพ์กราฟ
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void q.refetch()}
-            disabled={q.isFetching}
-          >
-            <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/summary-weekly">
-              <ArrowLeft className="mr-1 size-4" aria-hidden />
-              กลับ Eng Utilization
-            </Link>
-          </Button>
-        </div>
-      </header>
+        </AppPageSection>
 
-      <main className="mx-auto max-w-[1400px] space-y-4 p-4 sm:p-6">
-        <div className="print-hidden">
-          <ReportsDateFilter initial={submitted} onSearch={setSubmitted} />
-        </div>
-
-        {q.isLoading && !q.data ? (
-          <Skeleton className="h-[min(70vh,700px)] w-full rounded-card" />
-        ) : q.isError ? (
-          <EmptyState
-            icon={AlertCircle}
-            title="โหลดกราฟไม่สำเร็จ"
-            description={(q.error as Error).message}
-            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
-          />
-        ) : chart.length ? (
-          <AppCard pad="compact" className="print-chart-target">
-            <div className="mb-4 hidden print:block">
-              <h1 className="text-xl font-semibold text-black">{printTitle}</h1>
-              <p className="mt-1 text-sm text-zinc-600">ช่วงข้อมูล: {printRange}</p>
-              <p className="mt-0.5 text-xs text-zinc-500">
-                พิมพ์เมื่อ {new Date().toLocaleString('th-TH')}
-              </p>
-            </div>
-            {q.data?.range ? (
-              <p className="print-hidden mb-3 text-caption">
-                ช่วงข้อมูล: {q.data.range.fromDate} – {q.data.range.toDate}
-              </p>
-            ) : null}
-            <SummaryWeeklyUtilizationChart items={chart} variant={variant} layout="fullscreen" />
-          </AppCard>
-        ) : (
-          <EmptyState
-            title="ยังไม่มีข้อมูล manhour"
-            description="ขยายช่วงวันที่หรือ import manhour แล้วลองใหม่"
-            action={{
-              label: 'กลับ Eng Utilization',
-              onClick: () => navigate('/summary-weekly'),
-            }}
-          />
-        )}
-      </main>
+        <AppPageSection index={1}>
+          {q.isLoading && !q.data ? (
+            <Skeleton className="h-[min(70vh,700px)] w-full rounded-card" aria-label={t('engUtil.fullLoading')} />
+          ) : q.isError ? (
+            <EmptyState
+              icon={AlertCircle}
+              title={t('engUtil.fullLoadFailed')}
+              description={(q.error as Error).message}
+              action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
+            />
+          ) : chart.length ? (
+            <AppPageSectionCard
+              icon={Maximize2}
+              title={t('engUtil.fullSectionTitle')}
+              description={
+                q.data?.range
+                  ? t('engUtil.fullRange', {
+                      from: q.data.range.fromDate,
+                      to: q.data.range.toDate,
+                    })
+                  : undefined
+              }
+              bodyClassName="print-chart-target !p-3 sm:!p-4"
+            >
+              <div className="mb-4 hidden print:block">
+                <h1 className="text-xl font-semibold text-black">{printTitle}</h1>
+                <p className="mt-1 text-sm text-zinc-600">
+                  {t('engUtil.fullRange', {
+                    from: q.data?.range?.fromDate ?? submitted.from,
+                    to: q.data?.range?.toDate ?? submitted.to,
+                  })}
+                </p>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  {t('engUtil.fullPrintedAt', { datetime: new Date().toLocaleString() })}
+                </p>
+              </div>
+              <SummaryWeeklyUtilizationChart items={chart} variant={variant} layout="fullscreen" />
+            </AppPageSectionCard>
+          ) : (
+            <EmptyState
+              title={t('engUtil.fullEmpty')}
+              description={t('engUtil.fullEmptyHint')}
+              action={{
+                label: t('engUtil.fullBack'),
+                onClick: () => navigate('/summary-weekly'),
+              }}
+            />
+          )}
+        </AppPageSection>
+      </AppPageContent>
     </div>
   )
 }

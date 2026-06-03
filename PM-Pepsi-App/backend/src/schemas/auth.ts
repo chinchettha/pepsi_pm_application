@@ -24,6 +24,8 @@ export const authUserSchema = z.object({
   plnt: z.string().nullable().optional(),
   userst: z.string(),
   sysstatus: z.string(),
+  roleNameTh: z.string().optional(),
+  roleNameEn: z.string().optional(),
   userLevel: z.number().optional(),
   fullnameTh: z.string().optional(),
   fullnameEng: z.string().optional(),

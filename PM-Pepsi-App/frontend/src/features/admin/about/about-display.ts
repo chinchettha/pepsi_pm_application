@@ -1,13 +1,9 @@
-const LICENSE_LABELS: Record<string, string> = {
-  not_configured: 'ยังไม่ตั้งค่า',
-  configured: 'ตั้งคีย์แล้ว',
-  active: 'ใช้งานได้',
-  expired: 'หมดอายุ',
-  trial: 'ทดลองใช้',
-}
+import type { TFunction } from 'i18next'
 
-export function licenseStatusLabel(status: string): string {
-  return LICENSE_LABELS[status] ?? status
+export function licenseStatusLabel(status: string, t: TFunction<'admin'>): string {
+  const key = `about.license.${status}` as const
+  const translated = t(key)
+  return translated !== key ? translated : status
 }
 
 export function licenseStatusTone(status: string): 'ok' | 'warn' | 'muted' {

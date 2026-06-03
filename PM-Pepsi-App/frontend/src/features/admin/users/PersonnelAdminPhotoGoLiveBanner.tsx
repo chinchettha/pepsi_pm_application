@@ -9,14 +9,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   canWrite: boolean
   onShowMissingPhotos: () => void
+  onShowMissingCodes?: () => void
 }
 
-/** Go-live: ช่างที่มี manhours แต่ไม่มีรูป — ปิดที่ Users (TERMINATED) ก่อนเปิด Eng Utilization */
-export function PersonnelAdminPhotoGoLiveBanner({ canWrite, onShowMissingPhotos }: Props) {
+export function PersonnelAdminPhotoGoLiveBanner({
+  canWrite,
+  onShowMissingPhotos,
+  onShowMissingCodes,
+}: Props) {
+  const { t } = useTranslation('personnel')
   const qc = useQueryClient()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -30,16 +36,20 @@ export function PersonnelAdminPhotoGoLiveBanner({ canWrite, onShowMissingPhotos 
     mutationFn: (idwkctrs: string[]) => deactivateAdminWithoutPhoto(idwkctrs),
     onSuccess: (res) => {
       toast.success(
-        `ปิดการใช้งาน ${res.updated} คน (workstatus=${res.workstatus})${
-          res.skipped.length ? ` · ข้าม ${res.skipped.length}` : ''
-        }`,
+        t('photoGoLive.toastSuccess', {
+          updated: res.updated,
+          workstatus: res.workstatus,
+          skipped: res.skipped.length
+            ? t('photoGoLive.toastSkipped', { n: res.skipped.length })
+            : '',
+        }),
       )
       void qc.invalidateQueries({ queryKey: ['admin', 'users', 'photo-go-live'] })
       void qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
       void qc.invalidateQueries({ queryKey: ['reports', 'summary-weekly'] })
       setConfirmOpen(false)
     },
-    onError: (e: Error) => toast.error(e.message || 'ปิดการใช้งานไม่สำเร็จ'),
+    onError: () => toast.error(t('photoGoLive.toastFailed')),
   })
 
   if (gapsQ.isLoading) {
@@ -54,32 +64,41 @@ export function PersonnelAdminPhotoGoLiveBanner({ canWrite, onShowMissingPhotos 
 
   return (
     <>
-      <div className="rounded-card border border-amber-300 bg-amber-50/90 p-4">
-        <p className="text-body-sm font-medium text-amber-950">
-          Go-live Eng Utilization: ช่างที่มีชั่วโมงในรายงานแต่ยังไม่มีรูป {items.length} คน
+      <div className="admin-callout admin-callout--amber">
+        <p className="text-body-sm font-medium">
+          {t('photoGoLive.title', { count: items.length })}
         </p>
-        <p className="mt-1 text-xs text-amber-900/85">
-          ช่วง manhours {range.from} – {range.to} (เทียบ `/summary-weekly` ค่าเริ่มต้น 8 สัปดาห์).
-          อัปโหลดรูปที่แถวแก้ไข หรือปิดการใช้งานที่นี่ — ตั้ง workstatus เป็น{' '}
-          <strong>TERMINATED</strong> (พ้นสภาพ) เพื่อไม่ให้โผล่ใน Eng Utilization จนมีรูป
+        <p className="mt-1 text-xs opacity-90">
+          {t('photoGoLive.body', { from: range.from, to: range.to })}
         </p>
         <ul className="mt-2 flex flex-wrap gap-2 text-xs">
           {items.slice(0, 8).map((p) => (
-            <li key={p.idwkctr} className="rounded-button border border-amber-200 bg-white px-2 py-1">
+            <li
+              key={p.idwkctr}
+              className="rounded-button border border-amber-200/70 app-surface-panel px-2 py-1"
+            >
               {p.wkctr}
-              {p.displayName ? ` (${p.displayName})` : ''} · {p.manhourHours} ชม.
+              {p.displayName ? ` (${p.displayName})` : ''} ·{' '}
+              {t('photoGoLive.hours', { hours: p.manhourHours })}
             </li>
           ))}
           {items.length > 8 ? (
-            <li className="self-center text-amber-800">+{items.length - 8} คน</li>
+            <li className="self-center opacity-80">
+              {t('photoGoLive.morePeople', { n: items.length - 8 })}
+            </li>
           ) : null}
         </ul>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" onClick={onShowMissingPhotos}>
-            กรองตาราง: ไม่มีรูป
+            {t('photoGoLive.filterNoPhoto')}
           </Button>
+          {onShowMissingCodes ? (
+            <Button type="button" size="sm" variant="outline" onClick={onShowMissingCodes}>
+              {t('photoGoLive.filterNoWorkCntr')}
+            </Button>
+          ) : null}
           <Button type="button" size="sm" variant="outline" asChild>
-            <Link to="/summary-weekly">ดู Eng Utilization</Link>
+            <Link to="/summary-weekly">{t('photoGoLive.viewEngUtil')}</Link>
           </Button>
           {canWrite ? (
             <Button
@@ -88,10 +107,12 @@ export function PersonnelAdminPhotoGoLiveBanner({ canWrite, onShowMissingPhotos 
               className="bg-amber-700 hover:bg-amber-800"
               onClick={() => setConfirmOpen(true)}
             >
-              ปิดการใช้งานทั้งหมดที่ไม่มีรูป ({items.length})
+              {t('photoGoLive.deactivateAll', { count: items.length })}
             </Button>
           ) : (
-            <span className="self-center text-xs text-amber-800">ต้องมีสิทธิ์ admin.users.write</span>
+            <span className="self-center text-xs text-amber-800">
+              {t('photoGoLive.needWrite')}
+            </span>
           )}
         </div>
       </div>
@@ -100,10 +121,10 @@ export function PersonnelAdminPhotoGoLiveBanner({ canWrite, onShowMissingPhotos 
         <ConfirmPhraseDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          phrase="ปิดช่างไม่มีรูป"
-          title="ปิดการใช้งานช่างที่ไม่มีรูป?"
-          description={`ตั้ง workstatus=TERMINATED สำหรับ ${items.length} คนที่ยังใช้งานและไม่มี imgmember_data — จะหายจาก Eng Utilization จนอัปโหลดรูปและเปิดสถานะใหม่`}
-          confirmLabel="ปิดการใช้งาน"
+          phrase={t('photoGoLive.confirmPhrase')}
+          title={t('photoGoLive.confirmTitle')}
+          description={t('photoGoLive.confirmDesc', { count: items.length })}
+          confirmLabel={t('photoGoLive.confirmButton')}
           loading={deactivateM.isPending}
           onConfirm={() => deactivateM.mutate(ids)}
         />

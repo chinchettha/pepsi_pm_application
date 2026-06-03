@@ -3,6 +3,7 @@ import type { AuthUser } from '../schemas/auth.js'
 import { hashPassword, verifyPassword } from '../lib/password.js'
 import { validatePasswordMinLength } from '../lib/password-policy.js'
 import { getPasswordMinLength } from '../lib/security-settings.js'
+import { enrichAuthUser } from '../lib/role-labels.js'
 import {
   loadWorkcenterRow,
   mapMemberRow,
@@ -36,16 +37,16 @@ export async function reloadAuthUser(pool: Pool, sessionUser: AuthUser): Promise
     )
     const row = r.rows[0]
     if (!row) return null
-    const user = mapMemberRow(row)
+    let user = mapMemberRow(row)
     user.passMustChange = await loadPassMustChange(pool, 'member', row.id)
-    return user
+    return enrichAuthUser(pool, user)
   }
 
   const row = await loadWorkcenterRow(pool, sessionUser.idwkctr)
   if (!row) return null
-  const user = mapWorkcenterRow(row)
+  let user = mapWorkcenterRow(row)
   user.passMustChange = await loadPassMustChange(pool, 'workcenter', sessionUser.idwkctr)
-  return user
+  return enrichAuthUser(pool, user)
 }
 
 async function loadPassMustChange(

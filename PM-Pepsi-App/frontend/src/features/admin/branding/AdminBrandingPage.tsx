@@ -29,6 +29,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { AlertCircle, RefreshCcw, RotateCcw, Save, Upload } from 'lucide-react'
 import type { ChangeEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { ColorPickerCard } from './ColorPickerCard'
 import { LoginBackgroundCard } from './LoginBackgroundCard'
@@ -45,6 +46,8 @@ function invalidateBrandingCaches(qc: ReturnType<typeof useQueryClient>) {
 }
 
 export function AdminBrandingPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
   const canRead = usePermission('admin.branding.read')
   const canWrite = usePermission('admin.branding.write')
@@ -99,9 +102,9 @@ export function AdminBrandingPage() {
     onSuccess: (data) => {
       setForm(data)
       invalidateBrandingCaches(qc)
-      toast.success('บันทึกการตั้งค่า branding แล้ว')
+      toast.success(t('branding.saved'))
     },
-    onError: (e: Error) => toast.error(e.message || 'บันทึกไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('branding.saveFailed')),
   })
 
   const resetMut = useMutation({
@@ -112,9 +115,9 @@ export function AdminBrandingPage() {
       setFaviconVersion((v) => v + 1)
       setLoginBgVersion((v) => v + 1)
       invalidateBrandingCaches(qc)
-      toast.success('คืนค่า branding เป็นค่าเริ่มต้นแล้ว')
+      toast.success(t('branding.resetOk'))
     },
-    onError: (e: Error) => toast.error(e.message || 'คืนค่าไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('branding.resetFailed')),
   })
 
   const logoUploadMut = useMutation({
@@ -126,11 +129,11 @@ export function AdminBrandingPage() {
       invalidateBrandingCaches(qc)
       const data = await q.refetch()
       if (data.data) setForm(data.data)
-      toast.success('อัปโหลดโลโก้แล้ว')
+      toast.success(t('branding.logoUploaded'))
     },
     onError: (e: Error) => {
       setLogoLocalPreview(null)
-      toast.error(e.message || 'อัปโหลดโลโก้ไม่สำเร็จ')
+      toast.error(e.message || t('branding.logoUploadFailed'))
     },
   })
 
@@ -140,9 +143,9 @@ export function AdminBrandingPage() {
       setLogoVersion((v) => v + 1)
       invalidateBrandingCaches(qc)
       void q.refetch()
-      toast.success('ลบโลโก้กำหนดเองแล้ว')
+      toast.success(t('branding.logoDeleted'))
     },
-    onError: (e: Error) => toast.error(e.message || 'ลบโลโก้ไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('branding.logoDeleteFailed')),
   })
 
   const faviconUploadMut = useMutation({
@@ -160,11 +163,11 @@ export function AdminBrandingPage() {
           sizePx: data.data.faviconSizePx,
         })
       }
-      toast.success('อัปโหลดไอคอนแท็บเบราว์เซอร์แล้ว')
+      toast.success(t('branding.faviconUploaded'))
     },
     onError: (e: Error) => {
       setFaviconLocalPreview(null)
-      toast.error(e.message || 'อัปโหลด favicon ไม่สำเร็จ')
+      toast.error(e.message || t('branding.faviconUploadFailed'))
     },
   })
 
@@ -174,9 +177,9 @@ export function AdminBrandingPage() {
       setFaviconVersion((v) => v + 1)
       invalidateBrandingCaches(qc)
       void q.refetch()
-      toast.success('ลบ favicon กำหนดเองแล้ว')
+      toast.success(t('branding.faviconDeleted'))
     },
-    onError: (e: Error) => toast.error(e.message || 'ลบ favicon ไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('branding.faviconDeleteFailed')),
   })
 
   const loginBgUploadMut = useMutation({
@@ -189,12 +192,12 @@ export function AdminBrandingPage() {
         const data = await q.refetch()
         if (data.data) setForm(data.data)
       } catch {
-        /* คง optimistic hasLoginBackground หาก refetch ช้า/ล้ม */
+        /* keep optimistic hasLoginBackground if refetch is slow/fails */
       }
       setLoginBgLocalPreview(null)
-      toast.success('อัปโหลดพื้นหลัง login แล้ว — ดูผลที่หน้า /login')
+      toast.success(t('branding.loginBgUploaded'))
     },
-    onError: (e: Error) => toast.error(e.message || 'อัปโหลดพื้นหลังไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('branding.loginBgUploadFailed')),
   })
 
   const loginBgDeleteMut = useMutation({
@@ -205,9 +208,9 @@ export function AdminBrandingPage() {
       setForm((f) => (f ? { ...f, hasLoginBackground: false } : f))
       invalidateBrandingCaches(qc)
       void q.refetch()
-      toast.success('ลบพื้นหลัง login แล้ว')
+      toast.success(t('branding.loginBgDeleted'))
     },
-    onError: (e: Error) => toast.error(e.message || 'ลบพื้นหลังไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('branding.loginBgDeleteFailed')),
   })
 
   const logoPreviewSrc = useMemo(() => {
@@ -272,7 +275,7 @@ export function AdminBrandingPage() {
     if (form.fontHeadingColor !== q.data.fontHeadingColor) body.fontHeadingColor = form.fontHeadingColor
     if (form.fontMutedColor !== q.data.fontMutedColor) body.fontMutedColor = form.fontMutedColor
     if (Object.keys(body).length === 0) {
-      toast.message('ไม่มีการเปลี่ยนแปลง')
+      toast.message(t('shared.noChanges'))
       return
     }
     saveMut.mutate(body)
@@ -310,13 +313,7 @@ export function AdminBrandingPage() {
   if (!canRead && !canWrite) {
     return (
       <AdminPageRoot tourTarget="admin-branding">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์เข้าถึงหน้านี้ (ต้องมี <code>admin.branding.read</code>)
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.branding.read" />
       </AdminPageRoot>
     )
   }
@@ -324,9 +321,9 @@ export function AdminBrandingPage() {
   return (
     <AdminPageShell
       tourTarget="admin-branding"
-      title="ธีม & โลโก้"
-      description="ชื่อแอป สีธีม โลโก้ favicon — ตัวอย่างอัปเดตทันทีหลังอัปโหลด"
-      contentClassName="space-y-6"
+      title={t('branding.title')}
+      description={t('branding.description')}
+      hints={t('branding.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Button
@@ -338,7 +335,7 @@ export function AdminBrandingPage() {
             disabled={q.isFetching}
           >
             <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
+            {t('shared.refresh')}
           </Button>
           {canWrite ? (
             <>
@@ -348,12 +345,12 @@ export function AdminBrandingPage() {
                 className="admin-toolbar-btn"
                 disabled={resetMut.isPending}
                 onClick={() => {
-                  if (!window.confirm('คืนค่า branding ทั้งหมดเป็นค่าเริ่มต้น?')) return
+                  if (!window.confirm(t('branding.resetConfirm'))) return
                   resetMut.mutate()
                 }}
               >
                 <RotateCcw className="mr-2 size-4" aria-hidden />
-                คืนค่ามาตรฐาน
+                {t('branding.resetStandard')}
               </Button>
               <Button
                 type="button"
@@ -362,7 +359,7 @@ export function AdminBrandingPage() {
                 onClick={onSave}
               >
                 <Save className="mr-2 size-4" aria-hidden />
-                บันทึก
+                {tc('actions.save')}
               </Button>
             </>
           ) : null}
@@ -374,9 +371,9 @@ export function AdminBrandingPage() {
         ) : q.isError ? (
           <EmptyState
             icon={AlertCircle}
-            title="โหลด branding ไม่สำเร็จ"
+            title={t('branding.loadFailed')}
             description={(q.error as Error).message}
-            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+            action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
           />
         ) : form ? (
           <>
@@ -391,11 +388,11 @@ export function AdminBrandingPage() {
             <div className="grid gap-6 lg:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>ชื่อแอป & Footer</CardTitle>
+                  <CardTitle>{t('branding.appFooterTitle')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="appName">ชื่อแอป</Label>
+                    <Label htmlFor="appName">{t('branding.appName')}</Label>
                     <Input
                       id="appName"
                       value={form.appName}
@@ -404,7 +401,7 @@ export function AdminBrandingPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="footerText">ข้อความ footer</Label>
+                    <Label htmlFor="footerText">{t('branding.footerText')}</Label>
                     <Input
                       id="footerText"
                       value={form.footerText}
@@ -417,7 +414,7 @@ export function AdminBrandingPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>ธีมโหมด</CardTitle>
+                  <CardTitle>{t('branding.themeModeTitle')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
@@ -430,7 +427,7 @@ export function AdminBrandingPage() {
                         disabled={!canWrite}
                         onClick={() => setForm({ ...form, themeMode: m.value })}
                       >
-                        {m.label}
+                        {t(`branding.themeMode.${m.value}`)}
                       </Button>
                     ))}
                   </div>
@@ -484,8 +481,8 @@ export function AdminBrandingPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>ขนาดโลโก้ & ไอคอน</CardTitle>
-                  <CardDescription>ปรับความสูงแสดงผล — favicon จะ resize ตามขนาดเมื่อบันทึก</CardDescription>
+                  <CardTitle>{t('branding.logoSizeTitle')}</CardTitle>
+                  <CardDescription>{t('branding.logoSizeDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <BrandingAssetSizeCard
@@ -498,10 +495,9 @@ export function AdminBrandingPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>ไอคอนแท็บเบราว์เซอร์</CardTitle>
+                  <CardTitle>{t('branding.faviconTitle')}</CardTitle>
                   <CardDescription>
-                    แสดงบนแท็บ Chrome/Edge/Safari · PNG/JPEG/WebP → {form.faviconSizePx}×
-                    {form.faviconSizePx}px
+                    {t('branding.faviconDesc', { size: form.faviconSizePx })}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -528,14 +524,12 @@ export function AdminBrandingPage() {
                       <p>
                         {faviconPreviewSrc
                           ? faviconUploadMut.isPending
-                            ? 'กำลังอัปโหลด… แสดงตัวอย่างจากไฟล์ที่เลือก'
-                            : 'ใช้ไอคอนกำหนดเอง — อัปเดตแท็บหลังอัปโหลดสำเร็จ'
-                          : 'ยังไม่ตั้ง — ใช้ไอคอนเริ่มต้นของแอป'}
+                            ? t('branding.faviconUploading')
+                            : t('branding.faviconCustom')
+                          : t('branding.faviconDefault')}
                       </p>
                       {form.hasFavicon ? (
-                        <p className="mt-1 text-xs text-app-muted">
-                          ถ้าแท็บยังไม่เปลี่ยน ลอง Ctrl+F5 หรือปิดแท็บแล้วเปิดใหม่
-                        </p>
+                        <p className="mt-1 text-xs text-app-muted">{t('branding.faviconTabHint')}</p>
                       ) : null}
                     </div>
                   </div>
@@ -547,7 +541,7 @@ export function AdminBrandingPage() {
                         checked={removeBgOnUpload}
                         onChange={(e) => setRemoveBgOnUpload(e.target.checked)}
                       />
-                      ลบพื้นหลังสว่างอัตโนมัติ (พื้นขาว/เทาอ่อน)
+                      {t('branding.removeLightBg')}
                     </label>
                   ) : null}
                   {canWrite ? (
@@ -559,7 +553,7 @@ export function AdminBrandingPage() {
                         )}
                       >
                         <Upload className="size-4" aria-hidden />
-                        อัปโหลดไอคอนแท็บ
+                        {t('branding.uploadFavicon')}
                         <input
                           type="file"
                           accept="image/*,.ico"
@@ -574,7 +568,7 @@ export function AdminBrandingPage() {
                           disabled={faviconDeleteMut.isPending}
                           onClick={() => faviconDeleteMut.mutate()}
                         >
-                          ลบ favicon
+                          {t('branding.deleteFavicon')}
                         </Button>
                       ) : null}
                     </div>

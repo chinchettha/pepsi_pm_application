@@ -6,6 +6,8 @@ export const themeModeSchema = z.enum(['light', 'dark', 'system'])
 /** รูปแบบเมนูหลัก — admin ตั้งใน Menu Builder */
 export const navShellModeSchema = z.enum(['sidebar', 'navbar', 'hamburger'])
 
+export type NavShellMode = z.infer<typeof navShellModeSchema>
+
 export const publicSettingsResponseSchema = z.object({
   appName: z.string(),
   footerText: z.string(),

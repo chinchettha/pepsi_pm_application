@@ -6,7 +6,12 @@ import { touchConfirmQcPending } from './confirm-qc.js'
 import { SAP_MASS_CONFIRM_MAX, assertMassConfirmBatchSize } from '../lib/mass-confirm-limit.js'
 import type { ConfirmationExportScope } from '../lib/confirmation-export-scope.js'
 import { FACTORY_CODE } from './scheduling-shared.js'
-import { parseConfirmFile, type ConfirmImportRow } from './confirmation-import.js'
+import { parseConfirmFileWithMeta, type ConfirmImportRow, type ConfirmLayout } from './confirmation-import.js'
+import {
+  ENG_TECHNICIAN_CODES,
+  engTechnicianDisplayName,
+} from '../data/eng-technician-codes.js'
+import { personnelIsActiveSql } from '../lib/personnel-active-sql.js'
 
 export { SAP_MASS_CONFIRM_MAX as MASS_CONFIRM_MAX_ITEMS }
 
@@ -21,13 +26,32 @@ export type WorkcenterItem = { wkctr: string; displayName: string }
 
 export async function listWorkcenters(pool: Pool): Promise<WorkcenterItem[]> {
   const r = await pool.query<WorkcenterRow>(
-    `SELECT wkctr, titlewkctr, namewkctr, surnamewkctr
-     FROM app.tbworkcenter
-     ORDER BY wkctr ASC`,
+    `SELECT wc.wkctr, wc.titlewkctr, wc.namewkctr, wc.surnamewkctr
+     FROM app.tbworkcenter wc
+     WHERE trim(wc.wkctr) <> ''
+       AND ${personnelIsActiveSql('wc')}
+       AND (
+         wc.userrole = 'technician'
+         OR wc.userst = 'W'
+         OR wc.wkctr ~ '^(PAC|PRO|UTI)[0-9]{3}$'
+       )`,
   )
-  return r.rows.map((row) => ({
+  const order = new Map(ENG_TECHNICIAN_CODES.map((t, i) => [t.wkctr, i]))
+  const rows = [...r.rows].sort((a, b) => {
+    const oa = order.get(a.wkctr) ?? 9999
+    const ob = order.get(b.wkctr) ?? 9999
+    if (oa !== ob) return oa - ob
+    return a.wkctr.localeCompare(b.wkctr)
+  })
+  if (rows.length === 0) {
+    return ENG_TECHNICIAN_CODES.map((def) => ({
+      wkctr: def.wkctr,
+      displayName: engTechnicianDisplayName(def),
+    }))
+  }
+  return rows.map((row) => ({
     wkctr: row.wkctr,
-    displayName: `${row.titlewkctr ?? ''}${row.namewkctr ?? ''} ${row.surnamewkctr ?? ''}`.trim(),
+    displayName: engTechnicianDisplayName(row),
   }))
 }
 
@@ -132,7 +156,7 @@ function durationMinutes(stSec: number, enSec: number): number {
 }
 
 export async function addConfirmationClose(
-  pool: Pool,
+  pool: Pool | PoolClient,
   opts: {
     idiw37: number
     wkctr: string
@@ -143,6 +167,9 @@ export async function addConfirmationClose(
     cwkctr: string | null
   },
 ): Promise<void> {
+  const { assertWorkOrderCloseReady } = await import('../lib/work-order-close-guard.js')
+  await assertWorkOrderCloseReady(pool, opts.idiw37)
+
   const d1 = parseDdMmYyyy(opts.startD)
   const d2 = parseDdMmYyyy(opts.endD)
   const t1 = parseHhMm(opts.startT)
@@ -274,6 +301,12 @@ export type ConfirmImportSummary = {
   rows: ConfirmImportRowResult[]
 }
 
+export type ConfirmImportPreviewResult = ConfirmImportSummary & {
+  layout: ConfirmLayout
+  parseOk: number
+  matchWoInDb: number
+}
+
 async function findIdiw37ByWkorder(
   client: PoolClient,
   wkorder: string,
@@ -285,14 +318,11 @@ async function findIdiw37ByWkorder(
   return r.rows[0]?.idiw37 ?? null
 }
 
-/**
- * INSERT ถ้าไม่มี (confirmation, wkorder, timeclose, wkctr) ซ้ำ ไม่งั้น UPDATE
- * เทียบ M_Confirm.php บรรทัด 130-165
- */
-async function upsertConfirmImportRow(
+async function resolveConfirmImportAction(
   client: PoolClient,
   row: ConfirmImportRow,
   idiw37: number,
+  dryRun: boolean,
 ): Promise<'inserted' | 'updated'> {
   const existing = await client.query<{ idclose: number }>(
     `SELECT idclose FROM app.tbcofirm
@@ -301,30 +331,139 @@ async function upsertConfirmImportRow(
     [idiw37, row.wkctr, row.confirmation, row.timeclose],
   )
   if (existing.rows.length > 0) {
-    await client.query(
-      `UPDATE app.tbcofirm
-       SET stdate = $2, endate = $3, cwkctr = $4, timewk = $5, unitc = 'Min'
-       WHERE idclose = $1`,
-      [existing.rows[0].idclose, row.stdate, row.endate, row.cwkctr, row.timewk],
-    )
+    if (!dryRun) {
+      await client.query(
+        `UPDATE app.tbcofirm
+         SET stdate = $2, endate = $3, cwkctr = $4, timewk = $5, unitc = 'Min'
+         WHERE idclose = $1`,
+        [existing.rows[0]!.idclose, row.stdate, row.endate, row.cwkctr, row.timewk],
+      )
+    }
     return 'updated'
   }
-  await client.query(
-    `INSERT INTO app.tbcofirm
-       (idiw37, confirmation, wkctr, stdate, endate, cwkctr, timeclose, timewk, unitc)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Min')`,
-    [
-      idiw37,
-      row.confirmation,
-      row.wkctr,
-      row.stdate,
-      row.endate,
-      row.cwkctr,
-      row.timeclose,
-      row.timewk,
-    ],
-  )
+  if (!dryRun) {
+    await client.query(
+      `INSERT INTO app.tbcofirm
+         (idiw37, confirmation, wkctr, stdate, endate, cwkctr, timeclose, timewk, unitc)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Min')`,
+      [
+        idiw37,
+        row.confirmation,
+        row.wkctr,
+        row.stdate,
+        row.endate,
+        row.cwkctr,
+        row.timeclose,
+        row.timewk,
+      ],
+    )
+  }
   return 'inserted'
+}
+
+async function processConfirmImportParsed(
+  client: PoolClient,
+  parsed: ReturnType<typeof parseConfirmFileWithMeta>['results'],
+  dryRun: boolean,
+): Promise<ConfirmImportSummary> {
+  const rows: ConfirmImportRowResult[] = []
+  let inserted = 0
+  let updated = 0
+  let skipped = 0
+  let errors = 0
+
+  for (const r of parsed) {
+    if (r.kind === 'error') {
+      rows.push({
+        rowNo: r.rowNo,
+        action: 'error',
+        confirmation: r.raw.confirmation,
+        wkorder: r.raw.wkorder,
+        wkctr: r.raw.wkctr,
+        stdate: null,
+        endate: null,
+        timewk: null,
+        message: r.message,
+      })
+      errors++
+      continue
+    }
+    const row = r.row
+    try {
+      const idiw37 = await findIdiw37ByWkorder(client, row.wkorder)
+      if (idiw37 == null) {
+        rows.push({
+          rowNo: row.rowNo,
+          action: 'skipped',
+          confirmation: row.confirmation,
+          wkorder: row.wkorder,
+          wkctr: row.wkctr,
+          stdate: row.stdate,
+          endate: row.endate,
+          timewk: row.timewk,
+          message: `ไม่พบ WO ใน tbiw37n: ${row.wkorder}`,
+        })
+        skipped++
+        continue
+      }
+      const action = await resolveConfirmImportAction(client, row, idiw37, dryRun)
+      rows.push({
+        rowNo: row.rowNo,
+        action,
+        confirmation: row.confirmation,
+        wkorder: row.wkorder,
+        wkctr: row.wkctr,
+        stdate: row.stdate,
+        endate: row.endate,
+        timewk: row.timewk,
+        message: dryRun
+          ? action === 'inserted'
+            ? 'จะเพิ่มใหม่'
+            : 'จะอัปเดต'
+          : action === 'inserted'
+            ? 'New Success'
+            : 'Update Success',
+      })
+      if (action === 'inserted') inserted++
+      else updated++
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown DB error'
+      rows.push({
+        rowNo: row.rowNo,
+        action: 'error',
+        confirmation: row.confirmation,
+        wkorder: row.wkorder,
+        wkctr: row.wkctr,
+        stdate: row.stdate,
+        endate: row.endate,
+        timewk: row.timewk,
+        message: msg,
+      })
+      errors++
+    }
+  }
+
+  return { totalRows: parsed.length, inserted, updated, skipped, errors, rows }
+}
+
+/** ตรวจสอบก่อน commit — ไม่เขียน tbcofirm */
+export async function previewConfirmFile(
+  pool: Pool,
+  fileName: string,
+  buffer: Buffer,
+): Promise<ConfirmImportPreviewResult> {
+  const parsed = parseConfirmFileWithMeta(buffer, fileName)
+  const parseOk = parsed.results.filter((r) => r.kind === 'ok').length
+  const client = await pool.connect()
+  try {
+    const summary = await processConfirmImportParsed(client, parsed.results, true)
+    const matchWoInDb = summary.rows.filter(
+      (r) => r.action === 'inserted' || r.action === 'updated',
+    ).length
+    return { ...summary, layout: parsed.layout, parseOk, matchWoInDb }
+  } finally {
+    client.release()
+  }
 }
 
 export async function importConfirmFile(
@@ -332,95 +471,18 @@ export async function importConfirmFile(
   fileName: string,
   buffer: Buffer,
 ): Promise<ConfirmImportSummary> {
-  const parsed = parseConfirmFile(buffer, fileName)
-  const rows: ConfirmImportRowResult[] = []
-  let inserted = 0
-  let updated = 0
-  let skipped = 0
-  let errors = 0
-
+  const parsed = parseConfirmFileWithMeta(buffer, fileName)
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    for (const r of parsed) {
-      if (r.kind === 'error') {
-        rows.push({
-          rowNo: r.rowNo,
-          action: 'error',
-          confirmation: r.raw.confirmation,
-          wkorder: r.raw.wkorder,
-          wkctr: r.raw.wkctr,
-          stdate: null,
-          endate: null,
-          timewk: null,
-          message: r.message,
-        })
-        errors++
-        continue
-      }
-      const row = r.row
-      try {
-        const idiw37 = await findIdiw37ByWkorder(client, row.wkorder)
-        if (idiw37 == null) {
-          rows.push({
-            rowNo: row.rowNo,
-            action: 'skipped',
-            confirmation: row.confirmation,
-            wkorder: row.wkorder,
-            wkctr: row.wkctr,
-            stdate: row.stdate,
-            endate: row.endate,
-            timewk: row.timewk,
-            message: `ไม่พบ WO ใน tbiw37n: ${row.wkorder}`,
-          })
-          skipped++
-          continue
-        }
-        const action = await upsertConfirmImportRow(client, row, idiw37)
-        rows.push({
-          rowNo: row.rowNo,
-          action,
-          confirmation: row.confirmation,
-          wkorder: row.wkorder,
-          wkctr: row.wkctr,
-          stdate: row.stdate,
-          endate: row.endate,
-          timewk: row.timewk,
-          message: action === 'inserted' ? 'New Success' : 'Update Success',
-        })
-        if (action === 'inserted') inserted++
-        else updated++
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Unknown DB error'
-        rows.push({
-          rowNo: row.rowNo,
-          action: 'error',
-          confirmation: row.confirmation,
-          wkorder: row.wkorder,
-          wkctr: row.wkctr,
-          stdate: row.stdate,
-          endate: row.endate,
-          timewk: row.timewk,
-          message: msg,
-        })
-        errors++
-      }
-    }
+    const summary = await processConfirmImportParsed(client, parsed.results, false)
     await client.query('COMMIT')
+    return summary
   } catch (err) {
     await client.query('ROLLBACK').catch(() => undefined)
     throw err
   } finally {
     client.release()
-  }
-
-  return {
-    totalRows: parsed.length,
-    inserted,
-    updated,
-    skipped,
-    errors,
-    rows,
   }
 }
 

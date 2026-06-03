@@ -7,11 +7,13 @@ import { NAV_SHELL_MODE_LABELS } from '@/lib/nav-shell-mode'
 import { usePublicSettings } from '@/providers/SettingsProvider'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LayoutTemplate } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 const LAYOUT_KEY = ['admin', 'menu', 'layout'] as const
 
 export function MenuNavLayoutCard({ canWrite }: { canWrite: boolean }) {
+  const { t } = useTranslation('admin')
   const qc = useQueryClient()
   const { refetch: refetchPublic } = usePublicSettings()
 
@@ -23,11 +25,13 @@ export function MenuNavLayoutCard({ canWrite }: { canWrite: boolean }) {
   const patchMut = useMutation({
     mutationFn: (mode: NavShellMode) => patchNavLayout(mode),
     onSuccess: (data) => {
-      toast.success(`บันทึกรูปแบบเมนู: ${NAV_SHELL_MODE_LABELS[data.navShellMode]}`)
+      toast.success(
+        t('menu.layoutSaved', { mode: NAV_SHELL_MODE_LABELS[data.navShellMode] }),
+      )
       void qc.invalidateQueries({ queryKey: LAYOUT_KEY })
       void refetchPublic()
     },
-    onError: () => toast.error('บันทึกรูปแบบเมนูไม่สำเร็จ'),
+    onError: () => toast.error(t('menu.layoutSaveFailed')),
   })
 
   const current = layoutQ.data?.navShellMode ?? 'sidebar'
@@ -37,11 +41,9 @@ export function MenuNavLayoutCard({ canWrite }: { canWrite: boolean }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <LayoutTemplate className="size-4" />
-          รูปแบบเมนูหลัก (nav.shell_mode)
+          {t('menu.layoutTitle')}
         </CardTitle>
-        <CardDescription>
-          ทุกผู้ใช้เห็น layout ตามที่ตั้ง — บันทึกใน tbl_setting · รีเฟรชหน้าอื่นเพื่อเห็นผลทันที
-        </CardDescription>
+        <CardDescription>{t('menu.layoutDesc')}</CardDescription>
       </CardHeader>
       <CardContent>
         {layoutQ.isLoading ? (
@@ -69,7 +71,7 @@ export function MenuNavLayoutCard({ canWrite }: { canWrite: boolean }) {
               ))}
             </select>
             {patchMut.isPending ? (
-              <span className="text-xs text-app-muted">กำลังบันทึก…</span>
+              <span className="text-xs text-app-muted">{t('menu.savingLayout')}</span>
             ) : null}
           </div>
         )}

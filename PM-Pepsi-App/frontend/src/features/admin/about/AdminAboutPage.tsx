@@ -13,6 +13,7 @@ import { formatBytes, formatUptime } from '@/lib/admin-health-api'
 import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { AlertCircle, Building2, Cpu, HardDrive, Info, KeyRound, RefreshCcw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import {
   licenseStatusLabel,
@@ -20,22 +21,25 @@ import {
   migrationProgressPercent,
 } from './about-display'
 
-function migrationBadge(pending: number, status: string) {
-  if (pending === 0 && status === 'ok') {
-    return <Badge className="bg-emerald-700">ครบ</Badge>
-  }
-  if (status === 'error') return <Badge variant="destructive">ผิดพลาด</Badge>
-  return <Badge className="bg-amber-600">ค้าง {pending}</Badge>
-}
-
-function licenseBadge(status: string) {
-  const tone = licenseStatusTone(status)
-  if (tone === 'ok') return <Badge className="bg-emerald-700">{licenseStatusLabel(status)}</Badge>
-  if (tone === 'warn') return <Badge className="bg-amber-600">{licenseStatusLabel(status)}</Badge>
-  return <Badge variant="secondary">{licenseStatusLabel(status)}</Badge>
-}
-
 export function AdminAboutPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
+
+  const migrationBadge = (pending: number, status: string) => {
+    if (pending === 0 && status === 'ok') {
+      return <Badge className="bg-emerald-700">{t('about.migrationComplete')}</Badge>
+    }
+    if (status === 'error') return <Badge variant="destructive">{t('about.migrationError')}</Badge>
+    return <Badge className="bg-amber-600">{t('about.migrationPending', { count: pending })}</Badge>
+  }
+
+  const licenseBadge = (status: string) => {
+    const tone = licenseStatusTone(status)
+    const label = licenseStatusLabel(status, t)
+    if (tone === 'ok') return <Badge className="bg-emerald-700">{label}</Badge>
+    if (tone === 'warn') return <Badge className="bg-amber-600">{label}</Badge>
+    return <Badge variant="secondary">{label}</Badge>
+  }
   const canRead = usePermission('admin.about.read')
 
   const q = useQuery({
@@ -48,13 +52,7 @@ export function AdminAboutPage() {
   if (!canRead) {
     return (
       <AdminPageRoot tourTarget="admin-about">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์ <code className="text-xs">admin.about.read</code>
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.about.read" />
       </AdminPageRoot>
     )
   }
@@ -65,9 +63,9 @@ export function AdminAboutPage() {
   return (
     <AdminPageShell
       tourTarget="admin-about"
-      title="เกี่ยวกับระบบ"
-      description="เวอร์ชัน · องค์กร · migration · เซิร์ฟเวอร์และ license"
-      contentClassName="space-y-6"
+      title={t('about.title')}
+      description={t('about.description')}
+      hints={['Version', 'Migration', 'License', 'Build info']}
       headerActions={
         <Button
           type="button"
@@ -77,17 +75,15 @@ export function AdminAboutPage() {
           disabled={q.isFetching}
           onClick={() => void q.refetch()}
         >
-          <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-          รีเฟรช
-        </Button>
+          <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />{t('shared.refresh')}</Button>
       }
     >
         {q.isError && !d ? (
           <EmptyState
             icon={AlertCircle}
-            title="โหลดข้อมูลไม่สำเร็จ"
-            description={(q.error as Error)?.message ?? 'ไม่ทราบสาเหตุ'}
-            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+            title={t('about.loadFailed')}
+            description={(q.error as Error)?.message ?? t('about.unknownError')}
+            action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
           />
         ) : null}
 
@@ -103,7 +99,7 @@ export function AdminAboutPage() {
               <AdminKpiCard
                 tone="info"
                 icon={Info}
-                label="เวอร์ชัน API"
+                label={t('about.apiVersion')}
                 value={d.apiVersion}
                 hint={`Web ${d.webVersion}`}
               />
@@ -115,15 +111,15 @@ export function AdminAboutPage() {
                 hint={
                   d.migration.latestAppliedId
                     ? `#${d.migration.latestAppliedId} ${d.migration.latestFile ?? ''}`
-                    : 'ยังไม่มี probe ผ่าน'
+                    : t('about.noProbe')
                 }
               />
               <AdminKpiCard
                 tone={licenseStatusTone(d.license.status) === 'warn' ? 'warning' : 'info'}
                 icon={KeyRound}
                 label="License"
-                value={licenseStatusLabel(d.license.status)}
-                hint={d.license.expiresAt ? 'มีวันหมดอายุ' : 'ดูใน Settings'}
+                value={licenseStatusLabel(d.license.status, t)}
+                hint={d.license.expiresAt ? t('about.licenseHintExpires') : t('about.licenseHintSettings')}
               />
             </AdminKpiGrid>
 
@@ -134,7 +130,7 @@ export function AdminAboutPage() {
                     <Info className="size-4" />
                     Build
                   </CardTitle>
-                  <CardDescription>จาก package.json + env ตอน deploy</CardDescription>
+                  <CardDescription>{t('about.buildDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-body-sm">
                   <p>
@@ -146,7 +142,7 @@ export function AdminAboutPage() {
                   {d.buildCommit ? (
                     <p className="font-mono text-xs text-app-muted">commit {d.buildCommit}</p>
                   ) : (
-                    <p className="text-xs text-app-muted">ตั้ง BUILD_COMMIT ตอน build เพื่อแสดง hash</p>
+                    <p className="text-xs text-app-muted">{t('about.buildCommitHint')}</p>
                   )}
                   {d.buildTime ? (
                     <p className="text-xs text-app-muted">
@@ -160,7 +156,7 @@ export function AdminAboutPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Building2 className="size-4" />
-                    องค์กร
+                    {t('about.organization')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-body-sm">
@@ -178,7 +174,7 @@ export function AdminAboutPage() {
                   <CardTitle className="text-base">Migration</CardTitle>
                   <CardDescription>
                     <Link to="/admin/health" className="text-sky-700 underline">
-                      รายละเอียด + รัน SQL ใน Health
+                      {t('about.migrationDetail')}
                     </Link>
                   </CardDescription>
                 </CardHeader>
@@ -186,7 +182,10 @@ export function AdminAboutPage() {
                   <div className="flex items-center gap-2">
                     {migrationBadge(d.migration.pendingCount, d.migration.status)}
                     <span className="tabular-nums">
-                      {d.migration.appliedCount}/{d.migration.totalFiles} ไฟล์ (probe)
+                      {t('about.migrationFiles', {
+                        applied: d.migration.appliedCount,
+                        total: d.migration.totalFiles,
+                      })}
                     </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-app-muted">
@@ -197,13 +196,13 @@ export function AdminAboutPage() {
                   </div>
                   {d.migration.latestAppliedId ? (
                     <p className="text-xs text-app-muted">
-                      ล่าสุด #{d.migration.latestAppliedId}
+                      {t('about.migrationLatest', { id: d.migration.latestAppliedId })}
                       {d.migration.latestFile ? ` — ${d.migration.latestFile}` : ''}
                     </p>
                   ) : null}
                   {d.migration.unverifiedCount > 0 ? (
                     <p className="text-xs text-amber-700">
-                      ไม่มี probe ใน Health: {d.migration.unverifiedCount} ไฟล์ (นับรวมใน total)
+                      {t('about.migrationUnverified', { count: d.migration.unverifiedCount })}
                     </p>
                   ) : null}
                 </CardContent>
@@ -215,9 +214,9 @@ export function AdminAboutPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Cpu className="size-4" />
-                    เซิร์ฟเวอร์ API
+                    {t('about.apiServerTitle')}
                   </CardTitle>
-                  <CardDescription>เทียบ spec: Windows Server + Node process</CardDescription>
+                  <CardDescription>{t('about.apiServerDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-body-sm">
                   <p>
@@ -230,7 +229,7 @@ export function AdminAboutPage() {
                     <span className="text-app-muted">Uptime:</span> {formatUptime(d.server.uptimeSec)}
                   </p>
                   <p className="text-xs text-app-muted">
-                    อัปเดตเมื่อ {new Date(d.time).toLocaleString('th-TH')}
+                    {t('about.updatedAt', { time: new Date(d.time).toLocaleString() })}
                   </p>
                 </CardContent>
               </Card>
@@ -239,16 +238,21 @@ export function AdminAboutPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <HardDrive className="size-4" />
-                    ดิสก์ {d.server.disk.path}
+                    {t('about.diskTitle', { path: d.server.disk.path })}
                   </CardTitle>
-                  <CardDescription>อ่านจาก Health — path ดิสก์ที่ตั้งในระบบ</CardDescription>
+                  <CardDescription>{t('about.diskDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-body-sm">
                   <p>
-                    ใช้ {d.server.disk.usedPercent ?? '—'}% — {formatBytes(d.server.disk.usedBytes)} /{' '}
-                    {formatBytes(d.server.disk.totalBytes)}
+                    {t('about.diskUsage', {
+                      percent: d.server.disk.usedPercent ?? '—',
+                      used: formatBytes(d.server.disk.usedBytes),
+                      total: formatBytes(d.server.disk.totalBytes),
+                    })}
                   </p>
-                  <p className="text-app-muted">ว่าง {formatBytes(d.server.disk.freeBytes)}</p>
+                  <p className="text-app-muted">
+                    {t('about.diskFree', { free: formatBytes(d.server.disk.freeBytes) })}
+                  </p>
                   {d.server.disk.message ? (
                     <p className="text-xs text-amber-700">{d.server.disk.message}</p>
                   ) : null}
@@ -263,24 +267,24 @@ export function AdminAboutPage() {
                   License
                 </CardTitle>
                 <CardDescription>
-                  คีย์ license เก็บใน Settings (แสดงแบบ masked) —{' '}
+                  {t('about.licenseSettingsHint')}{' '}
                   <Link to="/admin/settings" className="text-sky-700 underline">
-                    ตั้งใน Settings
+                    {t('about.configureInSettings')}
                   </Link>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-body-sm">
                 <p className="flex items-center gap-2">
-                  สถานะ: {licenseBadge(d.license.status)}
+                  {t('about.licenseStatus')} {licenseBadge(d.license.status)}
                 </p>
                 {d.license.expiresAt ? (
                   <p className="text-app-muted">
-                    หมดอายุ: {new Date(d.license.expiresAt).toLocaleDateString('th-TH')}
+                    {t('about.licenseExpires', {
+                      date: new Date(d.license.expiresAt).toLocaleDateString(),
+                    })}
                   </p>
                 ) : (
-                  <p className="text-app-muted">
-                    วันหมดอายุ: ตั้ง <code>LICENSE_EXPIRES</code> บน API หรือเพิ่มคีย์ใน Settings
-                  </p>
+                  <p className="text-app-muted">{t('about.licenseExpiresEnv')}</p>
                 )}
               </CardContent>
             </Card>

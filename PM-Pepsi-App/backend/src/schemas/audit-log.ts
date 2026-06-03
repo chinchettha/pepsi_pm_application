@@ -25,6 +25,9 @@ export const auditLogInputSchema = z.object({
 
 export type AuditLogInput = z.infer<typeof auditLogInputSchema>
 
+/** Call-site input — `status` defaults to `ok` in `auditLog` / `auditLogFromRequest`. */
+export type AuditLogWriteInput = z.input<typeof auditLogInputSchema>
+
 export const auditLogRowSchema = z.object({
   id: z.number(),
   actorId: z.string().nullable(),

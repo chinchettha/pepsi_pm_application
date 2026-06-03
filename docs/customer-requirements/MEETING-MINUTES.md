@@ -1,5 +1,7 @@
 # รายงานการประชุมลูกค้า (ครั้งที่ 1–2)
 
+**สรุปสไลด์ + checklist แก้งาน:** [`MEETING-SUMMARY-REQUIREMENTS.md`](MEETING-SUMMARY-REQUIREMENTS.md)
+
 อัปเดต: 2026-05-21  
 ไฟล์ต้นฉบับ (repo root):
 

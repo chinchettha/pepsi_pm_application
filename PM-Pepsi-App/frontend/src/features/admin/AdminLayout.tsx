@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Compass } from 'lucide-react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation } from 'react-router-dom'
 
 const outletMotion = {
@@ -24,6 +25,7 @@ const outletMotion = {
 }
 
 export function AdminLayout() {
+  const { t } = useTranslation('admin')
   const location = useLocation()
   const canAdmin = useAnyPermission(ADMIN_READ_PERMISSIONS)
   const [runTour, setRunTour] = useState(false)
@@ -47,7 +49,7 @@ export function AdminLayout() {
   if (!canAdmin) {
     return (
       <AdminPageRoot tourTarget="admin-console">
-        <AdminAccessDenied message="ไม่มีสิทธิ์เข้าหน้าผู้ดูแลระบบ" />
+        <AdminAccessDenied message={t('accessDenied.layout')} />
       </AdminPageRoot>
     )
   }
@@ -71,10 +73,10 @@ export function AdminLayout() {
             size="sm"
             className="admin-toolbar-btn admin-toolbar-primary"
             onClick={() => setRunTour(true)}
-            aria-label="เริ่มทัวร์แนะนำ Admin (12 หน้า)"
+            aria-label={t('layout.tourAria')}
           >
             <Compass className="mr-1 size-4" />
-            ทัวร์ Admin
+            {t('layout.tour')}
           </Button>
         </div>
       </div>

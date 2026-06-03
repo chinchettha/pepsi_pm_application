@@ -1,12 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { useTheme } from '@/providers/ThemeProvider'
 import { Monitor, Moon, Sun } from 'lucide-react'
-
-const labels: Record<string, string> = {
-  light: 'โหมดสว่าง',
-  dark: 'โหมดมืด',
-  system: 'ตามระบบ',
-}
+import { useTranslation } from 'react-i18next'
 
 type ThemeToggleProps = {
   variant?: 'icon' | 'compact'
@@ -14,11 +9,14 @@ type ThemeToggleProps = {
 }
 
 export function ThemeToggle({ variant = 'icon', className }: ThemeToggleProps) {
+  const { t } = useTranslation('common')
   const { resolvedTheme, serverThemeMode, preference, toggleTheme, resetToServerDefault } =
     useTheme()
 
   const followingServer = preference === null
-  const serverLabel = labels[serverThemeMode] ?? serverThemeMode
+  const serverLabel = t(`theme.${serverThemeMode}`, { defaultValue: serverThemeMode })
+  const modeShort =
+    resolvedTheme === 'dark' ? t('theme.darkShort') : t('theme.lightShort')
 
   if (variant === 'compact') {
     return (
@@ -30,8 +28,8 @@ export function ThemeToggle({ variant = 'icon', className }: ThemeToggleProps) {
         onClick={toggleTheme}
         title={
           followingServer
-            ? `สลับธีม (ค่าเริ่มต้น: ${serverLabel})`
-            : `สลับธีม (กำหนดเอง — คลิกขวาคืนค่าเริ่มต้น)`
+            ? t('theme.toggleTitleServer', { mode: serverLabel })
+            : t('theme.toggleTitleCustom')
         }
         onContextMenu={(e) => {
           e.preventDefault()
@@ -43,7 +41,7 @@ export function ThemeToggle({ variant = 'icon', className }: ThemeToggleProps) {
         ) : (
           <Moon className="mr-2 size-4" aria-hidden />
         )}
-        {resolvedTheme === 'dark' ? 'สว่าง' : 'มืด'}
+        {modeShort}
       </Button>
     )
   }
@@ -55,11 +53,13 @@ export function ThemeToggle({ variant = 'icon', className }: ThemeToggleProps) {
       size="icon"
       className={className}
       onClick={toggleTheme}
-      aria-label={resolvedTheme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
+      aria-label={
+        resolvedTheme === 'dark' ? t('theme.ariaLight') : t('theme.ariaDark')
+      }
       title={
         followingServer
-          ? `ธีม: ${resolvedTheme === 'dark' ? 'มืด' : 'สว่าง'} (ตาม ${serverLabel}) — คลิกสลับ`
-          : `ธีม: ${resolvedTheme === 'dark' ? 'มืด' : 'สว่าง'} (กำหนดเอง) — คลิกขวาคืนค่า admin`
+          ? t('theme.iconTitleServer', { mode: modeShort, serverMode: serverLabel })
+          : t('theme.iconTitleCustom', { mode: modeShort })
       }
       onContextMenu={(e) => {
         e.preventDefault()

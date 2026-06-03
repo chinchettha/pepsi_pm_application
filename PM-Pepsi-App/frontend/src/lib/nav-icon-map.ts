@@ -5,7 +5,6 @@ import {
   Boxes,
   BookText,
   CalendarDays,
-  ChartGantt,
   ClipboardList,
   Clock3,
   Database,
@@ -36,7 +35,6 @@ const byRoute: Record<string, LucideIcon> = {
   '/': Home,
   '/plan-calendar': CalendarDays,
   '/calendar': CalendarDays,
-  '/line-calendar': ChartGantt,
   '/backlog': LayoutList,
   '/work-orders': ClipboardList,
   '/confirmation': Users,
@@ -66,7 +64,6 @@ const byRoute: Record<string, LucideIcon> = {
   '/admin/roles': ShieldCheck,
   '/admin/menu': Menu,
   '/personnel/admin': UserCog,
-  '/manhours/admin': UserCog,
 }
 
 /** แปลง `menuicon` จาก tbmenu หรือใช้ route เป็น fallback */

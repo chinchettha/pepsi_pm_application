@@ -7,14 +7,12 @@ export type BoardPeriodId = 'today' | '7d' | 'week'
 
 export type BoardPeriodOption = {
   id: BoardPeriodId
-  label: string
-  shortHint: string
 }
 
 export const BOARD_PERIOD_OPTIONS: readonly BoardPeriodOption[] = [
-  { id: 'today', label: 'วันนี้', shortHint: 'วันนี้' },
-  { id: '7d', label: '7 วัน', shortHint: '7 วันล่าสุด' },
-  { id: 'week', label: 'สัปดาห์นี้', shortHint: 'จ–อา สัปดาห์ปัจจุบัน' },
+  { id: 'today' },
+  { id: '7d' },
+  { id: 'week' },
 ] as const
 
 export function isBoardPeriodId(v: string): v is BoardPeriodId {
@@ -69,9 +67,9 @@ export function resolveBoardPeriodDateRange(
 export function formatBoardPeriodRangeLabel(
   periodId: BoardPeriodId,
   range: { from: string; to: string },
+  periodLabel: string,
 ): string {
-  const opt = BOARD_PERIOD_OPTIONS.find((p) => p.id === periodId)
-  if (periodId === 'today') return `${opt?.label ?? 'วันนี้'} (${range.from})`
-  if (range.from === range.to) return `${opt?.label ?? periodId} (${range.from})`
-  return `${opt?.label ?? periodId} (${range.from} – ${range.to})`
+  if (periodId === 'today') return `${periodLabel} (${range.from})`
+  if (range.from === range.to) return `${periodLabel} (${range.from})`
+  return `${periodLabel} (${range.from} – ${range.to})`
 }

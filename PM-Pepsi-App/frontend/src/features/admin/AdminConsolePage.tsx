@@ -1,17 +1,15 @@
 import { AdminKpiCard } from '@/components/admin/AdminKpiCard'
 import { AdminKpiGrid } from '@/components/admin/AdminKpiGrid'
-import { AdminPageShell } from '@/components/admin/AdminPageShell'
-import { AdminQuickLink } from '@/components/admin/AdminQuickLink'
-import { AdminCard, AdminCardContent, AdminCardDescription, AdminCardHeader, AdminCardTitle } from '@/components/admin/admin-card-exports'
+import { AdminPageSection, AdminPageShell } from '@/components/admin/AdminPageShell'
 import { Skeleton } from '@/components/ui/skeleton'
-import { countAccessibleAdminSections, getGroupedAdminSections } from '@/lib/admin-sections'
-import { hasPermission } from '@/lib/permissions'
+import { countAccessibleAdminSections } from '@/lib/admin-sections'
 import { fetchAdminHealth } from '@/lib/admin-health-api'
 import { useAuthUser, usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Activity, AlertCircle, History, LayoutGrid, RefreshCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useTranslation } from 'react-i18next'
 
 const stagger = {
   show: { transition: { staggerChildren: 0.06 } },
@@ -23,6 +21,7 @@ const item = {
 }
 
 export function AdminConsolePage() {
+  const { t } = useTranslation('admin')
   const authUser = useAuthUser()
   const canHealth = usePermission('admin.health.read')
   const healthQ = useQuery({
@@ -34,19 +33,14 @@ export function AdminConsolePage() {
     placeholderData: keepPreviousData,
   })
 
-  const groupedSections = getGroupedAdminSections({ skipOverview: true })
   const moduleCount = countAccessibleAdminSections(authUser?.permissions)
-  const quickCount = groupedSections.reduce(
-    (n, g) => n + g.sections.filter((s) => hasPermission(authUser, s.permission)).length,
-    0,
-  )
 
   return (
     <AdminPageShell
       tourTarget="admin-console"
-      title="ศูนย์ผู้ดูแลระบบ"
-      description="KPI สถานะระบบ · ทางลัดโมดูลตามสิทธิ์ RBAC"
-      contentClassName="space-y-6"
+      title={t('console.title')}
+      description={t('console.description')}
+      hints={t('console.hints', { returnObjects: true }) as string[]}
       headerActions={
         canHealth ? (
           <Button
@@ -61,11 +55,12 @@ export function AdminConsolePage() {
               className={`mr-1 size-3.5 ${healthQ.isFetching ? 'animate-spin' : ''}`}
               aria-hidden
             />
-            รีเฟรช
+            {t('console.refresh')}
           </Button>
         ) : null
       }
     >
+        <AdminPageSection index={0}>
         <motion.div variants={stagger} initial="hidden" animate="show">
         <AdminKpiGrid>
           {canHealth && healthQ.isLoading ? (
@@ -84,9 +79,13 @@ export function AdminConsolePage() {
               <AdminKpiCard
                 tone="danger"
                 icon={AlertCircle}
-                label="Health API"
-                value="ไม่โหลดได้"
-                hint={healthQ.error instanceof Error ? healthQ.error.message : 'ตรวจ backend + สิทธิ์ admin.health.read'}
+                label={t('console.healthApi')}
+                value={t('console.healthLoadFailed')}
+                hint={
+                  healthQ.error instanceof Error
+                    ? healthQ.error.message
+                    : t('console.healthLoadHint')
+                }
               />
             </motion.div>
           ) : null}
@@ -97,7 +96,7 @@ export function AdminConsolePage() {
                 <AdminKpiCard
                   tone={healthQ.data.db.status === 'ok' ? 'info' : 'danger'}
                   icon={Activity}
-                  label="Database"
+                  label={t('console.database')}
                   value={
                     healthQ.data.db.latencyMs != null ? `${healthQ.data.db.latencyMs} ms` : '—'
                   }
@@ -109,9 +108,9 @@ export function AdminConsolePage() {
                   tone={
                     healthQ.data.migration.pendingCount > 0 ? 'warning' : 'success'
                   }
-                  label="Migration"
+                  label={t('console.migration')}
                   value={`${healthQ.data.migration.appliedCount}/${healthQ.data.migration.totalFiles}`}
-                  hint={`pending ${healthQ.data.migration.pendingCount}`}
+                  hint={t('console.pending', { count: healthQ.data.migration.pendingCount })}
                 />
               </motion.div>
             </>
@@ -122,9 +121,9 @@ export function AdminConsolePage() {
               <AdminKpiCard
                 tone="default"
                 icon={Activity}
-                label="Health"
+                label={t('console.health')}
                 value="—"
-                hint="ไม่มีสิทธิ์ admin.health.read"
+                hint={t('console.noHealthPermission')}
               />
             </motion.div>
           ) : null}
@@ -133,9 +132,9 @@ export function AdminConsolePage() {
             <AdminKpiCard
               tone="default"
               icon={LayoutGrid}
-              label="โมดูลที่เข้าได้"
+              label={t('console.modulesAccessible')}
               value={`${moduleCount.accessible}/${moduleCount.total}`}
-              hint="ตาม user.permissions"
+              hint={t('console.modulesHint')}
             />
           </motion.div>
 
@@ -143,45 +142,14 @@ export function AdminConsolePage() {
             <AdminKpiCard
               tone="success"
               icon={History}
-              label="ทัวร์ Admin"
+              label={t('console.adminTour')}
               value={moduleCount.total}
-              hint="Joyride · Ctrl+K · breadcrumb"
+              hint={t('console.tourHint')}
             />
           </motion.div>
         </AdminKpiGrid>
         </motion.div>
-
-        <motion.div variants={item} initial="hidden" animate="show">
-          <AdminCard>
-            <AdminCardHeader>
-              <AdminCardTitle className="text-base">ทางลัด ({quickCount} หน้า)</AdminCardTitle>
-              <AdminCardDescription>
-                จัดกลุ่มตามหน้าที่ · แสดงเฉพาะโมดูลที่มีสิทธิ์ · ⌘K / Ctrl+K เปิด command palette
-              </AdminCardDescription>
-            </AdminCardHeader>
-            <AdminCardContent className="space-y-8">
-              {groupedSections.map(({ group, sections }) => {
-                const visible = sections.filter((s) => hasPermission(authUser, s.permission))
-                if (visible.length === 0) return null
-                return (
-                  <section key={group.id} aria-labelledby={`admin-group-${group.id}`}>
-                    <h2
-                      id={`admin-group-${group.id}`}
-                      className="admin-section-group-title mb-3 border-b border-[var(--admin-border)] pb-2"
-                    >
-                      {group.label}
-                    </h2>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {visible.map((s) => (
-                        <AdminQuickLink key={s.to} section={s} />
-                      ))}
-                    </div>
-                  </section>
-                )
-              })}
-            </AdminCardContent>
-          </AdminCard>
-        </motion.div>
+        </AdminPageSection>
     </AdminPageShell>
   )
 }

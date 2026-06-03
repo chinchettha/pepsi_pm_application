@@ -45,16 +45,17 @@ import {
   Timer,
 } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 type HealthStatus = AdminHealthResponse['db']['status']
 
-function statusBadge(status: HealthStatus) {
-  if (status === 'ok') return <Badge className="bg-emerald-700">ปกติ</Badge>
-  if (status === 'warning') return <Badge className="bg-amber-600">เตือน</Badge>
-  if (status === 'error') return <Badge variant="destructive">ผิดพลาด</Badge>
-  return <Badge variant="secondary">ไม่ทราบ</Badge>
+function statusBadge(status: HealthStatus, t: (key: string) => string) {
+  if (status === 'ok') return <Badge className="bg-emerald-700">{t('health.statusOk')}</Badge>
+  if (status === 'warning') return <Badge className="bg-amber-600">{t('health.statusWarning')}</Badge>
+  if (status === 'error') return <Badge variant="destructive">{t('health.statusError')}</Badge>
+  return <Badge variant="secondary">{t('health.statusUnknown')}</Badge>
 }
 
 function StatusCard({
@@ -63,12 +64,14 @@ function StatusCard({
   status,
   icon: Icon,
   children,
+  t,
 }: {
   title: string
   description: string
   status: HealthStatus
   icon: typeof Database
   children: React.ReactNode
+  t: (key: string) => string
 }) {
   const tone =
     status === 'error' ? 'danger' : status === 'warning' ? 'warning' : status === 'ok' ? 'success' : 'info'
@@ -84,7 +87,7 @@ function StatusCard({
               <CardDescription>{description}</CardDescription>
             </div>
           </div>
-          {statusBadge(status)}
+          {statusBadge(status, t)}
         </div>
       </CardHeader>
       <CardContent className="space-y-2 text-body-sm text-app">{children}</CardContent>
@@ -101,6 +104,7 @@ function OverviewTab({
   maintenanceOn,
   onMigrateClick,
   migratePending,
+  t,
 }: {
   data: AdminHealthResponse
   diskPath: string
@@ -110,13 +114,14 @@ function OverviewTab({
   maintenanceOn: boolean
   onMigrateClick: () => void
   migratePending: boolean
+  t: (key: string, opts?: Record<string, unknown>) => string
 }) {
   return (
     <>
       <Card className="admin-card">
         <CardContent className="flex flex-wrap items-end gap-3 pt-6">
           <div className="min-w-[200px] flex-1 space-y-1">
-            <Label htmlFor="disk-path">ดิสก์ที่ตรวจ</Label>
+            <Label htmlFor="disk-path">{t('health.diskPathLabel')}</Label>
             <Input
               id="disk-path"
               value={diskPath}
@@ -129,73 +134,90 @@ function OverviewTab({
             className="inline-flex h-10 items-center justify-center rounded-button bg-[var(--admin-primary)] px-4 text-body-sm font-medium text-white hover:opacity-90"
             onClick={() => setAppliedDisk(diskPath)}
           >
-            ใช้ path นี้
+            {t('health.diskPathApply')}
           </button>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <StatusCard
-          title="ฐานข้อมูล"
-          description="SELECT 1 + connection pool"
+          title={t('health.dbTitle')}
+          description={t('health.dbDescription')}
           status={data.db.status}
           icon={Database}
+          t={t}
         >
           <p>
-            Latency:{' '}
+            {t('health.dbLatency')}:{' '}
             <span className="font-mono font-medium">
               {data.db.latencyMs != null ? `${data.db.latencyMs} ms` : '—'}
             </span>
           </p>
           <p>
-            Pool — total: {data.db.pool.total}, idle: {data.db.pool.idle}, waiting:{' '}
-            {data.db.pool.waiting}
+            {t('health.dbPoolLine', {
+              total: data.db.pool.total,
+              idle: data.db.pool.idle,
+              waiting: data.db.pool.waiting,
+            })}
           </p>
-          {data.db.message ? <p className="text-xs text-red-600">{data.db.message}</p> : null}
+          {data.db.message ? <p className="text-xs text-form-error">{data.db.message}</p> : null}
         </StatusCard>
 
         <StatusCard
-          title="ดิสก์"
+          title={t('health.diskTitle')}
           description={data.disk.path}
           status={data.disk.status}
           icon={HardDrive}
+          t={t}
         >
           <p>
-            ใช้แล้ว:{' '}
+            {t('health.diskUsedLabel')}{' '}
             <span className="font-medium">
               {formatBytes(data.disk.usedBytes)} (
               {data.disk.usedPercent != null ? `${data.disk.usedPercent}%` : '—'})
             </span>
           </p>
-          <p>ว่าง: {formatBytes(data.disk.freeBytes)}</p>
-          <p>ทั้งหมด: {formatBytes(data.disk.totalBytes)}</p>
+          <p>
+            {t('health.diskFreeLabel')} {formatBytes(data.disk.freeBytes)}
+          </p>
+          <p>
+            {t('health.diskTotalLabel')} {formatBytes(data.disk.totalBytes)}
+          </p>
           {data.disk.message ? (
             <p className="text-xs text-amber-700">{data.disk.message}</p>
           ) : null}
         </StatusCard>
 
         <StatusCard
-          title="API process"
-          description={`${data.service} v${data.version} (ไม่ใช่ Docker stats)`}
+          title={t('health.apiTitle')}
+          description={t('health.apiDescription', { service: data.service, version: data.version })}
           status={data.process.status}
           icon={Server}
+          t={t}
         >
           <p>{data.process.platform}</p>
           <p>Node {data.process.nodeVersion}</p>
-          <p>Uptime: {formatUptime(data.process.uptimeSec)}</p>
           <p>
-            Memory — RSS {data.process.memoryRssMb} MB, heap {data.process.memoryHeapUsedMb} MB
+            {t('health.uptime')}: {formatUptime(data.process.uptimeSec)}
+          </p>
+          <p>
+            {t('health.memoryRss', {
+              rss: data.process.memoryRssMb,
+              heap: data.process.memoryHeapUsedMb,
+            })}
           </p>
         </StatusCard>
 
         <StatusCard
-          title="Migration"
-          description="ตรวจ object สำคัญใน PostgreSQL"
+          title={t('health.migrationTitle')}
+          description={t('health.migrationDescription')}
           status={data.migration.status}
           icon={Activity}
+          t={t}
         >
           <p>
-            ไฟล์ในโฟลเดอร์: <span className="font-medium">{data.migration.totalFiles}</span>
+            {t('health.migrationFilesInFolder')}{' '}
+            <span className="font-medium">{data.migration.totalFiles}</span>
             {data.migration.migrationsDir ? (
               <span className="mt-1 block truncate font-mono text-xs text-app-muted">
                 {data.migration.migrationsDir}
@@ -203,19 +225,14 @@ function OverviewTab({
             ) : null}
           </p>
           <p>
-            ตรวจแล้ว: applied {data.migration.appliedCount}, pending{' '}
-            <span
-              className={cn(
-                'font-medium',
-                data.migration.pendingCount > 0 && 'text-amber-700',
-              )}
-            >
-              {data.migration.pendingCount}
-            </span>
-            , ไม่ติดตาม {data.migration.unverifiedCount}
+            {t('health.migrationProbed', {
+              applied: data.migration.appliedCount,
+              pending: data.migration.pendingCount,
+              unverified: data.migration.unverifiedCount,
+            })}
           </p>
           <p>
-            ล่าสุดที่พร้อม:{' '}
+            {t('health.migrationLatestReady')}{' '}
             {data.migration.latestAppliedId ? (
               <span className="font-mono font-medium">
                 {data.migration.latestAppliedId} ({data.migration.latestFile})
@@ -241,17 +258,17 @@ function OverviewTab({
                 ) : (
                   <Play className="mr-1 size-4" />
                 )}
-                รัน pending migrations
+                {t('health.migrationRunPending')}
               </Button>
               {!maintenanceOn ? (
                 <p className="mt-1 text-xs text-amber-800">
-                  ต้องเปิด maintenance ก่อน —{' '}
+                  {t('health.migrationMaintenanceRequired')}{' '}
                   <Link to="/admin/settings" className="underline">
-                    Settings
+                    {t('health.settingsLink')}
                   </Link>{' '}
-                  หรือ{' '}
+                  {t('health.migrationOr')}{' '}
                   <Link to="/admin/announcements" className="underline">
-                    Announcements
+                    {t('health.announcementsLink')}
                   </Link>
                 </p>
               ) : null}
@@ -262,26 +279,24 @@ function OverviewTab({
 
       <Card className="admin-card">
         <CardHeader>
-          <CardTitle className="text-base">รายการ migration ที่ตรวจ</CardTitle>
-          <CardDescription>
-            รัน pending ผ่าน psql เมื่อ maintenance เปิด · ไฟล์ที่ไม่ติดตาม probe ต้องรันมือ
-          </CardDescription>
+          <CardTitle className="text-base">{t('health.migrationListTitle')}</CardTitle>
+          <CardDescription>{t('health.migrationListDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="overflow-hidden rounded-card border border-app">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-14">#</TableHead>
-                <TableHead>รายการ</TableHead>
-                <TableHead>ไฟล์</TableHead>
-                <TableHead className="text-right">สถานะ</TableHead>
+                <TableHead className="w-14">{t('health.migrationTableNum')}</TableHead>
+                <TableHead>{t('health.migrationTableLabel')}</TableHead>
+                <TableHead>{t('health.migrationTableFile')}</TableHead>
+                <TableHead className="text-right">{t('health.migrationTableStatus')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.migration.probes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="py-8 text-center text-caption">
-                    ไม่พบโฟลเดอร์ migrations บนเซิร์ฟเวอร์ API
+                    {t('health.migrationFolderMissing')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -294,9 +309,9 @@ function OverviewTab({
                     </TableCell>
                     <TableCell className="text-right">
                       {row.status === 'applied' ? (
-                        <Badge className="bg-emerald-700">applied</Badge>
+                        <Badge className="bg-emerald-700">{t('health.badgeApplied')}</Badge>
                       ) : (
-                        <Badge variant="destructive">pending</Badge>
+                        <Badge variant="destructive">{t('health.badgePending')}</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -311,6 +326,8 @@ function OverviewTab({
 }
 
 export function AdminHealthPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const canRead = usePermission('admin.health.read')
   const canMigrate = usePermission('admin.health.migrate')
   const { settings: publicSettings } = usePublicSettings()
@@ -352,9 +369,14 @@ export function AdminHealthPage() {
       setMigrateOpen(false)
       void queryClient.invalidateQueries({ queryKey: ['admin', 'health'] })
       if (result.stoppedAt) {
-        toast.error(`หยุดที่ ${result.stoppedAt.file}: ${result.stoppedAt.message}`)
+        toast.error(
+          t('health.migrateStopped', {
+            file: result.stoppedAt.file,
+            message: result.stoppedAt.message,
+          }),
+        )
       } else {
-        toast.success(`รัน migration สำเร็จ ${result.applied.length} ไฟล์`)
+        toast.success(t('health.migrateSuccess', { count: result.applied.length }))
       }
     },
     onError: (err: Error) => {
@@ -365,13 +387,7 @@ export function AdminHealthPage() {
   if (!canRead) {
     return (
       <AdminPageRoot tourTarget="admin-health">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์ <code className="text-xs">admin.health.read</code>
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.health.read" />
       </AdminPageRoot>
     )
   }
@@ -387,14 +403,16 @@ export function AdminHealthPage() {
   return (
     <AdminPageShell
       tourTarget="admin-health"
-      title="สุขภาพระบบ"
-      description="ฐานข้อมูล · ดิสก์ · migration · error log · API ช้า (p95 > 1s)"
-      contentClassName="space-y-4"
+      title={t('health.title')}
+      description={t('health.description')}
+      hints={t('health.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           {data ? (
             <Badge variant="outline" className="tabular-nums">
-              อัปเดต {new Date(data.time).toLocaleTimeString('th-TH')}
+              {t('health.updatedAt', {
+                time: new Date(data.time).toLocaleTimeString(),
+              })}
             </Badge>
           ) : null}
           <Button
@@ -408,17 +426,15 @@ export function AdminHealthPage() {
             <RefreshCcw
               className={`mr-1 size-3.5 ${q.isFetching || errorsQ.isFetching || slowQ.isFetching ? 'animate-spin' : ''}`}
               aria-hidden
-            />
-            รีเฟรช
-          </Button>
+            />{t('shared.refresh')}</Button>
         </>
       }
     >
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
-            <TabsTrigger value="errors">บันทึก error</TabsTrigger>
-            <TabsTrigger value="slow">API ช้า</TabsTrigger>
+            <TabsTrigger value="overview">{t('health.tabOverview')}</TabsTrigger>
+            <TabsTrigger value="errors">{t('health.tabErrors')}</TabsTrigger>
+            <TabsTrigger value="slow">{t('health.tabSlow')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4 space-y-6">
@@ -431,9 +447,9 @@ export function AdminHealthPage() {
             ) : q.isError && !data ? (
               <EmptyState
                 icon={AlertCircle}
-                title="โหลดสุขภาพระบบไม่สำเร็จ"
+                title={t('health.loadFailed')}
                 description={(q.error as Error).message}
-                action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+                action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
               />
             ) : data ? (
               <OverviewTab
@@ -445,6 +461,7 @@ export function AdminHealthPage() {
                 maintenanceOn={maintenanceOn}
                 migratePending={migrateMut.isPending}
                 onMigrateClick={() => setMigrateOpen(true)}
+                t={t}
               />
             ) : null}
           </TabsContent>
@@ -454,9 +471,9 @@ export function AdminHealthPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <AlertTriangle className="size-4 text-amber-600" />
-                  Error log (audit)
+                  {t('health.errorLogTitle')}
                 </CardTitle>
-                <CardDescription>100 รายการล่าสุดที่สถานะ error จาก audit log</CardDescription>
+                <CardDescription>{t('health.errorLogDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {errorsQ.isLoading && !errorsQ.data ? (
@@ -467,26 +484,26 @@ export function AdminHealthPage() {
                   <EmptyState
                     icon={AlertCircle}
                     className="m-4"
-                    title="โหลด error log ไม่สำเร็จ"
+                    title={t('health.errorLogLoadFailed')}
                     description={(errorsQ.error as Error).message}
-                    action={{ label: 'ลองใหม่', onClick: () => void errorsQ.refetch() }}
+                    action={{ label: tc('actions.retry'), onClick: () => void errorsQ.refetch() }}
                   />
                 ) : (
                   <div className="app-table-shell overflow-x-auto">
                   <Table embedded stickyHeader zebra>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>เวลา</TableHead>
-                        <TableHead>action</TableHead>
-                        <TableHead>resource</TableHead>
-                        <TableHead>ข้อความ</TableHead>
+                        <TableHead>{t('health.colTime')}</TableHead>
+                        <TableHead>{t('audit.action')}</TableHead>
+                        <TableHead>{t('audit.resource')}</TableHead>
+                        <TableHead>{t('health.colMessage')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {(errorsQ.data ?? []).length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={4} className="py-8 text-center text-caption">
-                            ไม่มี error ใน audit log
+                            {t('health.noAuditErrors')}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -519,11 +536,9 @@ export function AdminHealthPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Timer className="size-4 text-app-muted" />
-                  Slow API (p95 &gt; 1s)
+                  {t('health.slowApiTitle')}
                 </CardTitle>
-                <CardDescription>
-                  จาก middleware ใน process นี้ — สะสมหลัง deploy/restart
-                </CardDescription>
+                <CardDescription>{t('health.slowApiDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {slowQ.isLoading && !slowQ.data ? (
@@ -534,9 +549,9 @@ export function AdminHealthPage() {
                   <EmptyState
                     icon={AlertCircle}
                     className="m-4"
-                    title="โหลดรายการ API ช้าไม่สำเร็จ"
+                    title={t('health.slowLoadFailed')}
                     description={(slowQ.error as Error).message}
-                    action={{ label: 'ลองใหม่', onClick: () => void slowQ.refetch() }}
+                    action={{ label: tc('actions.retry'), onClick: () => void slowQ.refetch() }}
                   />
                 ) : (
                   <div className="app-table-shell overflow-x-auto">
@@ -554,7 +569,9 @@ export function AdminHealthPage() {
                       {(slowQ.data?.items ?? []).length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={5} className="py-8 text-center text-caption">
-                            ยังไม่มี endpoint ช้าเกิน {slowQ.data?.thresholdMs ?? 1000} ms
+                            {t('health.slowApiEmpty', {
+                              ms: slowQ.data?.thresholdMs ?? 1000,
+                            })}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -583,11 +600,11 @@ export function AdminHealthPage() {
         open={migrateOpen}
         onOpenChange={setMigrateOpen}
         tone="danger"
-        title="รัน pending migrations"
-        description="จะรันไฟล์ SQL ที่ probe เป็น pending ด้วย psql — ใช้เฉพาะ staging/maintenance"
+        title={t('health.runPendingTitle')}
+        description={t('health.runPendingDescription')}
         phrase="MIGRATE"
-        phraseLabel="พิมพ์ MIGRATE"
-        confirmLabel="รัน migration"
+        phraseLabel={t('health.migratePhrase')}
+        confirmLabel={t('health.migrateConfirm')}
         loading={migrateMut.isPending}
         onConfirm={() => migrateMut.mutate()}
       />

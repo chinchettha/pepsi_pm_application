@@ -3,7 +3,7 @@
  */
 import type { ManhourImportResponse, ManhourItem } from '@/api/schemas'
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
@@ -41,6 +41,7 @@ import { AlertCircle, Download, Pencil, Plus, Trash2, Upload } from 'lucide-reac
 import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 type FormMode = 'create' | 'edit' | 'delete'
@@ -95,15 +96,20 @@ function parseHour(s: string): number {
 }
 
 function ImportResultBlock({ data }: { data: ManhourImportResponse }) {
+  const { t } = useTranslation('manhours')
   return (
     <AppCard pad="compact">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-body-sm font-medium text-app">ผลการนำเข้า: {data.fileName}</p>
-        <Badge variant="outline">รวม {data.totalRows}</Badge>
+        <p className="text-body-sm font-medium text-app">
+          {t('admin.importResult', { fileName: data.fileName })}
+        </p>
+        <Badge variant="outline">{t('admin.importTotal', { count: data.totalRows })}</Badge>
         <Badge variant="secondary">+{data.inserted}</Badge>
         <Badge variant="secondary">↻{data.updated}</Badge>
         {data.errors > 0 ? (
-          <Badge variant="destructive">ผิดพลาด {data.errors}</Badge>
+          <Badge variant="destructive">
+            {t('admin.importErrors', { count: data.errors })}
+          </Badge>
         ) : null}
       </div>
       {data.rows.length > 0 ? (
@@ -111,10 +117,10 @@ function ImportResultBlock({ data }: { data: ManhourImportResponse }) {
           <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-14">แถว</TableHead>
-                <TableHead className="w-24">สถานะ</TableHead>
-                <TableHead>รหัส HR</TableHead>
-                <TableHead>ข้อความ</TableHead>
+                <TableHead className="w-14">{t('admin.importColRow')}</TableHead>
+                <TableHead className="w-24">{t('admin.importColStatus')}</TableHead>
+                <TableHead>{t('admin.colHr')}</TableHead>
+                <TableHead>{t('admin.importColMessage')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -145,6 +151,8 @@ function ImportResultBlock({ data }: { data: ManhourImportResponse }) {
 }
 
 export function ManhourAdminPage() {
+  const { t } = useTranslation('manhours')
+  const { t: tc } = useTranslation('common')
   const navigate = useNavigate()
   const qc = useQueryClient()
   const authUser = getStoredAuthUser()
@@ -160,10 +168,10 @@ export function ManhourAdminPage() {
 
   useEffect(() => {
     if (!canAdmin) {
-      toast.error('เฉพาะผู้ดูแลระบบ')
+      toast.error(t('admin.adminOnlyToast'))
       navigate('/manhours', { replace: true })
     }
-  }, [canAdmin, navigate])
+  }, [canAdmin, navigate, t])
 
   const listQ = useQuery({
     queryKey: ['manhours', 'admin', 'list', submittedQ],
@@ -193,8 +201,8 @@ export function ManhourAdminPage() {
     onSuccess: (_d, state) => {
       toast.success(
         state.mode === 'edit'
-          ? `อัปเดต manhour #${state.idmanhour}`
-          : `เพิ่ม manhour สำหรับ ${state.idwkctr}`,
+          ? t('admin.toastUpdated', { id: state.idmanhour })
+          : t('admin.toastAdded', { hrId: state.idwkctr }),
       )
       setFormOpen(false)
       qc.invalidateQueries({ queryKey: ['manhours'] })
@@ -207,7 +215,7 @@ export function ManhourAdminPage() {
   const deleteMut = useMutation({
     mutationFn: (id: number) => deleteManhour(id),
     onSuccess: () => {
-      toast.success('ลบข้อมูลแล้ว')
+      toast.success(t('admin.toastDeleted'))
       setFormOpen(false)
       qc.invalidateQueries({ queryKey: ['manhours'] })
     },
@@ -243,11 +251,11 @@ export function ManhourAdminPage() {
       return
     }
     if (!form.idwkctr.trim()) {
-      toast.error('กรุณาระบุรหัส HR (idwkctr)')
+      toast.error(t('admin.validationHr'))
       return
     }
     if (!form.stworkday || !form.workday) {
-      toast.error('กรุณาเลือก Start Date และ End Date')
+      toast.error(t('admin.validationDates'))
       return
     }
     saveMut.mutate(form)
@@ -263,7 +271,11 @@ export function ManhourAdminPage() {
       .then((res) => {
         setImportResult(res)
         toast.success(
-          `Import: +${res.inserted} ใหม่, ↻${res.updated} อัปเดต, ⚠${res.errors} error`,
+          t('admin.toastImportSummary', {
+            inserted: res.inserted,
+            updated: res.updated,
+            errors: res.errors,
+          }),
         )
         qc.invalidateQueries({ queryKey: ['manhours'] })
       })
@@ -275,13 +287,14 @@ export function ManhourAdminPage() {
 
   if (!canAdmin) {
     return (
-      <AppPageShell title="จัดการ Man Hour" description="CRUD และนำเข้า tbmanhours">
+      <AppPageShell title={t('admin.title')} description={t('admin.description')}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('admin.noAccess')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">manhours.admin</code>
+              {tc('rbac.requiresPermission')}{' '}
+              <code className="text-xs">manhours.admin</code>
             </>
           }
         />
@@ -294,29 +307,25 @@ export function ManhourAdminPage() {
 
   return (
     <AppPageShell
-      title="จัดการ Man Hour"
-      description="ตาราง tbmanhours · ฟอร์ม · นำเข้า Excel (เทียบ M_manhour.php)"
-      contentClassName="space-y-4"
+      title={t('admin.title')}
+      description={t('admin.description')}
+      hints={t('admin.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">
-            {totalRows} แถว
+            {t('admin.badgeRows', { count: totalRows })}
           </Badge>
           <Button asChild variant="outline" size="sm">
-            <Link to="/manhours">สรุป Manhours</Link>
+            <Link to="/manhours">{t('admin.navSummary')}</Link>
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() =>
-              toast.message(
-                'คอลัมน์ ManHours.xlsx: idwkctr, StartDate, EndDate, WH, OT1, OT1.5, OT1HOL, OT2, OT3 (ข้าม 2 แถวแรก)',
-              )
-            }
+            onClick={() => toast.message(t('admin.fileFormatHint'))}
           >
             <Download className="mr-1 size-4" aria-hidden />
-            รูปแบบไฟล์
+            {t('admin.fileFormat')}
           </Button>
           <input
             ref={importInputRef}
@@ -333,32 +342,36 @@ export function ManhourAdminPage() {
             onClick={() => importInputRef.current?.click()}
           >
             <Upload className="mr-1 size-4" aria-hidden />
-            {importing ? 'กำลังนำเข้า…' : 'นำเข้าไฟล์'}
+            {importing ? t('admin.importing') : t('admin.import')}
           </Button>
           <Button type="button" size="sm" onClick={openCreate}>
             <Plus className="mr-1 size-4" aria-hidden />
-            เพิ่มรายการ
+            {t('admin.add')}
           </Button>
         </>
       }
     >
-        <AppCard pad="compact">
+        <AppPageSection index={0}>
+        <AppPageSectionCard
+          icon={Upload}
+          title={t('admin.sectionTitle')}
+          description={t('admin.sectionDesc')}
+        >
         <form
           onSubmit={onSearch}
-          className="flex flex-wrap items-end gap-3"
+          className="mb-4 flex flex-wrap items-end gap-3"
         >
           <div className="min-w-[12rem] flex-1 space-y-1">
-            <Label htmlFor="mh-search">ค้นหา (รหัส HR / ชื่อ)</Label>
+            <Label htmlFor="mh-search">{t('admin.searchLabel')}</Label>
             <Input
               id="mh-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="idwkctr, ชื่อ…"
+              placeholder={t('admin.searchPlaceholder')}
             />
           </div>
-          <Button type="submit">ค้นหา</Button>
+          <Button type="submit">{tc('actions.search')}</Button>
         </form>
-        </AppCard>
 
         {importResult ? <ImportResultBlock data={importResult} /> : null}
 
@@ -367,22 +380,21 @@ export function ManhourAdminPage() {
         ) : listQ.isError ? (
           <EmptyState
             icon={AlertCircle}
-            title="โหลดรายการไม่สำเร็จ"
+            title={t('admin.tableLoadFailed')}
             description={(listQ.error as Error).message}
-            action={{ label: 'ลองใหม่', onClick: () => void listQ.refetch() }}
+            action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
           />
         ) : (
-          <AppCard pad="compact">
           <div className="app-table-shell overflow-x-auto">
             <Table embedded stickyHeader zebra>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ช่วงวันที่</TableHead>
-                  <TableHead>รหัส HR</TableHead>
-                  <TableHead>ชื่อ</TableHead>
+                  <TableHead>{t('admin.colDateRange')}</TableHead>
+                  <TableHead>{t('admin.colHr')}</TableHead>
+                  <TableHead>{t('admin.colName')}</TableHead>
                   <TableHead className="text-right">WH</TableHead>
                   <TableHead className="text-right">OT1</TableHead>
-                  <TableHead className="text-right">รวม</TableHead>
+                  <TableHead className="text-right">{t('admin.colTotal')}</TableHead>
                   <TableHead className="w-36" />
                 </TableRow>
               </TableHeader>
@@ -408,7 +420,7 @@ export function ManhourAdminPage() {
                             onClick={() => openEdit(row)}
                           >
                             <Pencil className="mr-1 size-3.5" />
-                            แก้ไข
+                            {t('admin.edit')}
                           </Button>
                           <Button
                             type="button"
@@ -417,7 +429,7 @@ export function ManhourAdminPage() {
                             onClick={() => openDelete(row)}
                           >
                             <Trash2 className="mr-1 size-3.5" />
-                            ลบ
+                            {t('admin.delete')}
                           </Button>
                         </div>
                       </TableCell>
@@ -428,8 +440,8 @@ export function ManhourAdminPage() {
                     <TableCell colSpan={7} className="p-0">
                       <EmptyState
                         className="border-0 bg-transparent py-10"
-                        title="ยังไม่มีข้อมูล"
-                        description="เพิ่มรายการใหม่หรือนำเข้าไฟล์ ManHours.xlsx"
+                        title={t('admin.empty')}
+                        description={t('admin.emptyHint')}
                       />
                     </TableCell>
                   </TableRow>
@@ -437,8 +449,9 @@ export function ManhourAdminPage() {
               </TableBody>
             </Table>
           </div>
-          </AppCard>
         )}
+        </AppPageSectionCard>
+        </AppPageSection>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg">
@@ -446,26 +459,32 @@ export function ManhourAdminPage() {
             <DialogHeader>
               <DialogTitle>
                 {form.mode === 'create'
-                  ? 'เพิ่ม Man Hour'
+                  ? t('admin.dialogAdd')
                   : form.mode === 'edit'
-                    ? 'แก้ไข Man Hour'
-                    : 'ลบ Man Hour'}
+                    ? t('admin.dialogEdit')
+                    : t('admin.dialogDelete')}
               </DialogTitle>
               <DialogDescription>
                 {form.mode === 'delete'
-                  ? `ยืนยันลบรายการ #${form.idmanhour} (${form.idwkctr})`
-                  : 'เทียบ M_manhour_form.php'}
+                  ? t('admin.dialogDeleteConfirm', {
+                      id: form.idmanhour,
+                      hrId: form.idwkctr,
+                    })
+                  : t('admin.dialogLegacyNote')}
               </DialogDescription>
             </DialogHeader>
 
             {form.mode === 'delete' ? (
               <p className="py-4 text-body-sm text-app">
-                ช่วง {formatManhourDate(form.stworkday)} – {formatManhourDate(form.workday)}
+                {t('admin.dialogDateRange', {
+                  from: formatManhourDate(form.stworkday),
+                  to: formatManhourDate(form.workday),
+                })}
               </p>
             ) : (
               <div className="grid gap-4 py-2 sm:grid-cols-2">
                 <div className="space-y-1 sm:col-span-2">
-                  <Label htmlFor="mh-idwkctr">รหัส HR (idwkctr)</Label>
+                  <Label htmlFor="mh-idwkctr">{t('admin.formHr')}</Label>
                   <Input
                     id="mh-idwkctr"
                     value={form.idwkctr}
@@ -475,14 +494,14 @@ export function ManhourAdminPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label>Start Date</Label>
+                  <Label>{t('admin.formStartDate')}</Label>
                   <DatePicker
                     value={form.stworkday}
                     onChange={(v) => setForm((f) => ({ ...f, stworkday: v }))}
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label>End Date</Label>
+                  <Label>{t('admin.formEndDate')}</Label>
                   <DatePicker
                     value={form.workday}
                     onChange={(v) => setForm((f) => ({ ...f, workday: v }))}
@@ -517,7 +536,7 @@ export function ManhourAdminPage() {
 
             <DialogFooter className="gap-2 sm:gap-0">
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
-                ยกเลิก
+                {tc('actions.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -525,10 +544,10 @@ export function ManhourAdminPage() {
                 disabled={saveMut.isPending || deleteMut.isPending}
               >
                 {form.mode === 'delete'
-                  ? 'ลบข้อมูล'
+                  ? t('admin.formDelete')
                   : form.mode === 'edit'
-                    ? 'แก้ไขข้อมูล'
-                    : 'เพิ่มข้อมูล'}
+                    ? t('admin.formSaveEdit')
+                    : t('admin.formSaveAdd')}
               </Button>
             </DialogFooter>
           </form>

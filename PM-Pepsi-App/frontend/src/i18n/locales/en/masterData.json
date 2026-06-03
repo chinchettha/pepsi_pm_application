@@ -1,0 +1,124 @@
+{
+  "page": {
+    "title": "Master data",
+    "hints": ["Activity type", "Master PM", "PM process", "ZB02"],
+    "noAccess": "No access",
+    "noAccessDesc": "Requires master-data.read permission",
+    "tabCount": "{{count}} tabs",
+    "masterHub": "Master Hub",
+    "readOnly": "Read-only mode — master-data.write required to edit"
+  },
+  "panel": {
+    "loadFailed": "Could not load",
+    "empty": "No data",
+    "emptyHint": "Check migration/seed or import data",
+    "retry": "Try again"
+  },
+  "actions": {
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "import": "Import",
+    "importFile": "Import file"
+  },
+  "aria": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "rowCount": "{{count}} items",
+  "tabs": {
+    "equipment": "Equipment",
+    "functional": "Functional Loc.",
+    "machine": "Machines",
+    "material": "Materials",
+    "zone": "Zones",
+    "department": "Departments",
+    "tasklist": "Task list",
+    "worktype": "Work types",
+    "zb": "ZB",
+    "level": "Levels",
+    "position": "Positions",
+    "activitytype": "Activity type (MAT)",
+    "pm-master-ee": "MASTER PM EE",
+    "pm-master-me": "MASTER PM ME",
+    "pm-master-pk": "MASTER PM PK",
+    "workstatus": "Work status",
+    "reason": "Reasons",
+    "group": "Groups",
+    "lineproduct": "Production lines",
+    "lineschdul": "Line schedules"
+  },
+  "activityType": {
+    "badge": "ZB02 · MaintActivityType",
+    "add": "Add",
+    "import": "Import file",
+    "edit": "Edit",
+    "delete": "Delete",
+    "matRequired": "Enter MAT",
+    "descRequired": "Enter description",
+    "checkYn": "Check must be Y or N",
+    "saved": "Saved",
+    "deleted": "Deleted",
+    "imported": "Imported",
+    "dialogCreate": "Add activity type",
+    "dialogEdit": "Edit activity type",
+    "dialogDelete": "Delete activity type",
+    "dialogImport": "Import activity types (Excel/CSV)",
+    "mat": "MAT",
+    "description": "Description",
+    "check": "Check",
+    "confirmDelete": "Delete {{mat}} — this cannot be undone",
+    "pickFile": "Choose file",
+    "importResult": "Inserted {{inserted}} · Updated {{updated}} · Skipped {{skipped}}",
+    "emptyHint": "Run migration 002 or add a new row"
+  },
+  "pmMaster": {
+    "title": "MASTER PM PROCESS {{discipline}}",
+    "loadExcel": "Load Excel",
+    "pickFile": "Choose file",
+    "loaded": "Loaded {{rows}} rows · {{sheets}} sheet(s)",
+    "readFailed": "Could not read file",
+    "noImportRows": "No rows available to import",
+    "imported": "Task list import: +{{inserted}} ~{{updated}} skipped {{skipped}}",
+    "importFailed": "Import failed",
+    "allSheets": "All sheets ({{count}})",
+    "sheet": "Sheet",
+    "search": "Search",
+    "searchPlaceholder": "Zone, Legacy, PM list…",
+    "rowCount": "{{count}} rows",
+    "previewShown": " · showing {{count}}",
+    "importBtn": "Import to task list",
+    "importing": "Importing…",
+    "needWrite": "Requires master-data.write",
+    "emptyTitle": "No data yet",
+    "emptyDesc": "Click「Load Excel」and choose {{file}}"
+  },
+  "groupWkctr": {
+    "note": "Work center group — linked to work centers in Admin · Users —",
+    "notPmTeam": "not",
+    "noteSuffix": "PM Plan team A/B/EE/UT on work orders"
+  },
+  "genericTable": {
+    "code": "Code",
+    "nameTh": "Name (Thai)",
+    "plant": "Plant",
+    "active": "Active",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "emptyHints": {
+    "department": "Run migration 011 or import departments",
+    "equipment": "Run migration 012 or import equipment",
+    "functional": "Run migration 005 or import functional locations"
+  },
+  "toast": {
+    "tasklistSaved": "Task list saved",
+    "tasklistDeleted": "Deleted",
+    "tasklistAdded": "Task list added",
+    "tasklistImported": "Task list imported"
+  }
+}
+

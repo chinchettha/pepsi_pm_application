@@ -13,8 +13,26 @@ import type {
   workOrderSearchRowSchema,
 } from '../schemas/work-orders.js'
 import { hasPermission } from '../lib/has-permission.js'
+import {
+  loadPlanningAvailableHoursByWkctr,
+  mergeWorkcenterAvailableHours,
+} from '../lib/planning-available-hours.js'
 import { resolveWoPmPhase } from '../lib/wo-pm-phase.js'
-import { buildWktypeFilterOptions } from '../lib/wktype-zd-mapping.js'
+import {
+  expandActivityFilterCodes,
+  listActivityFilterOptions,
+  PM_PLAN_TEAM_FILTER_OPTIONS,
+} from '../lib/activity-type-label.js'
+import {
+  appendWorkTypeFilter,
+} from '../lib/maint-activity-type.js'
+import { listWktypeZdFilterOptions } from '../lib/wktype-zd-mapping.js'
+import {
+  finalizeSystemStatusFilterOptions,
+  formatSystemStatusFilterLabel,
+  SYSTEM_STATUS_FILTER_EXCLUDE,
+} from '../lib/system-status-filter.js'
+import type { PmPlanTeamField } from '../lib/pm-plan-team.js'
 import {
   appendInFilter,
   FACTORY_CODE,
@@ -22,6 +40,10 @@ import {
   sqlFactoryScope,
 } from './scheduling-shared.js'
 import { formatUnixDate } from './scheduling-move.js'
+import {
+  buildTaskMeasurementFields,
+  loadWoPmExecution,
+} from './wo-pm-execution-data.js'
 
 type WorkOrderListItem = z.infer<typeof workOrderListItemSchema>
 type WorkOrderSearch = z.infer<typeof workOrderSearchBodySchema>
@@ -65,12 +87,6 @@ function unixToDateString(sec: number): string {
   return `${y}-${m}-${day}`
 }
 
-function padMatLabel(mat: string, descrip: string | null): string {
-  const n = Number(mat)
-  const code = Number.isFinite(n) ? String(n).padStart(2, '0') : mat
-  return descrip ? `${code} = ${descrip}` : code
-}
-
 function parseIsoYyyyMmDdToSec(v: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim())
   if (!m) return null
@@ -97,6 +113,27 @@ function appendTeamFilter(values: string[], params: unknown[]): string {
   }
   if (includeNull) {
     sql += nonEmpty.length > 0 ? ` OR (team IS NULL OR team = '')` : ` AND (team IS NULL OR team = '')`
+    if (nonEmpty.length > 0) sql = ` AND (${sql.slice(5)})`
+  }
+  return sql
+}
+
+function appendTeamFilterVo(values: string[], params: unknown[]): string {
+  if (values.length === 0) return ''
+  const includeNull = values.includes('')
+  const nonEmpty = values.filter((x) => x !== '')
+  let sql = ''
+  if (nonEmpty.length > 0) {
+    const start = params.length + 1
+    const placeholders = nonEmpty.map((_, i) => `$${start + i}`).join(', ')
+    params.push(...nonEmpty)
+    sql += ` AND vo.team IN (${placeholders})`
+  }
+  if (includeNull) {
+    sql +=
+      nonEmpty.length > 0
+        ? ` OR (vo.team IS NULL OR vo.team = '')`
+        : ` AND (vo.team IS NULL OR vo.team = '')`
     if (nonEmpty.length > 0) sql = ` AND (${sql.slice(5)})`
   }
   return sql
@@ -153,30 +190,7 @@ export async function listWorkOrders(
 
 export async function listWorkOrderFilterOptions(pool: Pool): Promise<FilterOptions> {
   const factory = `%${FACTORY_CODE}%`
-  const [
-    activitiesR,
-    wktypesDistinctR,
-    wktypesMasterR,
-    statusesR,
-    wcR,
-    fnDistinctR,
-    fnMasterR,
-    eqR,
-  ] = await Promise.all([
-    pool.query<{ mat: string; matdescrip: string | null }>(
-      `SELECT mat, matdescrip FROM app.tbactivitytype ORDER BY mat`,
-    ),
-    pool.query<{ wktype: string }>(
-      `SELECT DISTINCT wktype
-       FROM app.tbiw37n
-       WHERE wktype IS NOT NULL AND wktype <> ''
-         AND ${sqlFactoryScope('', '$1')}
-       ORDER BY wktype`,
-      [factory],
-    ),
-    pool.query<{ wkzb: string; zbdescrip: string | null }>(
-      `SELECT wkzb, zbdescrip FROM app.tbwkzb ORDER BY wkzb`,
-    ),
+  const [statusesR, wcR, fnDistinctR, fnMasterR, eqR] = await Promise.all([
     pool.query<{ syst: string; wkstreason: string | null; wkstcolor: string | null }>(
       `SELECT syst, wkstreason, wkstcolor
        FROM app.tbwkstatus
@@ -207,25 +221,21 @@ export async function listWorkOrderFilterOptions(pool: Pool): Promise<FilterOpti
   ])
 
   return {
-    activities: activitiesR.rows.map((r) => ({
-      code: r.mat,
-      label: padMatLabel(r.mat, r.matdescrip),
-    })),
-    wktypes: buildWktypeFilterOptions(wktypesMasterR.rows, wktypesDistinctR.rows),
-    statuses: statusesR.rows.map((r) => ({
-      code: r.syst,
-      label: r.wkstreason ? `${r.syst} = ${r.wkstreason}` : r.syst,
-    })),
+    activities: listActivityFilterOptions(),
+    wktypes: listWktypeZdFilterOptions(),
+    statuses: finalizeSystemStatusFilterOptions(
+      statusesR.rows
+        .filter((r) => !SYSTEM_STATUS_FILTER_EXCLUDE.has(r.syst))
+        .map((r) => ({
+          code: r.syst,
+          label: formatSystemStatusFilterLabel(r.syst, r.wkstreason),
+        })),
+    ),
     workcenters: wcR.rows.map((r) => {
       const name = [r.namewkctr, r.surnamewkctr].filter(Boolean).join(' ').trim()
       return { code: r.wkctr, label: name ? `${r.wkctr} = ${name}` : r.wkctr }
     }),
-    teams: [
-      { code: 'A', label: 'A' },
-      { code: 'B', label: 'B' },
-      { code: 'P', label: 'P' },
-      { code: '', label: 'Null' },
-    ],
+    teams: [...PM_PLAN_TEAM_FILTER_OPTIONS],
     functionals:
       fnMasterR.rows.length > 0
         ? fnMasterR.rows.map((r) => ({
@@ -260,6 +270,8 @@ type SearchRow = {
   wkstcolor: string | null
   operationshorttext: string | null
   syst: string | null
+  confirm_qc_status: string | null
+  qc_ready: boolean | null
 }
 
 export async function searchWorkOrders(
@@ -269,20 +281,28 @@ export async function searchWorkOrders(
   const factory = `%${FACTORY_CODE}%`
   const params: unknown[] = [factory]
   let sql = `
-    SELECT idiw37, wkorder, mntplan, wktype, mat, equdescrip, funcdescrip, work, untime,
-           actfinish, cday, bscstart, team, wkstcolor, operationshorttext, syst
-    FROM app.view_order
-    WHERE ${sqlFactoryScope('', '$1')}
-      AND bscstart IS NOT NULL
-      AND bscstart > 0`
+    SELECT vo.idiw37, vo.wkorder, vo.mntplan, vo.wktype, vo.mat, vo.equdescrip, vo.funcdescrip,
+           vo.work, vo.untime, vo.actfinish, vo.cday, vo.bscstart, vo.team, vo.wkstcolor,
+           vo.operationshorttext, vo.syst,
+           i.confirm_qc_status,
+           (
+             EXISTS (SELECT 1 FROM app.tbconfirmimg img WHERE img.idiw37 = vo.idiw37)
+             OR EXISTS (SELECT 1 FROM app.tbcofirm c WHERE c.idiw37 = vo.idiw37)
+             OR EXISTS (SELECT 1 FROM app.tbwrkclose w WHERE w.idiw37 = vo.idiw37)
+           ) AS qc_ready
+    FROM app.view_order vo
+    JOIN app.tbiw37n i ON i.idiw37 = vo.idiw37
+    WHERE ${sqlFactoryScope('vo', '$1')}
+      AND vo.bscstart IS NOT NULL
+      AND vo.bscstart > 0`
 
-  sql += appendInFilter('mat', body.activity, params)
-  sql += appendInFilter('wktype', body.wktype, params)
-  sql += appendInFilter('syst', body.status, params)
-  sql += appendInFilter('wkctr', body.wkctr, params)
-  sql += appendInFilter('functionalloc', body.functionalloc, params)
-  sql += appendInFilter('equipment', body.equipment, params)
-  sql += appendTeamFilter(body.team, params)
+  sql += appendInFilter('vo.mat', expandActivityFilterCodes(body.activity), params)
+  sql += appendWorkTypeFilter('vo', body.wktype, params, appendInFilter)
+  sql += appendInFilter('vo.syst', body.status, params)
+  sql += appendInFilter('vo.wkctr', body.wkctr, params)
+  sql += appendInFilter('vo.functionalloc', body.functionalloc, params)
+  sql += appendInFilter('vo.equipment', body.equipment, params)
+  sql += appendTeamFilterVo(body.team, params)
 
   const fromSec = body.fromDate ? parseIsoYyyyMmDdToSec(body.fromDate) : null
   const toSec = body.toDate ? parseIsoYyyyMmDdToSec(body.toDate) : null
@@ -294,9 +314,9 @@ export async function searchWorkOrders(
     const b = params.length
     sql += `
       AND (
-        (bscstart >= $${a} AND bscstart < $${b})
-        OR (actfinish >= $${a} AND actfinish < $${b})
-        OR (cday >= $${a} AND cday < $${b})
+        (vo.bscstart >= $${a} AND vo.bscstart < $${b})
+        OR (vo.actfinish >= $${a} AND vo.actfinish < $${b})
+        OR (vo.cday >= $${a} AND vo.cday < $${b})
       )`
   }
 
@@ -304,14 +324,14 @@ export async function searchWorkOrders(
     params.push(`%${body.q.trim()}%`)
     const i = params.length
     sql += ` AND (
-      wkorder ILIKE $${i}
-      OR operationshorttext ILIKE $${i}
-      OR equdescrip ILIKE $${i}
-      OR funcdescrip ILIKE $${i}
+      vo.wkorder ILIKE $${i}
+      OR vo.operationshorttext ILIKE $${i}
+      OR vo.equdescrip ILIKE $${i}
+      OR vo.funcdescrip ILIKE $${i}
     )`
   }
 
-  sql += ` ORDER BY COALESCE(actfinish, cday, bscstart) DESC NULLS LAST LIMIT 2000`
+  sql += ` ORDER BY COALESCE(vo.actfinish, vo.cday, vo.bscstart) DESC NULLS LAST LIMIT 2000`
 
   const r = await pool.query<SearchRow>(sql, params)
   return r.rows.map((row) => {
@@ -330,6 +350,9 @@ export async function searchWorkOrders(
             : 0
     const displayDate = displayUnix > 0 ? unixToDateString(displayUnix) : ''
     const syst = row.syst?.trim() ?? ''
+    const qcRaw = row.confirm_qc_status?.trim().toLowerCase() ?? ''
+    const confirmQcStatus =
+      qcRaw === 'pending' || qcRaw === 'approved' || qcRaw === 'rejected' ? qcRaw : null
     return {
       id: String(row.idiw37),
       wkorder: row.wkorder,
@@ -346,6 +369,8 @@ export async function searchWorkOrders(
       operationshorttext: row.operationshorttext?.trim() ?? '',
       syst,
       pmPhase: resolveWoPmPhase(syst),
+      confirmQcStatus,
+      qcReadyForReview: Boolean(row.qc_ready),
     }
   })
 }
@@ -363,8 +388,8 @@ export async function getWorkOrderFilterDetail(
       AND bscstart IS NOT NULL
       AND bscstart > 0`
 
-  where += appendInFilter('mat', body.activity, params)
-  where += appendInFilter('wktype', body.wktype, params)
+  where += appendInFilter('mat', expandActivityFilterCodes(body.activity), params)
+  where += appendWorkTypeFilter('', body.wktype, params, appendInFilter)
   where += appendInFilter('syst', body.status, params)
   where += appendInFilter('wkctr', body.wkctr, params)
   where += appendInFilter('functionalloc', body.functionalloc, params)
@@ -405,8 +430,10 @@ export async function getWorkOrderFilterDetail(
     team_a_work: string
     team_b_count: string
     team_b_work: string
-    team_p_count: string
-    team_p_work: string
+    team_ee_count: string
+    team_ee_work: string
+    team_ut_count: string
+    team_ut_work: string
   }>(
     `SELECT
        COUNT(*)::text AS total_orders,
@@ -415,8 +442,10 @@ export async function getWorkOrderFilterDetail(
        COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'A'), 0)::text AS team_a_work,
        COUNT(*) FILTER (WHERE team = 'B')::text AS team_b_count,
        COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'B'), 0)::text AS team_b_work,
-       COUNT(*) FILTER (WHERE team = 'P')::text AS team_p_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'P'), 0)::text AS team_p_work
+       COUNT(*) FILTER (WHERE team = 'EE')::text AS team_ee_count,
+       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'EE'), 0)::text AS team_ee_work,
+       COUNT(*) FILTER (WHERE team = 'UT')::text AS team_ut_count,
+       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'UT'), 0)::text AS team_ut_work
      ${where}`,
     params,
   )
@@ -459,9 +488,13 @@ export async function getWorkOrderFilterDetail(
       count: Number(totalsR.rows[0]?.team_b_count ?? 0) || 0,
       workSumMinutes: Number(totalsR.rows[0]?.team_b_work ?? 0) || 0,
     },
-    teamP: {
-      count: Number(totalsR.rows[0]?.team_p_count ?? 0) || 0,
-      workSumMinutes: Number(totalsR.rows[0]?.team_p_work ?? 0) || 0,
+    teamEE: {
+      count: Number(totalsR.rows[0]?.team_ee_count ?? 0) || 0,
+      workSumMinutes: Number(totalsR.rows[0]?.team_ee_work ?? 0) || 0,
+    },
+    teamUT: {
+      count: Number(totalsR.rows[0]?.team_ut_count ?? 0) || 0,
+      workSumMinutes: Number(totalsR.rows[0]?.team_ut_work ?? 0) || 0,
     },
   }
 }
@@ -489,7 +522,7 @@ export type WorkOrderTeamChange = {
 }
 
 export type WorkOrderTeamBulkResult = {
-  team: '' | 'A' | 'B' | 'P'
+  team: PmPlanTeamField
   updated: string[]
   notFound: string[]
   /** ค่า team ก่อน/หลังต่อ WO ที่อัปเดตสำเร็จ — ใช้ audit log */
@@ -503,7 +536,7 @@ export type WorkOrderTeamBulkResult = {
 export async function updateWorkOrderTeamBatch(
   pool: Pool,
   ids: string[],
-  team: '' | 'A' | 'B' | 'P',
+  team: PmPlanTeamField,
 ): Promise<WorkOrderTeamBulkResult> {
   const seen = new Set<string>()
   const idNums: number[] = []
@@ -584,6 +617,11 @@ export async function getWorkOrderById(
   const detail = await getWorkOrderViewRow(pool, id)
   if (!detail) return null
   return mapRow(detail)
+}
+
+export async function resolveWorkOrderIdiw37(pool: Pool, id: string): Promise<number | null> {
+  const row = await getWorkOrderViewRow(pool, id)
+  return row ? Number(row.idiw37) : null
 }
 
 async function getWorkOrderViewRow(
@@ -747,6 +785,8 @@ type ModalDetailTaskRow = {
   machinestatus: number | null
   mat: string | null
   matdescrip: string | null
+  mpoint: string | null
+  ment: string | null
   idzone: string
   zone: string | null
   idwkctrtype: string
@@ -779,6 +819,8 @@ type PlanningAssignedRow = {
   namewkctr: string | null
   surnamewkctr: string | null
   wkctrdescription: string | null
+  wkctrtype: string | null
+  position: string | null
 }
 
 export async function getWorkOrderModalDetail(
@@ -800,6 +842,7 @@ export async function getWorkOrderModalDetail(
     mntplan && mntplan !== '-'
       ? await pool.query<ModalDetailTaskRow>(
           `SELECT tl.tasklist, tl.machine, tl.pmlist, tl.machinestatus, tl.mat, at.matdescrip,
+                  tl.mpoint, tl.ment,
                   tl.idzone, z.zone, tl.idwkctrtype, wt.wkctrtype,
                   z.idproductline, pl.prolinedescrip
            FROM app.tbtasklist tl
@@ -928,20 +971,45 @@ export async function getWorkOrderModalDetail(
   const canAssign =
     !!userst?.trim() && (await hasPermission(pool, userst, 'planning.assign'))
 
+  const canEditPmExecution =
+    !!userst?.trim() && (await hasPermission(pool, userst, 'confirmation.write'))
+
+  const pmExecution = await loadWoPmExecution(pool, Number(row.idiw37), canEditPmExecution)
+
+  const hoursMap = await loadPlanningAvailableHoursByWkctr(pool, date, {
+    excludeIdiw37: Number(row.idiw37),
+  })
+  const workcentersWithHours = mergeWorkcenterAvailableHours(
+    wcR.rows.map((w) => ({
+      wkctr: w.wkctr,
+      displayName: `${w.titlewkctr ?? ''}${w.namewkctr ?? ''} ${w.surnamewkctr ?? ''}`.trim(),
+    })),
+    hoursMap,
+  )
+
   return {
     date,
     taskList: {
       mntplan,
       summary,
-      items: taskRows.map((r) => ({
-        tasklist: r.tasklist?.trim() ?? '',
-        machine: r.machine?.trim() ?? '',
-        pmlist: r.pmlist?.trim() ?? '',
-        machinestatus: r.machinestatus != null ? Number(r.machinestatus) : null,
-        mat: r.mat?.trim() ?? '',
-        matdescrip: r.matdescrip?.trim() ?? '',
-      })),
+      items: taskRows.map((r) => {
+        const measure = buildTaskMeasurementFields({
+          pmlist: r.pmlist,
+          mpoint: r.mpoint,
+          ment: r.ment,
+        })
+        return {
+          tasklist: r.tasklist?.trim() ?? '',
+          machine: r.machine?.trim() ?? '',
+          pmlist: r.pmlist?.trim() ?? '',
+          machinestatus: r.machinestatus != null ? Number(r.machinestatus) : null,
+          mat: r.mat?.trim() ?? '',
+          matdescrip: r.matdescrip?.trim() ?? '',
+          ...measure,
+        }
+      }),
     },
+    pmExecution,
     machine: {
       zone: summary?.zone ?? '',
       wkctrtype: summary?.wkctrtype ?? '',
@@ -953,10 +1021,7 @@ export async function getWorkOrderModalDetail(
       canAssign,
       assigned,
       assignees,
-      workcenters: wcR.rows.map((w) => ({
-        wkctr: w.wkctr,
-        displayName: `${w.titlewkctr ?? ''}${w.namewkctr ?? ''} ${w.surnamewkctr ?? ''}`.trim(),
-      })),
+      workcenters: workcentersWithHours,
       groups: groupsR.rows.map((g) => ({
         wkctrgroup: g.wkctrgroup,
         wkctrdescription: g.wkctrdescription?.trim() ?? '',

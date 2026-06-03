@@ -1,11 +1,13 @@
 import { adminBreadcrumbTrail } from '@/lib/admin-breadcrumb'
 import { cn } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 
 export function AdminBreadcrumb({ className }: { className?: string }) {
+  const { t } = useTranslation('admin')
   const { pathname } = useLocation()
-  const crumbs = adminBreadcrumbTrail(pathname)
+  const crumbs = adminBreadcrumbTrail(pathname, t)
 
   return (
     <nav aria-label="breadcrumb" className={cn('admin-breadcrumb', className)}>

@@ -3,7 +3,7 @@ import { CanPermission } from '@/components/auth/CanPermission'
 import { Iw37nImportReviewPanel } from '@/components/iw37n/Iw37nImportReviewPanel'
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
@@ -36,11 +36,19 @@ import { useAnyPermission, usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, ClipboardCheck, FolderSync, Pencil } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { formatIw37nDuplicateMessage } from '@/lib/iw37n-import-messages'
 import { toast } from 'sonner'
+import type { TFunction } from 'i18next'
+
+function duplicateToastMsg(t: TFunction<'integration'>, batchId: string | null): string {
+  return t('toast.duplicateSha', {
+    batchRef: batchId ? t('toast.duplicateShaRef', { id: batchId }) : '',
+  })
+}
 
 export function Iw37nPage() {
+  const { t } = useTranslation('integration')
   const canRead = usePermission('iw37n.read')
   const canWrite = usePermission('iw37n.write')
   const canImport = useAnyPermission(['iw37n.import', 'iw37n.write'])
@@ -100,10 +108,14 @@ export function Iw37nPage() {
         filesFound?: number
       }
       toast.success(
-        `สแกนโฟลเดอร์เสร็จ (${data.job.status}) — ${s.filesProcessed ?? 0}/${s.filesFound ?? 0} ไฟล์`,
+        t('toast.scanFolderDone', {
+          status: data.job.status,
+          processed: s.filesProcessed ?? 0,
+          found: s.filesFound ?? 0,
+        }),
       )
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'สแกนไม่สำเร็จ'),
+    onError: () => toast.error(t('toast.scanFailed')),
   })
 
   const downloadBlob = (blob: Blob, fileName: string) => {
@@ -123,8 +135,8 @@ export function Iw37nPage() {
       setExporting(true)
       const blob = await fetchIw37nBatchCsv(batchId)
       downloadBlob(blob, `iw37n-import-batch-${batchId}.csv`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'ดาวน์โหลดไม่สำเร็จ')
+    } catch {
+      toast.error(t('toast.downloadFailed'))
     } finally {
       setExporting(false)
     }
@@ -137,7 +149,7 @@ export function Iw37nPage() {
         ? lastImport.rows
         : (await fetchIw37nBatchRows(batchId, { limit: 5000, offset: 0 })).items
       if (batchRows.length >= 5000) {
-        toast.message('ดาวน์โหลด XLSX จำกัด 5000 แถว (เพิ่ม paging ได้ภายหลัง)')
+        toast.message(t('iw37nPage.xlsxRowLimit'))
       }
       const XLSX = await import('xlsx')
       const data = batchRows.map((r) => ({
@@ -161,8 +173,8 @@ export function Iw37nPage() {
       })
       const safeName = (fileNameHint || `iw37n-import-batch-${batchId}`).replaceAll(/[\\/:*?"<>|]+/g, '_')
       downloadBlob(blob, `${safeName}.xlsx`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'ดาวน์โหลดไม่สำเร็จ')
+    } catch {
+      toast.error(t('toast.downloadFailed'))
     } finally {
       setExporting(false)
     }
@@ -179,17 +191,14 @@ export function Iw37nPage() {
     onSuccess: (data) => {
       setImportPreview(data)
       if (data.summary.isDuplicate) {
-        toast.warning(formatIw37nDuplicateMessage(data.summary.duplicateOfBatchId), { duration: 8000 })
+        toast.warning(duplicateToastMsg(t, data.summary.duplicateOfBatchId), { duration: 8000 })
       } else if (data.summary.totalRows === 0) {
-        toast.error(
-          'ไม่พบแถวข้อมูล — รูปแบบไฟล์ไม่ตรง SAP IW37N (ดูคอลัมน์ Order, Bsc start, FunctLocDescrip)',
-          { duration: 10_000 },
-        )
+        toast.error(t('iw37nPage.previewNoRows'), { duration: 10_000 })
       } else {
-        toast.message('ตรวจสอบไฟล์แล้ว — ดูสรุป error ก่อนกด commit')
+        toast.message(t('iw37nPage.previewChecked'))
       }
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: () => toast.error(t('toast.genericFailed')),
   })
 
   const importMut = useMutation({
@@ -198,15 +207,16 @@ export function Iw37nPage() {
       const batch = data.batch
       const rows = data.rows
       if (batch.isDuplicate && batch.duplicateOfBatchId) {
-        toast.warning(formatIw37nDuplicateMessage(batch.duplicateOfBatchId), { duration: 8000 })
+        toast.warning(duplicateToastMsg(t, batch.duplicateOfBatchId), { duration: 8000 })
       } else if (batch.rows === 0) {
-        toast.error(
-          'ไม่พบแถวข้อมูลในไฟล์ — ตรวจว่าเป็น export IW37N จาก SAP (Dynamic List Display) และคอลัมน์ Order / Bsc start / FunctLoc ไม่ว่าง',
-          { duration: 10_000 },
-        )
+        toast.error(t('iw37nPage.importBatchEmpty'), { duration: 10_000 })
       } else {
         toast.success(
-          `นำเข้า ${batch.fileName}: ${batch.rows} แถว (${batch.status}) — ดูปฏิทินที่ ม.ค.–มี.ค. 2020 (วันที่ในไฟล์ SAP)`,
+          t('iw37nPage.importBatchSuccess', {
+            fileName: batch.fileName,
+            rows: batch.rows,
+            status: batch.status,
+          }),
           { duration: 12_000 },
         )
       }
@@ -239,8 +249,8 @@ export function Iw37nPage() {
       void qc.invalidateQueries({ queryKey: ['backlog'] })
       if (fileRef.current) fileRef.current.value = ''
     },
-    onError: (e: Error) => {
-      toast.error(e.message)
+    onError: () => {
+      toast.error(t('toast.genericFailed'))
     },
   })
 
@@ -336,8 +346,8 @@ export function Iw37nPage() {
         funcdescrip: item.funcdescrip ?? '',
         team: item.team ?? '',
       })
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ')
+    } catch {
+      toast.error(t('iw37nPage.loadItemFailed'))
       setEditOpen(false)
       setEditingId(null)
     }
@@ -380,7 +390,7 @@ export function Iw37nPage() {
       return putIw37nItem(editingId, payload)
     },
     onSuccess: async () => {
-      toast.success('บันทึกแล้ว')
+      toast.success(t('iw37nPage.saved'))
       setEditOpen(false)
       setEditingId(null)
       await qc.invalidateQueries({ queryKey: ['iw37n-items'] })
@@ -388,13 +398,13 @@ export function Iw37nPage() {
       await qc.invalidateQueries({ queryKey: ['calendar'] })
       await qc.invalidateQueries({ queryKey: ['backlog'] })
     },
-    onError: (e: Error) => setEditError(e.message),
+    onError: () => setEditError(t('toast.genericFailed')),
   })
 
   const pickFile = (): File | null => {
     const f = fileRef.current?.files?.[0] ?? pendingFile
     if (!f) {
-      toast.message('เลือกไฟล์ .xls / .xlsx / .csv ก่อน')
+      toast.message(t('iw37nPage.pickFileFirst'))
       return null
     }
     setPendingFile(f)
@@ -410,13 +420,13 @@ export function Iw37nPage() {
 
   const runCommit = () => {
     if (importPreview?.summary.isDuplicate) {
-      toast.warning(formatIw37nDuplicateMessage(importPreview.summary.duplicateOfBatchId), {
+      toast.warning(duplicateToastMsg(t, importPreview.summary.duplicateOfBatchId), {
         duration: 8000,
       })
     }
     const f = pendingFile ?? fileRef.current?.files?.[0]
     if (!f) {
-      toast.message('เลือกไฟล์ใหม่')
+      toast.message(t('toast.selectFileAgain'))
       return
     }
     importMut.mutate(f)
@@ -438,13 +448,13 @@ export function Iw37nPage() {
 
   if (!canRead) {
     return (
-      <AppPageShell title="IW37N" description="นำเข้าและจัดการข้อมูล IW37N จาก SAP">
+      <AppPageShell title={t('iw37nPage.title')} description={t('iw37nPage.description')}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('iw37nPage.noAccess')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">iw37n.read</code>
+              {t('iw37nPage.noAccessDesc')} <code className="text-xs">iw37n.read</code>
             </>
           }
         />
@@ -454,40 +464,50 @@ export function Iw37nPage() {
 
   return (
     <AppPageShell
-      title="IW37N"
-      description="นำเข้า Excel/CSV จาก SAP · แก้รายแถว · ประวัติ batch · สแกนโฟลเดอร์ inbound"
-      contentClassName="space-y-6"
+      title={t('iw37nPage.title')}
+      description={t('iw37nPage.description')}
+      hints={t('iw37nPage.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">
-            นำเข้า SAP
+            {t('iw37nPage.badgeSap')}
           </Badge>
           <Button type="button" variant="outline" size="sm" asChild>
-            <Link to="/integration">SAP Integration</Link>
+            <Link to="/integration">{t('iw37nPage.linkIntegration')}</Link>
           </Button>
           <CanPermission permission="planning.read">
             <Button type="button" variant="outline" size="sm" asChild>
-              <Link to="/planning">แผน PM/CM</Link>
+              <Link to="/planning">{t('iw37nPage.linkPlanning')}</Link>
             </Button>
           </CanPermission>
           <CanPermission permission="work-orders.read">
             <Button type="button" variant="outline" size="sm" asChild>
-              <Link to="/work-orders">ใบงาน</Link>
+              <Link to="/work-orders">{t('iw37nPage.linkWorkOrders')}</Link>
             </Button>
           </CanPermission>
         </>
       }
     >
+        <AppPageSection index={0}>
         {canImport ? (
           <AppCard pad="default">
-            <h3 className="text-body-sm font-semibold text-app">นำเข้าไฟล์</h3>
+            <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.importTitle')}</h3>
             <p className="mt-1 text-xs text-app-muted">
-              รูปแบบเดียวกับ PHP (M_iw37n.php): ข้าม 2 แถวแรก · รองรับ .xls / .xlsx / .csv — กด{' '}
-              <strong>นำเข้าเลย</strong> เหมือนระบบเดิม หรือตรวจสอบก่อน commit
+              {t('iw37nPage.importHintBefore')}
+              <strong>{t('iw37nPage.importHintStrong')}</strong>
+              {t('iw37nPage.importHintAfter')}
+            </p>
+            <p className="mt-2 text-xs text-app-muted">
+              {t('iw37nPage.importMasterBefore')}
+              <strong>{t('iw37nPage.importMasterStrong')}</strong>
+              {t('iw37nPage.importMasterMid')}
+              <Link to="/master-data" className="font-medium underline underline-offset-2">
+                {t('iw37nPage.importMasterLink')}
+              </Link>
             </p>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex-1 space-y-1">
-                <label className="text-xs font-medium text-app-muted">เลือกไฟล์</label>
+                <label className="text-xs font-medium text-app-muted">{t('iw37nPage.selectFileLabel')}</label>
                 <Input
                   ref={fileRef}
                   type="file"
@@ -503,7 +523,7 @@ export function Iw37nPage() {
                 onClick={runDirectImport}
                 disabled={previewMut.isPending || importMut.isPending}
               >
-                {importMut.isPending ? 'กำลังนำเข้า…' : 'นำเข้าเลย'}
+                {importMut.isPending ? t('iw37nPage.importing') : t('iw37nPage.importNow')}
               </Button>
               <Button
                 type="button"
@@ -513,7 +533,7 @@ export function Iw37nPage() {
                 className="gap-2"
               >
                 <ClipboardCheck className="size-4" />
-                {previewMut.isPending ? 'กำลังตรวจสอบ…' : 'ตรวจสอบก่อนนำเข้า'}
+                {previewMut.isPending ? t('iw37nPage.previewing') : t('iw37nPage.preview')}
               </Button>
             </div>
             {importPreview ? (
@@ -529,8 +549,8 @@ export function Iw37nPage() {
         ) : (
           <AppCard pad="compact">
             <p className="text-caption">
-              นำเข้าไฟล์ต้องมีสิทธิ์ <code className="text-xs">iw37n.import</code> หรือ{' '}
-              <code className="text-xs">iw37n.write</code>
+              {t('iw37nPage.needImportPerm')} <code className="text-xs">iw37n.import</code>{' '}
+              {t('iw37nPage.or')} <code className="text-xs">iw37n.write</code>
             </p>
           </AppCard>
         )}
@@ -539,23 +559,26 @@ export function Iw37nPage() {
           <AppCard pad="default">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-body-sm font-semibold text-app">โฟลเดอร์ inbound (watch)</h3>
+                <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.folderTitle')}</h3>
                 <p className="mt-1 text-xs text-app-muted">
-                  วางไฟล์ <code className="text-code">.csv / .xlsx / .xls</code> ใน{' '}
-                  <code className="text-code">inbound/iw37n</code> — job สแกนทุก{' '}
-                  {integrationQ.data?.watchIntervalMinutes ?? 10} นาที
-                  {integrationQ.data?.watchEnabled === false ? ' (ปิดอยู่ใน settings)' : ''}
+                  {t('iw37nPage.folderHint')}{' '}
+                  <code className="text-code">.csv / .xlsx / .xls</code> {t('iw37nPage.folderHintFiles')}{' '}
+                  <code className="text-code">inbound/iw37n</code> {t('iw37nPage.folderHintScan')}{' '}
+                  {integrationQ.data?.watchIntervalMinutes ?? 10} {t('iw37nPage.folderHintMinutes')}
+                  {integrationQ.data?.watchEnabled === false ? ` ${t('iw37nPage.folderWatchOff')}` : ''}
                 </p>
                 {integrationQ.isError ? (
                   <p className="mt-2 text-xs text-amber-700">
-                    ยังไม่พร้อม — รัน migration{' '}
+                    {t('iw37nPage.folderNotReady')}{' '}
                     <code className="text-code">075_integration_job.sql</code>
                   </p>
                 ) : integrationQ.data ? (
                   <p className="mt-2 break-all text-xs text-app-muted">
                     {integrationQ.data.inboundIw37nDir}
                     <span className="ml-2 text-app-muted">
-                      · รอประมวลผล {integrationQ.data.pendingIw37nFiles.length} ไฟล์
+                      {t('iw37nPage.folderPending', {
+                        count: integrationQ.data.pendingIw37nFiles.length,
+                      })}
                     </span>
                   </p>
                 ) : integrationQ.isLoading ? (
@@ -563,9 +586,11 @@ export function Iw37nPage() {
                 ) : null}
                 {integrationQ.data?.lastJob ? (
                   <p className="mt-1 text-xs text-app-muted">
-                    job ล่าสุด #{integrationQ.data.lastJob.id} —{' '}
-                    {integrationQ.data.lastJob.status} (
-                    {new Date(integrationQ.data.lastJob.startedAt).toLocaleString('th-TH')})
+                    {t('iw37nPage.folderLastJob', {
+                      id: integrationQ.data.lastJob.id,
+                      status: integrationQ.data.lastJob.status,
+                      time: new Date(integrationQ.data.lastJob.startedAt).toLocaleString(),
+                    })}
                   </p>
                 ) : null}
               </div>
@@ -577,14 +602,17 @@ export function Iw37nPage() {
                 onClick={() => folderScanMut.mutate()}
               >
                 <FolderSync className="size-4" />
-                {folderScanMut.isPending ? 'กำลังสแกน…' : 'สแกนโฟลเดอร์เลย'}
+                {folderScanMut.isPending ? t('iw37nPage.scanning') : t('iw37nPage.scanNow')}
               </Button>
             </div>
             {integrationQ.data && integrationQ.data.pendingIw37nFiles.length > 0 ? (
               <ul className="mt-3 list-inside list-disc text-xs text-app-muted">
                 {integrationQ.data.pendingIw37nFiles.map((f) => (
                   <li key={f.name}>
-                    {f.name} ({Math.round(f.sizeBytes / 1024)} KB)
+                    {t('iw37nPage.folderFileEntry', {
+                      name: f.name,
+                      sizeKb: Math.round(f.sizeBytes / 1024),
+                    })}
                   </li>
                 ))}
               </ul>
@@ -594,9 +622,11 @@ export function Iw37nPage() {
 
         <AppCard pad="default">
           <div>
-            <h3 className="text-body-sm font-semibold text-app">ผลการนำเข้า (รายแถว)</h3>
+            <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.lastImportTitle')}</h3>
             <p className="mt-1 text-xs text-app-muted">
-              แสดงผลหลังนำเข้าล่าสุด — ดูประวัติเก่าได้ที่ปุ่ม <strong>ดูผล</strong> ด้านล่าง
+              {t('iw37nPage.lastImportHintBefore')}
+              <strong>{t('iw37nPage.lastImportHintStrong')}</strong>
+              {t('iw37nPage.lastImportHintAfter')}
             </p>
           </div>
 
@@ -622,7 +652,7 @@ export function Iw37nPage() {
                   {lastImport.isDuplicate ? (
                     <>
                       <Badge variant="outline" className="text-xs">
-                        ซ้ำ
+                        {t('iw37nPage.duplicate')}
                       </Badge>
                       {lastImport.duplicateOfBatchId ? (
                         <Button
@@ -636,7 +666,7 @@ export function Iw37nPage() {
                             )
                           }
                         >
-                          เปิด batch เดิม
+                          {t('iw37nPage.openOriginalBatch')}
                         </Button>
                       ) : null}
                     </>
@@ -647,20 +677,23 @@ export function Iw37nPage() {
                 <Table embedded stickyHeader zebra>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-16 text-center">ลำดับ</TableHead>
-                      <TableHead>ผลลัพธ์</TableHead>
-                      <TableHead>ใบงาน/Op</TableHead>
-                      <TableHead>แผนบำรุง</TableHead>
-                      <TableHead>Mat</TableHead>
-                      <TableHead>สถานะ</TableHead>
-                      <TableHead>ข้อความ</TableHead>
+                      <TableHead className="w-16 text-center">{t('iw37nPage.table.rowNo')}</TableHead>
+                      <TableHead>{t('iw37nPage.table.result')}</TableHead>
+                      <TableHead>{t('iw37nPage.table.woOp')}</TableHead>
+                      <TableHead>{t('iw37nPage.table.mntplan')}</TableHead>
+                      <TableHead>{t('iw37nPage.table.mat')}</TableHead>
+                      <TableHead>{t('iw37nPage.table.status')}</TableHead>
+                      <TableHead>{t('iw37nPage.table.message')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {lastImport.rows.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="p-0">
-                          <EmptyState className="border-0 bg-transparent py-8" title="ไม่มีแถวในผลนำเข้า" />
+                          <EmptyState
+                            className="border-0 bg-transparent py-8"
+                            title={t('iw37nPage.lastImportNoRows')}
+                          />
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -700,8 +733,8 @@ export function Iw37nPage() {
           ) : (
             <EmptyState
               className="mt-4 border-0 bg-transparent"
-              title="ยังไม่มีผลนำเข้า"
-              description="อัปโหลดไฟล์เพื่อดูผลรายแถวหลัง commit"
+              title={t('iw37nPage.lastImportEmpty')}
+              description={t('iw37nPage.lastImportEmptyHint')}
             />
           )}
         </AppCard>
@@ -709,8 +742,7 @@ export function Iw37nPage() {
         <AppCard pad="default">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-body-sm font-semibold text-app">รายการ IW37N</h3>
-              <p className="mt-1 text-xs text-app-muted">เทียบ `M_iw37n.php` / `M_iw37n_form.php` (แก้รายแถว)</p>
+              <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.itemsTitle')}</h3>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Input
@@ -719,7 +751,7 @@ export function Iw37nPage() {
                   setItemQ(e.target.value)
                   setItemOffset(0)
                 }}
-                placeholder="ค้นหา wkorder / mntplan / opac"
+                placeholder={t('iw37nPage.searchPlaceholder')}
                 className="h-9 w-[260px]"
               />
               <Button
@@ -729,7 +761,7 @@ export function Iw37nPage() {
                 onClick={() => setItemOffset((x) => Math.max(0, x - itemLimit))}
                 disabled={itemOffset === 0}
               >
-                ก่อนหน้า
+                {t('iw37nPage.prevPage')}
               </Button>
               <Button
                 type="button"
@@ -738,7 +770,7 @@ export function Iw37nPage() {
                 onClick={() => setItemOffset((x) => x + itemLimit)}
                 disabled={(itemsQ.data?.length ?? 0) < itemLimit}
               >
-                ถัดไป
+                {t('iw37nPage.nextPage')}
               </Button>
             </div>
           </div>
@@ -753,21 +785,21 @@ export function Iw37nPage() {
             <EmptyState
               className="mt-4"
               icon={AlertCircle}
-              title="โหลดรายการไม่สำเร็จ"
-              description={(itemsQ.error as Error).message}
-              action={{ label: 'ลองใหม่', onClick: () => void itemsQ.refetch() }}
+              title={t('iw37nPage.itemsLoadFailed')}
+              description={t('iw37nPage.itemsLoadFailedDesc')}
+              action={{ label: t('iw37n.retry'), onClick: () => void itemsQ.refetch() }}
             />
           ) : (
             <div className="mt-4 app-table-shell overflow-x-auto">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-20 text-right">ID</TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead>OpAc</TableHead>
-                    <TableHead>MntPlan</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Bsc start</TableHead>
+                    <TableHead className="w-20 text-right">{t('iw37nPage.table.id')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.order')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.opAc')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.mntPlan')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.type')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.bscStart')}</TableHead>
                     <TableHead className="text-right" />
                   </TableRow>
                 </TableHeader>
@@ -777,8 +809,12 @@ export function Iw37nPage() {
                       <TableCell colSpan={7} className="p-0">
                         <EmptyState
                           className="border-0 bg-transparent py-10"
-                          title="ไม่พบรายการ"
-                          description={itemQ.trim() ? 'ลองคำค้นอื่น' : 'นำเข้าไฟล์ IW37N ก่อน'}
+                          title={t('iw37nPage.itemsEmpty')}
+                          description={
+                            itemQ.trim()
+                              ? t('iw37nPage.itemsEmptySearch')
+                              : t('iw37nPage.itemsEmptyHint')
+                          }
                         />
                       </TableCell>
                     </TableRow>
@@ -802,7 +838,7 @@ export function Iw37nPage() {
                               onClick={() => openEdit(it.idiw37)}
                             >
                               <Pencil className="mr-2 size-4" aria-hidden />
-                              แก้ไข
+                              {t('iw37nPage.edit')}
                             </Button>
                           ) : null}
                         </TableCell>
@@ -827,7 +863,7 @@ export function Iw37nPage() {
         >
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>แก้ไข IW37N #{editingId ?? ''}</DialogTitle>
+              <DialogTitle>{t('iw37nPage.editTitle', { id: editingId ?? '' })}</DialogTitle>
             </DialogHeader>
 
             {editError ? (
@@ -838,94 +874,94 @@ export function Iw37nPage() {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Order (wkorder)</Label>
+                <Label>{t('iw37nPage.form.order')}</Label>
                 <Input value={form.wkorder} onChange={(e) => setForm((p) => ({ ...p, wkorder: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>OpAc (opac)</Label>
+                <Label>{t('iw37nPage.form.opAc')}</Label>
                 <Input value={form.opac} onChange={(e) => setForm((p) => ({ ...p, opac: e.target.value }))} />
               </div>
 
               <div className="space-y-2">
-                <Label>MntPlan</Label>
+                <Label>{t('iw37nPage.form.mntPlan')}</Label>
                 <Input value={form.mntplan} onChange={(e) => setForm((p) => ({ ...p, mntplan: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Type (wktype)</Label>
+                <Label>{t('iw37nPage.form.type')}</Label>
                 <Input value={form.wktype} onChange={(e) => setForm((p) => ({ ...p, wktype: e.target.value }))} />
               </div>
 
               <div className="space-y-2">
-                <Label>MAT</Label>
+                <Label>{t('iw37nPage.form.mat')}</Label>
                 <Input value={form.mat} onChange={(e) => setForm((p) => ({ ...p, mat: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Team</Label>
+                <Label>{t('iw37nPage.form.team')}</Label>
                 <Input value={form.team} onChange={(e) => setForm((p) => ({ ...p, team: e.target.value }))} />
               </div>
 
               <div className="space-y-2">
-                <Label>Plan Date (DD.MM.YYYY)</Label>
+                <Label>{t('iw37nPage.form.planDate')}</Label>
                 <Input value={form.bscstart} onChange={(e) => setForm((p) => ({ ...p, bscstart: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Acf.finish (DD.MM.YYYY)</Label>
+                <Label>{t('iw37nPage.form.actFinish')}</Label>
                 <Input value={form.actfinish} onChange={(e) => setForm((p) => ({ ...p, actfinish: e.target.value }))} />
               </div>
 
               <div className="space-y-2 sm:col-span-2">
-                <Label>System status</Label>
+                <Label>{t('iw37nPage.form.systemStatus')}</Label>
                 <Input value={form.systemstatus} onChange={(e) => setForm((p) => ({ ...p, systemstatus: e.target.value }))} />
               </div>
 
               <div className="space-y-2 sm:col-span-2">
-                <Label>Operation short text</Label>
+                <Label>{t('iw37nPage.form.operationShort')}</Label>
                 <Input value={form.operationshorttext} onChange={(e) => setForm((p) => ({ ...p, operationshorttext: e.target.value }))} />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label>Description</Label>
+                <Label>{t('iw37nPage.form.description')}</Label>
                 <Input value={form.ostdescription} onChange={(e) => setForm((p) => ({ ...p, ostdescription: e.target.value }))} />
               </div>
 
               <div className="space-y-2">
-                <Label>C</Label>
+                <Label>{t('iw37nPage.form.c')}</Label>
                 <Input value={form.cknow} onChange={(e) => setForm((p) => ({ ...p, cknow: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Op.WorkCtr</Label>
+                <Label>{t('iw37nPage.form.opWorkCtr')}</Label>
                 <Input value={form.wkctr} onChange={(e) => setForm((p) => ({ ...p, wkctr: e.target.value }))} />
               </div>
 
               <div className="space-y-2">
-                <Label>Work</Label>
+                <Label>{t('iw37nPage.form.work')}</Label>
                 <Input value={form.work} onChange={(e) => setForm((p) => ({ ...p, work: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Act. work</Label>
+                <Label>{t('iw37nPage.form.actWork')}</Label>
                 <Input value={form.actwork} onChange={(e) => setForm((p) => ({ ...p, actwork: e.target.value }))} />
               </div>
 
               <div className="space-y-2">
-                <Label>Un.</Label>
+                <Label>{t('iw37nPage.form.un')}</Label>
                 <Input value={form.untime} onChange={(e) => setForm((p) => ({ ...p, untime: e.target.value }))} />
               </div>
               <div />
 
               <div className="space-y-2">
-                <Label>Equipment</Label>
+                <Label>{t('iw37nPage.form.equipment')}</Label>
                 <Input value={form.equipment} onChange={(e) => setForm((p) => ({ ...p, equipment: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Equipment descriptn</Label>
+                <Label>{t('iw37nPage.form.equipmentDesc')}</Label>
                 <Input value={form.equdescrip} onChange={(e) => setForm((p) => ({ ...p, equdescrip: e.target.value }))} />
               </div>
 
               <div className="space-y-2">
-                <Label>Functional Loc.</Label>
+                <Label>{t('iw37nPage.form.functionalLoc')}</Label>
                 <Input value={form.functionalloc} onChange={(e) => setForm((p) => ({ ...p, functionalloc: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>FunctLocDescrip.</Label>
+                <Label>{t('iw37nPage.form.funcLocDesc')}</Label>
                 <Input value={form.funcdescrip} onChange={(e) => setForm((p) => ({ ...p, funcdescrip: e.target.value }))} />
               </div>
             </div>
@@ -941,37 +977,37 @@ export function Iw37nPage() {
                 }}
                 disabled={saveMut.isPending}
               >
-                ยกเลิก
+                {t('iw37nPage.form.cancel')}
               </Button>
               <Button type="button" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
-                {saveMut.isPending ? 'กำลังบันทึก…' : 'บันทึก'}
+                {saveMut.isPending ? t('iw37nPage.form.saving') : t('iw37nPage.form.save')}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
 
         <AppCard pad="default">
-          <h3 className="text-body-sm font-semibold text-app">ประวัติการนำเข้า</h3>
+          <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.batchHistoryTitle')}</h3>
           {batches.isLoading && !batches.data ? (
             <Skeleton className="mt-4 h-40 w-full rounded-card" />
           ) : batches.isError ? (
             <EmptyState
               className="mt-4"
               icon={AlertCircle}
-              title="โหลดประวัติไม่สำเร็จ"
-              description={(batches.error as Error).message}
-              action={{ label: 'ลองใหม่', onClick: () => void batches.refetch() }}
+              title={t('iw37nPage.batchHistoryLoadFailed')}
+              description={t('iw37n.historyLoadFailedDesc')}
+              action={{ label: t('iw37n.retry'), onClick: () => void batches.refetch() }}
             />
           ) : (
             <div className="mt-4 app-table-shell overflow-x-auto">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ไฟล์</TableHead>
-                    <TableHead>วันที่</TableHead>
-                    <TableHead className="text-right">แถว</TableHead>
-                    <TableHead>SHA256</TableHead>
-                    <TableHead>สถานะ</TableHead>
+                    <TableHead>{t('iw37nPage.table.file')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.date')}</TableHead>
+                    <TableHead className="text-right">{t('iw37nPage.table.rows')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.sha256')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.status')}</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -981,8 +1017,8 @@ export function Iw37nPage() {
                       <TableCell colSpan={6} className="p-0">
                         <EmptyState
                           className="border-0 bg-transparent py-10"
-                          title="ยังไม่มีประวัติ"
-                          description="นำเข้าไฟล์ IW37N แรก หรือวางในโฟลเดอร์ inbound"
+                          title={t('iw37nPage.batchHistoryEmpty')}
+                          description={t('iw37nPage.batchHistoryEmptyHint')}
                         />
                       </TableCell>
                     </TableRow>
@@ -1009,7 +1045,7 @@ export function Iw37nPage() {
                             </Badge>
                             {b.isDuplicate ? (
                               <Badge variant="outline" className="text-xs">
-                                ซ้ำ
+                                {t('iw37nPage.duplicate')}
                               </Badge>
                             ) : null}
                           </div>
@@ -1035,7 +1071,7 @@ export function Iw37nPage() {
                                 variant="outline"
                                 onClick={() => openBatchView(b.duplicateOfBatchId!, `batch-${b.duplicateOfBatchId}`)}
                               >
-                                batch เดิม
+                                {t('iw37nPage.originalBatch')}
                               </Button>
                             ) : null}
                             <Button
@@ -1044,7 +1080,7 @@ export function Iw37nPage() {
                               variant={batchViewId === b.id && batchViewOpen ? 'default' : 'outline'}
                               onClick={() => openBatchView(b.id, b.fileName)}
                             >
-                              ดูผล
+                              {t('iw37nPage.viewResult')}
                             </Button>
                           </div>
                         </TableCell>
@@ -1070,7 +1106,7 @@ export function Iw37nPage() {
           <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col gap-4 overflow-hidden">
             <DialogHeader>
               <DialogTitle className="text-left">
-                ผลการนำเข้า (batch #{batchViewId ?? '—'})
+                {t('iw37nPage.batchViewTitle', { id: batchViewId ?? '—' })}
                 {batchViewFileName ? (
                   <span className="mt-1 block text-xs font-normal text-app-muted">{batchViewFileName}</span>
                 ) : null}
@@ -1100,24 +1136,24 @@ export function Iw37nPage() {
                   <Skeleton className="h-10 w-full rounded-card" />
                 </div>
               ) : batchViewRowsQ.isError ? (
-                <p className="text-body-sm text-red-600">{(batchViewRowsQ.error as Error).message}</p>
+                <p className="text-body-sm text-red-600">{t('iw37nPage.batchViewLoadFailed')}</p>
               ) : batchViewRowsQ.data ? (
                 <div className="space-y-2">
                   <p className="text-xs text-app-muted">
-                    {batchViewRowsQ.data.items.length} แถว
-                    {batchViewRowsQ.data.items.length >= 2000 ? ' (แสดงสูงสุด 2,000 แถว)' : ''}
+                    {t('iw37nPage.batchViewRows', { count: batchViewRowsQ.data.items.length })}
+                    {batchViewRowsQ.data.items.length >= 2000 ? t('iw37nPage.batchViewRowCap') : ''}
                   </p>
                   <div className="app-table-shell overflow-x-auto">
                     <Table embedded stickyHeader zebra>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-16 text-center">ลำดับ</TableHead>
-                          <TableHead>ผลลัพธ์</TableHead>
-                          <TableHead>ใบงาน/Op</TableHead>
-                          <TableHead>แผนบำรุง</TableHead>
-                          <TableHead>Mat</TableHead>
-                          <TableHead>สถานะ</TableHead>
-                          <TableHead>ข้อความ</TableHead>
+                          <TableHead className="w-16 text-center">{t('iw37nPage.table.rowNo')}</TableHead>
+                          <TableHead>{t('iw37nPage.table.result')}</TableHead>
+                          <TableHead>{t('iw37nPage.table.woOp')}</TableHead>
+                          <TableHead>{t('iw37nPage.table.mntplan')}</TableHead>
+                          <TableHead>{t('iw37nPage.table.mat')}</TableHead>
+                          <TableHead>{t('iw37nPage.table.status')}</TableHead>
+                          <TableHead>{t('iw37nPage.table.message')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1126,8 +1162,8 @@ export function Iw37nPage() {
                             <TableCell colSpan={7} className="p-0">
                               <EmptyState
                                 className="border-0 bg-transparent py-8"
-                                title="ไม่มีรายละเอียดแถว"
-                                description="อาจเป็น batch ก่อน migration 030 (ตาราง import_row)"
+                                title={t('iw37nPage.batchViewNoRows')}
+                                description={t('iw37nPage.batchViewNoRowsHint')}
                               />
                             </TableCell>
                           </TableRow>
@@ -1176,6 +1212,7 @@ export function Iw37nPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </AppPageSection>
     </AppPageShell>
   )
 }

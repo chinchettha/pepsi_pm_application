@@ -3,6 +3,7 @@ import { boardPersonnelAvatarUrl } from '@/lib/board-personnel-avatar'
 import { toEngUtilizationChartRows } from '@/lib/eng-utilization-chart'
 import type { SummaryWeeklyRow } from '@/api/schemas'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   rows: SummaryWeeklyRow[] | undefined
@@ -12,7 +13,6 @@ type Props = {
   showRca: boolean
 }
 
-/** กริดการ์ดรายคน + % bar + รูป (board avatar API) */
 export function BoardEngUtilizationTeamGrid({
   rows,
   loading,
@@ -20,6 +20,8 @@ export function BoardEngUtilizationTeamGrid({
   rangeLabel,
   showRca,
 }: Props) {
+  const { t } = useTranslation('board')
+
   const people = useMemo(() => {
     const all = rows ? toEngUtilizationChartRows(rows) : []
     return [...all].sort((a, b) => b.hrHour - a.hrHour)
@@ -29,12 +31,12 @@ export function BoardEngUtilizationTeamGrid({
     <section className="engineering-board__panel engineering-board__panel--team">
       <div className="engineering-board__panel-head">
         <h2 className="engineering-board__panel-title">
-          ทีมช่าง · {rangeLabel}
+          {t('util.teamGridTitle', { label: rangeLabel })}
           <span className="engineering-board__panel-badge">{people.length}</span>
         </h2>
       </div>
       {loading ? (
-        <p className="text-body-sm opacity-60">กำลังโหลดรายชื่อ…</p>
+        <p className="text-body-sm opacity-60">{t('util.loadingPeople')}</p>
       ) : error ? (
         <p className="text-body-sm text-red-300">{error.message}</p>
       ) : (

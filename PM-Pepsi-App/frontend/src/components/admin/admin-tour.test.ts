@@ -47,10 +47,11 @@ describe('AdminTour helpers', () => {
     expect(shouldAutoStartAdminTour('/admin', true)).toBe(false)
   })
 
-  it('expects Joyride steps = command hint + console + sub-pages', () => {
+  it('expects Joyride steps = command hint + console + sub-pages', async () => {
     expect(TOUR_PAGE_SECTIONS.length).toBe(12)
     expect(ADMIN_TOUR_STEP_COUNT).toBe(14)
-    expect(buildAdminTourSteps()).toHaveLength(ADMIN_TOUR_STEP_COUNT)
+    const { i18n } = await import('@/i18n')
+    expect(buildAdminTourSteps(i18n.getFixedT('en', 'admin'))).toHaveLength(ADMIN_TOUR_STEP_COUNT)
   })
 
   it('restartAdminTour clears seen flag and runs callback', () => {

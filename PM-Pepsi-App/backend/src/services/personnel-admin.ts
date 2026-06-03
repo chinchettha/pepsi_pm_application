@@ -5,6 +5,7 @@
 import type { Pool, PoolClient } from 'pg'
 import bcrypt from 'bcryptjs'
 import { personnelIsActiveSql } from '../lib/personnel-active-sql.js'
+import { isEngWkctrCode, normalizeWkctrCode, WkctrCodeConflictError } from '../lib/wkctr-code.js'
 import type {
   PersonnelAdminItem,
   PersonnelAdminUpsertBody,
@@ -291,17 +292,36 @@ async function hashPasswordIfPresent(pw: string | undefined | null): Promise<str
   return bcrypt.hash(pw, 10)
 }
 
+export async function assertWkctrCodeAvailable(
+  pool: Pool,
+  wkctr: string,
+  excludeIdwkctr?: string,
+): Promise<void> {
+  const code = normalizeWkctrCode(wkctr)
+  if (!code) return
+  const r = await pool.query<{ idwkctr: string }>(
+    `SELECT idwkctr FROM app.tbworkcenter
+     WHERE wkctr = $1 AND ($2::text IS NULL OR idwkctr <> $2)
+     LIMIT 1`,
+    [code, excludeIdwkctr ?? null],
+  )
+  const hit = r.rows[0]
+  if (hit) throw new WkctrCodeConflictError(code, hit.idwkctr)
+}
+
 export async function upsertPersonnelAdmin(
   pool: Pool,
   body: PersonnelAdminUpsertBody,
 ): Promise<{ idwkctr: string; mode: 'inserted' | 'updated' }> {
-  const startwork = parseDate(body.startwork ?? null)
-  const wkctrdate = parseDate(body.wkctrdate ?? null)
-  const hashedPass = await hashPasswordIfPresent(body.pass)
+  const normalizedBody = { ...body, wkctr: normalizeWkctrCode(body.wkctr) }
+  await assertWkctrCodeAvailable(pool, normalizedBody.wkctr, normalizedBody.idwkctr)
+  const startwork = parseDate(normalizedBody.startwork ?? null)
+  const wkctrdate = parseDate(normalizedBody.wkctrdate ?? null)
+  const hashedPass = await hashPasswordIfPresent(normalizedBody.pass)
 
   const existing = await pool.query<{ idwkctr: string }>(
     `SELECT idwkctr FROM app.tbworkcenter WHERE idwkctr = $1 LIMIT 1`,
-    [body.idwkctr],
+    [normalizedBody.idwkctr],
   )
 
   if (existing.rows.length > 0) {
@@ -321,34 +341,34 @@ export async function upsertPersonnelAdmin(
          updated_at = now()
        WHERE idwkctr = $1`,
       [
-        body.idwkctr,
-        body.titlewkctr ?? null,
-        body.namewkctr ?? null,
-        body.surnamewkctr ?? null,
-        body.titlewkctreng ?? null,
-        body.namewkctreng ?? null,
-        body.surnamewkctreng ?? null,
+        normalizedBody.idwkctr,
+        normalizedBody.titlewkctr ?? null,
+        normalizedBody.namewkctr ?? null,
+        normalizedBody.surnamewkctr ?? null,
+        normalizedBody.titlewkctreng ?? null,
+        normalizedBody.namewkctreng ?? null,
+        normalizedBody.surnamewkctreng ?? null,
         startwork,
         wkctrdate,
-        body.iddepartment ?? null,
-        body.idposition ?? null,
-        body.wkctr,
-        body.plnt ?? null,
-        body.cat ?? null,
-        body.resp ?? null,
-        body.idwkctrgroup ?? null,
-        body.idwkctrtype ?? null,
-        body.idwklevel ?? null,
-        body.wkctrtel ?? null,
-        body.wkctrmail ?? null,
-        body.labourcost,
-        body.userst,
-        body.userrole,
-        body.workstatus ?? null,
+        normalizedBody.iddepartment ?? null,
+        normalizedBody.idposition ?? null,
+        normalizedBody.wkctr,
+        normalizedBody.plnt ?? null,
+        normalizedBody.cat ?? null,
+        normalizedBody.resp ?? null,
+        normalizedBody.idwkctrgroup ?? null,
+        normalizedBody.idwkctrtype ?? null,
+        normalizedBody.idwklevel ?? null,
+        normalizedBody.wkctrtel ?? null,
+        normalizedBody.wkctrmail ?? null,
+        normalizedBody.labourcost,
+        normalizedBody.userst,
+        normalizedBody.userrole,
+        normalizedBody.workstatus ?? null,
         hashedPass,
       ],
     )
-    return { idwkctr: body.idwkctr, mode: 'updated' }
+    return { idwkctr: normalizedBody.idwkctr, mode: 'updated' }
   }
 
   await pool.query(
@@ -373,34 +393,34 @@ export async function upsertPersonnelAdmin(
        $21, $22, $23, $24
      )`,
     [
-      body.idwkctr,
-      body.titlewkctr ?? null,
-      body.namewkctr ?? null,
-      body.surnamewkctr ?? null,
-      body.titlewkctreng ?? null,
-      body.namewkctreng ?? null,
-      body.surnamewkctreng ?? null,
+      normalizedBody.idwkctr,
+      normalizedBody.titlewkctr ?? null,
+      normalizedBody.namewkctr ?? null,
+      normalizedBody.surnamewkctr ?? null,
+      normalizedBody.titlewkctreng ?? null,
+      normalizedBody.namewkctreng ?? null,
+      normalizedBody.surnamewkctreng ?? null,
       startwork,
       wkctrdate,
-      body.iddepartment ?? null,
-      body.idposition ?? null,
-      body.wkctr,
-      body.plnt ?? null,
-      body.cat ?? null,
-      body.resp ?? null,
-      body.idwkctrgroup ?? null,
-      body.idwkctrtype ?? null,
-      body.idwklevel ?? null,
-      body.wkctrtel ?? null,
-      body.wkctrmail ?? null,
-      body.labourcost,
-      body.userst,
-      body.userrole,
-      body.workstatus ?? null,
+      normalizedBody.iddepartment ?? null,
+      normalizedBody.idposition ?? null,
+      normalizedBody.wkctr,
+      normalizedBody.plnt ?? null,
+      normalizedBody.cat ?? null,
+      normalizedBody.resp ?? null,
+      normalizedBody.idwkctrgroup ?? null,
+      normalizedBody.idwkctrtype ?? null,
+      normalizedBody.idwklevel ?? null,
+      normalizedBody.wkctrtel ?? null,
+      normalizedBody.wkctrmail ?? null,
+      normalizedBody.labourcost,
+      normalizedBody.userst,
+      normalizedBody.userrole,
+      normalizedBody.workstatus ?? null,
       hashedPass,
     ],
   )
-  return { idwkctr: body.idwkctr, mode: 'inserted' }
+  return { idwkctr: normalizedBody.idwkctr, mode: 'inserted' }
 }
 
 /**

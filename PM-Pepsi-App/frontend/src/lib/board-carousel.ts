@@ -4,12 +4,6 @@ export type BoardCarouselSlide = (typeof BOARD_CAROUSEL_SLIDES)[number]
 export const BOARD_CAROUSEL_INTERVAL_MS = 45_000
 export const BOARD_CAROUSEL_STORAGE_KEY = 'pm_board_carousel'
 
-export const BOARD_CAROUSEL_LABELS: Record<BoardCarouselSlide, string> = {
-  a: 'KPI',
-  b: 'Utilization',
-  c: 'กิจกรรม',
-}
-
 export function isBoardCarouselSlide(v: string): v is BoardCarouselSlide {
   return v === 'a' || v === 'b' || v === 'c'
 }

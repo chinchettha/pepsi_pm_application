@@ -62,11 +62,11 @@ export function applyThemeToDocument(
 
   /* Sidebar — Light: พื้นเทา #EAEAEA + ตัวอักษรเข้ม · Dark: โทน slate + ข้อความขาว */
   if (resolved === 'dark') {
-    root.style.setProperty('--app-sidebar-fg', 'rgba(255, 255, 255, 0.92)')
-    root.style.setProperty('--app-sidebar-fg-muted', 'rgba(255, 255, 255, 0.58)')
-    root.style.setProperty('--app-sidebar-border', 'rgba(255, 255, 255, 0.1)')
-    root.style.setProperty('--app-sidebar-hover', 'rgba(255, 255, 255, 0.08)')
-    root.style.setProperty('--app-sidebar-active', 'rgba(255, 255, 255, 0.16)')
+    root.style.setProperty('--app-sidebar-fg', 'rgba(255, 255, 255, 0.94)')
+    root.style.setProperty('--app-sidebar-fg-muted', 'rgba(255, 255, 255, 0.72)')
+    root.style.setProperty('--app-sidebar-border', 'rgba(255, 255, 255, 0.14)')
+    root.style.setProperty('--app-sidebar-hover', 'rgba(255, 255, 255, 0.1)')
+    root.style.setProperty('--app-sidebar-active', 'rgba(255, 255, 255, 0.18)')
   } else {
     root.style.setProperty('--app-sidebar-fg', '#1f2937')
     root.style.setProperty('--app-sidebar-fg-muted', '#6b7280')
@@ -79,16 +79,17 @@ export function applyThemeToDocument(
   root.dataset.theme = resolved
 
   if (resolved === 'dark') {
-    // skill-theme.md §1 — cinematic dark #0f172a
+    // skill-theme.md §1 — cinematic dark; ข้อความ/accent สว่างพอบนพื้นมืด
     root.style.setProperty('--app-bg', '#0f172a')
-    root.style.setProperty('--app-surface', '#2c2c2e')
-    root.style.setProperty('--app-surface-muted', '#3a3a3c')
-    root.style.setProperty('--app-text', '#f4f4f5')
-    root.style.setProperty('--app-text-muted', '#a1a1aa')
-    root.style.setProperty('--app-border', '#52525b')
+    root.style.setProperty('--app-surface', '#1e293b')
+    root.style.setProperty('--app-surface-muted', '#334155')
+    root.style.setProperty('--app-text', '#f8fafc')
+    root.style.setProperty('--app-text-muted', '#cbd5e1')
+    root.style.setProperty('--app-border', '#475569')
     root.style.setProperty('--app-sidebar', '#1e293b')
-    root.style.setProperty('--app-glass-bg', 'rgba(44, 44, 46, 0.72)')
-    root.style.setProperty('--app-glass-border', 'rgba(255, 255, 255, 0.12)')
+    root.style.setProperty('--app-accent', '#60a5fa')
+    root.style.setProperty('--app-glass-bg', 'rgba(30, 41, 59, 0.78)')
+    root.style.setProperty('--app-glass-border', 'rgba(255, 255, 255, 0.14)')
   } else {
     // skill-theme.md §13.4 — corporate flat #EEF2F7 (ไม่ใช้ gradient หลายสี)
     root.style.setProperty('--app-bg', '#eef2f7')

@@ -14,6 +14,7 @@ import { createAdminMenuItem, updateAdminMenuItem } from '@/lib/admin-menu-api'
 import { useMutation } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   MENU_ROLE_BITS,
@@ -30,6 +31,8 @@ export type MenuEditDialogProps = {
 }
 
 export function MenuEditDialog({ open, onOpenChange, initial, onSaved }: MenuEditDialogProps) {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const isEdit = Boolean(initial)
   const [menuKind, setMenuKind] = useState<'heading' | 'item'>('item')
   const [menutitle, setMenutitle] = useState('')
@@ -85,11 +88,11 @@ export function MenuEditDialog({ open, onOpenChange, initial, onSaved }: MenuEdi
       return createAdminMenuItem(body)
     },
     onSuccess: () => {
-      toast.success(isEdit ? 'บันทึกเมนูแล้ว' : 'เพิ่มเมนูแล้ว')
+      toast.success(isEdit ? t('menu.savedMenu') : t('menu.createdMenu'))
       onOpenChange(false)
       onSaved()
     },
-    onError: (e: Error) => toast.error(e.message || 'บันทึกไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('announcements.saveFailed')),
   })
 
   const toggleRole = (r: string) => {
@@ -106,27 +109,27 @@ export function MenuEditDialog({ open, onOpenChange, initial, onSaved }: MenuEdi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'แก้ไขเมนู' : 'เพิ่มเมนู'}</DialogTitle>
-          <DialogDescription>บันทึกลง app.tbmenu — ลำดับจัดด้วย drag ในตาราง</DialogDescription>
+          <DialogTitle>{isEdit ? t('menu.editDialogTitle') : t('menu.newDialogTitle')}</DialogTitle>
+          <DialogDescription>{t('menu.editDialogDesc')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>ประเภท</Label>
+            <Label>{t('menu.kindLabel')}</Label>
             <select
               className={menuSelectClass}
               value={menuKind}
               onChange={(e) => setMenuKind(e.target.value as 'heading' | 'item')}
             >
-              <option value="heading">หัวข้อกลุ่ม (heading)</option>
-              <option value="item">รายการเมนู (item)</option>
+              <option value="heading">{t('menu.kindHeading')}</option>
+              <option value="item">{t('menu.kindItem')}</option>
             </select>
           </div>
           <div>
-            <Label htmlFor="menutitle">ชื่อแสดง</Label>
+            <Label htmlFor="menutitle">{t('menu.displayName')}</Label>
             <Input id="menutitle" value={menutitle} onChange={(e) => setMenutitle(e.target.value)} />
           </div>
           <div>
-            <Label>สิทธิ์ (menuright)</Label>
+            <Label>{t('menu.menurightLabel')}</Label>
             <div className="mt-1 flex flex-wrap gap-2">
               {MENU_ROLE_BITS.map((r) => (
                 <Button
@@ -162,7 +165,7 @@ export function MenuEditDialog({ open, onOpenChange, initial, onSaved }: MenuEdi
                 />
               </div>
               <div>
-                <Label htmlFor="menuicon">ไอคอน (fa-* หรือ lucide hint)</Label>
+                <Label htmlFor="menuicon">{t('menu.iconLabel')}</Label>
                 <Input id="menuicon" value={menuicon} onChange={(e) => setMenuicon(e.target.value)} />
               </div>
               <label className="flex items-center gap-2 text-body-sm">
@@ -171,7 +174,7 @@ export function MenuEditDialog({ open, onOpenChange, initial, onSaved }: MenuEdi
                   checked={endExact}
                   onChange={(e) => setEndExact(e.target.checked)}
                 />
-                end_exact (active เฉพาะ path ตรง)
+                {t('menu.endExactLabel')}
               </label>
             </>
           ) : null}
@@ -186,14 +189,14 @@ export function MenuEditDialog({ open, onOpenChange, initial, onSaved }: MenuEdi
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            ยกเลิก
+            {tc('actions.cancel')}
           </Button>
           <Button
             type="button"
             disabled={!menutitle.trim() || saveMut.isPending}
             onClick={() => saveMut.mutate()}
           >
-            {saveMut.isPending ? <Loader2 className="size-4 animate-spin" /> : 'บันทึก'}
+            {saveMut.isPending ? <Loader2 className="size-4 animate-spin" /> : tc('actions.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

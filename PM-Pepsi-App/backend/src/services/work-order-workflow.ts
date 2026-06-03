@@ -1,10 +1,9 @@
 import type { Pool } from 'pg'
-import { isConfirmQcApproved } from '../lib/confirm-qc-status.js'
 
 /** เทียบ `ChackStatus.php` + suffix ใน `calendar.php` title (`STwork` + `STwork2` + …) */
 export type WorkOrderWorkflowStep = {
-  step: 1 | 2 | 3 | 4
-  key: 'team' | 'assign' | 'worktime' | 'confirm'
+  step: 1 | 2 | 3
+  key: 'team' | 'assign' | 'worktime'
   label: string
   done: boolean
 }
@@ -53,26 +52,14 @@ export async function getWorkOrderWorkflowSteps(
     hasWorktime = Number(wrkR.rows[0]?.n ?? 0) > 0
   }
 
-  const qcR = await pool.query<{ status: string | null }>(
-    `SELECT confirm_qc_status AS status FROM app.tbiw37n WHERE idiw37 = $1 LIMIT 1`,
-    [idiw37],
-  )
-  const qcApproved = isConfirmQcApproved(qcR.rows[0]?.status)
-
   return [
-    { step: 1, key: 'team', label: 'ตั้ง Team A/B/P', done: hasTeam },
-    { step: 2, key: 'assign', label: 'Supervisor จ่ายงานให้ช่าง', done: hasAssign },
+    { step: 1, key: 'team', label: 'PM Plan', done: hasTeam },
+    { step: 2, key: 'assign', label: 'ตัวเลือกช่าง', done: hasAssign },
     {
       step: 3,
       key: 'worktime',
       label: 'ช่างบันทึกเวลาทำงาน',
       done: hasWorktime,
-    },
-    {
-      step: 4,
-      key: 'confirm',
-      label: 'รับรองงาน (Admin QC)',
-      done: qcApproved,
     },
   ]
 }
@@ -95,8 +82,7 @@ export async function loadWorkflowSuffixMap(
        TRIM(
          CASE WHEN COALESCE(TRIM(i.team), '') <> '' THEN '1' ELSE '' END ||
          CASE WHEN EXISTS (SELECT 1 FROM app.tbplangingwork p WHERE p.idiw37 = i.idiw37) THEN '2' ELSE '' END ||
-         ${step3Sql} ||
-         CASE WHEN i.confirm_qc_status = 'approved' THEN '4' ELSE '' END
+         ${step3Sql}
        ) AS suffix
      FROM app.tbiw37n i
      WHERE i.idiw37 = ANY($1::int[])`,

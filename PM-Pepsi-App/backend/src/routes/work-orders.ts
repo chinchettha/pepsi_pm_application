@@ -13,6 +13,7 @@ import {
   massConfirmAuditFields,
 } from '../lib/audit-bulk-payload.js'
 import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
+import { recordRevision } from '../lib/resource-revision.js'
 import { resolveConfirmationExportScope } from '../lib/confirmation-export-scope.js'
 import { createRequirePermission } from '../middleware/require-permission.js'
 import {
@@ -30,6 +31,7 @@ import {
   personnelCloseIdParamSchema,
   confirmationImageDataResponseSchema,
   confirmationImagesResponseSchema,
+  confirmationImportPreviewResponseSchema,
   confirmationImportResponseSchema,
   confirmationExportResponseSchema,
   confirmationOkResponseSchema,
@@ -51,6 +53,12 @@ import {
   workOrdersResponseSchema,
 } from '../schemas/work-orders.js'
 import {
+  woPmNoteBodySchema,
+  woPmNoteResponseSchema,
+  woPmReadingBodySchema,
+  woPmReadingResponseSchema,
+} from '../schemas/pm-execution.js'
+import {
   deleteWorkOrderPlanning,
   enrichWorkOrderDetailForUser,
   getWorkOrderModalDetail,
@@ -59,10 +67,19 @@ import {
   listWorkOrders,
   getWorkOrderFilterDetail,
   searchWorkOrders,
+  resolveWorkOrderIdiw37,
   upsertWorkOrderPlanning,
   updateWorkOrderTeam,
   updateWorkOrderTeamBatch,
 } from '../services/work-orders.js'
+import {
+  createWoPmReading,
+  upsertWoPmNote,
+} from '../services/wo-pm-execution-data.js'
+import {
+  buildPmReadingsXlsxBuffer,
+  listPmReadingExportRowsForWo,
+} from '../services/pm-readings-query.js'
 import {
   addConfirmationClose,
   addConfirmationCloseBatch,
@@ -76,6 +93,7 @@ import {
   readConfirmationImageBuffer,
   unlinkLegacyConfirmationImageFile,
   importConfirmFile,
+  previewConfirmFile,
   listConfirmationExportRows,
   listConfirmationComments,
   listConfirmationImages,
@@ -182,7 +200,9 @@ function isSchemaMissing(err: unknown): boolean {
     message.includes('tbconfirmcom') ||
     message.includes('tbwrkclose') ||
     message.includes('view_personelclose') ||
-    message.includes('confirm_qc')
+    message.includes('confirm_qc') ||
+    message.includes('tbwo_pm_note') ||
+    message.includes('tbwo_pm_reading')
   )
 }
 
@@ -457,7 +477,152 @@ export function registerWorkOrderRoutes(
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
             message:
-              'Run database/migrations/003_tblineschdul.sql, 014_tbwkctrtype.sql, 015_tbproductline.sql, 016_tbzone.sql, 017_tbmainteanance.sql, 018_tbmaterial.sql, 021_tbwkctrgroup.sql, 022_tbtasklist.sql, 007_tbplangingwork_view_planwork.sql',
+              'Run database/migrations/003_tblineschdul.sql, 014_tbwkctrtype.sql, 015_tbproductline.sql, 016_tbzone.sql, 017_tbmainteanance.sql, 018_tbmaterial.sql, 021_tbwkctrgroup.sql, 022_tbtasklist.sql, 007_tbplangingwork_view_planwork.sql, 092_wo_pm_execution.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.put(
+    '/api/v1/work-orders/:id/pm-note',
+    ...requireConfirmWrite,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      const id = String(req.params.id ?? '')
+      const parsed = woPmNoteBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid body', issues: parsed.error.issues })
+        return
+      }
+      try {
+        const idiw37 = await resolveWorkOrderIdiw37(pool, id)
+        if (idiw37 == null) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        const noteUpdatedAt = await upsertWoPmNote(
+          pool,
+          idiw37,
+          parsed.data.note,
+          user.wkctr || user.username || '',
+        )
+        voidAudit(pool, req, {
+          action: 'confirmation.write',
+          resource: 'tbwo_pm_note',
+          resourceId: String(idiw37),
+          after: sanitizeAuditPayload({ noteLen: parsed.data.note.length }),
+        })
+        res.json(woPmNoteResponseSchema.parse({ ok: true, noteUpdatedAt }))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/092_wo_pm_execution.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.get(
+    '/api/v1/work-orders/:id/pm-readings/export.xlsx',
+    ...requireConfirmRead,
+    async (req: Request, res: Response) => {
+      const id = String(req.params.id ?? '')
+      try {
+        const idiw37 = await resolveWorkOrderIdiw37(pool, id)
+        if (idiw37 == null) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        const rows = await listPmReadingExportRowsForWo(pool, idiw37)
+        const buf = buildPmReadingsXlsxBuffer(rows)
+        const wk = rows[0]?.wkorder || id
+        res.setHeader(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="PM_Readings_${wk}.xlsx"`,
+        )
+        res.status(200).send(buf)
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/092_wo_pm_execution.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.post(
+    '/api/v1/work-orders/:id/pm-readings',
+    ...requireConfirmWrite,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      const id = String(req.params.id ?? '')
+      const parsed = woPmReadingBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid body', issues: parsed.error.issues })
+        return
+      }
+      try {
+        const idiw37 = await resolveWorkOrderIdiw37(pool, id)
+        if (idiw37 == null) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        const item = await createWoPmReading(pool, {
+          idiw37,
+          machine: parsed.data.machine,
+          pmlist: parsed.data.pmlist,
+          kind: parsed.data.kind,
+          measuredAt: parsed.data.measuredAt,
+          v1: parsed.data.v1,
+          v2: parsed.data.v2,
+          v3: parsed.data.v3,
+          warningLimit: parsed.data.warningLimit ?? null,
+          alarmLimit: parsed.data.alarmLimit ?? null,
+          wkctr: user.wkctr || user.username || '',
+        })
+        voidAudit(pool, req, {
+          action: 'confirmation.write',
+          resource: 'tbwo_pm_reading',
+          resourceId: String(item.idreading),
+          after: sanitizeAuditPayload({
+            machine: item.machine,
+            pmlist: item.pmlist,
+            kind: item.kind,
+          }),
+        })
+        res.status(201).json(woPmReadingResponseSchema.parse({ item }))
+      } catch (err) {
+        if (err instanceof Error && err.message === 'INVALID_MEASURED_AT') {
+          res.status(400).json({ error: 'VALIDATION_ERROR', message: 'วันที่วัดไม่ถูกต้อง' })
+          return
+        }
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/092_wo_pm_execution.sql',
           })
           return
         }
@@ -470,14 +635,20 @@ export function registerWorkOrderRoutes(
     '/api/v1/work-orders/:id/planning',
     ...requirePlanningWrite,
     async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
       const id = String(req.params.id ?? '')
       const parsed = workOrderPlanningUpsertBodySchema.safeParse(req.body)
       if (!parsed.success) {
         res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid body', issues: parsed.error.issues })
         return
       }
+      const actorWkctr = (user.wkctr || user.username || user.idwkctr || '').trim()
       try {
-        const ok = await upsertWorkOrderPlanning(pool, id, parsed.data, user.wkctr || user.username || user.idwkctr)
+        const ok = await upsertWorkOrderPlanning(pool, id, parsed.data, actorWkctr)
         if (!ok) {
           res.status(404).json({ error: 'NOT_FOUND' })
           return
@@ -507,6 +678,11 @@ export function registerWorkOrderRoutes(
     '/api/v1/work-orders/:id/planning/batch',
     ...requirePlanningAssign,
     async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
       const id = String(req.params.id ?? '')
       const parsed = workOrderPlanningBatchBodySchema.safeParse(req.body)
       if (!parsed.success) {
@@ -517,13 +693,14 @@ export function registerWorkOrderRoutes(
         })
         return
       }
+      const actorWkctr = (user.wkctr || user.username || user.idwkctr || '').trim()
       try {
         const result = await assignWorkOrderPlanningBatch(
           pool,
           id,
           parsed.data.wkctrs,
           parsed.data.comment,
-          user.wkctr || user.username || user.idwkctr,
+          actorWkctr,
         )
         if (!result) {
           res.status(404).json({ error: 'NOT_FOUND' })
@@ -534,6 +711,14 @@ export function registerWorkOrderRoutes(
           resource: 'tbplangingwork',
           resourceId: id,
           after: sanitizeAuditPayload(parsed.data),
+        })
+        void recordRevision(pool, {
+          resourceType: 'plan_assign',
+          resourceId: id,
+          changeKind: 'assign',
+          actorId: user.idwkctr,
+          actorRole: user.userst,
+          after: sanitizeAuditPayload(parsed.data) as Record<string, unknown>,
         })
         res.json(
           workOrderPlanningBatchResponseSchema.parse({
@@ -901,6 +1086,14 @@ export function registerWorkOrderRoutes(
             error: 'CONFIRM_QC_NOT_READY',
             message: 'ยังไม่มีรูป/เวลาปิดงานให้ตรวจ',
           })
+          return
+        }
+        const { assertWorkOrderCloseReady } = await import('../lib/work-order-close-guard.js')
+        try {
+          await assertWorkOrderCloseReady(pool, parsed.data.idiw37)
+        } catch (guardErr) {
+          const message = guardErr instanceof Error ? guardErr.message : String(guardErr)
+          res.status(409).json({ error: 'CONFIRM_QC_NOT_READY', message })
           return
         }
         const out = await setConfirmQcStatus(
@@ -1356,9 +1549,6 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND' })
           return
         }
-        if (out.fileName) {
-          await fs.promises.unlink(path.join(imagesDir, out.fileName)).catch(() => {})
-        }
         voidAudit(pool, req, {
           action: 'confirmation.delete',
           resource: 'tbconfirm_image',
@@ -1624,6 +1814,55 @@ export function registerWorkOrderRoutes(
         message: 'delete',
       })
       res.json(confirmationDeleteCloseResponseSchema.parse({ ok: true }))
+    },
+  )
+
+  // POST /api/v1/confirmation/import/preview — ตรวจก่อน commit (เทียบ IW37N preview)
+  app.post(
+    '/api/v1/confirmation/import/preview',
+    ...requireConfirmImport,
+    uploadExcel.single('file'),
+    async (req: Request, res: Response) => {
+      const file = req.file
+      if (!file?.buffer?.length) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Multipart field "file" (.xls, .xlsx, .csv) is required',
+        })
+        return
+      }
+
+      const fileName = file.originalname || 'Confirm.xlsx'
+      const lower = fileName.toLowerCase()
+      if (!lower.endsWith('.xls') && !lower.endsWith('.xlsx') && !lower.endsWith('.csv')) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Only .xls, .xlsx, or .csv files are allowed',
+        })
+        return
+      }
+
+      try {
+        const result = await previewConfirmFile(pool, fileName, file.buffer)
+        res.json(
+          confirmationImportPreviewResponseSchema.parse({
+            preview: true,
+            fileName,
+            ...result,
+          }),
+        )
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message:
+              'Run migrations 026_confirmation_tables.sql และ 032_tbcofirm_import_uniq.sql',
+          })
+          return
+        }
+        const message = err instanceof Error ? err.message : 'Preview failed'
+        res.status(400).json({ error: 'IMPORT_FAILED', message })
+      }
     },
   )
 

@@ -1,9 +1,9 @@
 import {
   BOARD_CAROUSEL_INTERVAL_MS,
-  BOARD_CAROUSEL_LABELS,
   type BoardCarouselSlide,
 } from '@/lib/board-carousel'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   enabled: boolean
@@ -16,7 +16,12 @@ type Props = {
   zoneC: ReactNode
 }
 
-/** โซน D — สไลด์อัตโนมัติ A → B → C */
+const SLIDE_LABEL_KEYS: Record<BoardCarouselSlide, 'carousel.labelA' | 'carousel.labelB' | 'carousel.labelC'> = {
+  a: 'carousel.labelA',
+  b: 'carousel.labelB',
+  c: 'carousel.labelC',
+}
+
 export function BoardCarouselShell({
   enabled,
   slide,
@@ -27,6 +32,8 @@ export function BoardCarouselShell({
   zoneB,
   zoneC,
 }: Props) {
+  const { t } = useTranslation('board')
+
   if (!enabled) {
     return (
       <>
@@ -45,8 +52,8 @@ export function BoardCarouselShell({
 
   return (
     <div className="engineering-board__carousel" aria-live="polite">
-      <nav className="engineering-board__carousel-nav" aria-label="สไลด์โซน A B C">
-        <span className="engineering-board__zone-tag">โซน D · สไลด์</span>
+      <nav className="engineering-board__carousel-nav" aria-label={t('carousel.navAria')}>
+        <span className="engineering-board__zone-tag">{t('carousel.zoneD')}</span>
         <div className="engineering-board__carousel-dots">
           {slides.map(({ id }) => (
             <button
@@ -58,21 +65,24 @@ export function BoardCarouselShell({
                   : 'engineering-board__carousel-dot'
               }
               aria-current={slide === id ? 'true' : undefined}
-              aria-label={`โซน ${id.toUpperCase()} — ${BOARD_CAROUSEL_LABELS[id]}`}
+              aria-label={t('carousel.zoneSlideAria', {
+                zone: id.toUpperCase(),
+                label: t(SLIDE_LABEL_KEYS[id]),
+              })}
               onClick={() => onGoTo(id)}
             />
           ))}
         </div>
         <span className="engineering-board__carousel-label">
-          {BOARD_CAROUSEL_LABELS[slide]} · {slide.toUpperCase()} · ทุก{' '}
-          {BOARD_CAROUSEL_INTERVAL_MS / 1000} วินาที
+          {t(SLIDE_LABEL_KEYS[slide])} · {slide.toUpperCase()} ·{' '}
+          {t('carousel.everySeconds', { seconds: BOARD_CAROUSEL_INTERVAL_MS / 1000 })}
         </span>
         <button
           type="button"
           className="engineering-board__carousel-pause"
           onClick={() => onPauseChange(!paused)}
         >
-          {paused ? 'เล่นต่อ' : 'หยุดชั่วคราว'}
+          {paused ? t('carousel.resume') : t('carousel.pause')}
         </button>
       </nav>
 

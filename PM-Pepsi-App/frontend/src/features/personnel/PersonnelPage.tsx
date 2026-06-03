@@ -7,7 +7,7 @@
  */
 import { CanPermission } from '@/components/auth/CanPermission'
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table'
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import { PersonnelAvatar } from '@/components/personnel/PersonnelAvatar'
+import { WktypeDisplay } from '@/components/scheduling/WktypeDisplay'
 import { fetchPersonnelDashboard } from '@/lib/api-public'
 import { useAnyPermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -42,6 +43,8 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 function StatCard({
   label,
@@ -49,12 +52,14 @@ function StatCard({
   hint,
   to,
   icon: Icon,
+  openModuleLabel,
 }: {
   label: string
   value: ReactNode
   hint?: string
   to?: string
   icon: typeof Users
+  openModuleLabel?: string
 }) {
   const inner = (
     <AppCard pad="compact" className="transition hover:border-[var(--app-border)] hover:shadow-md">
@@ -71,7 +76,7 @@ function StatCard({
         </div>
       </div>
       {to ? (
-        <div className="mt-3 text-xs font-medium text-blue-700">เปิดโมดูล →</div>
+        <div className="mt-3 text-xs font-medium text-blue-700">{openModuleLabel}</div>
       ) : null}
     </AppCard>
   )
@@ -83,56 +88,57 @@ function StatCard({
   )
 }
 
-function formatMinutes(min: number): string {
-  if (!Number.isFinite(min) || min <= 0) return '0 นาที'
+function formatMinutes(min: number, t: TFunction<'personnel'>): string {
+  if (!Number.isFinite(min) || min <= 0) return t('dashboard.time.zeroMin')
   const h = Math.floor(min / 60)
   const m = Math.round(min % 60)
-  if (h === 0) return `${m} นาที`
-  if (m === 0) return `${h} ชม.`
-  return `${h} ชม. ${m} นาที`
+  if (h === 0) return t('dashboard.time.minutes', { m })
+  if (m === 0) return t('dashboard.time.hours', { h })
+  return t('dashboard.time.hoursMinutes', { h, m })
 }
 
 function formatHours(h: number): string {
-  if (!Number.isFinite(h) || h <= 0) return '0 ชม.'
-  return `${h.toFixed(2)} ชม.`
+  if (!Number.isFinite(h) || h <= 0) return '0 hr'
+  return `${h.toFixed(2)} hr`
 }
 
-const ROLE_BADGE: Record<string, { label: string; tone: string; icon: typeof Users }> = {
+const ROLE_BADGE_TONE: Record<string, { tone: string; icon: typeof Users }> = {
   admin: {
-    label: 'Admin',
     tone: 'bg-rose-100 text-rose-800 ring-rose-200',
     icon: ShieldCheck,
   },
   manager: {
-    label: 'Manager',
     tone: 'bg-purple-100 text-purple-800 ring-purple-200',
     icon: Users,
   },
   planner: {
-    label: 'Planner / Engineering',
     tone: 'bg-blue-100 text-blue-800 ring-blue-200',
     icon: Layers,
   },
   technician: {
-    label: 'Technician',
     tone: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
     icon: Wrench,
   },
 }
 
 function RoleBadge({ role }: { role: string }) {
-  const cfg = ROLE_BADGE[role] ?? ROLE_BADGE.planner
+  const { t } = useTranslation('personnel')
+  const cfg = ROLE_BADGE_TONE[role] ?? ROLE_BADGE_TONE.planner
   const Icon = cfg.icon
+  const labelKey = `dashboard.roles.${role}` as 'dashboard.roles.admin'
+  const label = t(labelKey, { defaultValue: t('dashboard.roles.planner') })
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ring-1 ${cfg.tone}`}
     >
-      <Icon className="size-3.5" aria-hidden /> {cfg.label}
+      <Icon className="size-3.5" aria-hidden /> {label}
     </span>
   )
 }
 
 export function PersonnelPage() {
+  const { t } = useTranslation('personnel')
+  const { t: tc } = useTranslation('common')
   const authUser = getStoredAuthUser()
   const canRead = useAnyPermission(['personnel.read', 'personnel.write'])
   const isAdmin = authUser?.userst === 'A'
@@ -150,13 +156,14 @@ export function PersonnelPage() {
 
   if (!canRead) {
     return (
-      <AppPageShell title="แดชบอร์ดส่วนตัว" description="สรุปงานและข้อมูลพนักงานของฉัน">
+      <AppPageShell title={t('dashboard.title')} description={t('dashboard.description')}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('dashboard.noAccess')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">personnel.read</code>
+              {tc('rbac.requiresPermission')}{' '}
+              <code className="text-xs">personnel.read</code>
             </>
           }
         />
@@ -164,89 +171,98 @@ export function PersonnelPage() {
     )
   }
 
+  const hints = t('dashboard.hints', { returnObjects: true }) as string[]
+
   return (
     <AppPageShell
-      title="แดชบอร์ดส่วนตัว"
-      description="โปรไฟล์ · งานเปิด/ปิด · Confirmation · ชั่วโมงรวม"
-      contentClassName="space-y-6"
+      title={t('dashboard.title')}
+      description={t('dashboard.description')}
+      hints={hints}
       headerActions={
         <>
           {q.data ? <RoleBadge role={q.data.role} /> : null}
           <CanPermission permission="manhours.read">
             <Button asChild variant="outline" size="sm">
-              <Link to="/worktime">Worktime</Link>
+              <Link to="/worktime">{t('dashboard.actions.worktime')}</Link>
             </Button>
           </CanPermission>
           <CanPermission permission="confirmation.read">
             <Button asChild variant="outline" size="sm">
-              <Link to="/confirmation">รับรองงาน</Link>
+              <Link to="/confirmation">{t('dashboard.actions.exportConfirmation')}</Link>
             </Button>
           </CanPermission>
           {role === 'planner' ? (
             <CanPermission permission="planning.read">
               <Button asChild variant="outline" size="sm">
-                <Link to="/planning">จ่ายงาน</Link>
+                <Link to="/planning">{t('dashboard.actions.assignWork')}</Link>
               </Button>
             </CanPermission>
           ) : null}
           {isAdmin ? (
             <>
               <Button asChild size="sm" variant="outline">
-                <Link to="/personnel/confirm">ปิดงานรายบุคคล</Link>
+                <Link to="/personnel/confirm">{t('dashboard.actions.perPersonClose')}</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
-                <Link to="/admin/users">จัดการผู้ใช้</Link>
+                <Link to="/admin/users">{t('dashboard.actions.manageUsers')}</Link>
               </Button>
             </>
           ) : null}
         </>
       }
     >
+        <AppPageSection index={0}>
         {q.isLoading && !q.data ? (
           <Skeleton className="h-48 w-full rounded-card" />
         ) : q.isError ? (
           <EmptyState
             icon={AlertCircle}
-            title="โหลดแดชบอร์ดไม่สำเร็จ"
+            title={t('dashboard.loadFailed')}
             description={q.error instanceof Error ? q.error.message : String(q.error)}
-            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+            action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
           />
         ) : q.data ? (
           <>
             <ProfileCard data={q.data} />
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
-                label="งานเปิด (รอปิด)"
+                label={t('dashboard.stats.openJobs')}
                 value={q.data.planning.openCount}
-                hint="view_planwork ที่ idwkctr ของฉัน + syst CRTD/REL"
+                hint={t('dashboard.stats.openJobsHint')}
                 to="/planning"
                 icon={ClipboardList}
+                openModuleLabel={t('dashboard.openModule')}
               />
               <StatCard
-                label="งานปิดแล้ว"
+                label={t('dashboard.stats.closedJobs')}
                 value={q.data.planning.closedCount}
-                hint="ผ่านสถานะ TECO/COMP (PHP `cwkctr`)"
+                hint={t('dashboard.stats.closedJobsHint')}
                 to="/planning"
                 icon={Briefcase}
+                openModuleLabel={t('dashboard.openModule')}
               />
               <StatCard
-                label="Confirmation ของฉัน"
+                label={t('dashboard.stats.myConfirmation')}
                 value={q.data.confirmation.totalClose}
-                hint={`รวม ${formatMinutes(q.data.confirmation.totalMinutes)}`}
+                hint={t('dashboard.stats.myConfirmationTotal', {
+                  minutes: formatMinutes(q.data.confirmation.totalMinutes, t),
+                })}
                 to="/confirmation"
                 icon={Users}
+                openModuleLabel={t('dashboard.openModule')}
               />
               <StatCard
-                label="ชั่วโมงรวม"
+                label={t('dashboard.stats.totalHours')}
                 value={
                   q.data.worktime?.total
                     ? formatHours(q.data.worktime.total)
                     : '—'
                 }
-                hint="tbmanhours (wh + ot ทั้งหมด)"
+                hint={t('dashboard.stats.totalHoursHint')}
                 to="/manhours"
                 icon={Timer}
+                openModuleLabel={t('dashboard.openModule')}
               />
             </div>
 
@@ -272,8 +288,12 @@ export function PersonnelPage() {
             <RecentConfirmation data={q.data} />
           </>
         ) : (
-          <EmptyState title="ไม่มีข้อมูล" description="ลองรีเฟรชหน้าหรือตรวจการเชื่อมต่อ" />
+          <EmptyState
+            title={t('dashboard.noData')}
+            description={t('dashboard.noDataHint')}
+          />
         )}
+        </AppPageSection>
     </AppPageShell>
   )
 }
@@ -285,35 +305,40 @@ function GlobalOverviewCards({
   data: NonNullable<NonNullable<Awaited<ReturnType<typeof fetchPersonnelDashboard>>['roleData']>['global']>
   unassignedCount: number
 }) {
+  const { t } = useTranslation('personnel')
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
-        label="WO เปิดทั้งโรงงาน"
+        label={t('dashboard.stats.factoryOpenWo')}
         value={data.openTotal}
-        hint="tbiw37n syst CRTD/REL"
+        hint={t('dashboard.stats.factoryOpenWoHint')}
         to="/work-orders"
         icon={ClipboardList}
+        openModuleLabel={t('dashboard.openModule')}
       />
       <StatCard
-        label="จ่ายงานแล้ว"
+        label={t('dashboard.stats.assigned')}
         value={data.assignedTotal}
-        hint="มี tbplangingwork อย่างน้อย 1 แถว"
+        hint={t('dashboard.stats.assignedHint')}
         to="/planning"
         icon={ClipboardCheck}
+        openModuleLabel={t('dashboard.openModule')}
       />
       <StatCard
-        label="ปิดวันนี้"
+        label={t('dashboard.stats.closedToday')}
         value={data.closeToday}
-        hint="actfinish ตั้งแต่เที่ยงคืนวันนี้"
+        hint={t('dashboard.stats.closedTodayHint')}
         to="/confirmation"
         icon={Briefcase}
+        openModuleLabel={t('dashboard.openModule')}
       />
       <StatCard
-        label="ยังไม่จ่ายงาน"
+        label={t('dashboard.stats.unassigned')}
         value={unassignedCount}
-        hint="ดึง 10 ใบล่าสุดด้านล่าง"
+        hint={t('dashboard.stats.unassignedHint')}
         to="/planning"
         icon={Inbox}
+        openModuleLabel={t('dashboard.openModule')}
       />
     </div>
   )
@@ -328,31 +353,31 @@ function UnassignedWorkOrdersSection({
   >['items']
   total: number
 }) {
+  const { t } = useTranslation('personnel')
   return (
     <div className="overflow-hidden rounded-card border border-blue-200 bg-blue-50/30 shadow-sm">
       <div className="flex items-center justify-between border-b border-blue-200 px-6 py-3">
         <div>
-          <div className="text-body-sm font-medium text-blue-900">WO รอจ่ายงาน (Planner)</div>
-          <p className="text-xs text-blue-900/70">
-            tbiw37n syst CRTD/REL ที่ยังไม่มี tbplangingwork — เรียงตาม bscstart
-            ASC, จำกัด 10 ใบ
-          </p>
+          <div className="text-body-sm font-medium text-blue-900">
+            {t('dashboard.unassigned.title')}
+          </div>
+          <p className="text-xs text-blue-900/70">{t('dashboard.unassigned.subtitle')}</p>
         </div>
         <Button asChild size="sm">
-          <Link to="/planning">ไปจ่ายงาน ({total})</Link>
+          <Link to="/planning">{t('dashboard.unassigned.goAssign', { total })}</Link>
         </Button>
       </div>
       <div className="app-table-shell overflow-x-auto">
       <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
-            <TableHead>WO</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>คำอธิบาย</TableHead>
-            <TableHead>Equipment / Loc</TableHead>
-            <TableHead>WC</TableHead>
-            <TableHead>เริ่ม</TableHead>
-            <TableHead>Syst</TableHead>
+            <TableHead>{t('dashboard.table.wo')}</TableHead>
+            <TableHead>{t('dashboard.table.type')}</TableHead>
+            <TableHead>{t('dashboard.table.description')}</TableHead>
+            <TableHead>{t('dashboard.table.equipLoc')}</TableHead>
+            <TableHead>{t('dashboard.table.workCntr')}</TableHead>
+            <TableHead>{t('dashboard.table.start')}</TableHead>
+            <TableHead>{t('dashboard.table.syst')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -361,8 +386,8 @@ function UnassignedWorkOrdersSection({
               <TableCell colSpan={7} className="p-0">
                 <EmptyState
                   className="border-0 bg-transparent py-10"
-                  title="ไม่มี WO รอจ่ายงาน"
-                  description="ทุกใบงานได้รับการจ่ายแล้ว"
+                  title={t('dashboard.unassigned.emptyTitle')}
+                  description={t('dashboard.unassigned.emptyDesc')}
                 />
               </TableCell>
             </TableRow>
@@ -374,7 +399,9 @@ function UnassignedWorkOrdersSection({
                     {it.wkorder}
                   </Link>
                 </TableCell>
-                <TableCell className="text-xs">{it.wktype ?? '—'}</TableCell>
+                <TableCell className="text-xs">
+                  {it.wktype ? <WktypeDisplay code={it.wktype} /> : '—'}
+                </TableCell>
                 <TableCell className="max-w-[16rem] truncate text-body-sm" title={it.shortText ?? ''}>
                   {it.shortText ?? '—'}
                 </TableCell>
@@ -406,15 +433,23 @@ function ManagerTeamSection({
     NonNullable<Awaited<ReturnType<typeof fetchPersonnelDashboard>>['roleData']>['team']
   >
 }) {
+  const { t } = useTranslation('personnel')
+  const teamTitle = team.groupName
+    ? t('dashboard.team.titleWithName', { name: team.groupName })
+    : team.groupCode
+      ? t('dashboard.team.titleWithCode', { code: team.groupCode })
+      : t('dashboard.team.title')
   return (
     <div className="overflow-hidden rounded-card border border-purple-200 bg-purple-50/30 shadow-sm">
       <div className="flex items-center justify-between border-b border-purple-200 px-6 py-3">
         <div className="min-w-0">
-          <div className="text-body-sm font-medium text-purple-900">
-            ทีมของฉัน {team.groupName ? `· ${team.groupName}` : team.groupCode ? `· #${team.groupCode}` : ''}
-          </div>
+          <div className="text-body-sm font-medium text-purple-900">{teamTitle}</div>
           <p className="text-xs text-purple-900/70">
-            สมาชิก {team.members.length} คน — เปิด {team.totalOpen} / ปิด {team.totalClose} (รวมงาน)
+            {t('dashboard.team.subtitle', {
+              members: team.members.length,
+              open: team.totalOpen,
+              close: team.totalClose,
+            })}
           </p>
         </div>
       </div>
@@ -422,12 +457,12 @@ function ManagerTeamSection({
       <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
-            <TableHead>รหัส</TableHead>
-            <TableHead>ชื่อ</TableHead>
-            <TableHead>ตำแหน่ง</TableHead>
-            <TableHead className="text-right">เปิด</TableHead>
-            <TableHead className="text-right">ปิด</TableHead>
-            <TableHead className="text-right">ชั่วโมงรวม</TableHead>
+            <TableHead>{t('dashboard.table.code')}</TableHead>
+            <TableHead>{t('dashboard.table.name')}</TableHead>
+            <TableHead>{t('dashboard.profile.position')}</TableHead>
+            <TableHead className="text-right">{t('dashboard.stats.openJobs')}</TableHead>
+            <TableHead className="text-right">{t('dashboard.stats.closedJobs')}</TableHead>
+            <TableHead className="text-right">{t('dashboard.stats.totalHours')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -436,11 +471,11 @@ function ManagerTeamSection({
               <TableCell colSpan={6} className="p-0">
                 <EmptyState
                   className="border-0 bg-transparent py-10"
-                  title="ไม่มีสมาชิกในกลุ่ม"
+                  title={t('dashboard.team.emptyTitle')}
                   description={
                     team.groupCode
-                      ? `idwkctrgroup=${team.groupCode}`
-                      : 'ผู้ใช้ยังไม่ได้กำหนดกลุ่มงาน'
+                      ? t('dashboard.team.emptyDescCode', { code: team.groupCode })
+                      : t('dashboard.team.emptyDescNoGroup')
                   }
                 />
               </TableCell>
@@ -454,7 +489,7 @@ function ManagerTeamSection({
                 <TableCell className="text-right tabular-nums">{m.openCount}</TableCell>
                 <TableCell className="text-right tabular-nums">{m.closedCount}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatMinutes(m.totalMinutes)}
+                  {formatMinutes(m.totalMinutes, t)}
                 </TableCell>
               </TableRow>
             ))
@@ -467,6 +502,7 @@ function ManagerTeamSection({
 }
 
 function ProfileCard({ data }: { data: NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<typeof fetchPersonnelDashboard>>>>['data']> }) {
+  const { t } = useTranslation('personnel')
   const p = data.profile
   return (
     <AppCard pad="default">
@@ -484,6 +520,7 @@ function ProfileCard({ data }: { data: NonNullable<ReturnType<typeof useQuery<Aw
               {p.displayName}
             </div>
             <div className="mt-1 text-caption">
+              {t('dashboard.profile.hrCode')}{' '}
               <span className="font-mono">{p.idwkctr}</span>
               {p.username && p.username !== p.idwkctr ? (
                 <span className="ml-2 text-xs text-app-muted">({p.username})</span>
@@ -492,19 +529,19 @@ function ProfileCard({ data }: { data: NonNullable<ReturnType<typeof useQuery<Aw
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
-            <DataLine label="WC (SAP)" value={p.wkctr || '—'} />
-            <DataLine label="Plant" value={p.plnt || '—'} />
-            <DataLine label="บทบาท" value={<RoleBadge role={p.userRole} />} />
-            <DataLine label="UserST" value={p.userst || '—'} />
-            <DataLine label="ตำแหน่ง" value={p.position || '—'} />
-            <DataLine label="หน่วยงาน" value={p.department || '—'} />
-            <DataLine label="กลุ่มงาน" value={p.workGroup || '—'} />
-            <DataLine label="ประเภทช่าง" value={p.workType || '—'} />
-            <DataLine label="ระดับ" value={p.workLevel || '—'} />
+            <DataLine label={t('dashboard.profile.workCntr')} value={p.wkctr || '—'} />
+            <DataLine label={t('dashboard.profile.plant')} value={p.plnt || '—'} />
+            <DataLine label={t('dashboard.profile.role')} value={<RoleBadge role={p.userRole} />} />
+            <DataLine label={t('dashboard.profile.userSt')} value={p.userst || '—'} />
+            <DataLine label={t('dashboard.profile.position')} value={p.position || '—'} />
+            <DataLine label={t('dashboard.profile.department')} value={p.department || '—'} />
+            <DataLine label={t('dashboard.profile.workGroup')} value={p.workGroup || '—'} />
+            <DataLine label={t('dashboard.profile.techType')} value={p.workType || '—'} />
+            <DataLine label={t('dashboard.profile.level')} value={p.workLevel || '—'} />
             <DataLine
               label={
                 <span className="flex items-center gap-1">
-                  <Mail className="size-3.5" aria-hidden /> อีเมล
+                  <Mail className="size-3.5" aria-hidden /> {t('dashboard.profile.email')}
                 </span>
               }
               value={p.email || '—'}
@@ -512,7 +549,7 @@ function ProfileCard({ data }: { data: NonNullable<ReturnType<typeof useQuery<Aw
             <DataLine
               label={
                 <span className="flex items-center gap-1">
-                  <Phone className="size-3.5" aria-hidden /> โทรศัพท์
+                  <Phone className="size-3.5" aria-hidden /> {t('dashboard.profile.phone')}
                 </span>
               }
               value={p.tel || '—'}
@@ -520,19 +557,16 @@ function ProfileCard({ data }: { data: NonNullable<ReturnType<typeof useQuery<Aw
             <DataLine
               label={
                 <span className="flex items-center gap-1">
-                  <CalendarClock className="size-3.5" aria-hidden /> อายุงาน
+                  <CalendarClock className="size-3.5" aria-hidden /> {t('dashboard.profile.tenure')}
                 </span>
               }
               value={p.workAgeLabel || '—'}
             />
-            <DataLine label="ปัจจุบันอายุ" value={p.birthdayLabel || '—'} />
+            <DataLine label={t('dashboard.profile.currentAge')} value={p.birthdayLabel || '—'} />
+            <DataLine label={t('dashboard.profile.startDate')} value={p.startWorkDate || '—'} />
+            <DataLine label={t('dashboard.profile.birthday')} value={p.birthdayDate || '—'} />
             <DataLine
-              label="วันที่เริ่มงาน"
-              value={p.startWorkDate || '—'}
-            />
-            <DataLine label="วันเกิด" value={p.birthdayDate || '—'} />
-            <DataLine
-              label="ล็อกอินล่าสุด"
+              label={t('dashboard.profile.lastLogin')}
               value={
                 p.lastLogin
                   ? new Date(p.lastLogin).toLocaleString()
@@ -560,30 +594,31 @@ function RecentPlanning({
 }: {
   data: Awaited<ReturnType<typeof fetchPersonnelDashboard>>
 }) {
+  const { t } = useTranslation('personnel')
   const items = data.planning.recent
   return (
     <div className="overflow-hidden app-table-shell">
       <div className="flex items-center justify-between border-b border-app px-6 py-3">
         <div>
-          <div className="text-body-sm font-medium text-app">งานเปิดล่าสุดของฉัน</div>
-          <p className="text-xs text-app-muted">
-            ดึงจาก <code>view_planwork</code> (syst IN CRTD,REL) จำกัด 5 รายการ
-          </p>
+          <div className="text-body-sm font-medium text-app">
+            {t('dashboard.recentPlanning.title')}
+          </div>
+          <p className="text-xs text-app-muted">{t('dashboard.recentPlanning.subtitle')}</p>
         </div>
         <Button asChild size="sm" variant="outline">
-          <Link to="/planning">ไปหน้าแผนงาน</Link>
+          <Link to="/planning">{t('dashboard.recentPlanning.goPlanning')}</Link>
         </Button>
       </div>
       <div className="app-table-shell overflow-x-auto">
       <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
-            <TableHead>WO</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>คำอธิบาย</TableHead>
-            <TableHead>Functional loc / Equipment</TableHead>
-            <TableHead>เริ่ม</TableHead>
-            <TableHead>Syst</TableHead>
+            <TableHead>{t('dashboard.table.wo')}</TableHead>
+            <TableHead>{t('dashboard.table.type')}</TableHead>
+            <TableHead>{t('dashboard.table.description')}</TableHead>
+            <TableHead>{t('dashboard.table.functionalEquip')}</TableHead>
+            <TableHead>{t('dashboard.table.start')}</TableHead>
+            <TableHead>{t('dashboard.table.syst')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -592,8 +627,8 @@ function RecentPlanning({
               <TableCell colSpan={6} className="p-0">
                 <EmptyState
                   className="border-0 bg-transparent py-10"
-                  title="ไม่มีงานเปิด"
-                  description={`idwkctr=${data.profile.idwkctr}`}
+                  title={t('dashboard.recentPlanning.emptyTitle')}
+                  description={t('dashboard.recentPlanning.emptyDesc')}
                 />
               </TableCell>
             </TableRow>
@@ -608,7 +643,9 @@ function RecentPlanning({
                     {it.wkorder}
                   </Link>
                 </TableCell>
-                <TableCell className="text-xs">{it.wktype ?? '—'}</TableCell>
+                <TableCell className="text-xs">
+                  {it.wktype ? <WktypeDisplay code={it.wktype} /> : '—'}
+                </TableCell>
                 <TableCell
                   className="max-w-[16rem] truncate text-body-sm"
                   title={it.shortText ?? ''}
@@ -640,34 +677,32 @@ function RecentConfirmation({
 }: {
   data: Awaited<ReturnType<typeof fetchPersonnelDashboard>>
 }) {
+  const { t } = useTranslation('personnel')
   const items = data.confirmation.recent
   return (
     <div className="overflow-hidden app-table-shell">
       <div className="flex items-center justify-between border-b border-app px-6 py-3">
         <div>
           <div className="text-body-sm font-medium text-app">
-            Confirmation ล่าสุดของฉัน
+            {t('dashboard.recentConfirm.title')}
           </div>
-          <p className="text-xs text-app-muted">
-            ดึงจาก <code>tbcofirm</code> ที่ <code>cwkctr</code> = ฉัน หรือ{' '}
-            <code>wkctr</code> ตรงกับ WC ของฉัน (เทียบ <code>view_confirm.php</code>)
-          </p>
+          <p className="text-xs text-app-muted">{t('dashboard.recentConfirm.subtitle')}</p>
         </div>
         <Button asChild size="sm" variant="outline">
-          <Link to="/confirmation">ไปหน้า Confirmation</Link>
+          <Link to="/confirmation">{t('dashboard.recentConfirm.goConfirmation')}</Link>
         </Button>
       </div>
       <div className="app-table-shell overflow-x-auto">
       <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
-            <TableHead>WO</TableHead>
-            <TableHead>Confirmation</TableHead>
-            <TableHead>WC</TableHead>
-            <TableHead>เริ่ม</TableHead>
-            <TableHead>สิ้นสุด</TableHead>
-            <TableHead className="text-right">Act.Work</TableHead>
-            <TableHead>ปิดเมื่อ</TableHead>
+            <TableHead>{t('dashboard.table.wo')}</TableHead>
+            <TableHead>{t('dashboard.table.confirmation')}</TableHead>
+            <TableHead>{t('dashboard.table.workCntr')}</TableHead>
+            <TableHead>{t('dashboard.table.start')}</TableHead>
+            <TableHead>{t('dashboard.table.end')}</TableHead>
+            <TableHead className="text-right">{t('dashboard.table.actWork')}</TableHead>
+            <TableHead>{t('dashboard.table.closedAt')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -676,8 +711,8 @@ function RecentConfirmation({
               <TableCell colSpan={7} className="p-0">
                 <EmptyState
                   className="border-0 bg-transparent py-10"
-                  title="ไม่มี confirmation"
-                  description="ยังไม่มีรายการปิดงานของคุณ"
+                  title={t('dashboard.recentConfirm.emptyTitle')}
+                  description={t('dashboard.recentConfirm.emptyDesc')}
                 />
               </TableCell>
             </TableRow>

@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 import '@testing-library/jest-dom/vitest'
+import '@/i18n'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { PlanningMultiAssign } from './PlanningMultiAssign'
@@ -30,20 +31,20 @@ describe('PlanningMultiAssign', () => {
       />,
     )
 
-    expect(screen.getByText('จ่ายแล้ว')).toBeInTheDocument()
+    expect(screen.getByText('Assigned')).toBeInTheDocument()
     expect(screen.getByLabelText(/PAC002/)).toBeDisabled()
 
-    fireEvent.change(screen.getByPlaceholderText('ค้นหา wkctr หรือชื่อ…'), {
+    fireEvent.change(screen.getByPlaceholderText('Search wkctr or name…'), {
       target: { value: 'Somchai' },
     })
     expect(screen.getByText('PAC001')).toBeInTheDocument()
     expect(screen.queryByText('PAC003')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('เลือกทั้งหมดในมุมมอง'))
-    fireEvent.click(screen.getByRole('button', { name: 'เพิ่ม Assignee (1)' }))
+    fireEvent.click(screen.getByText('Select all in view'))
+    fireEvent.click(screen.getByRole('button', { name: 'Add Assignee (1)' }))
 
     await waitFor(() => expect(onAssign).toHaveBeenCalledWith(['PAC001']))
-    expect(await screen.findByText(/สรุป — เพิ่ม 1/)).toBeInTheDocument()
+    expect(await screen.findByText(/Summary — added 1/)).toBeInTheDocument()
   })
 
   it('renders uncontrolled comment input when parent does not control comment state', () => {
@@ -55,7 +56,7 @@ describe('PlanningMultiAssign', () => {
       />,
     )
 
-    const input = screen.getByLabelText('หมายเหตุ (ใช้ร่วมกับทุกคน)')
+    const input = screen.getByLabelText('Comment (shared for all)')
     fireEvent.change(input, { target: { value: 'same comment' } })
 
     expect(input).toHaveValue('same comment')

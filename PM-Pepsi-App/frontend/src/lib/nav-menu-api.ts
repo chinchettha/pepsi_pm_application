@@ -3,6 +3,41 @@ import { appNav, type NavEntry, type NavLinkEntry } from '@/components/layout/na
 import { fetchApi } from '@/lib/fetch-api'
 import { resolveNavIcon } from '@/lib/nav-icon-map'
 
+/** Routes removed from product — strip from sidebar (API tbmenu + fallback supplement). */
+const DEPRECATED_NAV_ROUTES = new Set(['/line-calendar', '/manhours/admin'])
+
+/** ชื่อเมนูจาก tbmenu ที่ต้องการ override ฝั่ง React */
+const NAV_LABEL_OVERRIDES: Record<string, string> = {
+  '/work-orders': 'WO/Confirmation',
+  '/confirmation': 'Export Confirmation',
+}
+
+export function stripDeprecatedNavEntries(entries: NavEntry[]): NavEntry[] {
+  const out: NavEntry[] = []
+  let i = 0
+  while (i < entries.length) {
+    const entry = entries[i]
+    if (entry.kind === 'heading') {
+      const block: NavEntry[] = []
+      let j = i + 1
+      while (j < entries.length && entries[j].kind !== 'heading') {
+        const item = entries[j] as NavLinkEntry
+        const path = item.to.split('?')[0] ?? item.to
+        if (!DEPRECATED_NAV_ROUTES.has(path)) block.push(item)
+        j++
+      }
+      if (block.length > 0) {
+        out.push(entry)
+        out.push(...block)
+      }
+      i = j
+      continue
+    }
+    i++
+  }
+  return out
+}
+
 export async function fetchNavMenu() {
   const json = await fetchApi<unknown>('/api/v1/nav/menu')
   return navMenuResponseSchema.parse(json)
@@ -13,10 +48,12 @@ export function apiNavItemsToEntries(items: NavMenuItem[]): NavEntry[] {
     if (item.kind === 'heading') {
       return { kind: 'heading' as const, label: item.label }
     }
+    const to = item.to
+    const label = NAV_LABEL_OVERRIDES[to] ?? item.label
     const link: NavLinkEntry = {
       kind: 'item',
-      to: item.to,
-      label: item.label,
+      to,
+      label,
       menuright: item.menuright,
       icon: resolveNavIcon(item.to, item.icon),
       end: item.end,
@@ -69,7 +106,9 @@ export function supplementNavFromFallback(
   if (missingBlocks.length === 0) return apiEntries
 
   const systemIdx = apiEntries.findIndex(
-    (e) => e.kind === 'heading' && e.label.includes('ระบบ'),
+    (e) =>
+      e.kind === 'heading' &&
+      (e.label.includes('ระบบ') || e.label === 'System'),
   )
   if (systemIdx >= 0) {
     return [...apiEntries.slice(0, systemIdx), ...missingBlocks, ...apiEntries.slice(systemIdx)]

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pmPlanTeamFieldSchema } from '../lib/pm-plan-team.js'
 import { woPmPhaseSchema } from '../lib/wo-pm-phase.js'
 import { SAP_MASS_CONFIRM_MAX } from '../lib/mass-confirm-limit.js'
 
@@ -33,8 +34,8 @@ export const workOrderComponentSchema = z.object({
 })
 
 export const workOrderWorkflowStepSchema = z.object({
-  step: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
-  key: z.enum(['team', 'assign', 'worktime', 'confirm']),
+  step: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  key: z.enum(['team', 'assign', 'worktime']),
   label: z.string(),
   done: z.boolean(),
 })
@@ -140,6 +141,8 @@ export const workOrderSearchRowSchema = z.object({
   operationshorttext: z.string(),
   syst: z.string(),
   pmPhase: z.enum(woPmPhaseSchema),
+  confirmQcStatus: z.enum(['pending', 'approved', 'rejected']).nullable(),
+  qcReadyForReview: z.boolean(),
 })
 
 export const workOrderSearchResponseSchema = z.object({
@@ -165,26 +168,27 @@ export const workOrderFilterDetailResponseSchema = z.object({
   ),
   teamA: workOrderFilterDetailTeamSchema,
   teamB: workOrderFilterDetailTeamSchema,
-  teamP: workOrderFilterDetailTeamSchema,
+  teamEE: workOrderFilterDetailTeamSchema,
+  teamUT: workOrderFilterDetailTeamSchema,
 })
 
 export const workOrderTeamPatchSchema = z.object({
-  team: z.enum(['', 'A', 'B', 'P']),
+  team: pmPlanTeamFieldSchema,
 })
 
 export const workOrderTeamPatchResponseSchema = z.object({
   ok: z.literal(true),
 })
 
-/** Bulk assign Team A/B/P — เทียบ save ทั้งหน้าใน workorder.php / LEGACY B.4b */
+/** Bulk assign Team A/B/EE/UT — เทียบ save ทั้งหน้าใน workorder.php / LEGACY B.4b */
 export const workOrderTeamBulkBodySchema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(100),
-  team: z.enum(['', 'A', 'B', 'P']),
+  team: pmPlanTeamFieldSchema,
 })
 
 export const workOrderTeamBulkResponseSchema = z.object({
   ok: z.literal(true),
-  team: z.enum(['', 'A', 'B', 'P']),
+  team: pmPlanTeamFieldSchema,
   updated: z.array(z.string()),
   notFound: z.array(z.string()),
 })
@@ -192,6 +196,10 @@ export const workOrderTeamBulkResponseSchema = z.object({
 export const workcenterItemSchema = z.object({
   wkctr: z.string(),
   displayName: z.string(),
+  /** ชม.ว่างในวันที่วางแผน (HR − แผนที่จ่ายแล้ว) — จาก modal-detail */
+  hrHours: z.number().nullable().optional(),
+  plannedHours: z.number().nullable().optional(),
+  availableHours: z.number().nullable().optional(),
 })
 
 export const workcentersResponseSchema = z.object({
@@ -345,6 +353,13 @@ export const confirmationImportResponseSchema = z.object({
   rows: z.array(confirmationImportRowResultSchema),
 })
 
+export const confirmationImportPreviewResponseSchema = confirmationImportResponseSchema.extend({
+  preview: z.literal(true),
+  layout: z.enum(['legacy', 'sap_alv']),
+  parseOk: z.number().int(),
+  matchWoInDb: z.number().int(),
+})
+
 export const confirmationExportRowSchema = z.object({
   no: z.number().int(),
   confirmation: z.string(),
@@ -376,6 +391,11 @@ export const workOrderTaskListItemSchema = z.object({
   machinestatus: z.number().nullable(),
   mat: z.string(),
   matdescrip: z.string(),
+  measurementKind: z.enum(['current_3phase', 'vibration_3axis', 'none']),
+  mpoint: z.string(),
+  measurementTitle: z.string(),
+  axisLabels: z.tuple([z.string(), z.string(), z.string()]),
+  unit: z.string(),
 })
 
 export const workOrderTaskListSchema = z.object({
@@ -445,6 +465,28 @@ export const workOrderModalDetailResponseSchema = z.object({
   machine: workOrderMachineSchema,
   planning: workOrderPlanningSchema,
   materials: workOrderMaterialsSchema,
+  pmExecution: z.object({
+    note: z.string(),
+    noteUpdatedAt: z.string().nullable(),
+    noteWkctr: z.string(),
+    canEdit: z.boolean(),
+    readings: z.array(
+      z.object({
+        idreading: z.number().int(),
+        machine: z.string(),
+        pmlist: z.string(),
+        kind: z.enum(['current_3phase', 'vibration_3axis']),
+        measuredAt: z.string(),
+        v1: z.number(),
+        v2: z.number(),
+        v3: z.number(),
+        unit: z.string(),
+        warningLimit: z.number().nullable(),
+        alarmLimit: z.number().nullable(),
+        wkctr: z.string(),
+      }),
+    ),
+  }),
 })
 
 export const workOrderPlanningUpsertBodySchema = z.object({

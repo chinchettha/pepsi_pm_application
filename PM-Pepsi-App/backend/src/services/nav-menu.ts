@@ -6,6 +6,17 @@ import { canAccessMenuright } from '../lib/menuright.js'
 type NavMenuResponse = z.infer<typeof navMenuResponseSchema>
 type NavItem = NavMenuResponse['items'][number]
 
+/** Routes removed from product — hide from sidebar even if tbmenu still has a row. */
+const DEPRECATED_NAV_ROUTES = new Set(['/line-calendar', '/manhours/admin'])
+
+function isDeprecatedNavItem(to: string, menulink: string | null): boolean {
+  if (DEPRECATED_NAV_ROUTES.has(to.split('?')[0] ?? to)) return true
+  if (menulink?.toLowerCase().includes('line_calendar')) return true
+  const link = menulink?.toLowerCase() ?? ''
+  if (link.includes('m_manhour') && !link.includes('m_manhour_chart')) return true
+  return false
+}
+
 type MenuRow = {
   menu_kind: string
   menutitle: string
@@ -50,7 +61,7 @@ export async function listNavMenuForUser(pool: Pool, userst: string): Promise<Na
     if (!canAccessMenuright(userst, row.menuright)) continue
 
     const to = row.react_route?.trim() || legacyMenulinkToRoute(row.menulink)
-    if (!to) continue
+    if (!to || isDeprecatedNavItem(to, row.menulink)) continue
 
     pendingItems.push({
       kind: 'item',
@@ -78,7 +89,6 @@ export function legacyMenulinkToRoute(menulink: string | null): string | null {
   const mod = moduleMatch[1].toLowerCase()
   const map: Record<string, string> = {
     calendar: '/calendar',
-    line_calendar: '/line-calendar',
     backlog: '/backlog',
     workorder: '/work-orders',
     m_confirmation: '/confirmation',

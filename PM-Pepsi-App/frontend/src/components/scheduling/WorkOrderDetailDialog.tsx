@@ -1,12 +1,23 @@
-import { ConfirmQcPanel } from '@/components/confirmation/ConfirmQcPanel'
+import type { WorkOrderTeamCode } from '@/lib/wo-team'
 import { ConfirmationImagesPanel } from '@/components/confirmation/ConfirmationImagesPanel'
+import { ConfirmQcPanel } from '@/components/confirmation/ConfirmQcPanel'
+import { PersonnelClosePanel } from '@/components/confirmation/PersonnelClosePanel'
 import { MovePlanDialog } from '@/components/scheduling/MovePlanDialog'
 import { WoPmPhaseBadge } from '@/components/scheduling/WoPmPhaseBadge'
 import { PlanningMultiAssign } from '@/components/scheduling/PlanningMultiAssign'
+import { PlanningQuickAssign } from '@/components/scheduling/PlanningQuickAssign'
+import { WorkOrderSummaryPanel } from '@/components/scheduling/WorkOrderSummaryPanel'
+import type { ConfirmSubTab } from '@/components/scheduling/WorkOrderConfirmPanel'
+import { WorkOrderConfirmPanel } from '@/components/scheduling/WorkOrderConfirmPanel'
+import { WorkOrderConfirmCommentsSection } from '@/components/scheduling/WorkOrderConfirmCommentsSection'
+import { WorkOrderMaterialPanel } from '@/components/scheduling/WorkOrderMaterialPanel'
+import { WorkOrderSupervisorCloseSection } from '@/components/scheduling/WorkOrderSupervisorCloseSection'
+import { WorkOrderMachinePanel } from '@/components/scheduling/WorkOrderMachinePanel'
+import { WorkOrderPmCommentSection } from '@/components/scheduling/WorkOrderPmCommentSection'
+import { WorkOrderTaskListPanel } from '@/components/scheduling/WorkOrderTaskListPanel'
 import { WorkOrderWorkflowSteps } from '@/components/scheduling/WorkOrderWorkflowSteps'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DatePicker } from '@/components/ui/date-picker'
 import {
   Dialog,
   DialogContent,
@@ -16,11 +27,9 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
 import {
   deleteConfirmationClose,
   deleteConfirmationComment,
-  deletePersonnelClose,
   fetchConfirmationByWorkOrder,
   fetchPersonnelCloses,
   fetchConfirmationComments,
@@ -31,7 +40,6 @@ import {
   deleteWorkOrderPlanningAssignee,
   postConfirmationClose,
   postConfirmationComment,
-  postPersonnelClose,
   postWorkOrderPlanningBatch,
   putWorkOrderPlanning,
   putWorkOrderTeam,
@@ -39,22 +47,29 @@ import {
 } from '@/lib/api-public'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  isWorkOrderCloseReady,
+  workOrderCloseReadyMessage,
+} from '@/lib/work-order-close-ready'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { getStoredAuthUser } from '@/features/auth/login-api'
 import { usePermission } from '@/lib/use-permission'
+import { cn } from '@/lib/utils'
 
 type WorkOrderDetailDialogProps = {
   orderId: string | null
   onOpenChange: (open: boolean) => void
   contextDate?: string
   initialTab?: 'work-order' | 'task-list' | 'machine' | 'planning' | 'material' | 'confirm'
+  /** ปฏิทิน — 3 แท็บ Task / Planning / Close WO ตามสไลด์ลูกค้า */
+  tabLayout?: 'full' | 'assigned'
 }
 
 type MainTab = NonNullable<WorkOrderDetailDialogProps['initialTab']>
-type ConfirmSubTab = 'images' | 'comments' | 'close' | 'personnel-close'
 
 const OPEN_WO_SYST = new Set(['CRTD', 'REL'])
 
@@ -82,33 +97,24 @@ function epochToTime(sec: number): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-function fmtDateTime(sec: number): string {
-  const d = new Date(sec * 1000)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yyyy = d.getFullYear()
-  const hh = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${dd}.${mm}.${yyyy} ${hh}:${min}`
-}
-
 export function WorkOrderDetailDialog({
   orderId,
   onOpenChange,
   contextDate,
   initialTab = 'work-order',
+  tabLayout = 'full',
 }: WorkOrderDetailDialogProps) {
+  const { t } = useTranslation(['scheduling', 'common'])
   const open = Boolean(orderId)
+  const assignedLayout = tabLayout === 'assigned'
   const canPlan = usePermission('planning.assign')
+  const canConfirmWrite = usePermission('confirmation.write')
+  const planningEditable = canPlan
+  const canEditTeam = usePermission('work-orders.write')
   const [moveOpen, setMoveOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<MainTab>(initialTab)
   const [confirmTab, setConfirmTab] = useState<ConfirmSubTab>('close')
   const [closeWkctr, setCloseWkctr] = useState('')
-  const [persWkctr, setPersWkctr] = useState('')
-  const [persStartDate, setPersStartDate] = useState('')
-  const [persEndDate, setPersEndDate] = useState('')
-  const [persStartTime, setPersStartTime] = useState('08:00')
-  const [persEndTime, setPersEndTime] = useState('17:00')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [startTime, setStartTime] = useState('08:00')
@@ -117,6 +123,7 @@ export function WorkOrderDetailDialog({
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingText, setEditingText] = useState('')
   const [planComment, setPlanComment] = useState('')
+  const [dialogExpanded, setDialogExpanded] = useState(false)
   const wasOpenRef = useRef(false)
 
   const qc = useQueryClient()
@@ -164,26 +171,51 @@ export function WorkOrderDetailDialog({
     enabled: open && typeof idiw37 === 'number' && Number.isFinite(idiw37),
   })
 
-  const loadConfirmationImages =
+  const loadConfirmAssets =
     open &&
-    activeTab === 'confirm' &&
-    confirmTab === 'images' &&
     typeof idiw37 === 'number' &&
-    Number.isFinite(idiw37)
+    Number.isFinite(idiw37) &&
+    (activeTab === 'confirm' || (assignedLayout && activeTab === 'task-list'))
 
   const imagesQ = useQuery({
     queryKey: ['confirmation', 'images', idiw37],
     queryFn: () => fetchConfirmationImages(idiw37!),
-    enabled: loadConfirmationImages,
+    enabled: loadConfirmAssets,
   })
+
+  const imagePhaseCounts = useMemo(() => {
+    if (imagesQ.data?.length) {
+      let before = 0
+      let after = 0
+      for (const img of imagesQ.data) {
+        if (img.phase === 'before') before += 1
+        else if (img.phase === 'after') after += 1
+      }
+      return { before, after }
+    }
+    return {
+      before: d?.confirmQc?.imageBefore ?? 0,
+      after: d?.confirmQc?.imageAfter ?? 0,
+    }
+  }, [imagesQ.data, d?.confirmQc?.imageBefore, d?.confirmQc?.imageAfter])
+
+  const closeReadyInput = useMemo(
+    () => ({
+      commentCount: commentsQ.data?.length ?? 0,
+      imageBefore: imagePhaseCounts.before,
+      imageAfter: imagePhaseCounts.after,
+    }),
+    [commentsQ.data?.length, imagePhaseCounts],
+  )
+
+  const closeBlockedMessage = workOrderCloseReadyMessage(closeReadyInput)
+  const canCloseWorkOrder = isWorkOrderCloseReady(closeReadyInput)
 
   const personnelCount = personnelQ.data?.length ?? 0
   const supervisorCloseCount = closesQ.data?.items?.length ?? 0
   const imageCount =
     imagesQ.data?.length ?? d?.confirmQc?.imageCount ?? 0
-  const confirmWorkflowDone = Boolean(
-    d?.workflow?.steps?.some((s) => s.key === 'confirm' && s.done),
-  )
+  const confirmWorkflowDone = d?.confirmQc?.status === 'approved'
   const showPostCloseReview = useMemo(
     () =>
       confirmWorkflowDone ||
@@ -216,38 +248,17 @@ export function WorkOrderDetailDialog({
         endT: endTime,
       }),
     onSuccess: async () => {
+      toast.success(t('woDialog.toastCloseSaved'))
       await qc.invalidateQueries({ queryKey: ['confirmation', 'by-wkorder', d?.wkorder] })
+      await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
     },
+    onError: (e: Error) => toast.error(e.message || t('woDialog.toastCloseFailed')),
   })
 
   const delCloseMut = useMutation({
     mutationFn: (idclose: number) => deleteConfirmationClose(idclose),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['confirmation', 'by-wkorder', d?.wkorder] })
-    },
-  })
-
-  const addPersCloseMut = useMutation({
-    mutationFn: async () =>
-      postPersonnelClose({
-        idiw37: idiw37!,
-        wkctr: persWkctr,
-        startD: isoToDdMmYyyy(persStartDate),
-        startT: persStartTime,
-        endD: isoToDdMmYyyy(persEndDate),
-        endT: persEndTime,
-      }),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['confirmation', 'personnel-closes', idiw37] })
-      await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
-    },
-  })
-
-  const delPersCloseMut = useMutation({
-    mutationFn: (idwrkclose: number) => deletePersonnelClose(idwrkclose),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['confirmation', 'personnel-closes', idiw37] })
-      await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
     },
   })
 
@@ -280,17 +291,19 @@ export function WorkOrderDetailDialog({
       putWorkOrderPlanning(orderId!, { mode: args.mode, code: args.code, comment: planComment.trim() || undefined }),
     onSuccess: async (_data, args) => {
       setPlanComment('')
-      toast.success(args.mode === 'G' ? 'จ่ายงานแบบกลุ่มสำเร็จ' : 'จ่ายงานช่างสำเร็จ')
+      toast.success(
+        args.mode === 'G' ? t('woDialog.toastAssignGroupOk') : t('woDialog.toastAssignPersonOk'),
+      )
       await qc.invalidateQueries({ queryKey: ['work-order', 'modal-detail', orderId] })
       await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
     },
-    onError: (e: Error) => toast.error(e.message || 'จ่ายงานไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('woDialog.toastAssignFailed')),
   })
 
   const teamMut = useMutation({
-    mutationFn: (team: 'A' | 'B' | 'P') => putWorkOrderTeam(orderId!, team),
+    mutationFn: (team: WorkOrderTeamCode) => putWorkOrderTeam(orderId!, team),
     onSuccess: async (_data, team) => {
-      toast.success(`เพิ่มงานให้ Team ${team} สำเร็จ`)
+      toast.success(t('woDialog.toastTeamOk', { team }))
       await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
       await qc.invalidateQueries({ queryKey: ['work-orders', 'search'] })
       await qc.invalidateQueries({ queryKey: ['work-orders', 'filter-detail'] })
@@ -298,7 +311,7 @@ export function WorkOrderDetailDialog({
       await qc.invalidateQueries({ queryKey: ['backlog'] })
       await qc.invalidateQueries({ queryKey: ['calendar'] })
     },
-    onError: (e: Error) => toast.error(e.message || 'บันทึกทีมไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('woDialog.toastTeamFailed')),
   })
 
   const deletePlanMut = useMutation({
@@ -334,6 +347,9 @@ export function WorkOrderDetailDialog({
       setActiveTab(initialTab)
       setConfirmTab('close')
     }
+    if (!open) {
+      setDialogExpanded(false)
+    }
     wasOpenRef.current = open
   }, [open, orderId, initialTab])
 
@@ -341,13 +357,6 @@ export function WorkOrderDetailDialog({
     if (!d) return
     if (!closeWkctr) setCloseWkctr(d.workCenter)
   }, [d, closeWkctr])
-
-  useEffect(() => {
-    if (persWkctr) return
-    const auth = getStoredAuthUser()
-    if (auth?.wkctr) setPersWkctr(auth.wkctr)
-    else if (d?.workCenter) setPersWkctr(d.workCenter)
-  }, [d, persWkctr])
 
   function applyPersonnelToSupervisorClose(row: {
     wkctr: string
@@ -365,28 +374,60 @@ export function WorkOrderDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[min(92dvh,900px)] w-[min(100vw-1rem,42rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-          <div className="shrink-0 space-y-3 border-b border-app px-4 pb-3 pt-6 sm:px-6">
+        <DialogContent
+          className={cn(
+            'flex max-h-[min(92dvh,900px)] flex-col gap-0 overflow-hidden p-0 transition-[width,max-width] duration-200',
+            dialogExpanded
+              ? 'w-[min(100vw-0.5rem,64rem)] sm:max-w-[64rem]'
+              : 'w-[min(100vw-1rem,42rem)] sm:max-w-2xl',
+          )}
+        >
+          <button
+            type="button"
+            aria-label={dialogExpanded ? t('shared.collapseDialog') : t('shared.expandDialog')}
+            title={dialogExpanded ? t('shared.collapseDialog') : t('shared.expandDialog')}
+            onClick={() => setDialogExpanded((v) => !v)}
+            className="absolute right-11 top-4 z-10 inline-flex items-center gap-1 rounded-button border border-app/70 bg-[var(--app-surface)] px-2 py-1 text-xs font-medium text-app shadow-sm transition-colors hover:bg-app-subtle"
+          >
+            {dialogExpanded ? (
+              <>
+                <Minimize2 className="size-3.5" aria-hidden />
+                {t('shared.collapse')}
+              </>
+            ) : (
+              <>
+                <Maximize2 className="size-3.5" aria-hidden />
+                {t('shared.expand')}
+              </>
+            )}
+          </button>
+          <div className="shrink-0 space-y-3 border-b border-app bg-gradient-to-b from-[color-mix(in_srgb,var(--app-accent)_4%,var(--app-surface))] to-[var(--app-surface)] px-4 pb-3 pt-6 sm:px-6">
             <DialogHeader className="space-y-1 text-left">
-              <DialogTitle className="pr-8 text-left">
+              <DialogTitle className="pr-28 text-left">
                 {d ? (
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span>{d.title}</span>
-                    <WoPmPhaseBadge phase={d.pmPhase} syst={d.status} showSyst />
-                    {d.team ? <Badge variant="secondary">ทีม {d.team}</Badge> : null}
-                  </span>
+                  assignedLayout ? (
+                    <span className="font-mono text-lg">
+                      {t('woDialog.titleWithWkorder', { wkorder: d.wkorder })}
+                    </span>
+                  ) : (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>{d.title}</span>
+                      <WoPmPhaseBadge phase={d.pmPhase} syst={d.status} showSyst />
+                      {d.team ? (
+                        <Badge variant="secondary">{t('shared.teamBadge', { team: d.team })}</Badge>
+                      ) : null}
+                    </span>
+                  )
                 ) : (
-                  'รายละเอียดใบงาน'
+                  t('woDialog.title')
                 )}
               </DialogTitle>
-              <DialogDescription className="text-left">
-                {d
-                  ? `ใบงาน ${d.wkorder} — แท็บข้อมูล · จ่ายงาน · รับรองปิดงาน`
-                  : 'กำลังโหลดรายละเอียดใบงาน'}
+              <DialogDescription className="sr-only">
+                {d ? t('woDialog.titleWithWkorder', { wkorder: d.wkorder }) : t('woDialog.title')}
               </DialogDescription>
             </DialogHeader>
 
-            {d?.workflow ? (
+            {d?.workflow && !assignedLayout ? (
               <WorkOrderWorkflowSteps
                 steps={d.workflow.steps}
                 suffix={d.workflow.suffix}
@@ -396,46 +437,49 @@ export function WorkOrderDetailDialog({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
-          {showPostCloseReview && d ? (
-            <div className="rounded-card border border-emerald-300 bg-emerald-50 p-3 text-body-sm text-emerald-950">
-              <p className="font-medium">ปิดงานแล้ว — ดูรูปและเวลาในใบงานนี้</p>
-              <p className="mt-1 text-xs text-emerald-800">
-                เวลาช่าง {personnelCount} รายการ · ปิดงานหัวหน้า {supervisorCloseCount} รายการ · รูป{' '}
-                {imageCount} ใบ
-                {isClosedWorkOrderStatus(d.systemStatus) ? ` · สถานะ ${d.systemStatus}` : ''}
+          {showPostCloseReview && d && !assignedLayout ? (
+            <div className="mb-4 overflow-hidden rounded-card border border-emerald-200/90 bg-gradient-to-r from-emerald-50 to-teal-50/70 p-3 shadow-sm">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-800/80">
+                {t('woDialog.postCloseReview')}
               </p>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Button
                   type="button"
                   size="sm"
                   variant="secondary"
+                  className="h-auto flex-col gap-1 py-2.5 shadow-sm"
                   onClick={() => openConfirmSubview('personnel-close')}
                 >
-                  เวลาช่าง ({personnelCount})
+                  <span className="text-lg font-bold tabular-nums">{personnelCount}</span>
+                  <span className="text-xs">{t('woDialog.personnelTime')}</span>
                 </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant="secondary"
+                  className="h-auto flex-col gap-1 py-2.5 shadow-sm"
                   onClick={() => openConfirmSubview('close')}
                 >
-                  เวลาปิดงาน ({supervisorCloseCount})
+                  <span className="text-lg font-bold tabular-nums">{supervisorCloseCount}</span>
+                  <span className="text-xs">{t('woDialog.closeTime')}</span>
                 </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant="secondary"
+                  className="h-auto flex-col gap-1 py-2.5 shadow-sm"
                   onClick={() => openConfirmSubview('images')}
                 >
-                  รูปปิดงาน ({imageCount})
+                  <span className="text-lg font-bold tabular-nums">{imageCount}</span>
+                  <span className="text-xs">{t('woDialog.closeImages')}</span>
                 </Button>
-                <Button type="button" size="sm" variant="outline" asChild>
+                <Button type="button" size="sm" variant="outline" className="h-auto py-2.5 shadow-sm" asChild>
                   <Link
                     to="/confirmation"
                     state={{ wkorder: d.wkorder }}
                     onClick={() => onOpenChange(false)}
                   >
-                    หน้ารับรองงาน
+                    {t('woDialog.exportConfirmation')}
                   </Link>
                 </Button>
               </div>
@@ -454,223 +498,161 @@ export function WorkOrderDetailDialog({
               className="w-full"
             >
               <TabsList className="app-tabs-scroll flex h-auto w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto">
+                {assignedLayout ? (
+                  <>
+                    <TabsTrigger value="task-list" className="shrink-0">
+                      {t('woDialog.tabTask')}
+                    </TabsTrigger>
+                    <TabsTrigger value="planning" className="shrink-0">
+                      {t('woDialog.tabPlanning')}
+                    </TabsTrigger>
+                    <TabsTrigger value="confirm" className="shrink-0">
+                      {t('woDialog.tabCloseWo')}
+                    </TabsTrigger>
+                  </>
+                ) : (
+                  <>
                 <TabsTrigger value="work-order" className="shrink-0">
-                  ใบงาน
+                  {t('woDialog.tabWorkOrder')}
                 </TabsTrigger>
                 <TabsTrigger value="task-list" className="shrink-0">
-                  Task list
+                  {t('woDialog.tabTaskList')}
                 </TabsTrigger>
                 <TabsTrigger value="machine" className="shrink-0">
-                  เครื่องจักร
+                  {t('woDialog.tabMachine')}
                 </TabsTrigger>
                 {canPlan ? (
                   <TabsTrigger value="planning" className="shrink-0">
-                    จ่ายงาน
+                    {t('woDialog.tabPlanning')}
                   </TabsTrigger>
                 ) : null}
                 <TabsTrigger value="material" className="shrink-0">
-                  วัสดุ
+                  {t('woDialog.tabMaterial')}
                 </TabsTrigger>
                 <TabsTrigger value="confirm" className="shrink-0 gap-2">
-                  รับรอง
+                  {t('woDialog.tabConfirm')}
                   {showPostCloseReview ? (
                     <Badge variant="secondary" className="h-5 px-2 text-badge">
-                      {imageCount > 0 ? `${imageCount} รูป` : 'ปิดแล้ว'}
+                      {imageCount > 0
+                        ? t('shared.imagesCount', { count: imageCount })
+                        : t('shared.closedBadge')}
                     </Badge>
                   ) : null}
                 </TabsTrigger>
+                  </>
+                )}
               </TabsList>
 
-              <TabsContent value="work-order" className="space-y-2 text-body-sm">
-                <p>
-                  <span className="font-medium text-app">Work Order / opac:</span> {d.wkorder}
-                  {d.opac ? ` / ${d.opac}` : ''}
-                </p>
-                <p>
-                  <span className="font-medium text-app">Maintenance plan:</span> {d.mntplan || '—'}
-                </p>
-                <p className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-app">Type / Status:</span>
-                  <span>
-                    {d.orderType} / {d.status}
-                    {d.systemStatus && d.systemStatus !== d.status ? ` (${d.systemStatus})` : ''}
-                  </span>
-                  <WoPmPhaseBadge phase={d.pmPhase} syst={d.status} showSyst />
-                </p>
-                <p>
-                  <span className="font-medium text-app">Resources:</span> {d.workCenter}
-                  {d.resourcesLabel ? ` / ${d.resourcesLabel}` : ''}
-                </p>
-                <p>
-                  <span className="font-medium text-app">Work / Action:</span> {d.work}
-                  {d.actwork ? ` / ${d.actwork}` : ''}
-                  {d.untime ? ` ${d.untime}` : ''}
-                </p>
-                <div className="space-y-2">
-                  <span className="font-medium text-app">Team A/B/P</span>
-                  <div className="flex flex-wrap gap-3">
-                    {(['A', 'B', 'P'] as const).map((t) => (
-                      <label key={t} className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="radio"
-                          name={`dialog-team-${d.id}`}
-                          value={t}
-                          checked={d.team === t}
-                          onChange={() => teamMut.mutate(t)}
-                          disabled={teamMut.isPending}
-                        />
-                        Team {t}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <p>
-                  <span className="font-medium text-app">Equipment Desc.:</span> {d.equipment}
-                </p>
-                <p>
-                  <span className="font-medium text-app">Functional Desc.:</span> {d.functLoc}
-                </p>
-                <p>
-                  <span className="font-medium text-app">Plan / finish date:</span>{' '}
-                  {d.plannedDate || '—'} / {d.finishDate || '—'}
-                </p>
-                {d.mat ? (
-                  <p>
-                    <span className="font-medium text-app">Mat:</span> {d.mat}
-                  </p>
-                ) : null}
-                {d.movePlan ? (
-                  <div className="rounded-card border border-orange-200 bg-orange-50/80 p-2 text-xs">
-                    <p className="font-medium text-orange-900">ย้ายแผนแล้ว</p>
-                    <p>
-                      {d.movePlan.movedDate} · {d.movePlan.moveCount} ครั้ง · {d.movePlan.reasonName}
-                    </p>
-                  </div>
-                ) : null}
-                {d.canMovePlan ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => setMoveOpen(true)}>
-                    ย้ายแผน (New Plan)
-                  </Button>
-                ) : null}
-                <p className="text-app-muted">{d.description}</p>
+              <TabsContent value="work-order" className="mt-4">
+                <WorkOrderSummaryPanel
+                  order={d}
+                  teamPending={teamMut.isPending}
+                  canEditTeam={canEditTeam}
+                  onTeamChange={(team) => teamMut.mutate(team)}
+                  onMovePlan={d.canMovePlan ? () => setMoveOpen(true) : undefined}
+                />
               </TabsContent>
 
-              <TabsContent value="task-list" className="space-y-3 text-body-sm">
-                <p className="text-xs text-app-muted">เทียบ `TabTarkList.php`</p>
+              <TabsContent value="task-list" className="mt-4">
                 {modalQ.isLoading ? (
-                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="h-48 w-full rounded-card" />
                 ) : modalQ.isError ? (
                   <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
                 ) : modalQ.data ? (
-                  <>
-                    {modalQ.data.taskList.summary ? (
-                      <div className="rounded-card border border-sky-200 bg-sky-50 p-3 text-body-sm">
-                        <p className="font-medium text-sky-900">Task List {modalQ.data.taskList.summary.tasklist}</p>
-                        <p className="text-xs text-sky-900/80">
-                          {modalQ.data.taskList.summary.productline} / {modalQ.data.taskList.summary.zone} /{' '}
-                          {modalQ.data.taskList.summary.wkctrtype}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-app-muted">ไม่ปรากฏ PM Task List</p>
-                    )}
-
-                    {modalQ.data.taskList.items.length ? (
-                      <div className="space-y-1">
-                        {modalQ.data.taskList.items.map((t, idx) => (
-                          <div key={`${t.tasklist}-${t.machine}-${t.pmlist}-${idx}`} className="rounded-button border border-app bg-[var(--app-surface)] px-3 py-2">
-                            <p className="text-body-sm text-app">
-                              {idx + 1}. {t.machine} - {t.pmlist} / {t.mat ? `${t.mat} = ${t.matdescrip}` : ''}
-                            </p>
-                            <p className="text-xs text-app-muted">
-                              สถานะเครื่อง: {t.machinestatus === 1 ? 'หยุด' : 'เดิน'}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="space-y-4">
+                    {orderId ? (
+                      <WorkOrderPmCommentSection
+                        orderId={orderId}
+                        wkorderLabel={d?.wkorder}
+                        pmExecution={modalQ.data.pmExecution}
+                        onSaved={() => void modalQ.refetch()}
+                      />
                     ) : null}
-                  </>
+                    <WorkOrderTaskListPanel
+                      taskList={modalQ.data.taskList}
+                      orderId={orderId ?? undefined}
+                      pmExecution={modalQ.data.pmExecution}
+                      onPmSaved={() => void modalQ.refetch()}
+                    />
+                    {assignedLayout && typeof idiw37 === 'number' ? (
+                      <ConfirmationImagesPanel
+                        idiw37={idiw37}
+                        enabled={open && activeTab === 'task-list'}
+                        readOnly={!canConfirmWrite}
+                      />
+                    ) : null}
+                  </div>
                 ) : null}
               </TabsContent>
 
-              <TabsContent value="machine" className="space-y-3 text-body-sm">
-                <p className="text-xs text-app-muted">เทียบ `TabMachine.php`</p>
+              <TabsContent value="machine" className="mt-4">
                 {modalQ.isLoading ? (
-                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="h-48 w-full rounded-card" />
                 ) : modalQ.isError ? (
                   <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
                 ) : modalQ.data ? (
-                  <>
-                    {modalQ.data.machine.productline ? (
-                      <div className="rounded-card border border-amber-200 bg-amber-50 p-3">
-                        <p className="font-medium text-amber-900">
-                          Product Line {modalQ.data.machine.productline}
-                        </p>
-                        <p className="text-body-sm text-amber-900/80">
-                          Work : {modalQ.data.machine.uptime != null ? modalQ.data.machine.uptime : '—'}
-                        </p>
-                        <p className="mt-1 text-xs text-amber-900/70">วันที่อ้างอิง: {modalQ.data.date}</p>
-                      </div>
-                    ) : null}
-
-                    {modalQ.data.machine.zone || modalQ.data.machine.wkctrtype ? (
-                      <div className="rounded-card border border-sky-200 bg-sky-50 p-3">
-                        <p className="text-body-sm text-sky-900">
-                          Zone {modalQ.data.machine.zone} / {modalQ.data.machine.wkctrtype}
-                        </p>
-                      </div>
-                    ) : null}
-
-                    {modalQ.data.machine.machines.length ? (
-                      <div className="space-y-1">
-                        {modalQ.data.machine.machines.map((m) => (
-                          <div key={m} className="rounded-button border border-app bg-[var(--app-surface)] px-3 py-2">
-                            {m}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-app-muted">ไม่พบข้อมูล</p>
-                    )}
-                  </>
+                  <WorkOrderMachinePanel
+                    machine={modalQ.data.machine}
+                    referenceDate={modalQ.data.date}
+                  />
                 ) : null}
               </TabsContent>
 
               <TabsContent value="planning" className="space-y-3 text-body-sm">
-                {!canPlan ? (
-                  <p className="text-app-muted">ไม่มีสิทธิ์ (Admin เท่านั้น)</p>
+                {assignedLayout && !canPlan ? (
+                  <p className="rounded-card border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-body-sm text-amber-950">
+                    {t('woDialog.readOnlyPlanning')}
+                  </p>
+                ) : null}
+                {modalQ.data?.date ? (
+                  <p className="rounded-card border border-teal-200/70 bg-teal-50/60 px-3 py-2 text-xs text-teal-950">
+                    {t('woDialog.availableHour', { date: modalQ.data.date })}
+                  </p>
+                ) : null}
+                {!canPlan && !assignedLayout ? (
+                  <p className="text-app-muted">{t('woDialog.noPlanPermission')}</p>
                 ) : (
                   <>
                     <div className="rounded-card border border-app bg-[var(--app-surface)] p-3">
-                      <p className="font-medium text-app">Planning Work</p>
-                      <p className="text-xs text-app-muted">เทียบ `TabPlanning.php`</p>
-                      <div className="mt-3 space-y-2">
-                        <Label htmlFor="plan-comment">หมายเหตุ</Label>
-                        <Input id="plan-comment" value={planComment} onChange={(e) => setPlanComment(e.target.value)} />
-                      </div>
+                      <p className="font-medium text-app">{t('woDialog.planningWork')}</p>
+                      {planningEditable ? (
+                        <div className="mt-3 space-y-2">
+                          <Label htmlFor="plan-comment">{t('shared.comment')}</Label>
+                          <Input
+                            id="plan-comment"
+                            value={planComment}
+                            onChange={(e) => setPlanComment(e.target.value)}
+                          />
+                        </div>
+                      ) : planComment.trim() ? (
+                        <p className="mt-2 text-body-sm text-app-muted">
+                          {t('shared.notesPrefix')} {planComment}
+                        </p>
+                      ) : null}
                     </div>
 
                     {d.movePlan ? (
                       <div className="rounded-card border border-orange-200 bg-orange-50/80 p-3">
-                        <p className="font-medium text-orange-900">ย้ายแผนแล้ว</p>
-                        <p>วันที่ย้าย: {d.movePlan.movedDate}</p>
-                        <p>จำนวนครั้ง: {d.movePlan.moveCount}</p>
+                        <p className="font-medium text-orange-900">{t('woDialog.planMoved')}</p>
+                        <p>{t('woDialog.movedDate', { date: d.movePlan.movedDate })}</p>
+                        <p>{t('woDialog.moveCount', { count: d.movePlan.moveCount })}</p>
                         <p>
-                          เหตุผล: {d.movePlan.reasonCode} — {d.movePlan.reasonName}
+                          {t('woDialog.moveReason', {
+                            code: d.movePlan.reasonCode,
+                            name: d.movePlan.reasonName,
+                          })}
                         </p>
-                        <p>โดย WC: {d.movePlan.movedByWkctr}</p>
+                        <p>{t('woDialog.movedByWc', { wkctr: d.movePlan.movedByWkctr })}</p>
                       </div>
                     ) : (
-                      <p className="text-app-muted">ยังไม่มีการย้ายแผน</p>
+                      <p className="text-app-muted">{t('woDialog.noPlanMove')}</p>
                     )}
 
-                    {d.canMovePlan ? (
+                    {d.canMovePlan && planningEditable ? (
                       <Button type="button" variant="outline" onClick={() => setMoveOpen(true)}>
-                        ย้ายแผน (MovePlant)
+                        {t('woDialog.movePlanButton')}
                       </Button>
-                    ) : (
-                      <p className="text-xs text-app-muted">สถานะนี้ย้ายแผนไม่ได้ (ต้อง CRTD/REL และสิทธิ์)</p>
-                    )}
+                    ) : null}
 
                     {modalQ.isLoading ? (
                       <Skeleton className="h-48 w-full" />
@@ -682,12 +664,9 @@ export function WorkOrderDetailDialog({
                           <div className="rounded-card border border-emerald-200 bg-emerald-50 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <p className="font-medium text-emerald-900">
-                                ผู้รับผิดชอบรายบุคคล
-                                <span className="ml-1 text-xs font-normal text-emerald-800/80">
-                                  (เทียบ `ShowPlan.php`)
-                                </span>
+                                {t('woDialog.individualAssignees')}
                               </p>
-                              {modalQ.data.planning.assignees.length > 0 ? (
+                              {modalQ.data.planning.assignees.length > 0 && planningEditable ? (
                                 <Button
                                   type="button"
                                   size="sm"
@@ -695,22 +674,26 @@ export function WorkOrderDetailDialog({
                                   onClick={() => deletePlanMut.mutate()}
                                   disabled={deletePlanMut.isPending}
                                 >
-                                  ยกเลิกทั้งหมด
+                                  {t('shared.removeAll')}
                                 </Button>
                               ) : null}
                             </div>
                             {personAssignees.length === 0 ? (
-                              <p className="mt-2 text-body-sm text-emerald-900/80">ยังไม่ได้จ่ายงานรายบุคคล</p>
+                              <p className="mt-2 text-body-sm text-emerald-900/80">
+                                {t('woDialog.noIndividualAssign')}
+                              </p>
                             ) : (
-                              <div className="mt-3 overflow-auto rounded-button border border-emerald-200/80 bg-white">
+                              <div className="mt-3 overflow-auto rounded-button border border-emerald-200/80 app-surface-panel">
                                 <table className="min-w-full text-body-sm">
                                   <thead className="bg-emerald-100/80 text-emerald-950">
                                     <tr>
-                                      <th className="px-3 py-2 text-left">รหัสช่าง</th>
-                                      <th className="px-3 py-2 text-left">ชื่อ-สกุล</th>
-                                      <th className="px-3 py-2 text-left">กลุ่มงาน</th>
-                                      <th className="px-3 py-2 text-left">ตำแหน่ง</th>
-                                      <th className="px-3 py-2 text-center">Action</th>
+                                      <th className="px-3 py-2 text-left">{t('woDialog.techCode')}</th>
+                                      <th className="px-3 py-2 text-left">{t('woDialog.fullName')}</th>
+                                      <th className="px-3 py-2 text-left">{t('woDialog.workGroup')}</th>
+                                      <th className="px-3 py-2 text-left">{t('woDialog.position')}</th>
+                                      {planningEditable ? (
+                                        <th className="px-3 py-2 text-center">{t('shared.action')}</th>
+                                      ) : null}
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -720,17 +703,19 @@ export function WorkOrderDetailDialog({
                                         <td className="px-3 py-2">{a.displayName}</td>
                                         <td className="px-3 py-2">{a.wkctrtype || '—'}</td>
                                         <td className="px-3 py-2">{a.position || '—'}</td>
-                                        <td className="px-3 py-2 text-center">
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => removeAssigneeMut.mutate(a.code)}
-                                            disabled={removeAssigneeMut.isPending}
-                                          >
-                                            ลบ
-                                          </Button>
-                                        </td>
+                                        {planningEditable ? (
+                                          <td className="px-3 py-2 text-center">
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => removeAssigneeMut.mutate(a.code)}
+                                              disabled={removeAssigneeMut.isPending}
+                                            >
+                                              {t('shared.delete')}
+                                            </Button>
+                                          </td>
+                                        ) : null}
                                       </tr>
                                     ))}
                                   </tbody>
@@ -740,22 +725,19 @@ export function WorkOrderDetailDialog({
                           </div>
 
                           <div className="rounded-card border border-app bg-[var(--app-surface)] p-3">
-                            <p className="font-medium text-app">
-                              ผู้รับผิดชอบรายกลุ่ม
-                              <span className="ml-1 text-xs font-normal text-app-muted">
-                                (เทียบ `ShowPlanGroup.php` — จ่ายแบบกลุ่ม)
-                              </span>
-                            </p>
+                            <p className="font-medium text-app">{t('woDialog.groupAssignees')}</p>
                             {groupAssignees.length === 0 ? (
-                              <p className="mt-2 text-caption">ยังไม่มีการจ่ายงานแบบกลุ่ม</p>
+                              <p className="mt-2 text-caption">{t('woDialog.noGroupAssign')}</p>
                             ) : (
                               <div className="mt-3 overflow-auto rounded-button border border-app">
                                 <table className="min-w-full text-body-sm">
                                   <thead className="bg-app-subtle text-app">
                                     <tr>
-                                      <th className="px-3 py-2 text-left">รหัสช่าง</th>
-                                      <th className="px-3 py-2 text-left">ชื่อ-สกุล</th>
-                                      <th className="px-3 py-2 text-center">Action</th>
+                                      <th className="px-3 py-2 text-left">{t('woDialog.techCode')}</th>
+                                      <th className="px-3 py-2 text-left">{t('woDialog.fullName')}</th>
+                                      {planningEditable ? (
+                                        <th className="px-3 py-2 text-center">{t('shared.action')}</th>
+                                      ) : null}
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -763,17 +745,19 @@ export function WorkOrderDetailDialog({
                                       <tr key={`g-${a.code}-${a.idplanw ?? ''}`} className="border-t">
                                         <td className="px-3 py-2 font-mono">{a.code}</td>
                                         <td className="px-3 py-2">{a.displayName}</td>
-                                        <td className="px-3 py-2 text-center">
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => removeAssigneeMut.mutate(a.code)}
-                                            disabled={removeAssigneeMut.isPending}
-                                          >
-                                            ลบ
-                                          </Button>
-                                        </td>
+                                        {planningEditable ? (
+                                          <td className="px-3 py-2 text-center">
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => removeAssigneeMut.mutate(a.code)}
+                                              disabled={removeAssigneeMut.isPending}
+                                            >
+                                              {t('shared.delete')}
+                                            </Button>
+                                          </td>
+                                        ) : null}
                                       </tr>
                                     ))}
                                   </tbody>
@@ -783,6 +767,8 @@ export function WorkOrderDetailDialog({
                           </div>
                         </div>
 
+                        {planningEditable ? (
+                          <>
                         <PlanningMultiAssign
                           workcenters={modalQ.data.planning.workcenters}
                           assignedCodes={modalQ.data.planning.assignees.map((a) => a.code)}
@@ -799,36 +785,27 @@ export function WorkOrderDetailDialog({
                           }}
                         />
 
-                        <details className="rounded-card border border-app bg-[var(--app-surface)] p-3">
-                          <summary className="cursor-pointer text-body-sm font-medium text-app">
-                            จ่ายงานรายบุคคล (Quick assign — คลิก 1 ครั้ง/คน)
-                          </summary>
-                          <div className="mt-3 flex max-h-60 flex-wrap gap-2 overflow-auto">
-                            {modalQ.data.planning.workcenters.map((w) => (
-                              <Button
-                                key={w.wkctr}
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => assignPlanMut.mutate({ mode: 'P', code: w.wkctr })}
-                                disabled={assignPlanMut.isPending}
-                                title={w.displayName}
-                              >
-                                {w.wkctr}
-                              </Button>
-                            ))}
-                          </div>
-                        </details>
+                        <PlanningQuickAssign
+                          workcenters={modalQ.data.planning.workcenters}
+                          assignedCodes={modalQ.data.planning.assignees.map((a) => a.code)}
+                          submitting={assignPlanMut.isPending}
+                          assigningCode={
+                            assignPlanMut.isPending && assignPlanMut.variables?.mode === 'P'
+                              ? assignPlanMut.variables.code
+                              : null
+                          }
+                          onAssign={(code) => assignPlanMut.mutate({ mode: 'P', code })}
+                        />
 
                         <div className="rounded-card border border-app bg-[var(--app-surface)] p-3">
-                          <p className="font-medium text-app">Planning GROUP</p>
+                          <p className="font-medium text-app">{t('woDialog.planningGroup')}</p>
                           <div className="mt-3 overflow-auto rounded-button border border-app">
                             <table className="min-w-full text-body-sm">
                               <thead className="bg-app-subtle text-app">
                                 <tr>
-                                  <th className="px-3 py-2 text-left">รหัสกลุ่ม</th>
-                                  <th className="px-3 py-2 text-left">ชื่อกลุ่ม</th>
-                                  <th className="px-3 py-2 text-center">Action</th>
+                                  <th className="px-3 py-2 text-left">{t('woDialog.groupCode')}</th>
+                                  <th className="px-3 py-2 text-left">{t('woDialog.groupName')}</th>
+                                  <th className="px-3 py-2 text-center">{t('shared.action')}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -844,7 +821,7 @@ export function WorkOrderDetailDialog({
                                         onClick={() => assignPlanMut.mutate({ mode: 'G', code: g.wkctrgroup })}
                                         disabled={assignPlanMut.isPending}
                                       >
-                                        Add
+                                        {t('woDialog.add')}
                                       </Button>
                                     </td>
                                   </tr>
@@ -853,339 +830,183 @@ export function WorkOrderDetailDialog({
                             </table>
                           </div>
                         </div>
+                          </>
+                        ) : null}
                       </>
                     ) : null}
                   </>
                 )}
               </TabsContent>
 
-              <TabsContent value="material" className="space-y-2 text-body-sm">
+              <TabsContent value="material" className="mt-4">
                 {modalQ.isLoading ? (
-                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="h-48 w-full rounded-card" />
                 ) : modalQ.isError ? (
                   <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
                 ) : modalQ.data ? (
-                  modalQ.data.materials.items.length ? (
-                    <div className="overflow-auto rounded-card border border-app">
-                      <table className="min-w-full text-body-sm">
-                        <thead className="bg-app-subtle text-app">
-                          <tr>
-                            <th className="px-3 py-2 text-left">PO</th>
-                            <th className="px-3 py-2 text-left">Pstng Date</th>
-                            <th className="px-3 py-2 text-left">Material Description</th>
-                            <th className="px-3 py-2 text-right">Amount LC</th>
-                            <th className="px-3 py-2 text-left">MvT</th>
-                            <th className="px-3 py-2 text-left">Material</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {modalQ.data.materials.items.map((r, i) => (
-                            <tr key={`${r.material}-${r.pstngdate}-${i}`} className="border-t">
-                              <td className="px-3 py-2">{r.matpo}</td>
-                              <td className="px-3 py-2">{r.pstngdate}</td>
-                              <td className="px-3 py-2">{r.materialdesc}</td>
-                              <td className="px-3 py-2 text-right">{r.amountinlc.toLocaleString('en-US')}</td>
-                              <td className="px-3 py-2">{r.mvt}</td>
-                              <td className="px-3 py-2">{r.material}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="text-app-muted">ไม่พบข้อมูล</p>
-                  )
+                  <WorkOrderMaterialPanel materials={modalQ.data.materials} />
                 ) : null}
               </TabsContent>
 
-              <TabsContent value="confirm" className="space-y-4 text-body-sm">
-                <ConfirmQcPanel
-                  idiw37={idiw37}
-                  wkorder={d.wkorder}
-                  initialQc={d.confirmQc}
-                  enabled={open && typeof idiw37 === 'number'}
-                  onQcChange={() => {
-                    void detailQ.refetch()
-                  }}
-                />
-
-                <Tabs value={confirmTab} onValueChange={(v) => setConfirmTab(v as ConfirmSubTab)}>
-                  <TabsList className="app-tabs-scroll flex h-auto w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto">
-                    <TabsTrigger value="personnel-close" className="shrink-0">
-                      เวลาช่าง{personnelCount > 0 ? ` (${personnelCount})` : ''}
-                    </TabsTrigger>
-                    <TabsTrigger value="close" className="shrink-0">
-                      ปิดงาน{supervisorCloseCount > 0 ? ` (${supervisorCloseCount})` : ''}
-                    </TabsTrigger>
-                    <TabsTrigger value="images" className="shrink-0">
-                      รูปปิดงาน{imageCount > 0 ? ` (${imageCount})` : ''}
-                    </TabsTrigger>
-                    <TabsTrigger value="comments" className="shrink-0">
-                      หมายเหตุ
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="personnel-close" className="space-y-3">
-                    <p className="text-xs text-app-muted">
-                      เทียบ `AddClosePersonel.php` / `ShowWorkClose.php` — ช่างบันทึกเวลาก่อนรับรองปิดงาน (tbwrkclose)
-                    </p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label htmlFor="p-wkctr">รหัสช่าง (wkctr)</Label>
-                        <Input id="p-wkctr" value={persWkctr} onChange={(e) => setPersWkctr(e.target.value)} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="p-start-date">วันเริ่ม</Label>
-                        <DatePicker id="p-start-date" value={persStartDate} onChange={setPersStartDate} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="p-start-time">เวลาเริ่ม</Label>
-                        <Input
-                          id="p-start-time"
-                          type="time"
-                          value={persStartTime}
-                          onChange={(e) => setPersStartTime(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="p-end-date">วันสิ้นสุด</Label>
-                        <DatePicker id="p-end-date" value={persEndDate} onChange={setPersEndDate} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="p-end-time">เวลาสิ้นสุด</Label>
-                        <Input
-                          id="p-end-time"
-                          type="time"
-                          value={persEndTime}
-                          onChange={(e) => setPersEndTime(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => addPersCloseMut.mutate()}
-                      disabled={
-                        !persWkctr ||
-                        !persStartDate ||
-                        !persEndDate ||
-                        !persStartTime ||
-                        !persEndTime ||
-                        addPersCloseMut.isPending
+              <TabsContent value="confirm" className="mt-4">
+                {assignedLayout ? (
+                  <div className="space-y-4">
+                    {!canConfirmWrite ? (
+                      <p className="rounded-card border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-body-sm text-amber-950">
+                        {t('woDialog.readOnlyCloseWo')}
+                      </p>
+                    ) : null}
+                    <PersonnelClosePanel
+                      idiw37={idiw37}
+                      enabled={open && typeof idiw37 === 'number'}
+                      closeBlockedMessage={closeBlockedMessage}
+                      canWrite={canConfirmWrite}
+                      onAppliedToSupervisor={applyPersonnelToSupervisorClose}
+                      onChanged={() => {
+                        void qc.invalidateQueries({ queryKey: ['work-order', orderId] })
+                      }}
+                    />
+                    <WorkOrderSupervisorCloseSection
+                      readOnly={!canConfirmWrite}
+                      closeWkctr={closeWkctr}
+                      onCloseWkctrChange={setCloseWkctr}
+                      startDate={startDate}
+                      onStartDateChange={setStartDate}
+                      startTime={startTime}
+                      onStartTimeChange={setStartTime}
+                      endDate={endDate}
+                      onEndDateChange={setEndDate}
+                      endTime={endTime}
+                      onEndTimeChange={setEndTime}
+                      onSubmit={() => {
+                        if (!canCloseWorkOrder) {
+                          toast.error(
+                            closeBlockedMessage ?? t('woDialog.closeBlockedDefault'),
+                          )
+                          return
+                        }
+                        addCloseMut.mutate()
+                      }}
+                      submitPending={addCloseMut.isPending}
+                      submitDisabled={
+                        !canConfirmWrite ||
+                        !startDate ||
+                        !endDate ||
+                        !startTime ||
+                        !endTime ||
+                        !canCloseWorkOrder
                       }
-                    >
-                      บันทึกเวลาช่าง
-                    </Button>
-
-                    {personnelQ.isLoading ? (
-                      <Skeleton className="h-24 w-full" />
-                    ) : personnelQ.isError ? (
-                      <p className="text-body-sm text-red-600">{(personnelQ.error as Error).message}</p>
-                    ) : personnelQ.data?.length ? (
-                      <div className="space-y-2">
-                        {personnelQ.data.map((p) => (
-                          <div
-                            key={p.idwrkclose}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-app bg-[var(--app-surface)] p-3"
-                          >
-                            <div className="min-w-0">
-                              <p className="font-medium">
-                                {p.wkctr} {p.displayName ? `— ${p.displayName}` : ''}
-                              </p>
-                              <p className="text-xs text-app-muted">
-                                {fmtDateTime(p.cstdate)} → {fmtDateTime(p.cendate)} ({p.wktimewk} {p.wkunit})
-                              </p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => applyPersonnelToSupervisorClose(p)}
-                              >
-                                ยืนยันปิดงาน
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setPersWkctr(p.wkctr)
-                                  setPersStartDate(epochToIsoDate(p.cstdate))
-                                  setPersStartTime(epochToTime(p.cstdate))
-                                  setPersEndDate(epochToIsoDate(p.cendate))
-                                  setPersEndTime(epochToTime(p.cendate))
-                                }}
-                              >
-                                แก้ไข
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => delPersCloseMut.mutate(p.idwrkclose)}
-                                disabled={delPersCloseMut.isPending}
-                              >
-                                ลบ
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-caption">ยังไม่มีการบันทึกเวลาช่าง</p>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="close" className="space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <Label htmlFor="c-wkctr">Work center</Label>
-                        <Input id="c-wkctr" value={closeWkctr} onChange={(e) => setCloseWkctr(e.target.value)} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="c-start-date">Start date</Label>
-                        <DatePicker id="c-start-date" value={startDate} onChange={setStartDate} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="c-start-time">Start time</Label>
-                        <Input id="c-start-time" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="c-end-date">End date</Label>
-                        <DatePicker id="c-end-date" value={endDate} onChange={setEndDate} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="c-end-time">End time</Label>
-                        <Input id="c-end-time" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => addCloseMut.mutate()}
-                      disabled={!startDate || !endDate || !startTime || !endTime || addCloseMut.isPending}
-                    >
-                      บันทึกการปิดงาน
-                    </Button>
-
-                    {closesQ.isLoading ? (
-                      <Skeleton className="h-24 w-full" />
-                    ) : closesQ.isError ? (
-                      <p className="text-body-sm text-red-600">{(closesQ.error as Error).message}</p>
-                    ) : closesQ.data?.items?.length ? (
-                      <div className="space-y-2">
-                        {closesQ.data.items.map((c) => (
-                          <div key={c.idclose} className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-app bg-[var(--app-surface)] p-3">
-                            <div className="min-w-0">
-                              <p className="font-medium">
-                                {c.wkctr} {c.displayName ? `— ${c.displayName}` : ''}
-                              </p>
-                              <p className="text-xs text-app-muted">
-                                {fmtDateTime(c.stdate)} → {fmtDateTime(c.endate)} ({c.timewk} {c.unitc})
-                              </p>
-                            </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => delCloseMut.mutate(c.idclose)}
-                              disabled={delCloseMut.isPending}
-                            >
-                              ลบ
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-caption">ยังไม่มีประวัติการปิดงาน</p>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="comments" className="space-y-3">
-                    <div className="space-y-2 rounded-card border border-app bg-[var(--app-surface)] p-3">
-                      <Label htmlFor="new-comment">Comment</Label>
-                      <Textarea id="new-comment" value={newComment} onChange={(e) => setNewComment(e.target.value)} />
-                      <Button type="button" onClick={() => addCommentMut.mutate()} disabled={!newComment.trim() || addCommentMut.isPending}>
-                        เพิ่ม
-                      </Button>
-                    </div>
-
-                    {commentsQ.isLoading ? (
-                      <Skeleton className="h-24 w-full" />
-                    ) : commentsQ.isError ? (
-                      <p className="text-body-sm text-red-600">{(commentsQ.error as Error).message}</p>
-                    ) : commentsQ.data?.length ? (
-                      <div className="space-y-2">
-                        {commentsQ.data.map((c) => (
-                          <div key={c.idcom} className="rounded-card border border-app bg-[var(--app-surface)] p-3">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-xs text-app-muted">
-                                {c.wkctr} · {new Date(c.createdAt).toLocaleString('th-TH')}
-                              </p>
-                              <div className="flex gap-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setEditingId(c.idcom)
-                                    setEditingText(c.comdetail)
-                                  }}
-                                >
-                                  แก้ไข
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => delCommentMut.mutate(c.idcom)}
-                                  disabled={delCommentMut.isPending}
-                                >
-                                  ลบ
-                                </Button>
-                              </div>
-                            </div>
-
-                            {editingId === c.idcom ? (
-                              <div className="mt-2 space-y-2">
-                                <Textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} />
-                                <div className="flex gap-2">
-                                  <Button
-                                    type="button"
-                                    onClick={() => saveCommentMut.mutate()}
-                                    disabled={!editingText.trim() || saveCommentMut.isPending}
-                                  >
-                                    บันทึก
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setEditingId(null)
-                                      setEditingText('')
-                                    }}
-                                  >
-                                    ยกเลิก
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="mt-2 whitespace-pre-wrap text-body-sm text-app">{c.comdetail}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-caption">ยังไม่มี comment</p>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="images" className="space-y-3">
+                      isLoading={closesQ.isLoading}
+                      isError={closesQ.isError}
+                      error={(closesQ.error as Error) ?? null}
+                      items={closesQ.data?.items ?? []}
+                      onDelete={(idclose) => delCloseMut.mutate(idclose)}
+                      deletePending={delCloseMut.isPending}
+                    />
+                  </div>
+                ) : (
+                <WorkOrderConfirmPanel
+                  confirmQc={d.confirmQc}
+                  personnelCount={personnelCount}
+                  supervisorCloseCount={supervisorCloseCount}
+                  imageCount={imageCount}
+                  confirmTab={confirmTab}
+                  onConfirmTabChange={setConfirmTab}
+                  qcPanel={
+                    <ConfirmQcPanel
+                      idiw37={idiw37}
+                      wkorder={d.wkorder}
+                      initialQc={d.confirmQc}
+                      enabled={open && typeof idiw37 === 'number'}
+                      onQcChange={() => {
+                        void detailQ.refetch()
+                      }}
+                    />
+                  }
+                  personnelClosePanel={
+                    <PersonnelClosePanel
+                      idiw37={idiw37}
+                      enabled={open && typeof idiw37 === 'number'}
+                      closeBlockedMessage={closeBlockedMessage}
+                      onAppliedToSupervisor={applyPersonnelToSupervisorClose}
+                      onChanged={() => {
+                        void qc.invalidateQueries({ queryKey: ['work-order', orderId] })
+                      }}
+                    />
+                  }
+                  supervisorClosePanel={
+                    <WorkOrderSupervisorCloseSection
+                      closeWkctr={closeWkctr}
+                      onCloseWkctrChange={setCloseWkctr}
+                      startDate={startDate}
+                      onStartDateChange={setStartDate}
+                      startTime={startTime}
+                      onStartTimeChange={setStartTime}
+                      endDate={endDate}
+                      onEndDateChange={setEndDate}
+                      endTime={endTime}
+                      onEndTimeChange={setEndTime}
+                      onSubmit={() => {
+                        if (!canCloseWorkOrder) {
+                          toast.error(
+                            closeBlockedMessage ?? t('woDialog.closeBlockedDefault'),
+                          )
+                          setConfirmTab('comments')
+                          return
+                        }
+                        addCloseMut.mutate()
+                      }}
+                      submitPending={addCloseMut.isPending}
+                      submitDisabled={
+                        !startDate ||
+                        !endDate ||
+                        !startTime ||
+                        !endTime ||
+                        !canCloseWorkOrder
+                      }
+                      isLoading={closesQ.isLoading}
+                      isError={closesQ.isError}
+                      error={(closesQ.error as Error) ?? null}
+                      items={closesQ.data?.items ?? []}
+                      onDelete={(idclose) => delCloseMut.mutate(idclose)}
+                      deletePending={delCloseMut.isPending}
+                    />
+                  }
+                  imagesPanel={
                     <ConfirmationImagesPanel
                       idiw37={idiw37}
-                      enabled={loadConfirmationImages}
+                      enabled={loadConfirmAssets && confirmTab === 'images'}
                     />
-                  </TabsContent>
-                </Tabs>
+                  }
+                  commentsPanel={
+                    <WorkOrderConfirmCommentsSection
+                      newComment={newComment}
+                      onNewCommentChange={setNewComment}
+                      onAdd={() => addCommentMut.mutate()}
+                      addPending={addCommentMut.isPending}
+                      editingId={editingId}
+                      editingText={editingText}
+                      onEditingTextChange={setEditingText}
+                      onStartEdit={(idcom, text) => {
+                        setEditingId(idcom)
+                        setEditingText(text)
+                      }}
+                      onCancelEdit={() => {
+                        setEditingId(null)
+                        setEditingText('')
+                      }}
+                      onSaveEdit={() => saveCommentMut.mutate()}
+                      savePending={saveCommentMut.isPending}
+                      isLoading={commentsQ.isLoading}
+                      isError={commentsQ.isError}
+                      error={(commentsQ.error as Error) ?? null}
+                      items={commentsQ.data ?? []}
+                      onDelete={(idcom) => delCommentMut.mutate(idcom)}
+                      deletePending={delCommentMut.isPending}
+                    />
+                  }
+                />
+                )}
               </TabsContent>
             </Tabs>
           ) : null}

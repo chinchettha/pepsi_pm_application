@@ -1,6 +1,31 @@
 import { describe, expect, it } from 'vitest'
 import { appNav, type NavLinkEntry } from '@/components/layout/nav-config'
-import { supplementNavFromFallback } from '@/lib/nav-menu-api'
+import { Home } from 'lucide-react'
+import { supplementNavFromFallback, stripDeprecatedNavEntries } from '@/lib/nav-menu-api'
+
+describe('stripDeprecatedNavEntries', () => {
+  it('removes /line-calendar from sidebar entries', () => {
+    const stripped = stripDeprecatedNavEntries([
+      { kind: 'heading', label: 'ปฏิทิน & ใบงาน' },
+      { kind: 'item', to: '/calendar', label: 'ปฏิทิน', icon: Home, menuright: 'A:U:W' },
+      { kind: 'item', to: '/line-calendar', label: 'ปฏิทินเส้น', icon: Home, menuright: 'A:U:W' },
+      { kind: 'item', to: '/backlog', label: 'Backlog', icon: Home, menuright: 'A:U:W' },
+    ])
+    const paths = stripped.filter((e) => e.kind === 'item').map((e) => e.to)
+    expect(paths).toEqual(['/calendar', '/backlog'])
+  })
+
+  it('removes /manhours/admin from sidebar entries', () => {
+    const stripped = stripDeprecatedNavEntries([
+      { kind: 'heading', label: 'ชั่วโมง & บุคลากร' },
+      { kind: 'item', to: '/manhours', label: 'Manhours', icon: Home, menuright: 'A' },
+      { kind: 'item', to: '/manhours/admin', label: 'จัดการ Man Hour (Admin)', icon: Home, menuright: 'A' },
+      { kind: 'item', to: '/worktime', label: 'Summary Over all', icon: Home, menuright: 'A:U:W' },
+    ])
+    const paths = stripped.filter((e) => e.kind === 'item').map((e) => e.to)
+    expect(paths).toEqual(['/manhours', '/worktime'])
+  })
+})
 
 describe('supplementNavFromFallback', () => {
   it('adds /admin/branding when missing from API nav', () => {
@@ -19,6 +44,6 @@ describe('supplementNavFromFallback', () => {
 
     const paths = merged.filter((e) => e.kind === 'item').map((e) => e.to)
     expect(paths).toContain('/admin/branding')
-    expect(merged.some((e) => e.kind === 'heading' && e.label === 'ผู้ดูแลระบบ')).toBe(true)
+    expect(merged.some((e) => e.kind === 'heading' && e.label === 'Administrator')).toBe(true)
   })
 })

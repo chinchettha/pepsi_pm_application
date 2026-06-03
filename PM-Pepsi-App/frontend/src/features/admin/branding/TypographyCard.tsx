@@ -8,6 +8,7 @@ import {
   resolveBaseFontSizePx,
 } from '@/lib/typography-tokens'
 import { Type } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const selectClass =
   'flex h-10 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 text-body-sm text-app focus-visible:outline-none focus-app-ring'
@@ -19,6 +20,7 @@ type TypographyCardProps = {
 }
 
 export function TypographyCard({ form, onChange, disabled }: TypographyCardProps) {
+  const { t } = useTranslation('admin')
   const basePx = resolveBaseFontSizePx(form.fontSizePreset, form.fontSizeBasePx)
 
   return (
@@ -26,15 +28,13 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Type className="size-4" />
-          ตัวอักษรทั้งแอป
+          {t('branding.typographyTitle')}
         </CardTitle>
-        <CardDescription>
-          ฟอนต์ · ขนาด · สีข้อความ — มีผลทุกหน้า (เมนู, Admin, ฟอร์ม) หลังบันทึก
-        </CardDescription>
+        <CardDescription>{t('branding.typographyDesc')}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor="font-family">แบบอักษร</Label>
+          <Label htmlFor="font-family">{t('branding.fontFamily')}</Label>
           <select
             id="font-family"
             className={selectClass}
@@ -53,7 +53,7 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="font-preset">ขนาดพื้นฐาน</Label>
+          <Label htmlFor="font-preset">{t('branding.fontPreset')}</Label>
           <select
             id="font-preset"
             className={selectClass}
@@ -72,14 +72,14 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="font-base-px">ขนาดกำหนดเอง (px)</Label>
+          <Label htmlFor="font-base-px">{t('branding.fontBasePx')}</Label>
           <Input
             id="font-base-px"
             type="number"
             min={12}
             max={22}
             disabled={disabled}
-            placeholder="ว่าง = ใช้ preset"
+            placeholder={t('branding.fontBasePlaceholder')}
             value={form.fontSizeBasePx ?? ''}
             onChange={(e) => {
               const v = e.target.value.trim()
@@ -87,13 +87,16 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
             }}
           />
           <p className="text-xs text-app-muted">
-            ตอนนี้ ≈ {basePx}px · หัวข้อเมนู ≈ {Math.round(basePx * 0.95)}px · หัวข้อหน้า ≈{' '}
-            {Math.round(basePx * 1.6)}px
+            {t('branding.typographyLive', {
+              base: basePx,
+              menu: Math.round(basePx * 0.95),
+              page: Math.round(basePx * 1.6),
+            })}
           </p>
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="font-color">สีข้อความหลัก</Label>
+          <Label htmlFor="font-color">{t('branding.fontColor')}</Label>
           <div className="flex gap-2">
             <Input
               id="font-color"
@@ -105,7 +108,7 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
             />
             <Input
               disabled={disabled}
-              placeholder="#18181b หรือว่าง = ตามธีม"
+              placeholder={t('branding.fontColorPlaceholder')}
               value={form.fontColor ?? ''}
               onChange={(e) => {
                 const v = e.target.value.trim()
@@ -116,7 +119,7 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="font-heading-color">สีหัวข้อ</Label>
+          <Label htmlFor="font-heading-color">{t('branding.fontHeadingColor')}</Label>
           <div className="flex gap-2">
             <Input
               id="font-heading-color"
@@ -128,7 +131,7 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
             />
             <Input
               disabled={disabled}
-              placeholder="ว่าง = ตามธีม"
+              placeholder={t('branding.fontHeadingPlaceholder')}
               value={form.fontHeadingColor ?? ''}
               onChange={(e) => {
                 const v = e.target.value.trim()
@@ -139,7 +142,7 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
         </div>
 
         <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor="font-muted-color">สีข้อความรอง</Label>
+          <Label htmlFor="font-muted-color">{t('branding.fontMutedColor')}</Label>
           <div className="flex gap-2">
             <Input
               id="font-muted-color"
@@ -151,7 +154,7 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
             />
             <Input
               disabled={disabled}
-              placeholder="#71717a หรือว่าง = ตามธีม"
+              placeholder={t('branding.fontMutedPlaceholder')}
               value={form.fontMutedColor ?? ''}
               onChange={(e) => {
                 const v = e.target.value.trim()
@@ -166,15 +169,11 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
           style={{ fontFamily: `var(--app-font-family)` }}
         >
           <p className="text-heading-page font-semibold text-[var(--app-heading-color,var(--app-primary))]">
-            ตัวอย่างหัวข้อหน้า
+            {t('branding.typographyPreviewHeading')}
           </p>
-          <p className="mt-2 text-body text-[var(--app-text)]">
-            ข้อความทั่วไปในตารางและฟอร์ม — อ่านสบายตาบนจอโรงงาน
-          </p>
-          <p className="text-caption mt-1">
-            คำอธิบายรอง / วันที่ / สถานะ
-          </p>
-          <p className="nav-menu-group-heading mt-3">กลุ่มเมนูตัวอย่าง</p>
+          <p className="mt-2 text-body text-[var(--app-text)]">{t('branding.typographyPreviewBody')}</p>
+          <p className="text-caption mt-1">{t('branding.typographyPreviewCaption')}</p>
+          <p className="nav-menu-group-heading mt-3">{t('branding.typographyPreviewNavGroup')}</p>
         </div>
       </CardContent>
     </Card>

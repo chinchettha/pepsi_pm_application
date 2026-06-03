@@ -2,6 +2,7 @@ import { BoardEngUtilizationStackedChart } from '@/features/board/BoardEngUtiliz
 import { BoardEngUtilizationTeamGrid } from '@/features/board/BoardEngUtilizationTeamGrid'
 import { BoardUtilLegend } from '@/features/board/BoardUtilLegend'
 import type { SummaryWeeklyRow } from '@/api/schemas'
+import { useTranslation } from 'react-i18next'
 
 type WeekRow = {
   weekLabel: string
@@ -24,7 +25,6 @@ type Props = {
   kioskDark?: boolean
 }
 
-/** โซน B — กราฟ utilization + week table + กริดทีม */
 export function BoardZoneB({
   rangeLabel,
   showRca,
@@ -37,6 +37,8 @@ export function BoardZoneB({
   carousel = false,
   kioskDark = true,
 }: Props) {
+  const { t } = useTranslation('board')
+
   return (
     <div
       className={
@@ -44,9 +46,9 @@ export function BoardZoneB({
           ? 'engineering-board__zone engineering-board__zone--b engineering-board__zone-b-stack'
           : 'engineering-board__zone-b-stack'
       }
-      aria-label="โซน B — Eng Utilization"
+      aria-label={t('util.zoneAria')}
     >
-      {carousel ? <p className="engineering-board__zone-tag">โซน B · Utilization</p> : null}
+      {carousel ? <p className="engineering-board__zone-tag">{t('zoneB.zoneTag')} · Utilization</p> : null}
 
       <div className="engineering-board__util-toolbar">
         <BoardUtilLegend showRca={showRca} />
@@ -57,7 +59,7 @@ export function BoardZoneB({
             onChange={(e) => onShowRcaChange(e.target.checked)}
             className="engineering-board__rca-input"
           />
-          รวม %RCA ในกราฟและการ์ด
+          {t('util.includeRca')}
         </label>
       </div>
 
@@ -72,18 +74,18 @@ export function BoardZoneB({
         />
 
         <section className="engineering-board__panel engineering-board__panel--week">
-          <h2 className="engineering-board__panel-title">Week-to-Week</h2>
+          <h2 className="engineering-board__panel-title">{t('zoneB.weekTitle')}</h2>
           {weekRows.length === 0 ? (
-            <p className="engineering-board__empty">ต้องมีอย่างน้อย 2 สัปดาห์ในช่วง KPI</p>
+            <p className="engineering-board__empty">{t('zoneB.weekEmpty')}</p>
           ) : (
             <div className="engineering-board__table-wrap">
               <table className="engineering-board__table">
                 <thead>
                   <tr>
-                    <th>สัปดาห์</th>
-                    <th className="text-right">Util %</th>
-                    <th className="text-right">Δ</th>
-                    <th className="text-right">Backlog</th>
+                    <th>{t('zoneB.colWeek')}</th>
+                    <th className="text-right">{t('zoneB.colUtil')}</th>
+                    <th className="text-right">{t('zoneB.colDelta')}</th>
+                    <th className="text-right">{t('zoneB.colBacklog')}</th>
                   </tr>
                 </thead>
                 <tbody>

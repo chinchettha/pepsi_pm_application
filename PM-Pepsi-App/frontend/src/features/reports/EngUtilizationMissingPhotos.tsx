@@ -1,28 +1,26 @@
 import { Button } from '@/components/ui/button'
 import type { EngUtilizationChartRow } from '@/lib/eng-utilization-chart'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   people: EngUtilizationChartRow[]
   canManagePhotos: boolean
 }
 
-/** แจ้งช่างที่ยังไม่มีรูปใน DB — ลิงก์ไป Admin Users */
 export function EngUtilizationMissingPhotos({ people, canManagePhotos }: Props) {
+  const { t } = useTranslation('reports')
   const missing = people.filter((p) => !p.hasImage)
   if (missing.length === 0) return null
 
   return (
-    <div className="rounded-card border border-amber-200 bg-amber-50/80 p-4">
-      <p className="text-body-sm font-medium text-amber-950">
-        ยังไม่มีรูปประจำตัว {missing.length} คน — ต้องจัดการก่อน go-live
+    <div className="app-callout app-callout--amber">
+      <p className="text-body-sm font-medium">
+        {t('engUtil.missingPhotoTitle', { count: missing.length })}
       </p>
       {canManagePhotos ? (
         <>
-          <p className="mt-1 text-xs text-amber-900/80">
-            อัปโหลดรูปที่ Admin → Users (แท็บ Work center) หรือปิดการใช้งาน (workstatus TERMINATED)
-            ที่แบนเนอร์ Go-live — มิฉะนั้นจะยังโผล่ในกราฟ/ตารางนี้
-          </p>
+          <p className="mt-1 text-xs opacity-90">{t('engUtil.missingPhotoAdminHint')}</p>
           <ul className="mt-2 flex flex-wrap gap-2">
             {missing.slice(0, 12).map((p) => (
               <li key={p.idwkctr}>
@@ -32,17 +30,19 @@ export function EngUtilizationMissingPhotos({ people, canManagePhotos }: Props) 
               </li>
             ))}
             {missing.length > 12 ? (
-              <li className="self-center text-xs text-amber-800">+{missing.length - 12} คน</li>
+              <li className="self-center text-xs opacity-80">
+                {t('engUtil.missingPhotoMore', { count: missing.length - 12 })}
+              </li>
             ) : null}
             <li>
               <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-                <Link to="/admin/users?photo=missing">เปิด Admin Users (ไม่มีรูป)</Link>
+                <Link to="/admin/users?photo=missing">{t('engUtil.missingPhotoOpenAdmin')}</Link>
               </Button>
             </li>
           </ul>
         </>
       ) : (
-        <p className="mt-1 text-xs text-amber-900/80">ติดต่อ Admin เพื่ออัปโหลดรูปในเมนู Users</p>
+        <p className="mt-1 text-xs opacity-90">{t('engUtil.missingPhotoContactAdmin')}</p>
       )}
     </div>
   )

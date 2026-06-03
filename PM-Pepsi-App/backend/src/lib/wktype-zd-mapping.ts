@@ -3,6 +3,8 @@
  * ไฟล์ IW37N ในโรงงานยังส่งคอลัมน์ Type เป็น ZB* → แมป ZB → ZD สำหรับ filter/แสดงผล
  * ดู docs/customer-requirements/WKTYPE-ZD-ZB-MAPPING.md
  */
+import { formatMaintActivityTypeLabel, lookupMaintActivityType } from './maint-activity-type.js'
+
 export const WKTYPE_MAPPING_SOURCE =
   'ประชุมลูกค้า ครั้งที่ 2 (7 พ.ค. 2569) — รายงานการประชุม ครั้งที่ 2.docx'
 
@@ -85,6 +87,44 @@ export function formatWktypeDisplay(code: string, legacyDesc?: string | null): W
 }
 
 export type WktypeFilterOption = { code: string; label: string }
+
+export function formatMaintCodeLead(mat: string | null | undefined): {
+  code: string
+  label: string
+} | null {
+  const raw = (mat ?? '').trim()
+  if (!raw) return null
+  const row = lookupMaintActivityType(raw)
+  const code = row?.mat ?? (Number.isFinite(Number(raw)) ? String(Number(raw)).padStart(3, '0') : raw)
+  const label = row ? `${code} ${row.description}` : formatMaintActivityTypeLabel(raw)
+  return { code, label }
+}
+
+/** ป้าย Type บนตาราง/ปฏิทิน — Maintenance Code ด้านหน้าเมื่อ ZB02/ZD02 */
+export function formatWktypeDisplayWithMat(
+  code: string,
+  mat?: string | null,
+): WktypeDisplayParts {
+  const base = formatWktypeDisplay(code)
+  const wk = code.trim().toUpperCase()
+  const maint = formatMaintCodeLead(mat)
+  if (maint && (wk === 'ZB02' || base.zdCode === 'ZD02')) {
+    return {
+      ...base,
+      primary: `${maint.code} · ${base.primary}`,
+      tooltip: `${maint.label} — ${base.tooltip}`,
+    }
+  }
+  return base
+}
+
+/** ตัวกรอง Type — ZB01 / ZB02 / ZB05 พร้อมป้าย ZD จากประชุมลูกค้า */
+export function listWktypeZdFilterOptions(): WktypeFilterOption[] {
+  return WKTYPE_ZD_ZB_ROWS.map((r) => ({
+    code: r.zb,
+    label: formatWktypeFilterLabel(r.zb),
+  }))
+}
 
 export function buildWktypeFilterOptions(
   master: { wkzb: string; zbdescrip: string | null }[],

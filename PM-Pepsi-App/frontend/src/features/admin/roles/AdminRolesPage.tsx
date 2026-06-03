@@ -18,10 +18,14 @@ import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, EyeOff, Plus, RefreshCcw } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { CreateRoleDialog } from './CreateRoleDialog'
+import { EditRoleLabelsDialog } from './EditRoleLabelsDialog'
 import { PermissionMatrix } from './PermissionMatrix'
 import { RoleNavPreview } from './RoleNavPreview'
+import { resolveRoleDisplayLabel } from '@/lib/role-display'
+import { useAppLocale } from '@/providers/I18nProvider'
 
 const MATRIX_KEY = ['admin', 'roles', 'matrix'] as const
 
@@ -30,10 +34,14 @@ function invalidateMatrix(qc: ReturnType<typeof useQueryClient>) {
 }
 
 export function AdminRolesPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
+  const { locale } = useAppLocale()
   const qc = useQueryClient()
   const canRead = usePermission('admin.roles.read')
   const canWrite = usePermission('admin.roles.write')
   const [createOpen, setCreateOpen] = useState(false)
+  const [editLabelsRole, setEditLabelsRole] = useState<AdminRole | null>(null)
   const [deleteRole, setDeleteRole] = useState<AdminRole | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [previewRoleCode, setPreviewRoleCode] = useState<string | null>(
@@ -56,20 +64,30 @@ export function AdminRolesPage() {
       grants: Record<string, boolean>
     }) => setAdminRolePermissions(roleCode, grants),
     onSuccess: () => invalidateMatrix(qc),
-    onError: () => toast.error('บันทึกสิทธิ์ไม่สำเร็จ'),
+    onError: () => toast.error(t('roles.savePermsFailed')),
     onSettled: () => setPending(null),
   })
 
   const deleteMut = useMutation({
     mutationFn: (code: string) => deleteAdminRole(code),
     onSuccess: () => {
-      toast.success('ลบ role แล้ว')
+      toast.success(t('roles.roleDeleted'))
       invalidateMatrix(qc)
     },
-    onError: (e: Error) => toast.error(e.message || 'ลบไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('roles.deleteFailed')),
   })
 
   const matrix = q.data
+
+  const previewRoleLabel = useMemo(() => {
+    if (!previewRoleCode || !matrix) return previewRoleCode
+    const role = matrix.roles.find((r) => r.roleCode === previewRoleCode)
+    if (!role) return previewRoleCode
+    return resolveRoleDisplayLabel(
+      { roleNameTh: role.roleName, roleNameEn: role.roleNameEn, userst: role.roleCode },
+      locale,
+    )
+  }, [previewRoleCode, matrix, locale])
 
   const permByGroup = useMemo(() => {
     if (!matrix) return new Map<string, string[]>()
@@ -109,21 +127,22 @@ export function AdminRolesPage() {
       const sim = await simulateAdminRole(role.roleCode)
       setRbacPreview({
         roleCode: sim.roleCode,
-        roleName: role.roleName,
+        roleNameTh: role.roleName,
+        roleNameEn: role.roleNameEn,
         permissions: sim.permissions,
       })
       setPreviewRoleCode(sim.roleCode)
-      toast.info(`จำลองเมนูเป็น ${sim.roleCode} (${sim.permissions.length} สิทธิ์)`)
+      toast.info(t('roles.simulateInfo', { role: sim.roleCode, count: sim.permissions.length }))
     } catch {
-      toast.error('จำลอง role ไม่สำเร็จ')
+      toast.error(t('roles.simulateFailed'))
     }
-  }, [])
+  }, [t])
 
   const handleStopSimulate = useCallback(() => {
     clearRbacPreview()
     setPreviewRoleCode(null)
-    toast.success('หยุดจำลอง role')
-  }, [])
+    toast.success(t('roles.simulateStopped'))
+  }, [t])
 
   const handleDeleteRole = useCallback((role: AdminRole) => {
     setDeleteRole(role)
@@ -132,13 +151,7 @@ export function AdminRolesPage() {
   if (!canRead && !canWrite) {
     return (
       <AdminPageRoot tourTarget="admin-roles">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์ <code className="text-xs">admin.roles.read</code>
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.roles.read" />
       </AdminPageRoot>
     )
   }
@@ -146,9 +159,9 @@ export function AdminRolesPage() {
   return (
     <AdminPageShell
       tourTarget="admin-roles"
-      title="บทบาท & สิทธิ์"
-      description="Matrix role × permission — สร้าง custom role และจำลองเมนูก่อนบันทึก"
-      contentClassName="space-y-6"
+      title={t('roles.title')}
+      description={t('roles.description')}
+      hints={t('roles.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Button
@@ -160,18 +173,18 @@ export function AdminRolesPage() {
             disabled={q.isFetching}
           >
             <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
+            {t('shared.refresh')}
           </Button>
           {canWrite ? (
             <Button type="button" className="admin-toolbar-btn" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-1 size-4" />
-              สร้าง role
+              {t('roles.createRole')}
             </Button>
           ) : null}
           {previewRoleCode ? (
             <Button type="button" variant="outline" className="admin-toolbar-btn" onClick={handleStopSimulate}>
               <EyeOff className="mr-1 size-4" />
-              หยุดจำลอง ({previewRoleCode})
+              {t('roles.stopSimulate', { role: previewRoleLabel ?? previewRoleCode })}
             </Button>
           ) : null}
         </>
@@ -180,10 +193,8 @@ export function AdminRolesPage() {
         <RoleNavPreview />
       <Card className="admin-card">
         <CardHeader>
-          <CardTitle className="text-base">ตารางสิทธิ์ (Permission matrix)</CardTitle>
-          <CardDescription>
-            แถว = สิทธิ์แยกตามกลุ่ม · คอลัมน์ = role · ติ๊กเพื่อ grant/revoke (บันทึกทันที)
-          </CardDescription>
+          <CardTitle className="text-base">{t('roles.matrixTitle')}</CardTitle>
+          <CardDescription>{t('roles.matrixDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           {q.isLoading && !matrix ? (
@@ -191,9 +202,9 @@ export function AdminRolesPage() {
           ) : q.isError ? (
             <EmptyState
               icon={AlertCircle}
-              title="โหลด matrix ไม่สำเร็จ"
-              description={(q.error as Error).message || 'ตรวจสอบ migration 044–046'}
-              action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+              title={t('roles.matrixLoadFailed')}
+              description={(q.error as Error).message || t('roles.matrixLoadHint')}
+              action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
             />
           ) : matrix ? (
             <PermissionMatrix
@@ -206,6 +217,7 @@ export function AdminRolesPage() {
               onSimulate={handleSimulate}
               onStopSimulate={handleStopSimulate}
               onDeleteRole={handleDeleteRole}
+              onEditRoleLabels={canWrite ? (role) => setEditLabelsRole(role) : undefined}
             />
           ) : null}
         </CardContent>
@@ -217,16 +229,23 @@ export function AdminRolesPage() {
         onCreated={() => invalidateMatrix(qc)}
       />
 
+      <EditRoleLabelsDialog
+        role={editLabelsRole}
+        open={editLabelsRole != null}
+        onOpenChange={(open) => !open && setEditLabelsRole(null)}
+        onSaved={() => invalidateMatrix(qc)}
+      />
+
       {deleteRole ? (
         <ConfirmPhraseDialog
           open
           onOpenChange={(open) => !open && setDeleteRole(null)}
           tone="danger"
-          title={`ลบ role ${deleteRole.roleCode}`}
-          description="ลบ role ที่ไม่มีผู้ใช้ผูกอยู่ — ไม่สามารถย้อนกลับได้"
+          title={t('roles.deleteRoleTitle', { code: deleteRole.roleCode })}
+          description={t('roles.deleteRoleDesc')}
           phrase={deleteRole.roleCode}
-          phraseLabel={`พิมพ์รหัส role ${deleteRole.roleCode} เพื่อยืนยัน`}
-          confirmLabel="ลบ role"
+          phraseLabel={t('roles.deleteRolePhrase', { code: deleteRole.roleCode })}
+          confirmLabel={t('roles.deleteRoleConfirm')}
           loading={deleteMut.isPending}
           onConfirm={() => {
             deleteMut.mutate(deleteRole.roleCode, {

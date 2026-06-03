@@ -1,5 +1,6 @@
 import type { Pool } from 'pg'
 import type { AuthUser } from '../schemas/auth.js'
+import { enrichAuthUser } from '../lib/role-labels.js'
 import { hashPassword, verifyPassword } from '../lib/password.js'
 
 type WorkcenterRow = {
@@ -17,7 +18,7 @@ type WorkcenterRow = {
   imgmember: string | null
 }
 
-type MemberRow = {
+export type MemberRow = {
   id: number
   username: string
   password: string
@@ -117,8 +118,9 @@ export async function findWorkcenterByCredentials(
     ])
   }
 
-  const user = mapWorkcenterRow(row)
+  let user = mapWorkcenterRow(row)
   user.passMustChange = await loadPassMustChangeFlag(pool, 'workcenter', idwkctr)
+  user = await enrichAuthUser(pool, user)
   return user
 }
 
@@ -185,8 +187,9 @@ export async function findMemberByCredentials(
 
   await pool.query(`UPDATE app.tbl_member SET last_login = now() WHERE id = $1`, [row.id])
 
-  const user = mapMemberRow(row)
+  let user = mapMemberRow(row)
   user.passMustChange = await loadPassMustChangeFlag(pool, 'member', row.id)
+  user = await enrichAuthUser(pool, user)
   return user
 }
 

@@ -70,6 +70,13 @@ export const backlogFilterDetailTeamSchema = z.object({
   workSumMinutes: z.number(),
 })
 
+export const backlogFilterDetailWorkcenterSchema = z.object({
+  code: z.string(),
+  label: z.string(),
+  count: z.number(),
+  workSumMinutes: z.number(),
+})
+
 export const backlogFilterDetailResponseSchema = z.object({
   year: z.number(),
   month: z.number(),
@@ -83,7 +90,10 @@ export const backlogFilterDetailResponseSchema = z.object({
       count: z.number(),
     }),
   ),
+  /** ช่าง/ศูนย์งานที่มีงานค้างในเดือน — สำหรับ Note บนปฏิทิน */
+  byWorkcenter: z.array(backlogFilterDetailWorkcenterSchema),
   teamA: backlogFilterDetailTeamSchema,
   teamB: backlogFilterDetailTeamSchema,
-  teamP: backlogFilterDetailTeamSchema,
+  teamEE: backlogFilterDetailTeamSchema,
+  teamUT: backlogFilterDetailTeamSchema,
 })

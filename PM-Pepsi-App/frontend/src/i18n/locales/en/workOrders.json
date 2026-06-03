@@ -1,0 +1,79 @@
+{
+  "page": {
+    "title": "WO/Confirmation",
+    "noAccessTitle": "No access",
+    "noAccessDesc": "Requires permission",
+    "hintSearchWo": "Search WO number",
+    "hintMassConfirm": "Mass Confirm ≤44",
+    "hintApproveTeco": "Approve → TECO",
+    "hintPhotos": "Before/after photos"
+  },
+  "links": {
+    "exportConfirmation": "Export Confirmation",
+    "workSchedulingCalendar": "Work scheduling calendar",
+    "backlog": "Backlog",
+    "importIw37n": "Import IW37N"
+  },
+  "search": {
+    "filterTitle": "Search work orders",
+    "collapsedHint": "Search \"{{q}}\"",
+    "clear": "Clear",
+    "orderNumberLabel": "Work order number",
+    "placeholder": "Type at least 2 characters of the work order number…",
+    "emptyTitle": "Search work order number",
+    "emptyDescription": "Enter a work order number and search — Approve / Reject",
+    "listTitle": "Work order list",
+    "listSubtitle": "Search \"{{q}}\"",
+    "loadFailedTitle": "Could not load list",
+    "loadFailedFallback": "Check API connection",
+    "loadingListAria": "Loading list"
+  },
+  "table": {
+    "loadingAria": "Loading list",
+    "emptyTitle": "No work orders found",
+    "emptyDescription": "Try another number or confirm IW37N was imported",
+    "colOrderNumber": "Work order number",
+    "colPmPhase": "Create / REL / Confirm",
+    "colMaintPlan": "Maint. plan",
+    "colTypeActivity": "Type / activity (ZB / ZD)",
+    "colEquipment": "Equipment",
+    "colFuncLoc": "Functional loc.",
+    "colApproveReject": "Approve / Reject"
+  },
+  "qc": {
+    "badgeTecoApproved": "TECO / Approved",
+    "badgeRejected": "Sent back for correction",
+    "badgePending": "Pending review",
+    "noReviewPermission": "No review permission",
+    "approveDisabledTitle": "Requires details, before/after photos, and close record first",
+    "approve": "Approve",
+    "reject": "Reject",
+    "rejectPrompt": "Reason for send-back (optional)"
+  },
+  "toast": {
+    "approveSuccess": "Approved {{wkorder}} — TECO status on technician dashboard",
+    "approveFailed": "Approval failed",
+    "rejectSent": "Sent back {{wkorder}} for technician correction",
+    "rejectFailed": "Send-back failed"
+  },
+  "technician": {
+    "emptyTitle": "Search work order number",
+    "emptyDescription": "Enter a work order number and pick from the list — technician status (pending / done) will appear",
+    "loadingAria": "Loading work order",
+    "loadFailedTitle": "Could not load work order",
+    "loadFailedFallback": "Work order not found",
+    "workOrderLabel": "Work order {{wkorder}}",
+    "openDetailClose": "Open details / close work",
+    "doneCount": "Technicians done {{count}}",
+    "pendingCount": "Technicians pending {{count}}",
+    "closeHintSuffix": " — record on Close tab (details + before/after photos)",
+    "hintNeedComment": "Please save details (comments) before closing",
+    "hintNeedImages": "Please attach before and after photos before closing",
+    "noTechnicians": "No assigned technicians or close records yet — open details to assign or record close",
+    "colTechCode": "Technician code",
+    "colName": "Name",
+    "colStatus": "Status",
+    "statusDone": "Done",
+    "statusPending": "Pending"
+  }
+}

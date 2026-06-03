@@ -7,6 +7,7 @@ import { fetchWorkcenters, postConfirmationMassClose } from '@/lib/api-public'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import type { MassConfirmBatchResult } from '@/components/confirmation/MassConfirmExportPanel'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 /** Re-export for UI copy — ต้องตรงกับ `SAP_MASS_CONFIRM_MAX` บน backend */
@@ -33,6 +34,7 @@ export function MassConfirmBar({
   onComplete,
   onBatchDone,
 }: MassConfirmBarProps) {
+  const { t } = useTranslation('confirmation')
   const authUser = getStoredAuthUser()
   const [wkctr, setWkctr] = useState(() => (authUser?.wkctr ?? '').trim())
   const [startD, setStartD] = useState(todayDdMmYyyy)
@@ -65,10 +67,13 @@ export function MassConfirmBar({
       }
       if (res.failed.length > 0) {
         toast.warning(
-          `ปิดงานสำเร็จ ${res.succeeded.length} รายการ · ล้มเหลว ${res.failed.length} รายการ`,
+          t('massConfirm.toastPartialClose', {
+            ok: res.succeeded.length,
+            fail: res.failed.length,
+          }),
         )
       } else {
-        toast.success(`ปิดงานครบชุด ${res.succeeded.length} รายการ — ดำเนินการ Export ด้านล่าง`)
+        toast.success(t('massConfirm.toastFullClose', { count: res.succeeded.length }))
       }
       onBatchDone?.(batch)
       onClearSelection?.()
@@ -79,15 +84,15 @@ export function MassConfirmBar({
 
   const onSave = () => {
     if (selectedIds.length === 0) {
-      toast.error('เลือก WO ก่อน')
+      toast.error(t('massConfirm.selectWoFirst'))
       return
     }
     if (selectedIds.length > MASS_CONFIRM_MAX) {
-      toast.error(`เลือกได้สูงสุด ${MASS_CONFIRM_MAX} รายการต่อ batch`)
+      toast.error(t('massConfirm.selectMaxBatch', { max: MASS_CONFIRM_MAX }))
       return
     }
     if (!wkctr.trim()) {
-      toast.error('เลือก Work Center (wkctr)')
+      toast.error(t('massConfirm.selectWkctr'))
       return
     }
     massMut.mutate()
@@ -96,26 +101,34 @@ export function MassConfirmBar({
   if (selectedIds.length === 0) return null
 
   return (
-    <div className="space-y-3 rounded-card border border-emerald-200 bg-emerald-50/70 px-3 py-3">
+    <div
+      className="space-y-3 rounded-card border border-emerald-200/80 bg-gradient-to-b from-emerald-50/90 to-emerald-50/40 px-4 py-3.5 shadow-sm"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-body-sm font-medium text-app">
-          Mass Confirm — เลือก {selectedIds.length} / {MASS_CONFIRM_MAX} รายการ (SAP)
+        <p className="text-body-sm font-semibold text-app">
+          {t('massConfirm.selectedCount')}{' '}
+          <span className="tabular-nums text-emerald-800">
+            {selectedIds.length} / {MASS_CONFIRM_MAX}
+          </span>{' '}
+          {t('massConfirm.items')}
         </p>
         <Button type="button" variant="ghost" size="sm" onClick={onClearSelection}>
-          ล้างการเลือก
+          {t('massConfirm.clearSelection')}
         </Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="space-y-1">
-          <Label htmlFor="mass-wkctr">Work Center (wkctr)</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="mass-wkctr" className="text-xs font-semibold tracking-wide text-app-muted">
+            {t('massConfirm.wkctrLabel')}
+          </Label>
           <select
             id="mass-wkctr"
-            className="h-9 w-full rounded-button border border-app bg-white px-2 text-body-sm"
+            className="h-10 w-full rounded-button border border-app/80 bg-[var(--app-surface)] px-2 text-body-sm shadow-sm"
             value={wkctr}
             onChange={(e) => setWkctr(e.target.value)}
           >
-            <option value="">— เลือก —</option>
+            <option value="">{t('massConfirm.selectOption')}</option>
             {wkctrOptions.map((w) => (
               <option key={w.wkctr} value={w.wkctr}>
                 {w.wkctr} — {w.displayName}
@@ -123,26 +136,65 @@ export function MassConfirmBar({
             ))}
           </select>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="mass-start-d">เริ่ม (วันที่)</Label>
-          <Input id="mass-start-d" value={startD} onChange={(e) => setStartD(e.target.value)} placeholder="dd.mm.yyyy" />
+        <div className="space-y-1.5">
+          <Label htmlFor="mass-start-d" className="text-xs font-semibold tracking-wide text-app-muted">
+            {t('massConfirm.startDate')}
+          </Label>
+          <Input
+            id="mass-start-d"
+            className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
+            value={startD}
+            onChange={(e) => setStartD(e.target.value)}
+            placeholder={t('massConfirm.datePlaceholder')}
+          />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="mass-start-t">เริ่ม (เวลา)</Label>
-          <Input id="mass-start-t" value={startT} onChange={(e) => setStartT(e.target.value)} placeholder="HH:mm" />
+        <div className="space-y-1.5">
+          <Label htmlFor="mass-start-t" className="text-xs font-semibold tracking-wide text-app-muted">
+            {t('massConfirm.startTime')}
+          </Label>
+          <Input
+            id="mass-start-t"
+            className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
+            value={startT}
+            onChange={(e) => setStartT(e.target.value)}
+            placeholder={t('massConfirm.timePlaceholder')}
+          />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="mass-end-d">สิ้นสุด (วันที่)</Label>
-          <Input id="mass-end-d" value={endD} onChange={(e) => setEndD(e.target.value)} placeholder="dd.mm.yyyy" />
+        <div className="space-y-1.5">
+          <Label htmlFor="mass-end-d" className="text-xs font-semibold tracking-wide text-app-muted">
+            {t('massConfirm.endDate')}
+          </Label>
+          <Input
+            id="mass-end-d"
+            className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
+            value={endD}
+            onChange={(e) => setEndD(e.target.value)}
+            placeholder={t('massConfirm.datePlaceholder')}
+          />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="mass-end-t">สิ้นสุด (เวลา)</Label>
-          <Input id="mass-end-t" value={endT} onChange={(e) => setEndT(e.target.value)} placeholder="HH:mm" />
+        <div className="space-y-1.5">
+          <Label htmlFor="mass-end-t" className="text-xs font-semibold tracking-wide text-app-muted">
+            {t('massConfirm.endTime')}
+          </Label>
+          <Input
+            id="mass-end-t"
+            className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
+            value={endT}
+            onChange={(e) => setEndT(e.target.value)}
+            placeholder={t('massConfirm.timePlaceholder')}
+          />
         </div>
       </div>
 
-      <Button type="button" disabled={massMut.isPending} onClick={onSave}>
-        {massMut.isPending ? 'กำลังปิดงาน…' : `ปิดงานครั้งเดียว (${selectedIds.length})`}
+      <Button
+        type="button"
+        className="shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
+        disabled={massMut.isPending}
+        onClick={onSave}
+      >
+        {massMut.isPending
+          ? t('massConfirm.closing')
+          : t('massConfirm.closeBatch', { count: selectedIds.length })}
       </Button>
     </div>
   )

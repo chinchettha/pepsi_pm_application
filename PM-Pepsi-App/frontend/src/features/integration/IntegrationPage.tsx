@@ -1,9 +1,10 @@
-import type { Iw37nImportPreviewResponse } from '@/api/schemas'
+import type { ConfirmationImportPreviewResponse, Iw37nImportPreviewResponse } from '@/api/schemas'
 import { CanPermission } from '@/components/auth/CanPermission'
+import { ConfirmImportReviewPanel } from '@/components/confirmation/ConfirmImportReviewPanel'
 import { Iw37nImportReviewPanel } from '@/components/iw37n/Iw37nImportReviewPanel'
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
@@ -28,17 +29,25 @@ import {
   fetchIw37nBatchCsv,
   fetchIw37nBatches,
   postConfirmationImport,
+  postConfirmationImportPreview,
   postIntegrationJobsRun,
   postIw37nImport,
   postIw37nImportPreview,
 } from '@/lib/api-public'
 import { useAnyPermission, usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, ArrowLeftRight, BookOpen, ClipboardCheck, FolderSync, Upload } from 'lucide-react'
+import { AlertCircle, ArrowLeftRight, BookOpen, ClipboardCheck, FolderSync } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { formatIw37nDuplicateMessage } from '@/lib/iw37n-import-messages'
 import { toast } from 'sonner'
+import type { TFunction } from 'i18next'
+
+function duplicateToastMsg(t: TFunction<'integration'>, batchId: string | null): string {
+  return t('toast.duplicateSha', {
+    batchRef: batchId ? t('toast.duplicateShaRef', { id: batchId }) : '',
+  })
+}
 
 function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob)
@@ -53,6 +62,7 @@ function downloadBlob(blob: Blob, fileName: string) {
 }
 
 export function IntegrationPage() {
+  const { t } = useTranslation('integration')
   const canIw37n = useAnyPermission(['iw37n.read', 'integration.admin'])
   const canImport = usePermission('iw37n.import')
   const canConfirm = usePermission('confirmation.read')
@@ -64,16 +74,14 @@ export function IntegrationPage() {
 
   if (!canIw37n) {
     return (
-      <AppPageShell
-        title="SAP Integration"
-        description="นำเข้า/ส่งออก CSV ระหว่าง SAP กับ PM"
-      >
+      <AppPageShell title={t('title')} description={t('description')}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('noAccessTitle')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">iw37n.read</code> หรือ{' '}
+              {t('noAccessDesc')}{' '}
+              <code className="text-xs">iw37n.read</code> ·{' '}
               <code className="text-xs">integration.admin</code>
             </>
           }
@@ -84,42 +92,49 @@ export function IntegrationPage() {
 
   return (
     <AppPageShell
-      title="SAP Integration"
-      description="นำเข้า IW37N · Confirm IN/OUT · สแกนโฟลเดอร์ · สัญญาไฟล์ CSV"
-      contentClassName="space-y-4"
+      title={t('title')}
+      description={t('description')}
+      hints={t('hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Badge variant="secondary" className="gap-1 text-xs">
             <ArrowLeftRight className="size-3.5" aria-hidden />
-            CSV เข้า/ออก
+            {t('badgeCsv')}
           </Badge>
           <CanPermission permission="iw37n.read">
             <Button type="button" variant="outline" size="sm" asChild>
-              <Link to="/iw37n">หน้า IW37N</Link>
+              <Link to="/iw37n">{t('linkIw37n')}</Link>
             </Button>
           </CanPermission>
           <CanPermission permission="confirmation.read">
             <Button type="button" variant="outline" size="sm" asChild>
-              <Link to="/confirmation">รับรองงาน</Link>
+              <Link to="/confirmation">{t('linkConfirm')}</Link>
             </Button>
           </CanPermission>
           <CanPermission permission="planning.read">
             <Button type="button" variant="outline" size="sm" asChild>
-              <Link to="/planning">แผน PM/CM</Link>
+              <Link to="/planning">{t('linkPlanning')}</Link>
             </Button>
           </CanPermission>
         </>
       }
     >
-        <Tabs defaultValue="iw37n" className="space-y-4">
+        <AppPageSection index={0}>
+          <AppPageSectionCard
+            icon={FolderSync}
+            title={t('cardTitle')}
+            description={t('cardDescription')}
+            bodyClassName="!p-0"
+          >
+        <Tabs defaultValue="iw37n" className="space-y-4 p-4">
           <TabsList className="flex h-auto flex-wrap gap-1 bg-[var(--app-surface)] p-1">
-            <TabsTrigger value="iw37n">นำเข้า IW37N</TabsTrigger>
+            <TabsTrigger value="iw37n">{t('tabs.iw37n')}</TabsTrigger>
             {canConfirmImport ? (
-              <TabsTrigger value="confirm-in">นำเข้า Confirm (IN)</TabsTrigger>
+              <TabsTrigger value="confirm-in">{t('tabs.confirmIn')}</TabsTrigger>
             ) : null}
-            {canConfirm ? <TabsTrigger value="confirm">ส่งออก Confirm → SAP</TabsTrigger> : null}
-            <TabsTrigger value="jobs">Job & โฟลเดอร์</TabsTrigger>
-            <TabsTrigger value="guide">คู่มือสัญญาไฟล์</TabsTrigger>
+            {canConfirm ? <TabsTrigger value="confirm">{t('tabs.confirmOut')}</TabsTrigger> : null}
+            <TabsTrigger value="jobs">{t('tabs.jobs')}</TabsTrigger>
+            <TabsTrigger value="guide">{t('tabs.guide')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="iw37n">
@@ -146,11 +161,14 @@ export function IntegrationPage() {
             <IntegrationGuideTab />
           </TabsContent>
         </Tabs>
+          </AppPageSectionCard>
+        </AppPageSection>
     </AppPageShell>
   )
 }
 
 function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
+  const { t } = useTranslation('integration')
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
@@ -166,12 +184,12 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
     onSuccess: (data) => {
       setImportPreview(data)
       if (data.summary.isDuplicate) {
-        toast.warning(formatIw37nDuplicateMessage(data.summary.duplicateOfBatchId), { duration: 8000 })
+        toast.warning(duplicateToastMsg(t, data.summary.duplicateOfBatchId), { duration: 8000 })
       } else {
-        toast.message('ตรวจสอบแล้ว — กด commit เมื่อพร้อม')
+        toast.message(t('toast.previewReady'))
       }
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: () => toast.error(t('toast.genericFailed')),
   })
 
   const importMut = useMutation({
@@ -182,15 +200,21 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
       const updated = data.rows.filter((r) => r.action === 'updated').length
       const skipped = data.rows.filter((r) => r.action === 'skipped').length
       if (batch.isDuplicate && batch.duplicateOfBatchId) {
-        toast.warning(formatIw37nDuplicateMessage(batch.duplicateOfBatchId), { duration: 8000 })
+        toast.warning(duplicateToastMsg(t, batch.duplicateOfBatchId), { duration: 8000 })
       } else if (inserted + updated === 0) {
         toast.warning(
-          `นำเข้า ${batch.fileName} — ไม่มีแถวใหม่ (เพิ่ม 0 · อัปเดต 0 · ข้าม ${skipped})`,
+          t('toast.importNoChanges', { fileName: batch.fileName, skipped }),
           { duration: 10_000 },
         )
       } else {
         toast.success(
-          `นำเข้าสำเร็จ — เพิ่ม ${inserted} · อัปเดต ${updated}${skipped > 0 ? ` · ข้าม ${skipped}` : ''} (batch #${batch.id})`,
+          t('toast.importSuccess', {
+            inserted,
+            updated,
+            skippedPart:
+              skipped > 0 ? t('toast.importSkippedPart', { skipped }) : '',
+            batchId: batch.id,
+          }),
         )
       }
       setImportPreview(null)
@@ -199,13 +223,13 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
       void qc.invalidateQueries({ queryKey: ['integration', 'status'] })
       if (fileRef.current) fileRef.current.value = ''
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: () => toast.error(t('toast.genericFailed')),
   })
 
   const onPreview = () => {
     const file = fileRef.current?.files?.[0]
     if (!file) {
-      toast.error('เลือกไฟล์ก่อน')
+      toast.error(t('toast.selectFile'))
       return
     }
     setPendingFile(file)
@@ -215,12 +239,12 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
 
   const onCommit = () => {
     if (importPreview?.summary.isDuplicate) {
-      toast.error(formatIw37nDuplicateMessage(importPreview.summary.duplicateOfBatchId))
+      toast.error(duplicateToastMsg(t, importPreview.summary.duplicateOfBatchId))
       return
     }
     const file = pendingFile ?? fileRef.current?.files?.[0]
     if (!file) {
-      toast.error('เลือกไฟล์ใหม่')
+      toast.error(t('toast.selectFileAgain'))
       return
     }
     importMut.mutate(file)
@@ -230,8 +254,8 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
     try {
       const blob = await fetchIw37nBatchCsv(batchId)
       downloadBlob(blob, `iw37n-import-batch-${batchId}.csv`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'ดาวน์โหลดไม่สำเร็จ')
+    } catch {
+      toast.error(t('toast.downloadFailed'))
     }
   }
 
@@ -242,13 +266,16 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
       <AppCard pad="compact">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-body-sm font-semibold text-app">อัปโหลด IW37N (มือ)</h3>
-            <p className="mt-1 text-xs text-app-muted">
-              ตรวจสอบ + สรุป error ก่อน commit · กันซ้ำด้วย SHA256 · หรือวางไฟล์ในโฟลเดอร์ (แท็บ Job)
+            <h3 className="text-body-sm font-semibold text-app">{t('iw37n.uploadTitle')}</h3>
+            <p className="mt-1 text-xs text-app-muted">{t('iw37n.uploadHint')}</p>
+            <p className="mt-2 text-xs text-app-muted">
+              {t('iw37n.confirmNoteBefore')}
+              <strong>{t('iw37n.confirmNoteStrong')}</strong>
+              {t('iw37n.confirmNoteAfter')}
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" asChild>
-            <Link to="/iw37n">หน้า IW37N เต็ม →</Link>
+            <Link to="/iw37n">{t('iw37n.fullPageLink')}</Link>
           </Button>
         </div>
         {canImport ? (
@@ -272,7 +299,7 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
                 onClick={onPreview}
               >
                 <ClipboardCheck className="size-4" />
-                {previewMut.isPending ? 'กำลังตรวจสอบ…' : 'ตรวจสอบก่อนนำเข้า'}
+                {previewMut.isPending ? t('iw37n.previewing') : t('iw37n.preview')}
               </Button>
             </div>
             {importPreview ? (
@@ -290,33 +317,33 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
             ) : null}
           </>
         ) : (
-          <p className="mt-3 text-xs text-app-muted">ต้องมีสิทธิ์ iw37n.import</p>
+          <p className="mt-3 text-xs text-app-muted">
+            {t('iw37n.needImportPerm')} <code className="text-xs">iw37n.import</code>
+          </p>
         )}
       </AppCard>
 
       <AppCard pad="compact">
-        <h3 className="text-body-sm font-semibold text-app">ประวัติ batch ล่าสุด</h3>
+        <h3 className="text-body-sm font-semibold text-app">{t('iw37n.historyTitle')}</h3>
         {batchesQ.isError ? (
           <EmptyState
             className="mt-4"
             icon={AlertCircle}
-            title="โหลดประวัติไม่สำเร็จ"
-            description={
-              batchesQ.error instanceof Error ? batchesQ.error.message : 'ลองใหม่อีกครั้ง'
-            }
-            action={{ label: 'ลองใหม่', onClick: () => void batchesQ.refetch() }}
+            title={t('iw37n.historyLoadFailed')}
+            description={t('iw37n.historyLoadFailedDesc')}
+            action={{ label: t('iw37n.retry'), onClick: () => void batchesQ.refetch() }}
           />
         ) : (
         <div className="app-table-shell mt-3 overflow-x-auto">
           <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>ไฟล์</TableHead>
-                <TableHead>เมื่อ</TableHead>
-                <TableHead>แถว</TableHead>
-                <TableHead>สถานะ</TableHead>
-                <TableHead className="text-right">รายงาน</TableHead>
+                <TableHead>{t('iw37n.table.id')}</TableHead>
+                <TableHead>{t('iw37n.table.file')}</TableHead>
+                <TableHead>{t('iw37n.table.when')}</TableHead>
+                <TableHead>{t('iw37n.table.rows')}</TableHead>
+                <TableHead>{t('iw37n.table.status')}</TableHead>
+                <TableHead className="text-right">{t('iw37n.table.report')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -333,8 +360,8 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
                   <TableCell colSpan={6} className="p-0">
                     <EmptyState
                       className="py-10"
-                      title="ยังไม่มี batch"
-                      description="นำเข้าไฟล์ IW37N หรือวางในโฟลเดอร์ inbound แล้วสแกนจากแท็บ Job"
+                      title={t('iw37n.emptyBatches')}
+                      description={t('iw37n.emptyBatchesHint')}
                     />
                   </TableCell>
                 </TableRow>
@@ -354,7 +381,7 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
                         </Badge>
                         {b.isDuplicate ? (
                           <Badge variant="outline" className="text-xs">
-                            ซ้ำ
+                            {t('iw37n.duplicate')}
                           </Badge>
                         ) : null}
                       </div>
@@ -363,11 +390,11 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
                       <div className="flex justify-end gap-2">
                         {b.isDuplicate && b.duplicateOfBatchId ? (
                           <Button type="button" size="sm" variant="outline" asChild>
-                            <Link to="/iw37n">batch #{b.duplicateOfBatchId}</Link>
+                            <Link to="/iw37n">{t('iw37n.batchLink', { id: b.duplicateOfBatchId })}</Link>
                           </Button>
                         ) : null}
                         <ReportExportButton
-                          label="ดาวน์โหลด log"
+                          label={t('iw37n.downloadLog')}
                           onClick={() => void onBatchCsv(b.id)}
                         />
                       </div>
@@ -385,8 +412,11 @@ function IntegrationIw37nTab({ canImport }: { canImport: boolean }) {
 }
 
 function IntegrationConfirmInTab() {
+  const { t } = useTranslation('integration')
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [importPreview, setImportPreview] = useState<ConfirmationImportPreviewResponse | null>(null)
   const statusQ = useQuery({
     queryKey: ['integration', 'status'],
     queryFn: fetchIntegrationStatus,
@@ -395,25 +425,56 @@ function IntegrationConfirmInTab() {
     placeholderData: keepPreviousData,
   })
 
+  const previewMut = useMutation({
+    mutationFn: postConfirmationImportPreview,
+    onSuccess: (data) => {
+      setImportPreview(data)
+      if (data.matchWoInDb === 0 && data.parseOk > 0) {
+        toast.warning(t('confirmIn.noWoMatch'), { duration: 10_000 })
+      } else {
+        toast.message(t('toast.confirmPreviewReady'))
+      }
+    },
+    onError: () => toast.error(t('toast.genericFailed')),
+  })
+
   const importMut = useMutation({
     mutationFn: postConfirmationImport,
     onSuccess: (data) => {
       toast.success(
-        `นำเข้า ${data.fileName}: +${data.inserted} / ~${data.updated} (ข้าม ${data.skipped}, error ${data.errors})`,
+        t('toast.confirmImportSuccess', {
+          fileName: data.fileName,
+          inserted: data.inserted,
+          updated: data.updated,
+          skipped: data.skipped,
+          errors: data.errors,
+        }),
       )
+      setImportPreview(null)
+      setPendingFile(null)
       void qc.invalidateQueries({ queryKey: ['integration', 'status'] })
       if (fileRef.current) fileRef.current.value = ''
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: () => toast.error(t('toast.genericFailed')),
   })
 
-  const onImport = () => {
+  const onPreview = () => {
     const file = fileRef.current?.files?.[0]
     if (!file) {
-      toast.error('เลือกไฟล์ก่อน')
+      toast.error(t('toast.selectFile'))
       return
     }
-    importMut.mutate(file)
+    setPendingFile(file)
+    setImportPreview(null)
+    previewMut.mutate(file)
+  }
+
+  const onCommit = () => {
+    if (!pendingFile) {
+      toast.error(t('confirmIn.noFile'))
+      return
+    }
+    importMut.mutate(pendingFile)
   }
 
   const pending = statusQ.data?.pendingConfirmFiles ?? []
@@ -424,40 +485,50 @@ function IntegrationConfirmInTab() {
       <AppCard pad="compact">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-body-sm font-semibold text-app">CONFIRM_IN (SAP → PM)</h3>
+            <h3 className="text-body-sm font-semibold text-app">{t('confirmIn.title')}</h3>
             <p className="mt-1 text-xs text-app-muted">
-              แมปเดียว M_Confirm.php · .csv/.xlsx · ข้าม 2 แถว — หรือวางใน{' '}
-              <code className="text-code">inbound/confirm</code> แล้วสแกน (แท็บ Job)
+              {t('confirmIn.hint')}{' '}
+              <code className="text-code">inbound/confirm</code> {t('confirmIn.hintFolder')}
             </p>
+            <p className="mt-1 text-xs text-amber-800">{t('confirmIn.zb02Warning')}</p>
             {inboundDir ? (
               <p className="mt-2 break-all text-xs text-app-muted">{inboundDir}</p>
             ) : null}
             {pending.length > 0 ? (
               <p className="mt-1 text-xs text-amber-700">
-                รอสแกน {pending.length} ไฟล์ในโฟลเดอร์
+                {t('confirmIn.pendingScan', { count: pending.length })}
               </p>
             ) : null}
           </div>
           <Button type="button" variant="outline" size="sm" asChild>
-            <Link to="/confirmation">หน้า Confirmation →</Link>
+            <Link to="/confirmation">{t('confirmIn.pageLink')}</Link>
           </Button>
         </div>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
           <Input ref={fileRef} type="file" accept=".xls,.xlsx,.csv" className="max-w-md" />
           <Button
             type="button"
+            variant="outline"
             className="gap-2"
-            disabled={importMut.isPending}
-            onClick={onImport}
+            disabled={previewMut.isPending || importMut.isPending}
+            onClick={onPreview}
           >
-            <Upload className="size-4" />
-            {importMut.isPending ? 'กำลังนำเข้า…' : 'อัปโหลด Confirm'}
+            {previewMut.isPending ? t('confirmIn.previewing') : t('confirmIn.preview')}
           </Button>
         </div>
+        {importPreview ? (
+          <ConfirmImportReviewPanel
+            preview={importPreview}
+            committing={importMut.isPending}
+            onCommit={onCommit}
+            onCancel={() => {
+              setImportPreview(null)
+              setPendingFile(null)
+            }}
+          />
+        ) : null}
         {statusQ.isError ? (
-          <p className="mt-3 text-xs text-amber-700">
-            ไม่สามารถอ่านสถานะโฟลเดอร์ — ตรวจ migration 075/076
-          </p>
+          <p className="mt-3 text-xs text-amber-700">{t('confirmIn.folderStatusFailed')}</p>
         ) : null}
       </AppCard>
     </div>
@@ -465,6 +536,7 @@ function IntegrationConfirmInTab() {
 }
 
 function IntegrationConfirmTab() {
+  const { t } = useTranslation('integration')
   const [exporting, setExporting] = useState<'xlsx' | 'csv' | null>(null)
   const exportQ = useQuery({
     queryKey: ['confirmation', 'export', 'preview'],
@@ -484,8 +556,8 @@ function IntegrationConfirmTab() {
         blob,
         format === 'xlsx' ? 'Export_Confirm.xlsx' : confirmationSapCsvFilename(),
       )
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'ส่งออกไม่สำเร็จ')
+    } catch {
+      toast.error(t('toast.exportFailed'))
     } finally {
       setExporting(null)
     }
@@ -494,41 +566,40 @@ function IntegrationConfirmTab() {
   const items = exportQ.data?.items ?? []
   const preview = items.slice(0, 20)
   const scope = exportQ.data?.scope
-  const actorWkctr = exportQ.data?.actorWkctr ?? ''
 
   return (
     <div className="space-y-4">
       <AppCard pad="compact">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-body-sm font-semibold text-app">CONFIRM_OUT → SAP</h3>
+            <h3 className="text-body-sm font-semibold text-app">{t('confirmOut.title')}</h3>
             <p className="mt-1 text-xs text-app-muted">
-              คอลัมน์ตาม M_Export_confirm_excel.php · syst CRTD/REL
+              {t('confirmOut.scopePrefix')}
               {scope === 'ALL'
-                ? ' · สิทธิ์ ALL (confirmation.export.all)'
+                ? t('confirmOut.scopeAll')
                 : scope === 'OWN'
-                  ? ` · OWN wkctr=${actorWkctr || '-'}`
+                  ? t('confirmOut.scopeOwn')
                   : ''}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" asChild>
-              <Link to="/confirmation/export">ดูตัวอย่างเต็ม</Link>
+              <Link to="/confirmation">{t('confirmOut.viewExport')}</Link>
             </Button>
             <ReportExportButton
               format="xlsx"
-              label="ส่งออก Excel"
+              label={t('confirmOut.exportExcel')}
               loading={exporting === 'xlsx'}
-              loadingLabel="กำลังส่งออก…"
+              loadingLabel={t('confirmOut.exporting')}
               disabled={exporting != null || items.length === 0}
               onClick={() => void onDownload('xlsx')}
             />
             <ReportExportButton
               format="csv"
-              label="CSV สำหรับ SAP"
+              label={t('confirmOut.exportCsv')}
               variant="default"
               loading={exporting === 'csv'}
-              loadingLabel="กำลังส่งออก…"
+              loadingLabel={t('confirmOut.exporting')}
               disabled={exporting != null || items.length === 0}
               onClick={() => void onDownload('csv')}
             />
@@ -536,15 +607,15 @@ function IntegrationConfirmTab() {
         </div>
         <p className="mt-2 text-xs text-app-muted">
           {exportQ.isLoading && !exportQ.data
-            ? 'กำลังโหลด…'
+            ? t('confirmOut.loading')
             : exportQ.isError
-              ? `โหลดไม่สำเร็จ: ${exportQ.error instanceof Error ? exportQ.error.message : String(exportQ.error)}`
-              : `ทั้งหมด ${items.length} แถว — แสดงตัวอย่าง ${preview.length} แถวแรก`}
+              ? t('confirmOut.loadFailed')
+              : t('confirmOut.rowSummary', { total: items.length, preview: preview.length })}
         </p>
         {exportQ.isError ? (
           <div className="mt-3">
             <Button type="button" variant="outline" size="sm" onClick={() => void exportQ.refetch()}>
-              ลองใหม่
+              {t('confirmOut.retry')}
             </Button>
           </div>
         ) : null}
@@ -554,13 +625,13 @@ function IntegrationConfirmTab() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10 text-right">#</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Op</TableHead>
-              <TableHead>Wrk Ctr</TableHead>
-              <TableHead className="text-right">Act.Work</TableHead>
-              <TableHead>Start</TableHead>
-              <TableHead>End</TableHead>
+              <TableHead className="w-10 text-right">{t('confirmOut.table.no')}</TableHead>
+              <TableHead>{t('confirmOut.table.order')}</TableHead>
+              <TableHead>{t('confirmOut.table.op')}</TableHead>
+              <TableHead>{t('confirmOut.table.wrkCtr')}</TableHead>
+              <TableHead className="text-right">{t('confirmOut.table.actWork')}</TableHead>
+              <TableHead>{t('confirmOut.table.start')}</TableHead>
+              <TableHead>{t('confirmOut.table.end')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -578,11 +649,11 @@ function IntegrationConfirmTab() {
                     <div className="flex flex-col items-center gap-3 py-6">
                       <EmptyState
                         className="border-0 bg-transparent py-4"
-                        title="ไม่มีแถวสำหรับส่งออก"
-                        description="ตรวจสอบสถานะ CRTD/REL และสิทธิ์ OWN/ALL ที่หน้ารับรองงาน"
+                        title={t('confirmOut.emptyTitle')}
+                        description={t('confirmOut.emptyDesc')}
                       />
                       <Button type="button" variant="outline" size="sm" asChild>
-                        <Link to="/confirmation">ไปหน้ารับรองงาน</Link>
+                        <Link to="/confirmation">{t('confirmOut.goExport')}</Link>
                       </Button>
                     </div>
                 </TableCell>
@@ -612,6 +683,7 @@ function IntegrationConfirmTab() {
 }
 
 function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
+  const { t } = useTranslation('integration')
   const qc = useQueryClient()
   const statusQ = useQuery({
     queryKey: ['integration', 'status'],
@@ -642,10 +714,16 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
       const iw = s.iw37n
       const cf = s.confirm
       toast.success(
-        `สแกนเสร็จ (${data.job.status}) — IW37N ${iw?.filesProcessed ?? 0}/${iw?.filesFound ?? 0}, Confirm ${cf?.filesProcessed ?? 0}/${cf?.filesFound ?? 0}`,
+        t('toast.scanFolderDoneIntegration', {
+          status: data.job.status,
+          iwProcessed: iw?.filesProcessed ?? 0,
+          iwFound: iw?.filesFound ?? 0,
+          cfProcessed: cf?.filesProcessed ?? 0,
+          cfFound: cf?.filesFound ?? 0,
+        }),
       )
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'สแกนไม่สำเร็จ'),
+    onError: () => toast.error(t('toast.scanFailed')),
   })
 
   const st = statusQ.data
@@ -655,10 +733,10 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
       <AppCard pad="compact">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-body-sm font-semibold text-app">โฟลเดอร์ inbound (watch)</h3>
+            <h3 className="text-body-sm font-semibold text-app">{t('jobs.folderTitle')}</h3>
             {statusQ.isError ? (
               <p className="mt-2 text-xs text-amber-700">
-                รัน migration{' '}
+                {t('jobs.migrationHint')}{' '}
                 <code className="text-code">075</code> + <code className="text-code">076</code>
               </p>
             ) : statusQ.isLoading ? (
@@ -666,24 +744,32 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
             ) : st ? (
               <div className="mt-2 space-y-2 text-xs text-app-muted">
                 <p className="break-all">
-                  <span className="font-medium text-app">IW37N:</span> {st.inboundIw37nDir}
-                  <span className="ml-2">({st.pendingIw37nFiles.length} ไฟล์รอ)</span>
+                  <span className="font-medium text-app">{t('jobs.iw37nDir')}</span> {st.inboundIw37nDir}
+                  <span className="ml-2">
+                    {t('jobs.filesWaiting', { count: st.pendingIw37nFiles.length })}
+                  </span>
                 </p>
                 <p className="break-all">
-                  <span className="font-medium text-app">Confirm IN:</span>{' '}
+                  <span className="font-medium text-app">{t('jobs.confirmDir')}</span>{' '}
                   {st.inboundConfirmDir}
-                  <span className="ml-2">({st.pendingConfirmFiles.length} ไฟล์รอ)</span>
+                  <span className="ml-2">
+                    {t('jobs.filesWaiting', { count: st.pendingConfirmFiles.length })}
+                  </span>
                 </p>
                 <p>
-                  สแกนอัตโนมัติ:{' '}
+                  {t('jobs.autoScan')}{' '}
                   {st.watchEnabled
-                    ? `ทุก ${st.watchIntervalMinutes} นาที`
-                    : 'ปิด (integration.watch_enabled)'}
+                    ? t('jobs.autoScanOn', { minutes: st.watchIntervalMinutes })
+                    : t('jobs.autoScanOff')}
                 </p>
                 {st.lastJob ? (
                   <p>
-                    Job ล่าสุด #{st.lastJob.id} ({st.lastJob.jobType}) — {st.lastJob.status} (
-                    {new Date(st.lastJob.startedAt).toLocaleString('th-TH')})
+                    {t('jobs.lastJob', {
+                      id: st.lastJob.id,
+                      type: st.lastJob.jobType,
+                      status: st.lastJob.status,
+                      time: new Date(st.lastJob.startedAt).toLocaleString(),
+                    })}
                   </p>
                 ) : null}
               </div>
@@ -698,7 +784,7 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
               onClick={() => scanMut.mutate()}
             >
               <FolderSync className="size-4" />
-              {scanMut.isPending ? 'กำลังสแกน…' : 'สแกนโฟลเดอร์เลย'}
+              {scanMut.isPending ? t('jobs.scanning') : t('jobs.scanNow')}
             </Button>
           ) : null}
         </div>
@@ -706,42 +792,49 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
           <ul className="mt-3 list-inside list-disc text-xs text-app-muted">
             {st.pendingIw37nFiles.map((f) => (
               <li key={`iw37n-${f.name}`}>
-                [IW37N] {f.name} ({Math.round(f.sizeBytes / 1024)} KB)
+                {t('jobs.pendingFileIw37n', {
+                  name: f.name,
+                  sizeKb: Math.round(f.sizeBytes / 1024),
+                })}
               </li>
             ))}
             {st.pendingConfirmFiles.map((f) => (
               <li key={`confirm-${f.name}`}>
-                [Confirm] {f.name} ({Math.round(f.sizeBytes / 1024)} KB)
+                {t('jobs.pendingFileConfirm', {
+                  name: f.name,
+                  sizeKb: Math.round(f.sizeBytes / 1024),
+                })}
               </li>
             ))}
           </ul>
         ) : null}
         <p className="mt-3 text-xs text-app-muted">
-          CLI: <code className="rounded bg-app-muted px-1">npm run integration:watch</code> (ใน
-          backend)
+          {t('jobs.cliHint')}{' '}
+          <code className="rounded bg-app-muted px-1">{t('jobs.cliCommand')}</code>{' '}
+          {t('jobs.cliBackend')}
         </p>
       </AppCard>
 
       <AppCard pad="compact">
-        <h3 className="text-body-sm font-semibold text-app">ประวัติ integration job</h3>
+        <h3 className="text-body-sm font-semibold text-app">{t('jobs.historyTitle')}</h3>
         {jobsQ.isError ? (
           <EmptyState
             className="mt-4"
             icon={AlertCircle}
-            title="ยังไม่มีตาราง integration_job"
-            description="รัน migration 075 และ 076 บนฐานข้อมูล"
+            title={t('jobs.noTableTitle')}
+            description={t('jobs.noTableDesc')}
           />
         ) : (
         <div className="app-table-shell mt-3 overflow-x-auto">
           <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>ประเภท</TableHead>
-                <TableHead>Trigger</TableHead>
-                <TableHead>สถานะ</TableHead>
-                <TableHead>เริ่ม</TableHead>
-                <TableHead>ไฟล์ / batch</TableHead>
+                <TableHead>{t('jobs.table.id')}</TableHead>
+                <TableHead>{t('jobs.table.type')}</TableHead>
+                <TableHead>{t('jobs.table.trigger')}</TableHead>
+                <TableHead>{t('jobs.table.status')}</TableHead>
+                <TableHead>{t('jobs.table.started')}</TableHead>
+                <TableHead>{t('jobs.table.files')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -758,8 +851,8 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
                   <TableCell colSpan={6} className="p-0">
                     <EmptyState
                       className="py-10"
-                      title="ยังไม่มี job"
-                      description="กดสแกนโฟลเดอร์หรือรอ cron integration:watch"
+                      title={t('jobs.emptyJobs')}
+                      description={t('jobs.emptyJobsHint')}
                     />
                   </TableCell>
                 </TableRow>
@@ -773,9 +866,17 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
                   }
                   const detail =
                     sum.iw37n || sum.confirm
-                      ? `IW37N ${sum.iw37n?.filesProcessed ?? 0}/${sum.iw37n?.filesFound ?? 0}, Confirm ${sum.confirm?.filesProcessed ?? 0}/${sum.confirm?.filesFound ?? 0}`
+                      ? t('jobs.jobDetailIw37n', {
+                          processed: sum.iw37n?.filesProcessed ?? 0,
+                          found: sum.iw37n?.filesFound ?? 0,
+                          cfProcessed: sum.confirm?.filesProcessed ?? 0,
+                          cfFound: sum.confirm?.filesFound ?? 0,
+                        })
                       : sum.filesFound != null
-                        ? `${sum.filesProcessed ?? 0}/${sum.filesFound}`
+                        ? t('jobs.jobDetailFiles', {
+                            processed: sum.filesProcessed ?? 0,
+                            found: sum.filesFound,
+                          })
                         : ''
                   return (
                     <TableRow key={j.id}>
@@ -796,12 +897,12 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs text-app-muted">
-                        {new Date(j.startedAt).toLocaleString('th-TH')}
+                        {new Date(j.startedAt).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-xs text-app-muted">
                         {j.fileName ?? '—'}
                         {detail ? ` · ${detail}` : ''}
-                        {j.batchId ? ` · batch #${j.batchId}` : ''}
+                        {j.batchId ? t('jobs.batchSuffix', { id: j.batchId }) : ''}
                       </TableCell>
                     </TableRow>
                   )
@@ -817,57 +918,65 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
 }
 
 function IntegrationGuideTab() {
+  const { t } = useTranslation('integration')
   return (
     <AppCard pad="default" className="space-y-4 text-body-sm text-app">
       <div className="flex items-center gap-2 text-app">
         <BookOpen className="size-4" />
-        <h3 className="font-semibold">สัญญาไฟล์ CSV (SAP ↔ PM)</h3>
+        <h3 className="font-semibold">{t('guide.title')}</h3>
       </div>
 
       <section>
-        <h4 className="font-medium text-app">IW37N_IN (SAP → PM)</h4>
+        <h4 className="font-medium text-app">{t('guide.iw37nTitle')}</h4>
         <ul className="mt-2 list-inside list-disc space-y-1 text-xs">
-          <li>โฟลเดอร์: <code>data/integration/inbound/iw37n/</code></li>
-          <li>ชื่อแนะนำ: <code>IW37N_YYYYMMDD_HHmmss.csv</code></li>
-          <li>UTF-8, comma/tab, ข้าม 2 แถว header</li>
-          <li>Upsert คีย์: wkorder + opac</li>
+          <li>
+            {t('guide.iw37nFolder')} <code>{t('guide.iw37nFolderPath')}</code>
+          </li>
+          <li>
+            {t('guide.iw37nName')} <code>{t('guide.iw37nNamePattern')}</code>
+          </li>
+          <li>{t('guide.iw37nFormat')}</li>
+          <li>{t('guide.iw37nUpsert')}</li>
         </ul>
       </section>
 
       <section>
-        <h4 className="font-medium text-app">CONFIRM_IN (SAP → PM)</h4>
+        <h4 className="font-medium text-app">{t('guide.confirmInTitle')}</h4>
         <ul className="mt-2 list-inside list-disc space-y-1 text-xs">
-          <li>โฟลเดอร์: <code>data/integration/inbound/confirm/</code></li>
-          <li>ชื่อแนะนำ: <code>CONFIRM_IN_YYYYMMDD.csv</code></li>
-          <li>Parser: <code>confirmation-import.ts</code> (เทียบ M_Confirm.php)</li>
+          <li>
+            {t('guide.confirmInFolder')} <code>{t('guide.confirmInFolderPath')}</code>
+          </li>
+          <li>
+            {t('guide.confirmInName')} <code>{t('guide.confirmInNamePattern')}</code>
+          </li>
+          <li>
+            {t('guide.confirmInParser')} <code>{t('guide.confirmInParserFile')}</code>{' '}
+            {t('guide.confirmInParserNote')}
+          </li>
         </ul>
       </section>
 
       <section>
-        <h4 className="font-medium text-app">CONFIRM_OUT (PM → SAP)</h4>
+        <h4 className="font-medium text-app">{t('guide.confirmOutTitle')}</h4>
         <ul className="mt-2 list-inside list-disc space-y-1 text-xs">
-          <li>ดาวน์โหลดจากแท็บ Confirm หรือ <Link to="/confirmation">/confirmation</Link></li>
-          <li>ชื่อไฟล์: <code>CONFIRM_OUT_YYYYMMDD_HHmmss.csv</code></li>
-          <li>กรอง syst CRTD/REL · สิทธิ์ confirmation.export.all = ทุกแถว</li>
+          <li>
+            {t('guide.confirmOutDownload')}{' '}
+            <Link to="/confirmation">{t('guide.confirmOutLink')}</Link>
+          </li>
+          <li>
+            {t('guide.confirmOutName')} <code>{t('guide.confirmOutNamePattern')}</code>
+          </li>
+          <li>{t('guide.confirmOutFilter')}</li>
         </ul>
       </section>
 
       <section>
-        <h4 className="font-medium text-app">โครงสร้างโฟลเดอร์</h4>
+        <h4 className="font-medium text-app">{t('guide.folderTitle')}</h4>
         <pre className="mt-2 overflow-x-auto rounded-button bg-app-muted p-3 text-xs">
-          {`data/integration/
-  inbound/iw37n/     ← SAP วางไฟล์
-  inbound/confirm/   ← CONFIRM_IN (อนาคต)
-  outbound/confirm/  ← export สำหรับ SAP เก็บ
-  processing/
-  archive/inbound/YYYY-MM/
-  error/`}
+          {t('guide.folderTree')}
         </pre>
       </section>
 
-      <p className="text-xs text-app-muted">
-        รายละเอียดเต็ม: <code>docs/parity-pending/15-sap-csv-integration.md</code>
-      </p>
     </AppCard>
   )
 }

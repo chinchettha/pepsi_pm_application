@@ -5,6 +5,7 @@ import {
   type EngUtilizationChartRow,
 } from '@/lib/eng-utilization-chart'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   person: EngUtilizationChartRow
@@ -30,6 +31,7 @@ export function EngUtilizationPersonCard({
   variant = 'default',
   imageUrl,
 }: Props) {
+  const { t } = useTranslation('reports')
   const kiosk = variant === 'kiosk'
   const [imgFailed, setImgFailed] = useState(false)
   const showPhoto = person.hasImage && !imgFailed
@@ -83,21 +85,29 @@ export function EngUtilizationPersonCard({
       </p>
 
       {kiosk ? (
-        <div className="eng-util-person-card__stats" aria-label="ชั่วโมง HR และจำนวน WO">
+        <div
+          className="eng-util-person-card__stats"
+          aria-label={t('engUtil.cardStatsAria')}
+        >
           <div className="eng-util-person-card__stat">
             <span className="eng-util-person-card__stat-value">
               {formatEngUtilizationHrHour(person.hrHour)}
             </span>
-            <span className="eng-util-person-card__stat-label">HR ชม.</span>
+            <span className="eng-util-person-card__stat-label">
+              {t('engUtil.cardHrHour')}
+            </span>
           </div>
           <div className="eng-util-person-card__stat">
             <span className="eng-util-person-card__stat-value">{person.woCount}</span>
-            <span className="eng-util-person-card__stat-label">WO</span>
+            <span className="eng-util-person-card__stat-label">{t('engUtil.cardWo')}</span>
           </div>
         </div>
       ) : (
         <p className="mt-1 text-center text-caption tabular-nums text-app-muted">
-          HR {formatEngUtilizationHrHour(person.hrHour)} ชม. · WO {person.woCount}
+          {t('engUtil.cardHrWoLine', {
+            hr: formatEngUtilizationHrHour(person.hrHour),
+            wo: person.woCount,
+          })}
         </p>
       )}
 
@@ -112,18 +122,24 @@ export function EngUtilizationPersonCard({
           <div
             className="h-full bg-emerald-500"
             style={{ width: `${Math.min(100, person.percentPm)}%` }}
-            title={`%PM ${person.percentPm.toFixed(1)}`}
+            title={t('engUtil.cardPctPmTitle', {
+              pct: person.percentPm.toFixed(1),
+            })}
           />
           <div
             className="h-full bg-rose-500"
             style={{ width: `${Math.min(100, person.percentReactive)}%` }}
-            title={`%Reactive ${person.percentReactive.toFixed(1)}`}
+            title={t('engUtil.cardPctReactiveTitle', {
+              pct: person.percentReactive.toFixed(1),
+            })}
           />
           {showRca ? (
             <div
               className="app-tone-info-fill h-full"
               style={{ width: `${Math.min(100, person.percentRca)}%` }}
-              title={`%RCA ${person.percentRca.toFixed(1)}`}
+              title={t('engUtil.cardPctRcaTitle', {
+                pct: person.percentRca.toFixed(1),
+              })}
             />
           ) : null}
         </div>
@@ -138,12 +154,17 @@ export function EngUtilizationPersonCard({
         {total.toFixed(1)}%
       </p>
       <p className={kiosk ? 'eng-util-person-card__meta' : 'text-center text-badge text-app-muted'}>
-        PM {person.percentPm.toFixed(0)} · Re {person.percentReactive.toFixed(0)}
-        {showRca ? ` · RCA ${person.percentRca.toFixed(0)}` : ''}
+        {t('engUtil.cardMeta', {
+          pm: person.percentPm.toFixed(0),
+          re: person.percentReactive.toFixed(0),
+          rca: showRca
+            ? t('engUtil.cardRcaSuffix', { pct: person.percentRca.toFixed(0) })
+            : '',
+        })}
       </p>
       {!kiosk && (!person.hasImage || imgFailed) ? (
         <Badge variant="outline" className="mt-1 border-amber-300 text-badge text-amber-800">
-          ไม่มีรูป
+          {t('engUtil.cardNoPhoto')}
         </Badge>
       ) : null}
     </div>

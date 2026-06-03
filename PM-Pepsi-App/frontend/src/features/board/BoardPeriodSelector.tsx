@@ -3,6 +3,7 @@ import {
   type BoardPeriodId,
 } from '@/lib/board-period'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 export function BoardPeriodSelector({
   value,
@@ -13,11 +14,13 @@ export function BoardPeriodSelector({
   onChange: (id: BoardPeriodId) => void
   className?: string
 }) {
+  const { t } = useTranslation('board')
+
   return (
     <div
       className={cn('engineering-board__period', className)}
       role="group"
-      aria-label="ช่วงเวลารายงาน"
+      aria-label={t('period.aria')}
     >
       {BOARD_PERIOD_OPTIONS.map((opt) => (
         <button
@@ -30,7 +33,7 @@ export function BoardPeriodSelector({
           aria-pressed={value === opt.id}
           onClick={() => onChange(opt.id)}
         >
-          {opt.label}
+          {t(`period.${opt.id}`)}
         </button>
       ))}
     </div>

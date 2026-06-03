@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n'
 import { getBoardKioskToken } from '@/lib/board-kiosk'
 import { getAuthToken } from '@/features/auth/login-api'
 import { getApiBaseUrl } from '@/lib/api-client'
@@ -34,7 +35,7 @@ export async function fetchApi<T>(
         const body = JSON.parse(text) as { error?: string; message?: string }
         if (res.status === 503 && body.error === 'MAINTENANCE') {
           throw new MaintenanceModeError(
-            body.message ?? 'ระบบอยู่ระหว่างบำรุงรักษา — บางฟังก์ชันอาจใช้งานไม่ได้ชั่วคราว',
+            body.message ?? i18n.t('api.maintenanceDefault', { ns: 'common' }),
           )
         }
         if (body.message || body.error) {
@@ -53,10 +54,8 @@ export async function fetchApi<T>(
     return JSON.parse(text) as T
   } catch {
     if (text.trimStart().startsWith('<')) {
-      throw new Error(
-        'ได้รับ HTML แทน JSON — ตรวจว่า backend API รันอยู่ (พอร์ต 4000) และ path ถูกต้อง',
-      )
+      throw new Error(i18n.t('api.htmlNotJson', { ns: 'common' }))
     }
-    throw new Error(text.slice(0, 200) || 'Invalid JSON response')
+    throw new Error(text.slice(0, 200) || i18n.t('api.invalidJson', { ns: 'common' }))
   }
 }

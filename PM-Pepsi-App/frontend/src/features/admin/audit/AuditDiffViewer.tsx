@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 function prettyJson(value: unknown): string {
   if (value === null || value === undefined) return ''
@@ -57,9 +58,9 @@ function buildDiffLines(before: unknown, after: unknown): DiffLine[] {
 
 const kindStyles: Record<DiffLine['kind'], string> = {
   same: 'bg-app-subtle',
-  added: 'bg-emerald-50 border-l-4 border-emerald-500',
-  removed: 'bg-red-50 border-l-4 border-red-400',
-  changed: 'bg-amber-50 border-l-4 border-amber-500',
+  added: 'admin-diff--added',
+  removed: 'admin-diff--removed',
+  changed: 'admin-diff--changed',
 }
 
 export function AuditDiffViewer({
@@ -71,11 +72,12 @@ export function AuditDiffViewer({
   after: unknown | null
   className?: string
 }) {
+  const { t } = useTranslation('admin')
   const lines = buildDiffLines(before, after)
   const hasStructured = lines.some((l) => l.kind !== 'same')
 
   if (!before && !after) {
-    return <p className="text-caption">ไม่มีข้อมูล before/after</p>
+    return <p className="text-caption">{t('audit.diffNoData')}</p>
   }
 
   if (!hasStructured && lines.length === 1 && lines[0].kind === 'same') {
@@ -89,7 +91,9 @@ export function AuditDiffViewer({
   return (
     <div className={cn('grid gap-3 md:grid-cols-2', className)}>
       <div>
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-app-muted">Before</p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-app-muted">
+          {t('audit.diffBefore')}
+        </p>
         <div className="max-h-96 space-y-2 overflow-auto rounded-button border border-app p-2">
           {lines.map((line) =>
             line.kind === 'added' ? null : (
@@ -104,7 +108,9 @@ export function AuditDiffViewer({
         </div>
       </div>
       <div>
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-app-muted">After</p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-app-muted">
+          {t('audit.diffAfter')}
+        </p>
         <div className="max-h-96 space-y-2 overflow-auto rounded-button border border-app p-2">
           {lines.map((line) =>
             line.kind === 'removed' ? null : (

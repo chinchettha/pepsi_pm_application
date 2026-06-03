@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { logoNavStyle } from '@/lib/branding-asset-css'
 import { Palette } from 'lucide-react'
 import type { CSSProperties } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type ThemePreviewCardProps = {
   form: AdminBranding
@@ -11,14 +12,16 @@ export type ThemePreviewCardProps = {
 }
 
 export function ThemePreviewCard({ form, logoPreviewSrc }: ThemePreviewCardProps) {
+  const { t } = useTranslation('admin')
+
   return (
     <Card className="admin-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Palette className="size-5" aria-hidden />
-          ตัวอย่าง
+          {t('branding.previewTitle')}
         </CardTitle>
-        <CardDescription>แสดงผลตามค่าที่กำลังแก้ (ยังไม่บันทึกจนกว่ากดบันทึก)</CardDescription>
+        <CardDescription>{t('branding.previewDesc')}</CardDescription>
       </CardHeader>
       <CardContent>
         <div

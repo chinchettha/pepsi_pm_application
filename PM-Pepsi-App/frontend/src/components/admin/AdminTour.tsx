@@ -8,6 +8,7 @@ import { AdminTourTooltip } from '@/components/admin/AdminTourTooltip'
 import { toastSuccess } from '@/lib/app-toast'
 import { EVENTS, Joyride, STATUS, type EventHandler } from 'react-joyride'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -20,8 +21,9 @@ export function AdminTour({
   run: boolean
   onRunChange: (run: boolean) => void
 }) {
+  const { t } = useTranslation('admin')
   const navigate = useNavigate()
-  const steps = useMemo(() => buildAdminTourSteps(), [])
+  const steps = useMemo(() => buildAdminTourSteps(t), [t])
 
   const handleEvent: EventHandler = (data) => {
     if (data.type === EVENTS.STEP_BEFORE) {
@@ -31,12 +33,12 @@ export function AdminTour({
     if (data.type === EVENTS.TOUR_END) {
       markAdminTourSeen()
       onRunChange(false)
-      toastSuccess(`จบทัวร์ Admin — ครบ ${ADMIN_TOUR_STEP_COUNT} ขั้นตอน`)
+      toastSuccess(t('tour.endToast', { count: ADMIN_TOUR_STEP_COUNT }))
     }
     if (data.status === STATUS.SKIPPED) {
       markAdminTourSeen()
       onRunChange(false)
-      toast.message('ข้ามทัวร์ Admin — เปิดใหม่ได้จากปุ่ม「ทัวร์ Admin」')
+      toast.message(t('tour.skipToast'))
     }
   }
 
@@ -49,11 +51,11 @@ export function AdminTour({
       onEvent={handleEvent}
       tooltipComponent={AdminTourTooltip}
       locale={{
-        back: 'กลับ',
-        close: 'ปิด',
-        last: 'เสร็จสิ้น',
-        next: 'ถัดไป',
-        skip: 'ข้าม',
+        back: t('tour.joyride.back'),
+        close: t('tour.joyride.close'),
+        last: t('tour.joyride.last'),
+        next: t('tour.joyride.next'),
+        skip: t('tour.joyride.skip'),
       }}
       options={{
         primaryColor: 'var(--brand-pepsi-blue, #004c97)',

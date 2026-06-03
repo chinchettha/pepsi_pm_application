@@ -8,7 +8,8 @@ const base = {
   byWkzb: [],
   teamA: { count: 2, workSumMinutes: 100 },
   teamB: { count: 1, workSumMinutes: 50 },
-  teamP: { count: 0, workSumMinutes: 0 },
+  teamEE: { count: 0, workSumMinutes: 0 },
+  teamUT: { count: 0, workSumMinutes: 0 },
 }
 
 describe('applyPendingTeamToFilterDetail', () => {
@@ -33,13 +34,13 @@ describe('applyPendingTeamToFilterDetail', () => {
     expect(data.teamA).toEqual(base.teamA)
   })
 
-  it('assigns unassigned row to team P', () => {
+  it('assigns unassigned row to team EE', () => {
     const { data } = applyPendingTeamToFilterDetail(
       base,
       [{ id: '9', team: '', work: 25 }],
-      { '9': 'P' },
+      { '9': 'EE' },
     )
-    expect(data.teamP).toEqual({ count: 1, workSumMinutes: 25 })
+    expect(data.teamEE).toEqual({ count: 1, workSumMinutes: 25 })
   })
 
   it('patchRowsTeam updates team on matching ids only', () => {
@@ -47,8 +48,8 @@ describe('applyPendingTeamToFilterDetail', () => {
       { id: '1', team: 'A', work: 10 },
       { id: '2', team: 'B', work: 20 },
     ]
-    const next = patchRowsTeam(rows, new Map([['1', 'P']]))
-    expect(next[0].team).toBe('P')
+    const next = patchRowsTeam(rows, new Map([['1', 'UT']]))
+    expect(next[0].team).toBe('UT')
     expect(next[1].team).toBe('B')
   })
 })

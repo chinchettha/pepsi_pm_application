@@ -2,6 +2,7 @@ import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
 import { z } from 'zod'
 import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
+import { recordRevision } from '../lib/resource-revision.js'
 import { createRequirePermission } from '../middleware/require-permission.js'
 import {
   movePlanReasonsResponseSchema,
@@ -68,13 +69,24 @@ export function registerSchedulingRoutes(
       try {
         const result = await moveWorkOrderPlan(pool, {
           ...parsed.data,
+          reasonCode: parsed.data.reasonCode ?? '',
           mwkctr: user.wkctr || user.idwkctr,
         })
         voidAudit(pool, req, {
           action: 'planning.write',
           resource: 'tbiw37n',
           resourceId: String(parsed.data.idiw37),
-          after: sanitizeAuditPayload(parsed.data),
+          before: sanitizeAuditPayload(result.before),
+          after: sanitizeAuditPayload({ ...parsed.data, mpcount: result.mpcount }),
+        })
+        void recordRevision(pool, {
+          resourceType: 'calendar_event',
+          resourceId: String(parsed.data.idiw37),
+          changeKind: 'move_plan',
+          actorId: user.idwkctr,
+          actorRole: user.userst,
+          before: result.before,
+          after: result.after,
         })
         res.json(
           movePlanResponseSchema.parse({

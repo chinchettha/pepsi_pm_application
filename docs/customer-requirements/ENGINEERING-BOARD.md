@@ -32,9 +32,17 @@
 2. **ประกาศ** — รายการแรกจาก `GET /api/v1/announcements/active` (ถ้ามี)
 3. **โซน A — KPI 4 การ์ด** — จาก `GET /api/v1/dashboard/summary` (เดียวกับหน้าแรก) · `BoardKpiZone`
    - ใบงานเปิด · ปิดเดือนนี้ · รอจ่ายงาน · นำเข้า IW37N ล่าสุด
-4. **โซน C — กิจกรรมล่าสุด** — รับงาน/ปิดงาน (สูงสุด 12) · `BoardActivityFeed` · `GET /api/v1/board/activity?period=…`
-5. **กราฟ + การ์ดทีม** — Eng Utilization ตามช่วงที่เลือก (วันนี้ / 7 วัน / สัปดาห์)
-6. **ตาราง Week-to-Week** — จาก `GET /api/v1/reports/kpi` (8 สัปดาห์)
+4. **โซน C — ค่าวัด PM** — กระแส 3 เฟส / Vibration + กราฟย่อ (สูงสุด 8 กลุ่ม) · `BoardPmReadingsPanel` · `GET /api/v1/board/pm-readings?period=…`
+5. **โซน C — กิจกรรมล่าสุด** — รับงาน/ปิดงาน (สูงสุด 12) · `BoardActivityFeed` · `GET /api/v1/board/activity?period=…`
+6. **กราฟ + การ์ดทีม** — Eng Utilization ตามช่วงที่เลือก (วันนี้ / 7 วัน / สัปดาห์)
+7. **ตาราง Week-to-Week** — จาก `GET /api/v1/reports/kpi` (8 สัปดาห์)
+
+### ส่งออก Excel ค่าวัด PM
+
+| ขอบเขต | Endpoint | สิทธิ์ |
+|--------|----------|--------|
+| ใบงานเดียว | `GET /api/v1/work-orders/:id/pm-readings/export.xlsx` | `confirmation.read` |
+| ช่วงวันที่ | `GET /api/v1/pm-readings/export.xlsx?from=&to=&team=` | `confirmation.read` — ใช้จาก `/pm-vibration` หรือ WO modal ไม่แสดงบน `/board` |
 
 ### รูปช่างบน kiosk
 

@@ -1,3 +1,4 @@
+import '@/i18n'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('sonner', () => ({
@@ -12,12 +13,12 @@ import { toastSaved, toastSuccess } from '@/lib/app-toast'
 
 describe('app-toast', () => {
   it('toastSuccess calls sonner success', () => {
-    toastSuccess('สำเร็จ')
-    expect(toast.success).toHaveBeenCalledWith('สำเร็จ')
+    toastSuccess('OK')
+    expect(toast.success).toHaveBeenCalledWith('OK')
   })
 
-  it('toastSaved uses Thai default', () => {
+  it('toastSaved uses locale default (en)', () => {
     toastSaved()
-    expect(toast.success).toHaveBeenCalledWith('บันทึกแล้ว')
+    expect(toast.success).toHaveBeenCalledWith('Saved')
   })
 })

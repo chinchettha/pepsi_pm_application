@@ -31,7 +31,7 @@
 | หน้า | Route | Permission | สถานะ |
 |------|-------|------------|--------|
 | Audit (Admin) | `/admin/audit` | `admin.audit.read` | กรอง วันที่/actor/action/resource · diff · export CSV · cleanup |
-| **Auditor Hub** (Phase A) | `/reports/audit` | **`reports.read`** (Planner รวม) | KPI 7 วัน · ลิงก์ Activity / Admin audit |
+| **Auditor Hub** (Phase A) | `/reports/audit` | **`reports.read`** (Planner รวม) | KPI 7 วัน · PM/WO เดือนนี้ · Utilization · Order Frame · Revision 7 วัน |
 | Activity log (รายงาน) | `/activity-log` | `reports.read` | รวม audit + userlog · คน/Line/WO/เวลา |
 | Security | `/admin/security` | `admin.security.read` | failed login · RBAC denied |
 | Week-to-Week | `/reports` | reports | KPI ไม่ใช่ audit โดยตรง |
@@ -171,7 +171,7 @@ CREATE INDEX idx_revision_resource ON app.tbl_resource_revision (resource_type, 
 |--------------|-----|-------------|
 | Auditor Dashboard | A | Hub + KPI |
 | Activity Logs ครบฟิลด์ | มีแล้ว + A ลิงก์ | [~] → [x] หลัง A |
-| Maintenance Plan Revision History | C | [ ] → [~]/[x] |
+| Maintenance Plan Revision History | C (lite) | [~] — `095_tbl_resource_revision` · Hub + assign/move hooks · WO tab ค้าง |
 | Task Commenting | — | แยก epic |
 
 ---
@@ -196,7 +196,7 @@ CREATE INDEX idx_revision_resource ON app.tbl_resource_revision (resource_type, 
 | 3 | Retention audit | **365 วัน** — `audit.retention_days` ใน `050_tbl_audit_log.sql` · API บล็อกลบภายใน retention |
 | 4 | Comment บน WO | *ยังเปิด* — แยก epic |
 
-**Implement แล้ว (Phase A แกน):** `GET /api/v1/reports/audit-hub` · `/reports/audit` · retention ใน `/admin/audit` meta + cleanup guard
+**Implement แล้ว:** `GET /api/v1/reports/audit-hub` (รวม `planWo`, `recentRevisions`) · `/reports/audit` · migration `095_tbl_resource_revision` · `recordRevision` ที่ `planning.assign` + `planning.write` (ย้ายแผน)
 
 ---
 

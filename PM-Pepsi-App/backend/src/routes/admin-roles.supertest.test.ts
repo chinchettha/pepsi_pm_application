@@ -42,6 +42,7 @@ describe('admin roles API (supertest)', () => {
         {
           roleCode: 'A',
           roleName: 'Admin',
+          roleNameEn: 'Administrator',
           roleColor: '#000',
           isSystem: true,
           description: null,
@@ -51,6 +52,7 @@ describe('admin roles API (supertest)', () => {
         {
           roleCode: 'OPS',
           roleName: 'Ops',
+          roleNameEn: 'Operations',
           roleColor: '#0af',
           isSystem: false,
           description: null,
@@ -69,6 +71,7 @@ describe('admin roles API (supertest)', () => {
     mockCreateRole.mockResolvedValue({
       roleCode: 'OPS',
       roleName: 'Ops',
+      roleNameEn: 'Operations',
       roleColor: '#0af',
       isSystem: false,
       description: null,
@@ -136,6 +139,7 @@ describe('admin roles API (supertest)', () => {
       .send({
         roleCode: 'OPS',
         roleName: 'Operations',
+        roleNameEn: 'Operations',
         roleColor: '#004C97',
       })
     expect(res.status).toBe(201)

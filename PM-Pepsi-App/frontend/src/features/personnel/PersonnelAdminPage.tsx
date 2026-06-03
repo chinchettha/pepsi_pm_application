@@ -6,7 +6,7 @@
  *   ใช้ `<img src=/api/v1/personnel/:idwkctr/image>` (ส่ง cookie auth อัตโนมัติ)
  * - Excel import: skip 2 rows แรก (เทียบ PHP `$n > 2`) + แสดงผลทีละแถว
  */
-import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
+import { AdminPageShell } from '@/components/admin/AdminPageShell'
 import { PersonnelAdminPhotoGoLiveBanner } from '@/features/admin/users/PersonnelAdminPhotoGoLiveBanner'
 import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { PersonnelAvatar } from '@/components/personnel/PersonnelAvatar'
@@ -84,6 +84,8 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
+import { isMissingEngWkctrCode, normalizeWkctrCode, resolveWorkCntr } from '@/lib/wkctr-code'
 
 function unixToInputDate(sec: number | null | undefined): string {
   if (!sec || sec <= 0) return ''
@@ -154,19 +156,31 @@ const emptyForm: FormState = {
   pass: '',
 }
 
-const USERST_OPTIONS: Array<{ value: FormState['userst']; label: string }> = [
-  { value: 'A', label: 'A — Admin (legacy)' },
-  { value: 'H', label: 'H — Head / Manager (legacy)' },
-  { value: 'U', label: 'U — User / Planner (legacy)' },
-  { value: 'W', label: 'W — Work center / Technician (legacy)' },
-]
+function useUserstOptions() {
+  const { t } = useTranslation('personnel')
+  return useMemo(
+    (): Array<{ value: FormState['userst']; label: string }> => [
+      { value: 'A', label: t('admin.userst.A') },
+      { value: 'H', label: t('admin.userst.H') },
+      { value: 'U', label: t('admin.userst.U') },
+      { value: 'W', label: t('admin.userst.W') },
+    ],
+    [t],
+  )
+}
 
-const USERROLE_OPTIONS: Array<{ value: PersonnelRole; label: string }> = [
-  { value: 'admin', label: 'Admin — ผู้ดูแลระบบ' },
-  { value: 'manager', label: 'Manager — หัวหน้างาน/ผู้จัดการ' },
-  { value: 'planner', label: 'Planner / Engineering' },
-  { value: 'technician', label: 'Technician — ช่าง' },
-]
+function useUserroleOptions() {
+  const { t } = useTranslation('personnel')
+  return useMemo(
+    (): Array<{ value: PersonnelRole; label: string }> => [
+      { value: 'admin', label: t('admin.userrole.admin') },
+      { value: 'manager', label: t('admin.userrole.manager') },
+      { value: 'planner', label: t('admin.userrole.planner') },
+      { value: 'technician', label: t('admin.userrole.technician') },
+    ],
+    [t],
+  )
+}
 
 function fromItem(it: PersonnelAdminItem): FormState {
   return {
@@ -183,7 +197,7 @@ function fromItem(it: PersonnelAdminItem): FormState {
     wkctrdate: unixToInputDate(it.wkctrdate),
     iddepartment: it.iddepartment ?? '',
     idposition: it.idposition ?? '',
-    wkctr: it.wkctr,
+    wkctr: resolveWorkCntr(it) || it.wkctr,
     plnt: it.plnt ?? '',
     cat: it.cat ?? '',
     resp: it.resp ?? '',
@@ -215,6 +229,10 @@ type AdminDestructiveConfirm = {
 }
 
 export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPageProps) {
+  const { t } = useTranslation('personnel')
+  const { t: tc } = useTranslation('common')
+  const userstOptions = useUserstOptions()
+  const userroleOptions = useUserroleOptions()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const qc = useQueryClient()
@@ -235,7 +253,9 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
 
   useEffect(() => {
     if (!isAdmin) {
-      toast.error(variant === 'admin' ? 'ไม่มีสิทธิ์ admin.users' : 'Admin only')
+      toast.error(
+        variant === 'admin' ? t('admin.accessDeniedUsers') : t('admin.accessDeniedAdmin'),
+      )
       navigate(variant === 'admin' ? '/' : '/personnel', { replace: true })
     }
   }, [isAdmin, navigate, variant])
@@ -263,6 +283,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   const [statusFilter, setStatusFilter] = useState<string>('active')
   const [roleFilter, setRoleFilter] = useState<PersonnelRole | ''>('')
   const [photoFilter, setPhotoFilter] = useState<'all' | 'missing'>('all')
+  const [codeFilter, setCodeFilter] = useState<'all' | 'missing'>('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [bulkRole, setBulkRole] = useState<PersonnelRole>('planner')
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
@@ -330,6 +351,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   }, [workstatusOptions])
 
   const [open, setOpen] = useState(false)
+  const [formTab, setFormTab] = useState('t1')
   const [form, setForm] = useState<FormState>(emptyForm)
   const [imageVersion, setImageVersion] = useState<Record<string, number>>({})
   const [importing, setImporting] = useState(false)
@@ -339,12 +361,17 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
 
+  const apiItems = listQ.data?.items ?? []
   const items = useMemo(() => {
-    const raw = listQ.data?.items ?? []
-    if (photoFilter === 'missing') return raw.filter((it) => !it.hasImage)
+    let raw = apiItems
+    if (photoFilter === 'missing') raw = raw.filter((it) => !it.hasImage)
+    if (codeFilter === 'missing')
+      raw = raw.filter((it) => isMissingEngWkctrCode(it.wkctr, it))
     return raw
-  }, [listQ.data?.items, photoFilter])
+  }, [apiItems, photoFilter, codeFilter])
   const totalRows = listQ.data?.totalRows ?? 0
+  const filteredOutCount =
+    apiItems.length > 0 && items.length === 0 ? apiItems.length : 0
   const selectedCount = selectedIds.size
   const allOnPageSelected =
     items.length > 0 && items.every((it) => selectedIds.has(it.idwkctr))
@@ -383,7 +410,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         wkctrdate: state.wkctrdate || null,
         iddepartment: state.iddepartment || null,
         idposition: state.idposition || null,
-        wkctr: state.wkctr.trim(),
+        wkctr: normalizeWkctrCode(state.wkctr),
         plnt: state.plnt || null,
         cat: state.cat || null,
         resp: state.resp || null,
@@ -400,26 +427,31 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
       }),
     onSuccess: (_d, vars) => {
       toast.success(
-        vars.isEdit ? `Updated ${vars.idwkctr}` : `Added ${vars.idwkctr}`,
+        vars.isEdit
+          ? t('admin.toast.saved', { id: vars.idwkctr })
+          : t('admin.toast.added', { id: vars.idwkctr }),
       )
       setOpen(false)
       qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
     },
     onError: (err: unknown) => {
-      toast.error(
-        `Save failed: ${err instanceof Error ? err.message : String(err)}`,
-      )
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('WKCTR_CONFLICT') || msg.includes('409')) {
+        toast.error(t('admin.toast.wkctrConflict'))
+        return
+      }
+      toast.error(`${t('admin.toast.saveFailed')}: ${msg}`)
     },
   })
 
   const deleteMut = useMutation({
     mutationFn: (idwkctr: string) => apiDeletePersonnel(idwkctr),
     onSuccess: (_d, idwkctr) => {
-      toast.success(`Deleted ${idwkctr}`)
+      toast.success(t('admin.toast.deleted', { id: idwkctr }))
       qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
     },
     onError: (err: unknown) => {
-      toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`)
+      toast.error(`${t('admin.toast.deleteFailed')}: ${err instanceof Error ? err.message : String(err)}`)
     },
   })
 
@@ -428,7 +460,11 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
       postPersonnelAdminImage(idwkctr, file),
     onSuccess: (res, vars) => {
       toast.success(
-        `อัปโหลด WebP สำเร็จ ${res.width}×${res.height} (${Math.round(res.bytes / 1024)} KB)`,
+        t('admin.toast.uploadWebp', {
+          width: res.width,
+          height: res.height,
+          kb: Math.round(res.bytes / 1024),
+        }),
       )
       bumpImageVer(vars.idwkctr)
       setForm((s) =>
@@ -437,14 +473,14 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
       qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
     },
     onError: (err: unknown) => {
-      toast.error(`Upload failed: ${err instanceof Error ? err.message : String(err)}`)
+      toast.error(`${t('admin.toast.uploadFailed')}: ${err instanceof Error ? err.message : String(err)}`)
     },
   })
 
   const deleteImageMut = useMutation({
     mutationFn: (idwkctr: string) => deletePersonnelAdminImage(idwkctr),
     onSuccess: (_d, idwkctr) => {
-      toast.message(`ลบรูปของ ${idwkctr}`)
+      toast.message(t('admin.toast.imageRemoved', { id: idwkctr }))
       bumpImageVer(idwkctr)
       setForm((s) =>
         s.idwkctr === idwkctr ? { ...s, hasMemberImage: false } : s,
@@ -455,22 +491,24 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
 
   function openCreate() {
     setForm({ ...emptyForm, isEdit: false })
+    setFormTab('t1')
     setOpen(true)
   }
 
-  function openEdit(it: PersonnelAdminItem) {
+  function openEdit(it: PersonnelAdminItem, tab = 't1') {
     setForm(fromItem(it))
+    setFormTab(tab)
     setOpen(true)
   }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!form.idwkctr.trim()) {
-      toast.error('idwkctr (รหัส HR) is required')
+      toast.error(t('admin.toast.hrRequired'))
       return
     }
     if (!form.wkctr.trim()) {
-      toast.error('wkctr (รหัส SAP) is required')
+      toast.error(t('admin.toast.workCntrRequired'))
       return
     }
     upsertMut.mutate(form)
@@ -481,7 +519,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
     e.target.value = ''
     if (!file) return
     if (!form.idwkctr) {
-      toast.error('บันทึกข้อมูลก่อนอัปโหลดรูป')
+      toast.error(t('admin.toast.saveBeforePhoto'))
       return
     }
     imageMut.mutate({ idwkctr: form.idwkctr, file })
@@ -497,12 +535,16 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
       .then((res) => {
         setImportResult(res)
         toast.success(
-          `Import: +${res.inserted} ใหม่, ↻${res.updated} อัปเดต, ⚠${res.errors} error`,
+          t('admin.toast.importSummary', {
+            inserted: res.inserted,
+            updated: res.updated,
+            errors: res.errors,
+          }),
         )
         qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
       })
       .catch((err: unknown) => {
-        toast.error(`Import failed: ${err instanceof Error ? err.message : String(err)}`)
+        toast.error(`${t('admin.toast.importFailed')}: ${err instanceof Error ? err.message : String(err)}`)
       })
       .finally(() => setImporting(false))
   }
@@ -510,14 +552,14 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   if (!isAdmin) {
     return (
       <div className="px-6 py-8 text-caption">
-        Admin only — กำลังย้อนกลับ…
+        {t('admin.redirecting')}
       </div>
     )
   }
 
   const headerActions = (
     <>
-      <Badge variant="secondary">รวม {totalRows} คน</Badge>
+      <Badge variant="secondary">{t('admin.badgeTotal', { count: totalRows })}</Badge>
       {variant === 'admin' ? (
         <Button
           type="button"
@@ -534,20 +576,20 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
             className={`mr-1 size-3.5 ${(accountTab === 'member' ? membersQ.isFetching : listQ.isFetching) ? 'animate-spin' : ''}`}
             aria-hidden
           />
-          รีเฟรช
+          {t('admin.refresh')}
         </Button>
       ) : null}
       {variant === 'admin' ? (
         <Button asChild variant="outline" size="sm">
-          <Link to="/admin/settings">ตั้งค่าระบบ</Link>
+          <Link to="/admin/settings">{t('admin.systemSettings')}</Link>
         </Button>
       ) : (
         <Button asChild variant="outline" size="sm">
-          <Link to="/personnel">กลับ Dashboard</Link>
+          <Link to="/personnel">{t('admin.backDashboard')}</Link>
         </Button>
       )}
       <Button asChild variant="outline" size="sm">
-        <Link to="/personnel/confirm">Personnel Confirmation</Link>
+        <Link to="/personnel/confirm">{t('admin.personnelConfirmation')}</Link>
       </Button>
       <input
         ref={importInputRef}
@@ -564,46 +606,25 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         onClick={() => importInputRef.current?.click()}
       >
         <Upload className="mr-1 size-4" />
-        {importing ? 'Importing…' : 'นำเข้า Excel'}
+        {importing ? t('admin.importing') : t('admin.importExcel')}
       </Button>
       <Button type="button" size="sm" onClick={openCreate}>
         <UserPlus className="mr-1 size-4" />
-        เพิ่มบุคลากร
+        {t('admin.addPersonnel')}
       </Button>
     </>
   )
 
-  return (
-    <div>
-      {variant === 'admin' ? (
-        <AdminPageHeader
-          title="จัดการผู้ใช้"
-          description="รูปช่าง thumbnail · เลือกหลายแถวเปลี่ยนบทบาท (bulk) · reset / lock / impersonate"
-        >
-          {headerActions}
-        </AdminPageHeader>
-      ) : (
-        <PageHeader
-          title="จัดการบุคลากร (Admin)"
-          description="เทียบ M_personel.php / M_personel_form.php / M_personel_imports.php — ตาราง tbworkcenter ทั้งหมด"
-        >
-          {headerActions}
-        </PageHeader>
-      )}
-
-      <div
-        className={
-          variant === 'admin' ? 'admin-page-content space-y-4' : 'app-page-content space-y-4'
-        }
-      >
+  const body = (
+      <>
         {variant === 'admin' ? (
           <Tabs
             value={accountTab}
             onValueChange={(v) => setAccountTab(v as 'workcenter' | 'member')}
           >
             <TabsList>
-              <TabsTrigger value="workcenter">Work center (HR)</TabsTrigger>
-              <TabsTrigger value="member">สมาชิก (Member)</TabsTrigger>
+              <TabsTrigger value="workcenter">{t('admin.tabWorkcenter')}</TabsTrigger>
+              <TabsTrigger value="member">{t('admin.tabMember')}</TabsTrigger>
             </TabsList>
           </Tabs>
         ) : null}
@@ -617,11 +638,15 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
               setStatusFilter('active')
               setPhotoFilter('missing')
             }}
+            onShowMissingCodes={() => {
+              setStatusFilter('active')
+              setCodeFilter('missing')
+            }}
           />
         ) : null}
         <div className="flex flex-wrap items-center gap-3">
           <Input
-            placeholder="ค้นหา รหัส / ชื่อ / WC…"
+            placeholder={t('admin.searchPlaceholder')}
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
             onKeyDown={(e) => {
@@ -635,7 +660,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
             size="sm"
             onClick={() => setQ(qInput.trim())}
           >
-            ค้นหา
+            {tc('actions.search')}
           </Button>
           {q ? (
             <Button
@@ -647,19 +672,18 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                 setQInput('')
               }}
             >
-              ล้าง
+              {t('admin.clear')}
             </Button>
           ) : null}
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Label className="text-xs text-app-muted">สถานะใช้งาน</Label>
-            {/* Quick filter chips — เทียบ PersonnelConfirmPage pattern */}
+            <Label className="text-xs text-app-muted">{t('admin.filterUsageStatus')}</Label>
             <div className="flex flex-wrap gap-1">
               {(
                 [
-                  { value: 'active', label: 'ใช้งาน', tone: 'emerald' },
-                  { value: 'inactive', label: 'ไม่ใช้งาน', tone: 'neutral' },
-                  { value: 'all', label: 'ทั้งหมด', tone: 'blue' },
+                  { value: 'active', label: t('admin.filterActive'), tone: 'emerald' },
+                  { value: 'inactive', label: t('admin.filterInactive'), tone: 'neutral' },
+                  { value: 'all', label: t('admin.filterAll'), tone: 'blue' },
                 ] as const
               ).map((opt) => (
                 <Button
@@ -679,7 +703,16 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                 className={photoFilter === 'missing' ? 'bg-amber-600 hover:bg-amber-700' : ''}
                 onClick={() => setPhotoFilter((p) => (p === 'missing' ? 'all' : 'missing'))}
               >
-                ไม่มีรูป
+                {t('admin.filterNoPhoto')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={codeFilter === 'missing' ? 'default' : 'outline'}
+                className={codeFilter === 'missing' ? 'bg-violet-600 hover:bg-violet-700' : ''}
+                onClick={() => setCodeFilter((p) => (p === 'missing' ? 'all' : 'missing'))}
+              >
+                {t('admin.filterNoWorkCntr')}
               </Button>
             </div>
             {/* Dropdown สถานะรายตัว (ACTIVE/INACTIVE/LEAVE/RESIGNED/RETIRED/TERMINATED) */}
@@ -697,9 +730,9 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                 setStatusFilter(v || 'all')
               }}
               className="h-9 rounded-button border border-app bg-[var(--app-surface)] px-2 text-body-sm focus-app-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              title="เลือกสถานะรายตัวสำหรับ filter"
+              title={t('admin.filterStatusTitle')}
             >
-              <option value="">— เจาะจง code —</option>
+              <option value="">{t('admin.filterStatusSpecific')}</option>
               {workstatusOptions.map((o) => (
                 <option key={o.workstatus} value={o.workstatus}>
                   {o.workstatus} — {o.wkstatusdes}
@@ -708,17 +741,17 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
             </select>
             {variant === 'admin' ? (
               <>
-                <Label className="text-xs text-app-muted">บทบาท (userrole)</Label>
+                <Label className="text-xs text-app-muted">{t('admin.filterRole')}</Label>
                 <select
                   value={roleFilter}
                   onChange={(e) =>
                     setRoleFilter((e.target.value || '') as PersonnelRole | '')
                   }
                   className="h-9 rounded-button border border-app bg-[var(--app-surface)] px-2 text-body-sm"
-                  title="กรองตาม userrole"
+                  title={t('admin.filterRoleTitle')}
                 >
-                  <option value="">ทุกบทบาท</option>
-                  {USERROLE_OPTIONS.map((opt) => (
+                  <option value="">{t('admin.filterAllRoles')}</option>
+                  {userroleOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
@@ -732,21 +765,21 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         {variant === 'admin' && showAdminActions && selectedCount > 0 ? (
           <div className="flex flex-wrap items-center gap-2 rounded-card border border-[var(--admin-primary)]/25 bg-[var(--admin-surface)] px-3 py-2">
             <span className="text-body-sm font-medium text-[var(--admin-text)]">
-              เลือก {selectedCount} แถว
+              {t('admin.bulkSelected', { count: selectedCount })}
             </span>
             <select
               value={bulkRole}
               onChange={(e) => setBulkRole(e.target.value as PersonnelRole)}
               className="h-9 rounded-button border border-app bg-[var(--app-surface)] px-2 text-body-sm"
             >
-              {USERROLE_OPTIONS.map((opt) => (
+              {userroleOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
             </select>
             <Button type="button" size="sm" onClick={() => setBulkConfirmOpen(true)}>
-              เปลี่ยนบทบาทหลายแถว
+              {t('admin.bulkChangeRole')}
             </Button>
             <Button
               type="button"
@@ -754,13 +787,19 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
               variant="ghost"
               onClick={() => setSelectedIds(new Set())}
             >
-              ยกเลิกการเลือก
+              {t('admin.bulkClearSelection')}
             </Button>
           </div>
         ) : null}
 
         {importResult ? (
           <ImportResultBlock data={importResult} />
+        ) : null}
+
+        {filteredOutCount > 0 ? (
+          <div className="rounded-card border border-violet-300 bg-violet-50/80 px-4 py-3 text-body-sm text-violet-950">
+            {t('admin.filterHiddenBanner', { count: filteredOutCount })}
+          </div>
         ) : null}
 
         <div className="overflow-hidden app-table-shell">
@@ -772,11 +811,11 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
             <EmptyState
               icon={AlertCircle}
               className="m-4"
-              title="โหลดรายชื่อไม่สำเร็จ"
+              title={t('admin.table.loadFailed')}
               description={
                 listQ.error instanceof Error ? listQ.error.message : String(listQ.error)
               }
-              action={{ label: 'ลองใหม่', onClick: () => void listQ.refetch() }}
+              action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
             />
           ) : (
             <Table embedded={variant === 'admin'} stickyHeader={variant === 'admin'} zebra={variant === 'admin'}>
@@ -786,22 +825,22 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                     <TableHead className="w-10">
                       <input
                         type="checkbox"
-                        aria-label="เลือกทั้งหมดในหน้านี้"
+                        aria-label={t('admin.table.selectAllPage')}
                         checked={allOnPageSelected}
                         onChange={toggleSelectAll}
                         className="size-4 rounded border-app"
                       />
                     </TableHead>
                   ) : null}
-                  <TableHead className="w-[4.5rem]">รูป</TableHead>
-                  <TableHead>รหัส</TableHead>
-                  <TableHead>ชื่อ-สกุล</TableHead>
-                  <TableHead>WC</TableHead>
-                  <TableHead>ตำแหน่ง</TableHead>
-                  <TableHead>หน่วยงาน</TableHead>
-                  <TableHead>บทบาท</TableHead>
-                  <TableHead>สถานะใช้งาน</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="w-[4.5rem]">{t('admin.table.photo')}</TableHead>
+                  <TableHead>{t('admin.table.workCntr')}</TableHead>
+                  <TableHead>{t('admin.table.name')}</TableHead>
+                  <TableHead>{t('admin.table.hrLogin')}</TableHead>
+                  <TableHead>{t('admin.table.position')}</TableHead>
+                  <TableHead>{t('admin.table.department')}</TableHead>
+                  <TableHead>{t('admin.table.role')}</TableHead>
+                  <TableHead>{t('admin.table.usageStatus')}</TableHead>
+                  <TableHead className="text-right">{t('admin.table.action')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -811,7 +850,11 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       colSpan={variant === 'admin' && showAdminActions ? 10 : 9}
                       className="py-8 text-center text-caption"
                     >
-                      ไม่มีข้อมูล
+                      {filteredOutCount > 0
+                        ? t('admin.table.emptyFilters')
+                        : totalRows === 0
+                          ? t('admin.table.emptyNoData')
+                          : t('admin.table.emptyNoMatch')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -830,71 +873,75 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       showAdminActions={showAdminActions}
                       canImpersonate={canImpersonate}
                       onEdit={() => openEdit(it)}
+                      onEditPhoto={() => openEdit(it, 'img')}
                       onDelete={() => {
                         if (showAdminActions) {
                           setAdminConfirm({
                             phrase: it.idwkctr,
-                            title: `ลบ ${it.idwkctr}`,
-                            description: `ลบบันทึก ${it.wkctr} — ไม่สามารถย้อนกลับได้`,
+                            title: t('admin.confirm.deleteTitle', { id: it.idwkctr }),
+                            description: t('admin.confirm.deleteDesc', {
+                              workCntr: it.wkctr,
+                            }),
                             run: () => deleteMut.mutate(it.idwkctr),
                           })
                           return
                         }
-                        if (window.confirm(`Confirm delete ${it.idwkctr}?`)) {
+                        if (window.confirm(t('admin.confirm.deleteNative', { id: it.idwkctr }))) {
                           deleteMut.mutate(it.idwkctr)
                         }
                       }}
                       onResetPassword={() => {
                         const run = async () => {
                           const res = await resetAdminUserPassword(it.idwkctr, 'workcenter')
-                          toast.success(`รหัสชั่วคราว: ${res.temporaryPassword}`, {
+                          toast.success(t('admin.toast.tempPassword', { password: res.temporaryPassword }), {
                             duration: 20_000,
                           })
                         }
                         if (showAdminActions) {
                           setAdminConfirm({
                             phrase: it.idwkctr,
-                            title: 'รีเซ็ตรหัสผ่าน',
+                            title: t('admin.confirm.resetPasswordTitle'),
                             description: `${it.idwkctr} (${it.wkctr})`,
                             run,
                           })
                           return
                         }
                         void (async () => {
-                          if (!window.confirm(`รีเซ็ตรหัสผ่านของ ${it.idwkctr}?`)) return
+                          if (!window.confirm(t('admin.confirm.resetPasswordNative', { id: it.idwkctr })))
+                            return
                           try {
                             await run()
                           } catch (e) {
-                            toast.error(e instanceof Error ? e.message : 'รีเซ็ตไม่สำเร็จ')
+                            toast.error(e instanceof Error ? e.message : t('admin.toast.resetFailed'))
                           }
                         })()
                       }}
                       onLock={() => {
                         const run = async () => {
                           await lockAdminUser(it.idwkctr, 'workcenter')
-                          toast.success(`ล็อก ${it.idwkctr} แล้ว`)
+                          toast.success(t('admin.toast.locked', { id: it.idwkctr }))
                           void listQ.refetch()
                         }
                         if (showAdminActions) {
                           setAdminConfirm({
                             phrase: it.idwkctr,
-                            title: `ล็อก ${it.idwkctr}`,
-                            description: 'ผู้ใช้จะไม่สามารถเข้าสู่ระบบได้จนกว่าจะปลดล็อก',
+                            title: t('admin.confirm.lockTitle', { id: it.idwkctr }),
+                            description: t('admin.confirm.lockDesc'),
                             run,
                           })
                           return
                         }
                         void run().catch((e: unknown) =>
-                          toast.error(e instanceof Error ? e.message : 'ล็อกไม่สำเร็จ'),
+                          toast.error(e instanceof Error ? e.message : t('admin.toast.lockFailed')),
                         )
                       }}
                       onUnlock={async () => {
                         try {
                           await unlockAdminUser(it.idwkctr, 'workcenter')
-                          toast.success(`ปลดล็อก ${it.idwkctr} แล้ว`)
+                          toast.success(t('admin.toast.unlocked', { id: it.idwkctr }))
                           void listQ.refetch()
                         } catch (e) {
-                          toast.error(e instanceof Error ? e.message : 'ปลดล็อกไม่สำเร็จ')
+                          toast.error(e instanceof Error ? e.message : t('admin.toast.unlockFailed'))
                         }
                       }}
                       onImpersonate={() => {
@@ -902,14 +949,17 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                           const res = await impersonateAdminUser(it.idwkctr, 'workcenter')
                           applyImpersonationSession(res)
                           await refreshAuthSession()
-                          toast.success(`เข้าสู่ระบบเป็น ${res.user.username}`)
+                          toast.success(t('admin.toast.impersonating', { username: res.user.username }))
                           navigate('/')
                         }
                         if (showAdminActions) {
                           setAdminConfirm({
                             phrase: it.idwkctr,
-                            title: 'สวมสิทธิ์ผู้ใช้',
-                            description: `สวมสิทธิ์เป็น ${it.idwkctr} (${it.wkctr}) — ออกจากบัญชี admin ชั่วคราว`,
+                            title: t('admin.confirm.impersonateTitle'),
+                            description: t('admin.confirm.impersonateDesc', {
+                              id: it.idwkctr,
+                              workCntr: it.wkctr,
+                            }),
                             run,
                           })
                           return
@@ -917,7 +967,10 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                         void (async () => {
                           if (
                             !window.confirm(
-                              `สวมสิทธิ์เป็น ${it.idwkctr} (${it.wkctr})? จะออกจากบัญชี admin ชั่วคราว`,
+                              t('admin.confirm.impersonateNative', {
+                                id: it.idwkctr,
+                                workCntr: it.wkctr,
+                              }),
                             )
                           ) {
                             return
@@ -925,7 +978,9 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                           try {
                             await run()
                           } catch (e) {
-                            toast.error(e instanceof Error ? e.message : 'สวมสิทธิ์ไม่สำเร็จ')
+                            toast.error(
+                              e instanceof Error ? e.message : t('admin.toast.impersonateFailed'),
+                            )
                           }
                         })()
                       }}
@@ -949,26 +1004,26 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
               <EmptyState
                 icon={AlertCircle}
                 className="m-4"
-                title="โหลดสมาชิกไม่สำเร็จ"
+                title={t('admin.members.loadFailed')}
                 description={(membersQ.error as Error).message}
-                action={{ label: 'ลองใหม่', onClick: () => void membersQ.refetch() }}
+                action={{ label: tc('actions.retry'), onClick: () => void membersQ.refetch() }}
               />
             ) : (
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Username</TableHead>
-                    <TableHead>ชื่อ</TableHead>
-                    <TableHead>สถานะ</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead>{t('admin.members.colId')}</TableHead>
+                    <TableHead>{t('admin.members.colUsername')}</TableHead>
+                    <TableHead>{t('admin.members.colName')}</TableHead>
+                    <TableHead>{t('admin.members.colStatus')}</TableHead>
+                    <TableHead className="text-right">{t('admin.table.action')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(membersQ.data ?? []).length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="py-8 text-center text-caption">
-                        ไม่มีสมาชิก
+                        {t('admin.members.empty')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -982,7 +1037,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                             <span>{m.status ?? '—'}</span>
                             {m.passMustChange ? (
                               <Badge variant="outline" className="border-amber-400 text-amber-800">
-                                ต้องเปลี่ยนรหัส
+                                {t('admin.table.mustChangePassword')}
                               </Badge>
                             ) : null}
                           </div>
@@ -1006,7 +1061,6 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
             )}
           </div>
         ) : null}
-      </div>
 
       {adminConfirm ? (
         <ConfirmPhraseDialog
@@ -1022,7 +1076,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
               await adminConfirm.run()
               setAdminConfirm(null)
             } catch (e) {
-              toast.error(e instanceof Error ? e.message : 'ดำเนินการไม่สำเร็จ')
+              toast.error(e instanceof Error ? e.message : t('admin.toast.actionFailed'))
             } finally {
               setAdminConfirmLoading(false)
             }
@@ -1034,22 +1088,22 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         <ConfirmPhraseDialog
           open
           onOpenChange={(open) => !open && setBulkConfirmOpen(false)}
-          title="เปลี่ยนบทบาทหลายแถว"
-          description={`ตั้ง userrole เป็น "${bulkRole}" สำหรับ ${selectedCount} รายการ`}
+          title={t('admin.bulk.confirmTitle')}
+          description={t('admin.bulk.confirmDesc', { role: bulkRole, count: selectedCount })}
           phrase={String(selectedCount)}
-          phraseLabel="พิมพ์จำนวนแถวที่เลือกเพื่อยืนยัน"
-          confirmLabel="เปลี่ยนบทบาท"
+          phraseLabel={t('admin.bulk.phraseLabel')}
+          confirmLabel={t('admin.bulk.confirmButton')}
           loading={adminConfirmLoading}
           onConfirm={async () => {
             setAdminConfirmLoading(true)
             try {
               const res = await bulkAdminUserrole([...selectedIds], bulkRole)
-              toast.success(`อัปเดตบทบาท ${res.updated} แถว`)
+              toast.success(t('admin.bulk.success', { count: res.updated }))
               setSelectedIds(new Set())
               setBulkConfirmOpen(false)
               void listQ.refetch()
             } catch (e) {
-              toast.error(e instanceof Error ? e.message : 'เปลี่ยนบทบาทไม่สำเร็จ')
+              toast.error(e instanceof Error ? e.message : t('admin.bulk.failed'))
             } finally {
               setAdminConfirmLoading(false)
             }
@@ -1061,25 +1115,25 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {form.isEdit ? `แก้ไข ${form.idwkctr}` : 'เพิ่มบุคลากร'}
+              {form.isEdit
+                ? t('admin.dialog.editTitle', { id: form.idwkctr })
+                : t('admin.dialog.addTitle')}
             </DialogTitle>
-            <DialogDescription>
-              เทียบ M_personel_form.php (personel_form_tab1/2/3) — ฟิลด์ของ tbworkcenter
-            </DialogDescription>
+            <DialogDescription>{t('admin.dialog.description')}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={onSubmit} className="space-y-4">
-            <Tabs defaultValue="t1">
+            <Tabs value={formTab} onValueChange={setFormTab}>
               <TabsList>
-                <TabsTrigger value="t1">ข้อมูลส่วนตัว</TabsTrigger>
-                <TabsTrigger value="t2">ข้อมูลงาน</TabsTrigger>
-                <TabsTrigger value="t3">ผู้ใช้/รหัสผ่าน</TabsTrigger>
-                <TabsTrigger value="img">รูป (WebP)</TabsTrigger>
+                <TabsTrigger value="t1">{t('admin.form.tabPersonal')}</TabsTrigger>
+                <TabsTrigger value="t2">{t('admin.form.tabWork')}</TabsTrigger>
+                <TabsTrigger value="t3">{t('admin.form.tabAccount')}</TabsTrigger>
+                <TabsTrigger value="img">{t('admin.form.tabPhoto')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="t1" className="space-y-3 pt-2">
                 <FormGrid>
-                  <Field label="รหัส HR (idwkctr)" required>
+                  <Field label={t('admin.form.hrLogin')} required>
                     <Input
                       value={form.idwkctr}
                       disabled={form.isEdit}
@@ -1087,8 +1141,9 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                         setForm((s) => ({ ...s, idwkctr: e.target.value }))
                       }
                     />
+                    <p className="mt-1 text-xs text-app-muted">{t('admin.form.hrLoginHint')}</p>
                   </Field>
-                  <Field label="คำนำหน้า">
+                  <Field label={t('admin.form.prefix')}>
                     <Input
                       value={form.titlewkctr}
                       onChange={(e) =>
@@ -1096,7 +1151,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="ชื่อ">
+                  <Field label={t('admin.form.firstName')}>
                     <Input
                       value={form.namewkctr}
                       onChange={(e) =>
@@ -1104,7 +1159,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="นามสกุล">
+                  <Field label={t('admin.form.lastName')}>
                     <Input
                       value={form.surnamewkctr}
                       onChange={(e) =>
@@ -1112,7 +1167,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="Title (Eng)">
+                  <Field label={t('admin.form.titleEng')}>
                     <Input
                       value={form.titlewkctreng}
                       onChange={(e) =>
@@ -1123,7 +1178,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="Name (Eng)">
+                  <Field label={t('admin.form.nameEng')}>
                     <Input
                       value={form.namewkctreng}
                       onChange={(e) =>
@@ -1134,7 +1189,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="Surname (Eng)">
+                  <Field label={t('admin.form.surnameEng')}>
                     <Input
                       value={form.surnamewkctreng}
                       onChange={(e) =>
@@ -1145,7 +1200,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="วันเกิด">
+                  <Field label={t('admin.form.birthDate')}>
                     <Input
                       type="date"
                       value={form.wkctrdate}
@@ -1154,7 +1209,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="เบอร์โทรศัพท์">
+                  <Field label={t('admin.form.phone')}>
                     <Input
                       value={form.wkctrtel}
                       onChange={(e) =>
@@ -1162,7 +1217,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="อีเมล">
+                  <Field label={t('admin.form.email')}>
                     <Input
                       type="email"
                       value={form.wkctrmail}
@@ -1176,15 +1231,20 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
 
               <TabsContent value="t2" className="space-y-3 pt-2">
                 <FormGrid>
-                  <Field label="รหัส SAP (wkctr)" required>
+                  <Field label={t('admin.form.workCntr')} required>
                     <Input
                       value={form.wkctr}
+                      placeholder={t('admin.form.workCntrPlaceholder')}
                       onChange={(e) =>
-                        setForm((s) => ({ ...s, wkctr: e.target.value }))
+                        setForm((s) => ({
+                          ...s,
+                          wkctr: normalizeWkctrCode(e.target.value),
+                        }))
                       }
                     />
+                    <p className="mt-1 text-xs text-app-muted">{t('admin.form.workCntrHint')}</p>
                   </Field>
-                  <Field label="Plant (plnt)">
+                  <Field label={t('admin.form.plant')}>
                     <Input
                       value={form.plnt}
                       onChange={(e) =>
@@ -1192,7 +1252,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="วันที่เริ่มงาน">
+                  <Field label={t('admin.form.startDate')}>
                     <Input
                       type="date"
                       value={form.startwork}
@@ -1201,7 +1261,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="หน่วยงาน (iddepartment)">
+                  <Field label={t('admin.form.department')}>
                     <LookupSelect
                       value={form.iddepartment}
                       options={lookups?.departments}
@@ -1211,7 +1271,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="ตำแหน่ง (idposition)">
+                  <Field label={t('admin.form.position')}>
                     <LookupSelect
                       value={form.idposition}
                       options={lookups?.positions}
@@ -1221,7 +1281,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="กลุ่มงาน (idwkctrgroup)">
+                  <Field label={t('admin.form.wcGroup')}>
                     <LookupSelect
                       value={form.idwkctrgroup}
                       options={lookups?.groups}
@@ -1230,8 +1290,11 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                         setForm((s) => ({ ...s, idwkctrgroup: next }))
                       }
                     />
+                    <p className="mt-1 text-[11px] leading-snug text-app-muted">
+                      {t('admin.form.wcGroupHint')}
+                    </p>
                   </Field>
-                  <Field label="ประเภทช่าง (idwkctrtype)">
+                  <Field label={t('admin.form.techType')}>
                     <LookupSelect
                       value={form.idwkctrtype}
                       options={lookups?.workTypes}
@@ -1241,7 +1304,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="ระดับ (idwklevel)">
+                  <Field label={t('admin.form.level')}>
                     <LookupSelect
                       value={form.idwklevel}
                       options={lookups?.levels}
@@ -1251,7 +1314,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="Cat">
+                  <Field label={t('admin.form.cat')}>
                     <Input
                       value={form.cat}
                       onChange={(e) =>
@@ -1259,7 +1322,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="Resp">
+                  <Field label={t('admin.form.resp')}>
                     <Input
                       value={form.resp}
                       onChange={(e) =>
@@ -1267,7 +1330,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="ต้นทุนต่อคน (labourcost)">
+                  <Field label={t('admin.form.labourCost')}>
                     <Input
                       type="number"
                       step="0.01"
@@ -1277,7 +1340,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       }
                     />
                   </Field>
-                  <Field label="สถานะ (workstatus)">
+                  <Field label={t('admin.form.workstatus')}>
                     <LookupSelect
                       value={form.workstatus}
                       options={workstatusFormOptions}
@@ -1285,7 +1348,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       onChange={(next) =>
                         setForm((s) => ({ ...s, workstatus: next }))
                       }
-                      placeholder="— เลือกสถานะ —"
+                      placeholder={t('admin.form.selectStatus')}
                     />
                   </Field>
                 </FormGrid>
@@ -1293,7 +1356,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
 
               <TabsContent value="t3" className="space-y-3 pt-2">
                 <FormGrid>
-                  <Field label="สิทธิ์ระบบ (userst)">
+                  <Field label={t('admin.form.userst')}>
                     <select
                       className="flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm shadow-sm"
                       value={form.userst}
@@ -1304,17 +1367,15 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                         }))
                       }
                     >
-                      {USERST_OPTIONS.map((opt) => (
+                      {userstOptions.map((opt) => (
                         <option key={opt.value} value={opt.value}>
                           {opt.label}
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-app-muted">
-                      ใช้กับเมนู legacy `menuright` เช่น A:U:W
-                    </p>
+                    <p className="mt-1 text-xs text-app-muted">{t('admin.form.userstHint')}</p>
                   </Field>
-                  <Field label="บทบาท Dashboard/RBAC (userrole)">
+                  <Field label={t('admin.form.userrole')}>
                     <select
                       className="flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm shadow-sm"
                       value={form.userrole}
@@ -1325,20 +1386,16 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                         }))
                       }
                     >
-                      {USERROLE_OPTIONS.map((opt) => (
+                      {userroleOptions.map((opt) => (
                         <option key={opt.value} value={opt.value}>
                           {opt.label}
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-app-muted">
-                      เป็น source of truth ใหม่สำหรับ Personal Dashboard และสิทธิ์ในอนาคต
-                    </p>
+                    <p className="mt-1 text-xs text-app-muted">{t('admin.form.userroleHint')}</p>
                   </Field>
                   <Field
-                    label={
-                      form.isEdit ? 'รหัสผ่านใหม่ (เว้นว่าง = ไม่เปลี่ยน)' : 'รหัสผ่าน'
-                    }
+                    label={form.isEdit ? t('admin.form.passwordNew') : t('admin.form.password')}
                   >
                     <Input
                       type="text"
@@ -1346,7 +1403,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                       onChange={(e) =>
                         setForm((s) => ({ ...s, pass: e.target.value }))
                       }
-                      placeholder={form.isEdit ? 'ไม่เปลี่ยนถ้าเว้นว่าง' : ''}
+                      placeholder={form.isEdit ? t('admin.form.passwordNoChange') : ''}
                     />
                   </Field>
                 </FormGrid>
@@ -1363,7 +1420,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                   uploading={imageMut.isPending}
                   onClear={() => {
                     if (
-                      window.confirm(`ลบรูปของ ${form.idwkctr}?`)
+                      window.confirm(t('admin.photo.confirmDelete', { id: form.idwkctr }))
                     ) {
                       deleteImageMut.mutate(form.idwkctr)
                     }
@@ -1380,25 +1437,52 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                 onClick={() => setOpen(false)}
                 disabled={upsertMut.isPending}
               >
-                ยกเลิก
+                {tc('actions.cancel')}
               </Button>
               <Button type="submit" disabled={upsertMut.isPending}>
                 {upsertMut.isPending
-                  ? 'กำลังบันทึก…'
+                  ? t('admin.form.saving')
                   : form.isEdit
-                    ? 'แก้ไขข้อมูล'
-                    : 'เพิ่มข้อมูล'}
+                    ? t('admin.form.saveEdit')
+                    : t('admin.form.saveAdd')}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+      </>
+  )
+
+  if (variant === 'admin') {
+    return (
+      <AdminPageShell
+        tourTarget="admin-users"
+        title={t('admin.shell.title')}
+        description={t('admin.shell.description')}
+        hints={t('admin.shell.hints', { returnObjects: true }) as string[]}
+        headerActions={headerActions}
+      >
+        {body}
+      </AdminPageShell>
+    )
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title={t('admin.page.title')}
+        description={t('admin.page.description')}
+      >
+        {headerActions}
+      </PageHeader>
+      <div className="app-page-content space-y-4">{body}</div>
     </div>
   )
 }
 
 function UserroleBadge({ role }: { role: PersonnelRole }) {
-  const opt = USERROLE_OPTIONS.find((o) => o.value === role)
+  const userroleOptions = useUserroleOptions()
+  const opt = userroleOptions.find((o) => o.value === role)
   const tone =
     role === 'admin'
       ? 'bg-rose-50 text-rose-700 ring-rose-200'
@@ -1427,6 +1511,7 @@ function MemberAdminActions({
   onImpersonate: () => void
   onRequestConfirm?: (req: AdminDestructiveConfirm) => void
 }) {
+  const { t } = useTranslation('personnel')
   const id = String(member.id)
   const phrase = member.username
   return (
@@ -1435,27 +1520,30 @@ function MemberAdminActions({
         type="button"
         size="sm"
         variant="outline"
-        title="Reset password"
+        title={t('admin.table.resetPassword')}
         onClick={() => {
           const run = async () => {
             const res = await resetAdminUserPassword(id, 'member')
-            toast.success(`รหัสชั่วคราว: ${res.temporaryPassword}`, { duration: 20_000 })
+            toast.success(t('admin.toast.tempPassword', { password: res.temporaryPassword }), {
+              duration: 20_000,
+            })
           }
           if (onRequestConfirm) {
             onRequestConfirm({
               phrase,
-              title: 'รีเซ็ตรหัสผ่าน',
+              title: t('admin.confirm.resetPasswordTitle'),
               description: member.username,
               run,
             })
             return
           }
           void (async () => {
-            if (!window.confirm(`รีเซ็ตรหัสผ่าน ${member.username}?`)) return
+            if (!window.confirm(t('admin.confirm.resetPasswordNative', { id: member.username })))
+              return
             try {
               await run()
             } catch (e) {
-              toast.error(e instanceof Error ? e.message : 'รีเซ็ตไม่สำเร็จ')
+              toast.error(e instanceof Error ? e.message : t('admin.toast.resetFailed'))
             }
           })()
         }}
@@ -1469,20 +1557,20 @@ function MemberAdminActions({
         onClick={() => {
           const run = async () => {
             await lockAdminUser(id, 'member')
-            toast.success('ล็อกแล้ว')
+            toast.success(t('admin.members.locked'))
             onDone()
           }
           if (onRequestConfirm) {
             onRequestConfirm({
               phrase,
-              title: `ล็อก ${member.username}`,
-              description: 'สมาชิกจะไม่สามารถเข้าสู่ระบบได้',
+              title: t('admin.members.lockTitle', { username: member.username }),
+              description: t('admin.members.lockDesc'),
               run,
             })
             return
           }
           void run().catch((e: unknown) =>
-            toast.error(e instanceof Error ? e.message : 'ล็อกไม่สำเร็จ'),
+            toast.error(e instanceof Error ? e.message : t('admin.toast.lockFailed')),
           )
         }}
       >
@@ -1495,10 +1583,10 @@ function MemberAdminActions({
         onClick={async () => {
           try {
             await unlockAdminUser(id, 'member')
-            toast.success('ปลดล็อกแล้ว')
+            toast.success(t('admin.members.unlocked'))
             onDone()
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'ปลดล็อกไม่สำเร็จ')
+            toast.error(e instanceof Error ? e.message : t('admin.toast.unlockFailed'))
           }
         }}
       >
@@ -1514,24 +1602,25 @@ function MemberAdminActions({
               const res = await impersonateAdminUser(id, 'member')
               applyImpersonationSession(res)
               await refreshAuthSession()
-              toast.success(`เข้าสู่ระบบเป็น ${res.user.username}`)
+              toast.success(t('admin.toast.impersonating', { username: res.user.username }))
               onImpersonate()
             }
             if (onRequestConfirm) {
               onRequestConfirm({
                 phrase,
-                title: 'สวมสิทธิ์สมาชิก',
-                description: `สวมสิทธิ์เป็น ${member.username}`,
+                title: t('admin.members.impersonateTitle'),
+                description: t('admin.members.impersonateDesc', { username: member.username }),
                 run,
               })
               return
             }
             void (async () => {
-              if (!window.confirm(`สวมสิทธิ์เป็น ${member.username}?`)) return
+              if (!window.confirm(t('admin.confirm.impersonateNative', { id: member.username })))
+                return
               try {
                 await run()
               } catch (e) {
-                toast.error(e instanceof Error ? e.message : 'สวมสิทธิ์ไม่สำเร็จ')
+                toast.error(e instanceof Error ? e.message : t('admin.toast.impersonateFailed'))
               }
             })()
           }}
@@ -1554,6 +1643,7 @@ function PersonnelRow({
   showAdminActions,
   canImpersonate,
   onEdit,
+  onEditPhoto,
   onDelete,
   onResetPassword,
   onLock,
@@ -1575,25 +1665,28 @@ function PersonnelRow({
   showAdminActions?: boolean
   canImpersonate?: boolean
   onEdit: () => void
+  onEditPhoto?: () => void
   onDelete: () => void
   onResetPassword?: () => void
   onLock?: () => void
   onUnlock?: () => void
   onImpersonate?: () => void
 }) {
+  const { t } = useTranslation('personnel')
   const fullName = useMemo(() => {
     const parts = [it.titlewkctr ?? '', it.namewkctr ?? '', it.surnamewkctr ?? '']
       .map((p) => p.trim())
       .filter(Boolean)
     return parts.join(' ').trim() || '—'
   }, [it])
+  const workCntr = resolveWorkCntr(it)
   return (
     <TableRow>
       {showBulkSelect ? (
         <TableCell>
           <input
             type="checkbox"
-            aria-label={`เลือก ${it.idwkctr}`}
+            aria-label={t('admin.table.selectRow', { id: it.idwkctr })}
             checked={selected}
             onChange={onToggleSelect}
             className="size-4 rounded border-app"
@@ -1609,18 +1702,27 @@ function PersonnelRow({
           size={photoSize === 'md' ? 'md' : 'sm'}
         />
       </TableCell>
-      <TableCell className="font-mono text-xs">{it.idwkctr}</TableCell>
+      <TableCell className="tabular-nums">
+        <div className="flex flex-col gap-1">
+          <span className="font-mono text-xs font-semibold">{workCntr || '—'}</span>
+          {isMissingEngWkctrCode(it.wkctr, it) ? (
+            <Badge variant="outline" className="w-fit border-violet-400 text-violet-800">
+              {t('admin.table.noWorkCntr')}
+            </Badge>
+          ) : null}
+        </div>
+      </TableCell>
       <TableCell>{fullName}</TableCell>
-      <TableCell className="tabular-nums">{it.wkctr}</TableCell>
+      <TableCell className="font-mono text-xs text-app-muted">{it.idwkctr}</TableCell>
       <TableCell className="text-body-sm">{it.position ?? '—'}</TableCell>
       <TableCell className="text-body-sm">{it.department ?? '—'}</TableCell>
       <TableCell>
         <div className="flex flex-col gap-1">
           <UserroleBadge role={it.userrole} />
-          <span className="text-caption">UserST: {it.userst}</span>
+          <span className="text-caption">{t('admin.table.userSt', { code: it.userst })}</span>
           {it.passMustChange ? (
             <Badge variant="outline" className="w-fit border-amber-400 text-amber-800">
-              ต้องเปลี่ยนรหัส
+              {t('admin.table.mustChangePassword')}
             </Badge>
           ) : null}
         </div>
@@ -1636,19 +1738,25 @@ function PersonnelRow({
                 type="button"
                 size="sm"
                 variant="outline"
-                title="Reset password"
+                title={t('admin.table.resetPassword')}
                 onClick={onResetPassword}
               >
                 <KeyRound className="size-3.5" />
               </Button>
-              <Button type="button" size="sm" variant="outline" title="Lock" onClick={onLock}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                title={t('admin.table.lock')}
+                onClick={onLock}
+              >
                 <Lock className="size-3.5" />
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                title="Unlock"
+                title={t('admin.table.unlock')}
                 onClick={onUnlock}
               >
                 <Unlock className="size-3.5" />
@@ -1658,7 +1766,7 @@ function PersonnelRow({
                   type="button"
                   size="sm"
                   variant="outline"
-                  title="Impersonate"
+                  title={t('admin.table.impersonate')}
                   onClick={onImpersonate}
                 >
                   <LogIn className="size-3.5" />
@@ -1667,10 +1775,21 @@ function PersonnelRow({
             </>
           ) : null}
           <Button type="button" size="sm" variant="outline" onClick={onEdit}>
-            <Pencil className="mr-1 size-3.5" /> แก้ไข
+            <Pencil className="mr-1 size-3.5" /> {t('admin.table.edit')}
           </Button>
+          {onEditPhoto ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              title={t('admin.table.managePhoto')}
+              onClick={onEditPhoto}
+            >
+              <ImageIcon className="size-3.5" />
+            </Button>
+          ) : null}
           <Button type="button" size="sm" variant="destructive" onClick={onDelete}>
-            <Trash2 className="mr-1 size-3.5" /> ลบ
+            <Trash2 className="mr-1 size-3.5" /> {t('admin.table.delete')}
           </Button>
         </div>
       </TableCell>
@@ -1695,21 +1814,22 @@ function WorkstatusBadge({
     isActive: boolean
   }
 }) {
+  const { t } = useTranslation('personnel')
   if (!code) {
     return (
-      <span className="text-xs text-app-muted" title="ยังไม่กำหนดสถานะ">
+      <span className="text-xs text-app-muted" title={t('admin.workstatus.notSet')}>
         —
       </span>
     )
   }
   if (!info) {
     return (
-      <Badge variant="outline" className="font-mono text-badge" title="ไม่อยู่ใน tbwkctrstatus">
+      <Badge variant="outline" className="font-mono text-badge" title={t('admin.workstatus.unknownCode')}>
         {code}
       </Badge>
     )
   }
-  const color = info.wkstcolor ?? '#71717a'
+  const color = info.wkstcolor ?? 'var(--app-text-muted)'
   return (
     <span
       className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-medium"
@@ -1718,7 +1838,7 @@ function WorkstatusBadge({
         color,
         boxShadow: `inset 0 0 0 1px ${color}66`,
       }}
-      title={`${info.workstatus} — ${info.wkstatusdes}${info.isActive ? '' : ' (ไม่ใช้งาน)'}`}
+      title={`${info.workstatus} — ${info.wkstatusdes}${info.isActive ? '' : t('admin.workstatus.inactiveSuffix')}`}
     >
       <span
         className="inline-block h-1.5 w-1.5 rounded-full"
@@ -1750,13 +1870,11 @@ function ImagePanel({
   onClear: () => void
   clearing: boolean
 }) {
+  const { t } = useTranslation('personnel')
   return (
     <div className="rounded-card border border-app bg-app-subtle p-4">
-      <div className="text-body-sm font-medium text-app">รูปประจำตัว</div>
-      <p className="mt-1 text-xs text-app-muted">
-        ระบบจะรับภาพประเภทใดก็ได้ แล้ว <b>แปลงเป็น WebP</b> + ย่อกว้างสูงสุด 600px
-        ก่อนเก็บลง DB (`imgmember_data` BYTEA) เพื่อประหยัด storage
-      </p>
+      <div className="text-body-sm font-medium text-app">{t('admin.photo.title')}</div>
+      <p className="mt-1 text-xs text-app-muted">{t('admin.photo.hint')}</p>
       <div className="mt-3 flex items-start gap-4">
         {idwkctr ? (
           <PersonnelAvatar
@@ -1775,7 +1893,7 @@ function ImagePanel({
         <div className="flex-1 space-y-2">
           {!isEdit ? (
             <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              บันทึกข้อมูลครั้งแรกก่อน แล้วจึงอัปโหลดรูปได้
+              {t('admin.photo.saveFirst')}
             </div>
           ) : null}
           <input
@@ -1794,7 +1912,7 @@ function ImagePanel({
               onClick={() => pickRef.current?.click()}
             >
               <Upload className="mr-1 size-4" />
-              {uploading ? 'กำลังอัปโหลด…' : 'เปลี่ยนรูป (→ WebP)'}
+              {uploading ? t('admin.photo.uploading') : t('admin.photo.change')}
             </Button>
             <Button
               type="button"
@@ -1803,7 +1921,7 @@ function ImagePanel({
               disabled={!isEdit || clearing}
               onClick={onClear}
             >
-              <Trash2 className="mr-1 size-4" /> ลบรูป
+              <Trash2 className="mr-1 size-4" /> {t('admin.photo.remove')}
             </Button>
           </div>
         </div>
@@ -1813,20 +1931,21 @@ function ImagePanel({
 }
 
 function ImportResultBlock({ data }: { data: PersonnelImportResponse }) {
+  const { t } = useTranslation('personnel')
   return (
     <div className="app-card app-card-pad-compact">
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-body-sm font-medium text-app">
-          ผลการนำเข้า: {data.fileName}
+          {t('admin.import.title', { fileName: data.fileName })}
         </div>
-        <Badge variant="outline">total: {data.totalRows}</Badge>
-        <Badge variant="secondary">inserted: {data.inserted}</Badge>
-        <Badge variant="secondary">updated: {data.updated}</Badge>
+        <Badge variant="outline">{t('admin.import.total', { n: data.totalRows })}</Badge>
+        <Badge variant="secondary">{t('admin.import.inserted', { n: data.inserted })}</Badge>
+        <Badge variant="secondary">{t('admin.import.updated', { n: data.updated })}</Badge>
         <Badge variant={data.skipped > 0 ? 'destructive' : 'outline'}>
-          skipped: {data.skipped}
+          {t('admin.import.skipped', { n: data.skipped })}
         </Badge>
         <Badge variant={data.errors > 0 ? 'destructive' : 'outline'}>
-          errors: {data.errors}
+          {t('admin.import.errors', { n: data.errors })}
         </Badge>
       </div>
       {data.rows.length > 0 ? (
@@ -1834,10 +1953,10 @@ function ImportResultBlock({ data }: { data: PersonnelImportResponse }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">Row</TableHead>
-                <TableHead className="w-28">Status</TableHead>
+                <TableHead className="w-16">{t('admin.import.colRow')}</TableHead>
+                <TableHead className="w-28">{t('admin.import.colStatus')}</TableHead>
                 <TableHead>idwkctr</TableHead>
-                <TableHead>Message</TableHead>
+                <TableHead>{t('admin.import.colMessage')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1906,7 +2025,7 @@ function LookupSelect({
   options,
   loading,
   onChange,
-  placeholder = '— เลือก —',
+  placeholder,
 }: {
   value: string
   options: PersonnelLookupOption[] | undefined
@@ -1914,6 +2033,8 @@ function LookupSelect({
   onChange: (next: string) => void
   placeholder?: string
 }) {
+  const { t } = useTranslation('personnel')
+  const ph = placeholder ?? t('admin.lookup.placeholder')
   const list = options ?? []
   const hasCurrent = value === '' || list.some((o) => o.value === value)
   return (
@@ -1923,9 +2044,9 @@ function LookupSelect({
       onChange={(e) => onChange(e.target.value)}
       className="flex h-10 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body-sm text-app focus-app-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <option value="">{loading ? 'กำลังโหลด…' : placeholder}</option>
+      <option value="">{loading ? t('admin.lookup.loading') : ph}</option>
       {!hasCurrent ? (
-        <option value={value}>{value} (ไม่มีใน master data)</option>
+        <option value={value}>{t('admin.lookup.notInMaster', { value })}</option>
       ) : null}
       {list.map((opt) => (
         <option key={opt.value} value={opt.value}>

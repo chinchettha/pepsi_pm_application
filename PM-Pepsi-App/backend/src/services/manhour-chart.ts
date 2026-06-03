@@ -15,6 +15,7 @@ export type ManhourChartProfile = {
   position: string | null
   wkctrtype: string | null
   imgmember: string | null
+  hasImage: boolean
 }
 
 export type ManhourZbStat = {
@@ -91,6 +92,9 @@ function zbPercent(planned: number, confirmed: number): number {
   return Math.round((planned / confirmed) * 10000) / 100
 }
 
+/** แถว manhour ช่วง stworkday–workday ทับซ้อนช่วงที่เลือก (เทียบ legacy M_manhour) */
+const MANHOUR_PERIOD_OVERLAP_SQL = 'stworkday <= $3 AND workday >= $2'
+
 async function loadProfile(pool: Pool, idwkctr: string): Promise<ManhourChartProfile | null> {
   const r = await pool.query<{
     idwkctr: string
@@ -101,6 +105,7 @@ async function loadProfile(pool: Pool, idwkctr: string): Promise<ManhourChartPro
     position: string | null
     wkctrtype: string | null
     imgmember: string | null
+    has_image: boolean
   }>(
     `SELECT
        wc.idwkctr,
@@ -110,7 +115,8 @@ async function loadProfile(pool: Pool, idwkctr: string): Promise<ManhourChartPro
        wc.surnamewkctr,
        pos.position,
        typ.wkctrtype,
-       wc.imgmember
+       wc.imgmember,
+       (octet_length(wc.imgmember_data) > 0) AS has_image
      FROM app.tbworkcenter wc
      LEFT JOIN app.tbposition pos ON pos.idposition::text = wc.idposition::text
      LEFT JOIN app.tbwkctrtype typ ON typ.idwkctrtype::text = wc.idwkctrtype::text
@@ -131,6 +137,7 @@ async function loadProfile(pool: Pool, idwkctr: string): Promise<ManhourChartPro
     position: row.position,
     wkctrtype: row.wkctrtype,
     imgmember: row.imgmember,
+    hasImage: Boolean(row.has_image),
   }
 }
 
@@ -173,7 +180,7 @@ export async function getManhourChartPerformance(
          COALESCE(SUM(ot2), 0)::text AS tot2,
          COALESCE(SUM(ot3), 0)::text AS tot3
        FROM app.tbmanhours
-       WHERE idwkctr = $1 AND workday BETWEEN $2 AND $3`,
+       WHERE idwkctr = $1 AND ${MANHOUR_PERIOD_OVERLAP_SQL}`,
       [idwkctr, from, to],
     ),
     Promise.all(
@@ -254,7 +261,7 @@ export async function getManhourChartBreakdown(
          COALESCE(SUM(ot2), 0)::text AS ot2,
          COALESCE(SUM(ot3), 0)::text AS ot3
        FROM app.tbmanhours
-       WHERE idwkctr = $1 AND workday BETWEEN $2 AND $3`,
+       WHERE idwkctr = $1 AND ${MANHOUR_PERIOD_OVERLAP_SQL}`,
       [idwkctr, from, to],
     ),
     pool.query<{ total: string }>(

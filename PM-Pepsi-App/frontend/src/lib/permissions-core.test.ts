@@ -22,7 +22,8 @@ describe('permissions-core with rbac preview', () => {
   it('preview overrides session permissions', () => {
     setRbacPreview({
       roleCode: 'W',
-      roleName: 'Technician',
+      roleNameTh: 'ช่าง',
+      roleNameEn: 'Technician',
       permissions: ['confirmation.read'],
     })
     expect(hasPermission({ userst: 'A', permissions: ['admin.users.read'] } as never, 'admin.users.read')).toBe(

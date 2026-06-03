@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 import '@testing-library/jest-dom/vitest'
+import '@/i18n'
 import { ReportsDateFilter } from '@/features/reports/ReportsDateFilter'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -17,8 +18,7 @@ describe('ReportsDateFilter', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /2026-04-01/i }))
-    fireEvent.click(screen.getByTestId('filter-date-apply'))
+    fireEvent.click(screen.getByTestId('reports-date-apply'))
 
     expect(onSearch).toHaveBeenCalledWith({
       from: '2026-04-01',
@@ -37,8 +37,7 @@ describe('ReportsDateFilter', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /2026-04-01/i }))
-    fireEvent.click(screen.getByTestId('filter-date-apply'))
+    fireEvent.click(screen.getByTestId('reports-date-apply'))
 
     expect(onSearch).toHaveBeenCalledWith({
       from: '2026-04-01',

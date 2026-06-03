@@ -12,6 +12,10 @@ export const planningItemSchema = z.object({
   planDate: z.string().optional(),
   movedDate: z.string().optional(),
   closedDate: z.string().optional(),
+  /** ชม.งานจาก IW37N (work + unit) */
+  workHours: z.number().positive().optional(),
+  /** wkctr บนใบงานหลัง import — อ้างอิง Auto default */
+  importWkctr: z.string().optional(),
 })
 
 export const planningResponseSchema = z.object({

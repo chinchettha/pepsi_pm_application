@@ -99,6 +99,7 @@ export function registerAdminRolesRoutes(app: Express, pool: Pool, sessionSecret
       const role = await createRole(pool, {
         roleCode: parsed.data.roleCode,
         roleName: parsed.data.roleName,
+        roleNameEn: parsed.data.roleNameEn,
         roleColor: parsed.data.roleColor,
         description: parsed.data.description ?? null,
       })

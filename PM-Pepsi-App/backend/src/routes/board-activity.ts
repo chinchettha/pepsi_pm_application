@@ -31,6 +31,7 @@ export function registerBoardActivityRoutes(app: Express, pool: Pool, sessionSec
         const data = await getBoardActivity(pool, {
           period: q.period,
           limit: q.limit,
+          team: q.team,
         })
         res.json(boardActivityResponseSchema.parse(data))
       } catch (err) {

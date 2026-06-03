@@ -13,6 +13,7 @@ import { createAdminRole } from '@/lib/admin-roles-api'
 import { useMutation } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 export function CreateRoleDialog({
@@ -24,8 +25,11 @@ export function CreateRoleDialog({
   onOpenChange: (v: boolean) => void
   onCreated: () => void
 }) {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const [roleCode, setRoleCode] = useState('')
-  const [roleName, setRoleName] = useState('')
+  const [roleNameTh, setRoleNameTh] = useState('')
+  const [roleNameEn, setRoleNameEn] = useState('')
   const [roleColor, setRoleColor] = useState('#0A84FF')
   const [description, setDescription] = useState('')
 
@@ -33,20 +37,22 @@ export function CreateRoleDialog({
     mutationFn: () =>
       createAdminRole({
         roleCode: roleCode.trim().toUpperCase(),
-        roleName: roleName.trim(),
+        roleName: roleNameTh.trim(),
+        roleNameEn: roleNameEn.trim(),
         roleColor,
         description: description.trim() || null,
       }),
     onSuccess: () => {
-      toast.success('สร้าง role แล้ว')
+      toast.success(t('roles.created'))
       setRoleCode('')
-      setRoleName('')
+      setRoleNameTh('')
+      setRoleNameEn('')
       setDescription('')
       onOpenChange(false)
       onCreated()
     },
     onError: (e: Error) => {
-      toast.error(e.message || 'สร้าง role ไม่สำเร็จ')
+      toast.error(e.message || t('roles.createFailed'))
     },
   })
 
@@ -54,14 +60,12 @@ export function CreateRoleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>สร้าง role ใหม่</DialogTitle>
-          <DialogDescription>
-            รหัส role ต้องตรงกับค่า userst ใน tbworkcenter (เช่น OPS, QA_LEAD)
-          </DialogDescription>
+          <DialogTitle>{t('roles.createDialogTitleNew')}</DialogTitle>
+          <DialogDescription>{t('roles.createDialogDesc')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label htmlFor="roleCode">รหัส (role_code)</Label>
+            <Label htmlFor="roleCode">{t('roles.roleCodeField')}</Label>
             <Input
               id="roleCode"
               value={roleCode}
@@ -71,11 +75,25 @@ export function CreateRoleDialog({
             />
           </div>
           <div>
-            <Label htmlFor="roleName">ชื่อแสดง</Label>
-            <Input id="roleName" value={roleName} onChange={(e) => setRoleName(e.target.value)} />
+            <Label htmlFor="roleNameTh">{t('roles.roleNameTh')}</Label>
+            <Input
+              id="roleNameTh"
+              value={roleNameTh}
+              onChange={(e) => setRoleNameTh(e.target.value)}
+              placeholder={t('roles.roleNameThPlaceholder')}
+            />
           </div>
           <div>
-            <Label htmlFor="roleColor">สี</Label>
+            <Label htmlFor="roleNameEn">{t('roles.roleNameEn')}</Label>
+            <Input
+              id="roleNameEn"
+              value={roleNameEn}
+              onChange={(e) => setRoleNameEn(e.target.value)}
+              placeholder={t('roles.roleNameEnPlaceholder')}
+            />
+          </div>
+          <div>
+            <Label htmlFor="roleColor">{t('roles.roleColor')}</Label>
             <div className="flex gap-2">
               <Input
                 id="roleColor"
@@ -88,7 +106,7 @@ export function CreateRoleDialog({
             </div>
           </div>
           <div>
-            <Label htmlFor="roleDesc">คำอธิบาย</Label>
+            <Label htmlFor="roleDesc">{t('roles.roleFieldDescription')}</Label>
             <Input
               id="roleDesc"
               value={description}
@@ -98,14 +116,19 @@ export function CreateRoleDialog({
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            ยกเลิก
+            {tc('actions.cancel')}
           </Button>
           <Button
             type="button"
-            disabled={!roleCode.trim() || !roleName.trim() || createMut.isPending}
+            disabled={
+              !roleCode.trim() ||
+              !roleNameTh.trim() ||
+              !roleNameEn.trim() ||
+              createMut.isPending
+            }
             onClick={() => createMut.mutate()}
           >
-            {createMut.isPending ? <Loader2 className="size-4 animate-spin" /> : 'สร้าง'}
+            {createMut.isPending ? <Loader2 className="size-4 animate-spin" /> : t('roles.createBtn')}
           </Button>
         </DialogFooter>
       </DialogContent>

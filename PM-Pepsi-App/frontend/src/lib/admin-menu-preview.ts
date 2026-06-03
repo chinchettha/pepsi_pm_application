@@ -2,6 +2,7 @@ import type { AdminMenuRow, AdminRoleMatrixResponse } from '@/api/schemas'
 import type { NavEntry, NavLinkEntry } from '@/components/layout/nav-config'
 import { filterNavForUser } from '@/lib/nav-rbac'
 import { resolveNavIcon } from '@/lib/nav-icon-map'
+import { stripDeprecatedNavEntries } from '@/lib/nav-menu-api'
 
 const DEFAULT_HEADING_LABEL = 'เมนูหลัก'
 
@@ -70,5 +71,7 @@ export function previewNavForRole(
 ): NavEntry[] {
   const entries = adminMenuRowsToNavEntries(rows)
   const rbacStrict = permissions !== undefined
-  return filterNavForUser(userst, entries, permissions, { rbacStrict })
+  return stripDeprecatedNavEntries(
+    filterNavForUser(userst, entries, permissions, { rbacStrict }),
+  )
 }

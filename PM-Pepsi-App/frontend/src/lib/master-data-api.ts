@@ -1,5 +1,10 @@
 import type { ActivityTypeItem } from '@/api/schemas'
 import { fetchApi } from '@/lib/fetch-api'
+import {
+  isPmMasterProcessFileName,
+  parsePmMasterProcessWorkbook,
+  pmMasterRowsToTasklistImport,
+} from '@/lib/pm-master-process'
 import { z } from 'zod'
 
 const activityTypeItemSchema = z.object({
@@ -1102,6 +1107,15 @@ function parseTasklistSheetRows(values: unknown[][]): TasklistImportRow[] {
 
 export async function parseTasklistFile(file: File): Promise<TasklistImportRow[]> {
   const name = (file.name || '').toLowerCase()
+  if (isPmMasterProcessFileName(file.name)) {
+    const parsed = await parsePmMasterProcessWorkbook(file)
+    const discipline = name.includes('packing')
+      ? 'PK'
+      : name.includes('process me') || name.includes(' me 20')
+        ? 'ME'
+        : 'EE'
+    return pmMasterRowsToTasklistImport(parsed.rows, discipline)
+  }
   if (name.endsWith('.csv')) return parseTasklistCsv(await file.text())
   if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.xlsm') || name.endsWith('.xlsb')) {
     const XLSX = await import('xlsx')

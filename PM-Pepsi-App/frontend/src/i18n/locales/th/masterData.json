@@ -1,0 +1,124 @@
+{
+  "page": {
+    "title": "ข้อมูลหลัก",
+    "hints": ["Activity type", "Master PM", "PM process", "ZB02"],
+    "noAccess": "ไม่มีสิทธิ์เข้าถึง",
+    "noAccessDesc": "ต้องมีสิทธิ์ master-data.read",
+    "tabCount": "{{count}} แท็บ",
+    "masterHub": "Master Hub",
+    "readOnly": "โหมดอ่านอย่างเดียว — ต้องมี master-data.write เพื่อแก้ไข"
+  },
+  "panel": {
+    "loadFailed": "โหลดไม่สำเร็จ",
+    "empty": "ไม่มีข้อมูล",
+    "emptyHint": "ตรวจ migration/seed หรือนำเข้าข้อมูล",
+    "retry": "ลองใหม่"
+  },
+  "actions": {
+    "add": "เพิ่ม",
+    "edit": "แก้ไข",
+    "delete": "ลบ",
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "close": "ปิด",
+    "import": "นำเข้า",
+    "importFile": "นำเข้าไฟล์"
+  },
+  "aria": {
+    "edit": "แก้ไข",
+    "delete": "ลบ"
+  },
+  "rowCount": "{{count}} รายการ",
+  "tabs": {
+    "equipment": "อุปกรณ์",
+    "functional": "Functional Loc.",
+    "machine": "เครื่องจักร",
+    "material": "วัสดุ",
+    "zone": "โซน",
+    "department": "แผนก",
+    "tasklist": "Task list",
+    "worktype": "ประเภทงาน",
+    "zb": "ZB",
+    "level": "ระดับ",
+    "position": "ตำแหน่ง",
+    "activitytype": "ประเภทงาน (MAT)",
+    "pm-master-ee": "MASTER PM EE",
+    "pm-master-me": "MASTER PM ME",
+    "pm-master-pk": "MASTER PM PK",
+    "workstatus": "สถานะงาน",
+    "reason": "เหตุผล",
+    "group": "กลุ่ม",
+    "lineproduct": "สายผลิต",
+    "lineschdul": "ตารางสาย"
+  },
+  "activityType": {
+    "badge": "ZB02 · MaintActivityType",
+    "add": "เพิ่ม",
+    "import": "นำเข้าไฟล์",
+    "edit": "แก้ไข",
+    "delete": "ลบ",
+    "matRequired": "กรุณาระบุ MAT",
+    "descRequired": "กรุณาระบุคำอธิบาย",
+    "checkYn": "Check ต้องเป็น Y หรือ N",
+    "saved": "บันทึกแล้ว",
+    "deleted": "ลบแล้ว",
+    "imported": "นำเข้าแล้ว",
+    "dialogCreate": "เพิ่มประเภทงาน",
+    "dialogEdit": "แก้ไขประเภทงาน",
+    "dialogDelete": "ลบประเภทงาน",
+    "dialogImport": "นำเข้าประเภทงาน (Excel/CSV)",
+    "mat": "MAT",
+    "description": "คำอธิบาย",
+    "check": "Check",
+    "confirmDelete": "ลบ {{mat}} — ไม่สามารถย้อนกลับได้",
+    "pickFile": "เลือกไฟล์",
+    "importResult": "เพิ่ม {{inserted}} · อัปเดต {{updated}} · ข้าม {{skipped}}",
+    "emptyHint": "รัน migration 002 หรือเพิ่มรายการใหม่"
+  },
+  "pmMaster": {
+    "title": "MASTER PM PROCESS {{discipline}}",
+    "loadExcel": "โหลด Excel",
+    "pickFile": "เลือกไฟล์",
+    "loaded": "โหลด {{rows}} แถว · {{sheets}} ชีต",
+    "readFailed": "อ่านไฟล์ไม่สำเร็จ",
+    "noImportRows": "ไม่มีแถวที่นำเข้าได้",
+    "imported": "นำเข้า Task list: +{{inserted}} ~{{updated}} ข้าม {{skipped}}",
+    "importFailed": "นำเข้าไม่สำเร็จ",
+    "allSheets": "ทุกชีต ({{count}})",
+    "sheet": "ชีต",
+    "search": "ค้นหา",
+    "searchPlaceholder": "Zone, Legacy, PM list…",
+    "rowCount": "{{count}} แถว",
+    "previewShown": " · แสดง {{count}}",
+    "importBtn": "นำเข้า Task list",
+    "importing": "กำลังนำเข้า…",
+    "needWrite": "ต้องมี master-data.write",
+    "emptyTitle": "ยังไม่มีข้อมูล",
+    "emptyDesc": "กด「โหลด Excel」แล้วเลือก {{file}}"
+  },
+  "groupWkctr": {
+    "note": "กลุ่มงานช่าง (Work Center Group) — ผูกกับ work center ใน Admin ผู้ใช้งาน ·",
+    "notPmTeam": "ไม่ใช่",
+    "noteSuffix": "ทีม PM Plan A/B/EE/UT บนใบงาน"
+  },
+  "genericTable": {
+    "code": "รหัส",
+    "nameTh": "ชื่อ (ไทย)",
+    "plant": "Plant",
+    "active": "ใช้งาน",
+    "yes": "ใช่",
+    "no": "ไม่"
+  },
+  "emptyHints": {
+    "department": "รัน migration 011 หรือนำเข้าข้อมูลแผนก",
+    "equipment": "รัน migration 012 หรือนำเข้าข้อมูลอุปกรณ์",
+    "functional": "รัน migration 005 หรือนำเข้า Functional loc."
+  },
+  "toast": {
+    "tasklistSaved": "บันทึก Task list แล้ว",
+    "tasklistDeleted": "ลบแล้ว",
+    "tasklistAdded": "เพิ่ม Task list แล้ว",
+    "tasklistImported": "นำเข้า Task list แล้ว"
+  }
+}
+

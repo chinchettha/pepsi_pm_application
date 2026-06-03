@@ -1,20 +1,23 @@
+import { useTranslation } from 'react-i18next'
+
 type Props = {
   showRca: boolean
 }
 
-/** สี PM / Reactive / RCA — ใช้คู่กับกราฟและการ์ดรายคน */
 export function BoardUtilLegend({ showRca }: Props) {
+  const { t } = useTranslation('board')
+
   return (
     <div className="engineering-board__legend" aria-hidden>
       <span className="engineering-board__legend-item engineering-board__legend-item--pm">
-        PM
+        {t('util.legendPm')}
       </span>
       <span className="engineering-board__legend-item engineering-board__legend-item--re">
-        Reactive
+        {t('util.legendReactive')}
       </span>
       {showRca ? (
         <span className="engineering-board__legend-item engineering-board__legend-item--rca">
-          RCA
+          {t('util.legendRca')}
         </span>
       ) : null}
     </div>

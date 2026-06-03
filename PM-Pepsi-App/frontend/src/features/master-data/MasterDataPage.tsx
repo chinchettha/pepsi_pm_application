@@ -1,6 +1,7 @@
 import { CanPermission } from '@/components/auth/CanPermission'
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageContent } from '@/components/layout/AppPageContent'
+import { SchedulingPageHeader, schedulingHeroLinkBtnClass } from '@/components/scheduling/SchedulingPageLayout'
 import {
   type DepartmentItem,
   type EquipmentItem,
@@ -21,6 +22,7 @@ import {
   type ZoneItem,
 } from '@/api/schemas'
 import { ActivityTypePanel } from '@/features/master-data/ActivityTypePanel'
+import { PmMasterProcessPanel } from '@/features/master-data/PmMasterProcessPanel'
 import {
   MasterDataPanelEmpty,
   MasterDataPanelError,
@@ -49,6 +51,7 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { fetchMasterData } from '@/lib/api-public'
+import { useTranslation } from 'react-i18next'
 import { useMasterDataPermissions } from '@/lib/master-data-permissions'
 import {
   createDepartment,
@@ -128,30 +131,39 @@ import {
   updateLineSchdul,
 } from '@/lib/master-data-api'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { AlertCircle, Database, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
-const tabs = [
-  { id: 'equipment', label: 'อุปกรณ์', legacy: 'M_equipment', backend: true },
-  { id: 'functional', label: 'Functional Loc.', legacy: 'M_functional', backend: true },
-  { id: 'machine', label: 'เครื่องจักร', legacy: 'M_machine', backend: true },
-  { id: 'material', label: 'วัสดุ', legacy: 'M_material', backend: true },
-  { id: 'zone', label: 'โซน', legacy: 'M_zone', backend: true },
-  { id: 'department', label: 'แผนก', legacy: 'M_department', backend: true },
-  { id: 'tasklist', label: 'Task list', legacy: 'M_tasklist', backend: true },
-  { id: 'worktype', label: 'ประเภทงาน', legacy: 'M_worktype', backend: true },
-  { id: 'zb', label: 'ZB', legacy: 'M_zb', backend: true },
-  { id: 'level', label: 'ระดับ', legacy: 'M_level', backend: true },
-  { id: 'position', label: 'ตำแหน่ง', legacy: 'M_position', backend: true },
-  { id: 'activitytype', label: 'Activity type', legacy: 'M_activitytype', backend: true },
-  { id: 'workstatus', label: 'สถานะงาน', legacy: 'M_workstatus', backend: true },
-  { id: 'reason', label: 'เหตุผล', legacy: 'M_reason', backend: true },
-  { id: 'group', label: 'กลุ่ม', legacy: 'M_Group', backend: true },
-  { id: 'lineproduct', label: 'สายผลิต', legacy: 'M_lineproduct', backend: true },
-  { id: 'lineschdul', label: 'ตารางสาย', legacy: 'M_lineschdul', backend: true },
+const TAB_IDS = [
+  'equipment',
+  'functional',
+  'machine',
+  'material',
+  'zone',
+  'department',
+  'tasklist',
+  'worktype',
+  'zb',
+  'level',
+  'position',
+  'activitytype',
+  'pm-master-ee',
+  'pm-master-me',
+  'pm-master-pk',
+  'workstatus',
+  'reason',
+  'group',
+  'lineproduct',
+  'lineschdul',
 ] as const
+
+const tabs = TAB_IDS.map((id) => ({
+  id,
+  legacy: `M_${id}` as string,
+  backend: true as const,
+}))
 
 type DepartmentFormState = { iddepartment: string; department: string }
 type DepartmentFormMode = 'create' | 'edit' | 'delete'
@@ -319,6 +331,7 @@ const emptyMaterialForm: MaterialFormState = {
 }
 
 function DepartmentPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'department'],
@@ -426,12 +439,12 @@ function DepartmentPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          เพิ่ม
+          {t('actions.add')}
         </Button>
       </div>
 
       {rows.length === 0 ? (
-        <MasterDataPanelEmpty description="รัน migration 011 หรือนำเข้าข้อมูลแผนก" />
+        <MasterDataPanelEmpty description={t('emptyHints.department')} />
       ) : (
         <div className="app-table-shell overflow-x-auto">
           <Table embedded stickyHeader zebra>
@@ -454,7 +467,7 @@ function DepartmentPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(row)}
-                        aria-label="แก้ไข"
+                        aria-label={t('aria.edit')}
                       >
                         <Pencil className="size-4" />
                       </Button>
@@ -463,7 +476,7 @@ function DepartmentPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openDelete(row)}
-                        aria-label="ลบ"
+                        aria-label={t('aria.delete')}
                       >
                         <Trash2 className="size-4 text-red-600" />
                       </Button>
@@ -546,6 +559,7 @@ function DepartmentPanel() {
 }
 
 function EquipmentPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'equipment'],
@@ -709,7 +723,7 @@ function EquipmentPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          เพิ่ม
+          {t('actions.add')}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -718,7 +732,7 @@ function EquipmentPanel() {
       </div>
 
       {rows.length === 0 ? (
-        <MasterDataPanelEmpty description="รัน migration 012 หรือนำเข้าข้อมูลอุปกรณ์" />
+        <MasterDataPanelEmpty description={t('emptyHints.equipment')} />
       ) : (
         <div className="app-table-shell overflow-x-auto">
           <Table embedded stickyHeader zebra>
@@ -745,7 +759,7 @@ function EquipmentPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(row)}
-                        aria-label="แก้ไข"
+                        aria-label={t('aria.edit')}
                       >
                         <Pencil className="size-4" />
                       </Button>
@@ -754,7 +768,7 @@ function EquipmentPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openDelete(row)}
-                        aria-label="ลบ"
+                        aria-label={t('aria.delete')}
                       >
                         <Trash2 className="size-4 text-red-600" />
                       </Button>
@@ -932,6 +946,7 @@ function EquipmentPanel() {
 }
 
 function FunctionalPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'functional'],
@@ -1086,7 +1101,7 @@ function FunctionalPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          เพิ่ม
+          {t('actions.add')}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -1095,7 +1110,7 @@ function FunctionalPanel() {
       </div>
 
       {rows.length === 0 ? (
-        <MasterDataPanelEmpty description="รัน migration 005 หรือนำเข้า Functional loc." />
+        <MasterDataPanelEmpty description={t('emptyHints.functional')} />
       ) : (
         <div className="app-table-shell overflow-x-auto">
           <Table embedded stickyHeader zebra>
@@ -1120,7 +1135,7 @@ function FunctionalPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(row)}
-                        aria-label="แก้ไข"
+                        aria-label={t('aria.edit')}
                       >
                         <Pencil className="size-4" />
                       </Button>
@@ -1129,7 +1144,7 @@ function FunctionalPanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openDelete(row)}
-                        aria-label="ลบ"
+                        aria-label={t('aria.delete')}
                       >
                         <Trash2 className="size-4 text-red-600" />
                       </Button>
@@ -1282,6 +1297,7 @@ function FunctionalPanel() {
 }
 
 function ReasonPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'reason'],
@@ -1384,7 +1400,7 @@ function ReasonPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        เพิ่ม
+        {t('actions.add')}
       </Button>
 
       <div className="app-table-shell overflow-x-auto">
@@ -1408,7 +1424,7 @@ function ReasonPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="แก้ไข"
+                      aria-label={t('aria.edit')}
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -1417,7 +1433,7 @@ function ReasonPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="ลบ"
+                      aria-label={t('aria.delete')}
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -1491,6 +1507,7 @@ function ReasonPanel() {
 }
 
 function WorkTypePanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'worktype'],
@@ -1593,7 +1610,7 @@ function WorkTypePanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        เพิ่ม
+        {t('actions.add')}
       </Button>
 
       <div className="app-table-shell overflow-x-auto">
@@ -1617,7 +1634,7 @@ function WorkTypePanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="แก้ไข"
+                      aria-label={t('aria.edit')}
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -1626,7 +1643,7 @@ function WorkTypePanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="ลบ"
+                      aria-label={t('aria.delete')}
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -1700,6 +1717,7 @@ function WorkTypePanel() {
 }
 
 function ZbPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'zb'],
@@ -1801,7 +1819,7 @@ function ZbPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        เพิ่ม
+        {t('actions.add')}
       </Button>
 
       <div className="app-table-shell overflow-x-auto">
@@ -1825,7 +1843,7 @@ function ZbPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="แก้ไข"
+                      aria-label={t('aria.edit')}
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -1834,7 +1852,7 @@ function ZbPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="ลบ"
+                      aria-label={t('aria.delete')}
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -1908,6 +1926,7 @@ function ZbPanel() {
 }
 
 function LevelPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'level'],
@@ -2010,7 +2029,7 @@ function LevelPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        เพิ่ม
+        {t('actions.add')}
       </Button>
 
       <div className="app-table-shell overflow-x-auto">
@@ -2034,7 +2053,7 @@ function LevelPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="แก้ไข"
+                      aria-label={t('aria.edit')}
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -2043,7 +2062,7 @@ function LevelPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="ลบ"
+                      aria-label={t('aria.delete')}
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -2115,6 +2134,7 @@ function LevelPanel() {
 }
 
 function PositionPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'position'],
@@ -2217,7 +2237,7 @@ function PositionPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        เพิ่ม
+        {t('actions.add')}
       </Button>
 
       <div className="app-table-shell overflow-x-auto">
@@ -2241,7 +2261,7 @@ function PositionPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="แก้ไข"
+                      aria-label={t('aria.edit')}
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -2250,7 +2270,7 @@ function PositionPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="ลบ"
+                      aria-label={t('aria.delete')}
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -2326,6 +2346,7 @@ function PositionPanel() {
 }
 
 function GroupPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'group'],
@@ -2425,9 +2446,14 @@ function GroupPanel() {
 
   return (
     <div className="space-y-4">
+      <p className="text-body-sm text-app-muted">
+        {t('groupWkctr.note')}{' '}
+        <strong className="font-medium text-app">{t('groupWkctr.notPmTeam')}</strong>{' '}
+        {t('groupWkctr.noteSuffix')}
+      </p>
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        เพิ่ม
+        {t('actions.add')}
       </Button>
 
       <div className="app-table-shell overflow-x-auto">
@@ -2446,10 +2472,10 @@ function GroupPanel() {
                 <TableCell>{row.wkctrdescription}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label={t('aria.edit')}>
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -2495,6 +2521,7 @@ function GroupPanel() {
 }
 
 function TasklistPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const tableWrapRef = useRef<HTMLDivElement>(null)
   const scrollToIdRef = useRef<number | null>(null)
@@ -2617,16 +2644,16 @@ function TasklistPanel() {
         const row = saved as TasklistItem
         scrollToIdRef.current = row.idtasklist
         openEdit(row)
-        toast.success('บันทึก Task list แล้ว')
+        toast.success(t('toast.tasklistSaved'))
         return
       }
       if (mode === 'delete') {
         close()
-        toast.success('ลบแล้ว')
+        toast.success(t('toast.tasklistDeleted'))
         return
       }
       close()
-      toast.success('เพิ่ม Task list แล้ว')
+      toast.success(t('toast.tasklistAdded'))
     },
   })
 
@@ -2644,7 +2671,7 @@ function TasklistPanel() {
     onSuccess: async () => {
       await qc.refetchQueries({ queryKey: ['master-data', 'tasklist'] })
       closeImport()
-      toast.success('นำเข้า Task list แล้ว')
+      toast.success(t('toast.tasklistImported'))
     },
   })
 
@@ -2761,7 +2788,7 @@ function TasklistPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          เพิ่ม
+          {t('actions.add')}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -2797,10 +2824,10 @@ function TasklistPanel() {
                 <TableCell>{row.wkctrtype || row.idwkctrtype}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label={t('aria.edit')}>
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -2884,6 +2911,7 @@ function TasklistPanel() {
 }
 
 function WorkStatusPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'workstatus'],
@@ -2997,7 +3025,7 @@ function WorkStatusPanel() {
     <div className="space-y-4">
       <Button type="button" size="sm" onClick={openCreate}>
         <Plus className="mr-1 size-4" />
-        เพิ่ม
+        {t('actions.add')}
       </Button>
 
       <div className="app-table-shell overflow-x-auto">
@@ -3028,7 +3056,7 @@ function WorkStatusPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(row)}
-                      aria-label="แก้ไข"
+                      aria-label={t('aria.edit')}
                     >
                       <Pencil className="size-4" />
                     </Button>
@@ -3037,7 +3065,7 @@ function WorkStatusPanel() {
                       variant="ghost"
                       size="icon"
                       onClick={() => openDelete(row)}
-                      aria-label="ลบ"
+                      aria-label={t('aria.delete')}
                     >
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
@@ -3125,6 +3153,7 @@ function WorkStatusPanel() {
 }
 
 function LineProductPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'lineproduct'],
@@ -3248,7 +3277,7 @@ function LineProductPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          เพิ่ม
+          {t('actions.add')}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -3272,10 +3301,10 @@ function LineProductPanel() {
                 <TableCell>{row.prolinedescrip}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label={t('aria.edit')}>
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -3346,6 +3375,7 @@ function LineProductPanel() {
 }
 
 function LineSchdulPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'lineschdul'],
@@ -3508,7 +3538,7 @@ function LineSchdulPanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          เพิ่ม
+          {t('actions.add')}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -3536,10 +3566,10 @@ function LineSchdulPanel() {
                 <TableCell>{row.linereason}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label={t('aria.edit')}>
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -3626,6 +3656,7 @@ function LineSchdulPanel() {
 }
 
 function ZonePanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'zone'],
@@ -3768,7 +3799,7 @@ function ZonePanel() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          เพิ่ม
+          {t('actions.add')}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
@@ -3795,10 +3826,10 @@ function ZonePanel() {
                 <TableCell>{row.productline || row.idproductline}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label={t('aria.edit')}>
                       <Pencil className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -3876,6 +3907,7 @@ function ZonePanel() {
 }
 
 function MachinePanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'machine'],
@@ -4020,8 +4052,8 @@ function MachinePanel() {
                 <TableCell>{row.wkctrtype || row.idwkctrtype}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข"><Pencil className="size-4" /></Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ"><Trash2 className="size-4 text-red-600" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label={t('aria.edit')}><Pencil className="size-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}><Trash2 className="size-4 text-red-600" /></Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -4093,6 +4125,7 @@ function MachinePanel() {
 }
 
 function MaterialPanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'material'],
@@ -4269,8 +4302,8 @@ function MaterialPanel() {
                 <TableCell>{row.mvt}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label="แก้ไข"><Pencil className="size-4" /></Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label="ลบ"><Trash2 className="size-4 text-red-600" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label={t('aria.edit')}><Pencil className="size-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}><Trash2 className="size-4 text-red-600" /></Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -4368,15 +4401,17 @@ function GenericMasterTable({
 }: {
   rows: Extract<MasterDataItem, { code: string }>[]
 }) {
+  const { t } = useTranslation('masterData')
+
   return (
     <div className="app-table-shell overflow-x-auto">
       <Table embedded stickyHeader zebra>
         <TableHeader>
           <TableRow>
-            <TableHead>รหัส</TableHead>
-            <TableHead>ชื่อ (ไทย)</TableHead>
-            <TableHead>Plant</TableHead>
-            <TableHead>ใช้งาน</TableHead>
+            <TableHead>{t('genericTable.code')}</TableHead>
+            <TableHead>{t('genericTable.nameTh')}</TableHead>
+            <TableHead>{t('genericTable.plant')}</TableHead>
+            <TableHead>{t('genericTable.active')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -4385,7 +4420,7 @@ function GenericMasterTable({
               <TableCell className="font-mono text-body-sm">{row.code}</TableCell>
               <TableCell>{row.nameTh}</TableCell>
               <TableCell>{row.plant}</TableCell>
-              <TableCell>{row.active ? 'ใช่' : 'ไม่'}</TableCell>
+              <TableCell>{row.active ? t('genericTable.yes') : t('genericTable.no')}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -4397,6 +4432,9 @@ function GenericMasterTable({
 function MasterTable({ entity }: { entity: string }) {
   const enableGenericQuery =
     entity !== 'activitytype' &&
+    entity !== 'pm-master-ee' &&
+    entity !== 'pm-master-me' &&
+    entity !== 'pm-master-pk' &&
     entity !== 'department' &&
     entity !== 'equipment' &&
     entity !== 'functional' &&
@@ -4422,6 +4460,18 @@ function MasterTable({ entity }: { entity: string }) {
 
   if (entity === 'activitytype') {
     return <ActivityTypePanel />
+  }
+
+  if (entity === 'pm-master-ee') {
+    return <PmMasterProcessPanel discipline="EE" />
+  }
+
+  if (entity === 'pm-master-me') {
+    return <PmMasterProcessPanel discipline="ME" />
+  }
+
+  if (entity === 'pm-master-pk') {
+    return <PmMasterProcessPanel discipline="PK" />
   }
 
   if (entity === 'department') {
@@ -4501,76 +4551,86 @@ function MasterTable({ entity }: { entity: string }) {
 }
 
 export function MasterDataPage() {
+  const { t } = useTranslation('masterData')
   const { canRead, canWrite } = useMasterDataPermissions()
+  const tabsLocalized = tabs.map((tab) => ({
+    ...tab,
+    label: t(`tabs.${tab.id}` as 'tabs.equipment'),
+  }))
   const [searchParams, setSearchParams] = useSearchParams()
   const entityFromUrl = searchParams.get('entity')?.trim() ?? ''
   const [tab, setTab] = useState<string>('activitytype')
 
   useEffect(() => {
     if (!entityFromUrl) return
-    if (!tabs.some((t) => t.id === entityFromUrl)) return
+    if (!tabsLocalized.some((row) => row.id === entityFromUrl)) return
     setTab((prev) => (prev === entityFromUrl ? prev : entityFromUrl))
   }, [entityFromUrl])
 
   if (!canRead) {
     return (
-      <AppPageShell title="ข้อมูลหลัก" description="จัดการ master data สำหรับ PM">
-        <EmptyState
-          icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
-          description={
-            <>
-              ต้องมีสิทธิ์ <code className="text-xs">master-data.read</code>
-            </>
-          }
+      <>
+        <SchedulingPageHeader
+          title={t('page.title')}
+          icon={Database}
+          hints={t('page.hints', { returnObjects: true }) as string[]}
         />
-      </AppPageShell>
+        <AppPageContent>
+          <EmptyState
+            icon={AlertCircle}
+            title={t('page.noAccess')}
+            description={
+              <>
+                {t('page.noAccessDesc')}{' '}
+                <code className="text-xs">master-data.read</code>
+              </>
+            }
+          />
+        </AppPageContent>
+      </>
     )
   }
 
-  const currentTab = (tabs.find((t) => t.id === tab) ?? tabs[0])?.id ?? 'activitytype'
+  const currentTab =
+    (tabsLocalized.find((row) => row.id === tab) ?? tabsLocalized[0])?.id ?? 'activitytype'
 
   return (
-    <AppPageShell
-      title="ข้อมูลหลัก"
-      description="อุปกรณ์ · Functional loc. · แผนก · Task list · สายผลิต · วัสดุ และอื่น ๆ"
-      contentClassName="space-y-4"
-      headerActions={
-        <>
-          <Badge variant="secondary" className="text-xs">
-            {tabs.length} แท็บ
-          </Badge>
-          <Button type="button" variant="outline" size="sm" asChild>
-            <Link to="/admin/master">Master Hub</Link>
+    <>
+      <SchedulingPageHeader
+        title={t('page.title')}
+        icon={Database}
+        hints={t('page.hints', { returnObjects: true }) as string[]}
+      >
+        <Badge variant="secondary" className="text-xs tabular-nums">
+          {t('page.tabCount', { count: tabsLocalized.length })}
+        </Badge>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={schedulingHeroLinkBtnClass}
+          asChild
+        >
+          <Link to="/admin/master">{t('page.masterHub')}</Link>
+        </Button>
+        <CanPermission permission="iw37n.read">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={schedulingHeroLinkBtnClass}
+            asChild
+          >
+            <Link to="/iw37n">IW37N</Link>
           </Button>
-          <CanPermission permission="master-data.read">
-            <Button type="button" variant="outline" size="sm" asChild>
-              <Link to="/line-calendar">ปฏิทินสาย</Link>
-            </Button>
-          </CanPermission>
-          <CanPermission permission="iw37n.read">
-            <Button type="button" variant="outline" size="sm" asChild>
-              <Link to="/iw37n">IW37N</Link>
-            </Button>
-          </CanPermission>
-        </>
-      }
-    >
+        </CanPermission>
+      </SchedulingPageHeader>
+
+      <AppPageContent className="scheduling-page pb-8">
         {!canWrite ? (
-          <AppCard pad="compact" className="border-amber-200/80 bg-amber-50/60 text-body-sm text-amber-950">
-            โหมดอ่านอย่างเดียว — ต้องมี <code className="text-xs">master-data.write</code> เพื่อเพิ่ม/แก้/ลบ/นำเข้า
+          <AppCard pad="compact" className="mb-4 border-amber-200/80 bg-amber-50/60 text-body-sm text-amber-950">
+            {t('page.readOnly')} <code className="text-xs">master-data.write</code>
           </AppCard>
-        ) : null}
-        {entityFromUrl && tabs.some((t) => t.id === entityFromUrl) ? (
-          <p className="text-caption">
-            <Link to="/admin/master" className="text-[var(--app-accent,#007AFF)] hover:underline">
-              ← Master Data Hub
-            </Link>
-            <span className="mx-2 text-app-muted">|</span>
-            <span>
-              เปิดจาก hub: <code className="text-xs">{entityFromUrl}</code>
-            </span>
-          </p>
         ) : null}
         <Tabs
           value={currentTab}
@@ -4586,24 +4646,22 @@ export function MasterDataPage() {
             )
           }}
         >
-          <TabsList className="mb-4 flex h-auto flex-wrap justify-start gap-1 bg-[var(--app-surface)] p-1">
-            {tabs.map((t) => (
-              <TabsTrigger key={t.id} value={t.id} className="text-xs sm:text-body-sm">
-                {t.label}
+          <TabsList className="mb-4 flex h-auto max-w-full flex-wrap justify-start gap-1 bg-[var(--app-surface)] p-1">
+            {tabsLocalized.map((row) => (
+              <TabsTrigger key={row.id} value={row.id} className="text-xs sm:text-body-sm">
+                {row.label}
               </TabsTrigger>
             ))}
           </TabsList>
-          {tabs.map((t) => (
-            <TabsContent key={t.id} value={t.id}>
+          {tabsLocalized.map((row) => (
+            <TabsContent key={row.id} value={row.id}>
               <AppCard pad="default">
-                <p className="mb-4 text-xs text-app-muted">
-                  Legacy PHP: <code className="text-code">{t.legacy}</code>
-                </p>
-                <MasterTable entity={t.id} />
+                <MasterTable entity={row.id} />
               </AppCard>
             </TabsContent>
           ))}
         </Tabs>
-    </AppPageShell>
+      </AppPageContent>
+    </>
   )
 }

@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CalendarRange, X } from 'lucide-react'
 import { useEffect, useId, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type FilterDateDrawerProps = {
   open: boolean
@@ -18,14 +19,17 @@ export type FilterDateDrawerProps = {
 export function FilterDateDrawer({
   open,
   onOpenChange,
-  title = 'ช่วงวันที่และตัวกรอง',
+  title,
   summary,
   children,
   onApply,
   applyDisabled = false,
-  applyLabel = 'นำไปใช้',
+  applyLabel,
 }: FilterDateDrawerProps) {
+  const { t } = useTranslation()
   const titleId = useId()
+  const drawerTitle = title ?? t('filterDrawer.title')
+  const applyText = applyLabel ?? t('filterDrawer.apply')
 
   useEffect(() => {
     if (!open) return
@@ -52,7 +56,7 @@ export function FilterDateDrawer({
       <button
         type="button"
         className="absolute inset-0 bg-black/50"
-        aria-label="ปิดตัวกรอง"
+        aria-label={t('filterDrawer.closeFilter')}
         onClick={() => onOpenChange(false)}
       />
       <div
@@ -64,17 +68,17 @@ export function FilterDateDrawer({
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-app px-4 py-3">
           <div className="min-w-0">
             <h2 id={titleId} className="text-body font-semibold text-app">
-              {title}
+              {drawerTitle}
             </h2>
             {summary ? <p className="mt-0.5 truncate text-caption text-app-muted">{summary}</p> : null}
-            <p className="mt-1 text-xs text-app-muted">กด Esc เพื่อปิด</p>
+            <p className="mt-1 text-xs text-app-muted">{t('filterDrawer.escHint')}</p>
           </div>
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className="shrink-0"
-            aria-label="ปิด"
+            aria-label={t('filterDrawer.close')}
             onClick={() => onOpenChange(false)}
           >
             <X className="size-4" aria-hidden />
@@ -96,7 +100,7 @@ export function FilterDateDrawer({
             }}
           >
             <CalendarRange className="size-4" aria-hidden />
-            {applyLabel}
+            {applyText}
           </Button>
         </div>
       </div>

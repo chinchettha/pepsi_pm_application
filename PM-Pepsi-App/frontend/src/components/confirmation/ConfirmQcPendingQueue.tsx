@@ -1,14 +1,26 @@
+import { SchedulingSection } from '@/components/scheduling/SchedulingPageLayout'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetchConfirmQcPending } from '@/lib/api-public'
 import { useQuery } from '@tanstack/react-query'
+import { ShieldCheck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export type ConfirmQcPendingQueueProps = {
   enabled?: boolean
   onOpenWo: (wkorder: string, idiw37: number) => void
+  collapsible?: boolean
+  defaultOpen?: boolean
 }
 
-export function ConfirmQcPendingQueue({ enabled = true, onOpenWo }: ConfirmQcPendingQueueProps) {
+export function ConfirmQcPendingQueue({
+  enabled = true,
+  onOpenWo,
+  collapsible = false,
+  defaultOpen = true,
+}: ConfirmQcPendingQueueProps) {
+  const { t } = useTranslation('confirmation')
   const pendingQ = useQuery({
     queryKey: ['confirmation', 'qc', 'pending'],
     queryFn: () => fetchConfirmQcPending(30),
@@ -21,46 +33,70 @@ export function ConfirmQcPendingQueue({ enabled = true, onOpenWo }: ConfirmQcPen
   const items = pendingQ.data ?? []
 
   return (
-    <div className="app-card app-card-pad-compact space-y-3">
-      <div>
-        <h3 className="text-body-sm font-semibold text-app">คิวรอ Admin QC</h3>
-        <p className="text-xs text-app-muted">
-          ใบงานที่ช่างส่งรูป/เวลาแล้ว — อนุมัติก่อนนับใน Personnel Confirm และ Export SAP
-        </p>
-      </div>
-
+    <SchedulingSection
+      icon={ShieldCheck}
+      title={t('qc.queueTitle')}
+      collapsible={collapsible}
+      defaultOpen={defaultOpen}
+      collapsedHint={
+        pendingQ.isLoading
+          ? t('qc.queueLoadingHint')
+          : items.length > 0
+            ? t('qc.queuePendingHint', { count: items.length.toLocaleString() })
+            : t('qc.queueEmptyHint')
+      }
+      badge={
+        items.length > 0 ? (
+          <Badge variant="secondary" className="tabular-nums">
+            {items.length}
+          </Badge>
+        ) : undefined
+      }
+      bodyClassName="p-0"
+    >
       {pendingQ.isLoading ? (
-        <Skeleton className="h-16 w-full" />
+        <div className="p-4">
+          <Skeleton className="h-16 w-full rounded-xl" />
+        </div>
       ) : items.length === 0 ? (
-        <p className="text-caption">ไม่มีใบงานรอตรวจ</p>
+        <p className="px-4 py-6 text-center text-caption text-app-muted">{t('qc.queueEmpty')}</p>
       ) : (
-        <ul className="divide-y divide-[var(--app-border)] rounded-button border border-app">
+        <ul className="divide-y divide-app/50">
           {items.map((row) => (
             <li
               key={row.idiw37}
-              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-body-sm"
+              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-teal-50/40"
             >
-              <div>
-                <span className="font-medium">{row.wkorder}</span>
-                <span className="ml-2 text-xs text-app-muted">
-                  รูป {row.imageCount} · ปิดงาน {row.closeCount}
-                  {row.submittedAt
-                    ? ` · ${new Date(row.submittedAt).toLocaleString('th-TH')}`
-                    : ''}
+              <div className="min-w-0">
+                <span className="font-medium tabular-nums text-app">{row.wkorder}</span>
+                <span className="ml-3 text-xs text-app-muted">
+                  {t('qc.queuePhotos')} {row.imageCount}
+                  <span className="mx-1.5 text-app/30">·</span>
+                  {t('qc.queueClose')} {row.closeCount}
+                  {row.submittedAt ? (
+                    <>
+                      <span className="mx-1.5 text-app/30">·</span>
+                      {new Date(row.submittedAt).toLocaleString('th-TH', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      })}
+                    </>
+                  ) : null}
                 </span>
               </div>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
+                className="shrink-0 rounded-lg border-teal-200/80 hover:bg-teal-50"
                 onClick={() => onOpenWo(row.wkorder, row.idiw37)}
               >
-                เปิดตรวจ
+                {t('qc.openReview')}
               </Button>
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </SchedulingSection>
   )
 }

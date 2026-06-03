@@ -9,6 +9,7 @@
 2. ระบบตั้ง `tbiw37n.confirm_qc_status = pending`
 3. **Admin** (`confirmation.import`) ตรวจที่ `/confirmation` (คิวรอ QC) หรือ modal WO แท็บ Confirm
 4. กด **อนุมัติ** → `approved` → นับใน:
+   - **Dashboard** KPI「ปิดเดือนนี้」+ sparkline 7 วัน (`GET /dashboard/summary`)
    - Workflow ขั้น 4 (ปฏิทิน suffix `4`)
    - Personnel Confirm % (`view_countpersonelclose` — เฉพาะ `tbcofirm` หลังอนุมัติ)
    - Export Confirm SAP (เฉพาะ WO ที่ `approved`)
@@ -18,6 +19,7 @@
 
 | Method | Path | สิทธิ์ |
 |--------|------|--------|
+| GET | `/api/v1/dashboard/summary` | `dashboard.read` — **ปิดเดือนนี้** นับเฉพาะ `confirm_qc_status=approved` |
 | GET | `/api/v1/confirmation/qc/pending` | `confirmation.import` |
 | GET | `/api/v1/confirmation/:idiw37/qc` | `confirmation.read` |
 | POST | `/api/v1/confirmation/:idiw37/qc/approve` | `confirmation.import` |

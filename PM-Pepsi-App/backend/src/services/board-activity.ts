@@ -72,12 +72,13 @@ export function mergeBoardActivityItems(
 
 export async function getBoardActivity(
   pool: Pool,
-  opts: { period: BoardPeriodId; limit: number },
+  opts: { period: BoardPeriodId; limit: number; team?: 'A' | 'B' | 'EE' | 'UT' },
 ): Promise<BoardActivityResponse> {
   const timezone = await getAppTimezone(pool)
   const range = resolveBoardPeriodDateRange(opts.period, timezone)
   const limit = Math.min(12, Math.max(1, opts.limit))
   const fetchN = Math.max(limit, FETCH_PER_SOURCE)
+  const team = opts.team?.trim()
 
   const assignedSql = `
     SELECT
@@ -104,6 +105,7 @@ export async function getBoardActivity(
       AND ev.event_unix IS NOT NULL
       AND timezone($1, to_timestamp(ev.event_unix))::date >= $2::date
       AND timezone($1, to_timestamp(ev.event_unix))::date <= $3::date
+      AND ($5::text IS NULL OR i.team = $5::text)
     ORDER BY ev.event_unix DESC
     LIMIT $4
   `
@@ -125,11 +127,12 @@ export async function getBoardActivity(
       AND c.timeclose > 0
       AND timezone($1, to_timestamp(c.timeclose))::date >= $2::date
       AND timezone($1, to_timestamp(c.timeclose))::date <= $3::date
+      AND ($5::text IS NULL OR i.team = $5::text)
     ORDER BY c.timeclose DESC
     LIMIT $4
   `
 
-  const params = [timezone, range.from, range.to, fetchN]
+  const params = [timezone, range.from, range.to, fetchN, team ?? null]
 
   const [assignedR, closedR] = await Promise.all([
     pool.query<RawRow>(assignedSql, params),

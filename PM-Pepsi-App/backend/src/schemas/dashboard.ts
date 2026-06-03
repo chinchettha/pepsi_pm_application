@@ -15,3 +15,7 @@ export const dashboardSummarySchema = z.object({
     importDaily: dashboardTrendSeriesSchema,
   }),
 })
+
+export const dashboardSummaryQuerySchema = z.object({
+  team: z.enum(['A', 'B', 'EE', 'UT']).optional(),
+})

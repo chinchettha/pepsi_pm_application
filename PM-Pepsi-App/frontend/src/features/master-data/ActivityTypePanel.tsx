@@ -1,4 +1,5 @@
 import type { ActivityTypeItem } from '@/api/schemas'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -35,6 +36,7 @@ import {
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type FormState = { mat: string; matdescrip: string; matcheck: string }
 
@@ -43,6 +45,7 @@ const emptyForm: FormState = { mat: '', matdescrip: '', matcheck: 'Y' }
 type FormMode = 'create' | 'edit' | 'delete'
 
 export function ActivityTypePanel() {
+  const { t } = useTranslation('masterData')
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['master-data', 'activitytype'],
@@ -90,12 +93,12 @@ export function ActivityTypePanel() {
     const desc = form.matdescrip.trim()
     const checkRaw = form.matcheck.trim()
 
-    if (!mat) next.mat = 'Mat is required.'
-    if (!desc) next.matdescrip = 'Description is required.'
+    if (!mat) next.mat = t('activityType.matRequired')
+    if (!desc) next.matdescrip = t('activityType.descRequired')
 
     if (checkRaw) {
       const upper = checkRaw.toUpperCase()
-      if (upper !== 'Y' && upper !== 'N') next.matcheck = 'Check must be Y or N.'
+      if (upper !== 'Y' && upper !== 'N') next.matcheck = t('activityType.checkYn')
     }
 
     setFormErrors(next)
@@ -194,27 +197,33 @@ export function ActivityTypePanel() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="text-xs">
+          {t('activityType.badge')}
+        </Badge>
+        <span className="text-xs text-app-muted">{t('rowCount', { count: rows.length })}</span>
+      </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1 size-4" />
-          เพิ่ม
+          {t('activityType.add')}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
-          นำเข้าไฟล์
+          {t('activityType.import')}
         </Button>
       </div>
 
       {rows.length === 0 ? (
-        <MasterDataPanelEmpty description="รัน migration 002 หรือเพิ่มรายการใหม่" />
+        <MasterDataPanelEmpty description={t('activityType.emptyHint')} />
       ) : (
         <div className="app-table-shell overflow-x-auto">
           <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
-                <TableHead>Mat</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Check</TableHead>
+                <TableHead>{t('activityType.mat')}</TableHead>
+                <TableHead>{t('activityType.description')}</TableHead>
+                <TableHead>{t('activityType.check')}</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
@@ -231,7 +240,7 @@ export function ActivityTypePanel() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(row)}
-                        aria-label="แก้ไข"
+                        aria-label={t('aria.edit')}
                       >
                         <Pencil className="size-4" />
                       </Button>
@@ -242,7 +251,7 @@ export function ActivityTypePanel() {
                         onClick={() => {
                           openDelete(row)
                         }}
-                        aria-label="ลบ"
+                        aria-label={t('aria.delete')}
                       >
                         <Trash2 className="size-4 text-red-600" />
                       </Button>
@@ -266,15 +275,15 @@ export function ActivityTypePanel() {
           <DialogHeader>
             <DialogTitle>
               {formMode === 'create'
-                ? 'เพิ่ม Activity type'
+                ? t('activityType.dialogCreate')
                 : formMode === 'edit'
-                  ? 'แก้ไข Activity type'
-                  : 'ลบ Activity type'}
+                  ? t('activityType.dialogEdit')
+                  : t('activityType.dialogDelete')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="mat">Mat</Label>
+              <Label htmlFor="mat">{t('activityType.mat')}</Label>
               <Input
                 id="mat"
                 value={form.mat}
@@ -286,7 +295,7 @@ export function ActivityTypePanel() {
               ) : null}
             </div>
             <div>
-              <Label htmlFor="matdescrip">Description</Label>
+              <Label htmlFor="matdescrip">{t('activityType.description')}</Label>
               <Input
                 id="matdescrip"
                 value={form.matdescrip}
@@ -298,7 +307,7 @@ export function ActivityTypePanel() {
               ) : null}
             </div>
             <div>
-              <Label htmlFor="matcheck">Check</Label>
+              <Label htmlFor="matcheck">{t('activityType.check')}</Label>
               <Input
                 id="matcheck"
                 value={form.matcheck}
@@ -312,7 +321,7 @@ export function ActivityTypePanel() {
           </div>
           {formMode === 'delete' ? (
             <p className="text-body-sm text-red-600">
-              This action cannot be undone. Delete {form.mat}?
+              {t('activityType.confirmDelete', { mat: form.mat })}
             </p>
           ) : null}
           {formErrorSummary && formMode !== 'delete' ? (
@@ -323,7 +332,7 @@ export function ActivityTypePanel() {
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeFormDialog}>
-              ยกเลิก
+              {t('actions.cancel')}
             </Button>
             <Button
               type="button"
@@ -332,10 +341,10 @@ export function ActivityTypePanel() {
               onClick={() => formMut.mutate()}
             >
               {formMode === 'create'
-                ? 'เพิ่ม'
+                ? t('actions.add')
                 : formMode === 'edit'
-                  ? 'บันทึก'
-                  : 'ลบ'}
+                  ? t('actions.save')
+                  : t('actions.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -350,24 +359,17 @@ export function ActivityTypePanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>นำเข้า Activity type (CSV/Excel)</DialogTitle>
+            <DialogTitle>{t('activityType.dialogImport')}</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-app-muted">
-            Upload file export: mat, description, check. For Excel files, the first 2 rows are skipped (PHP parity).
-            Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
-          </p>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label htmlFor="activitytype-import-file">Select file</Label>
+              <Label htmlFor="activitytype-import-file">{t('activityType.pickFile')}</Label>
               <Input
                 id="activitytype-import-file"
                 type="file"
                 accept=".csv,.xls,.xlsx,.xlsm,.xlsb"
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
               />
-            </div>
-            <div className="text-xs text-app-muted">
-              Or paste CSV: mat,description,check
             </div>
           </div>
           <Textarea
@@ -378,8 +380,11 @@ export function ActivityTypePanel() {
           />
           {importMut.isSuccess ? (
             <p className="text-body-sm text-emerald-700">
-              เพิ่ม {importMut.data.inserted} · อัปเดต {importMut.data.updated} · ข้าม{' '}
-              {importMut.data.skipped}
+              {t('activityType.importResult', {
+                inserted: importMut.data.inserted,
+                updated: importMut.data.updated,
+                skipped: importMut.data.skipped,
+              })}
             </p>
           ) : null}
           {importMut.isError ? (
@@ -387,14 +392,14 @@ export function ActivityTypePanel() {
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImportDialog}>
-              ปิด
+              {t('actions.close')}
             </Button>
             <Button
               type="button"
               disabled={importMut.isPending}
               onClick={() => importMut.mutate()}
             >
-              นำเข้า
+              {t('actions.import')}
             </Button>
           </DialogFooter>
         </DialogContent>

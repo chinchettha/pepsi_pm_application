@@ -38,6 +38,7 @@ import { usePublicSettings } from '@/providers/SettingsProvider'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, Loader2, Megaphone, Pencil, Plus, RefreshCcw, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -85,6 +86,8 @@ function levelBadge(level: AnnouncementItem['level']) {
 }
 
 export function AdminAnnouncementsPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
   const { refetch: refetchPublic } = usePublicSettings()
   const canRead = usePermission('admin.announcement.read')
@@ -153,9 +156,9 @@ export function AdminAnnouncementsPage() {
       void qc.invalidateQueries({ queryKey: ['admin', 'announcements'] })
       void qc.invalidateQueries({ queryKey: ['announcements', 'active'] })
       setDialogOpen(false)
-      toast.success(editing ? 'อัปเดตประกาศแล้ว' : 'สร้างประกาศแล้ว')
+      toast.success(editing ? t('announcements.updated') : t('announcements.created'))
     },
-    onError: (e: Error) => toast.error(e.message || 'บันทึกไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('announcements.saveFailed')),
   })
 
   const deleteMut = useMutation({
@@ -163,9 +166,9 @@ export function AdminAnnouncementsPage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'announcements'] })
       void qc.invalidateQueries({ queryKey: ['announcements', 'active'] })
-      toast.success('ลบประกาศแล้ว')
+      toast.success(t('announcements.deleted'))
     },
-    onError: (e: Error) => toast.error(e.message || 'ลบไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('announcements.deleteFailed')),
   })
 
   const [maintMessage, setMaintMessage] = useState('')
@@ -186,21 +189,15 @@ export function AdminAnnouncementsPage() {
       void qc.invalidateQueries({ queryKey: ['admin', 'settings'] })
       void qc.invalidateQueries({ queryKey: ['settings', 'public'] })
       refetchPublic()
-      toast.success('อัปเดตโหมดบำรุงรักษาแล้ว')
+      toast.success(t('announcements.maintenanceUpdated'))
     },
-    onError: (e: Error) => toast.error(e.message || 'อัปเดตไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('announcements.updateFailed')),
   })
 
   if (!canRead) {
     return (
       <AdminPageRoot tourTarget="admin-announcements">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์ <code className="text-xs">admin.announcement.read</code>
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.announcement.read" />
       </AdminPageRoot>
     )
   }
@@ -210,9 +207,9 @@ export function AdminAnnouncementsPage() {
   return (
     <AdminPageShell
       tourTarget="admin-announcements"
-      title="ประกาศ & โหมดบำรุงรักษา"
-      description="Banner ด้านบนแอป · เปิดโหมดบำรุงรักษาชั่วคราว"
-      contentClassName="space-y-6"
+      title={t('announcements.title')}
+      description={t('announcements.pageDescription')}
+      hints={t('announcements.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Button
@@ -223,13 +220,11 @@ export function AdminAnnouncementsPage() {
             onClick={() => void listQ.refetch()}
             disabled={listQ.isFetching}
           >
-            <RefreshCcw className={`mr-1 size-3.5 ${listQ.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
-          </Button>
+            <RefreshCcw className={`mr-1 size-3.5 ${listQ.isFetching ? 'animate-spin' : ''}`} aria-hidden />{t('shared.refresh')}</Button>
           {canWrite ? (
             <Button type="button" className="admin-toolbar-btn" onClick={openCreate}>
               <Plus className="mr-1 size-4" />
-              ประกาศใหม่
+              {t('announcements.newBtn')}
             </Button>
           ) : null}
         </>
@@ -238,11 +233,11 @@ export function AdminAnnouncementsPage() {
         {canSettings ? (
           <Card className="admin-card">
             <CardHeader>
-              <CardTitle className="text-base">โหมดบำรุงรักษา</CardTitle>
+              <CardTitle className="text-base">{t('announcements.maintenanceCardTitle')}</CardTitle>
               <CardDescription>
-                แสดง banner ทั้งแอป (เช่น ตอน restore DB) — ค่าเดียวกับ{' '}
+                {t('announcements.maintenanceCardDesc')}{' '}
                 <Link to="/admin/settings" className="text-blue-600 underline">
-                  ตั้งค่าระบบ
+                  {t('announcements.systemSettings')}
                 </Link>
               </CardDescription>
             </CardHeader>
@@ -254,13 +249,15 @@ export function AdminAnnouncementsPage() {
                   disabled={maintenanceMut.isPending || settingsQ.isLoading}
                   onChange={(e) => maintenanceMut.mutate({ enabled: e.target.checked })}
                 />
-                <span className="font-medium">{maintenanceOn ? 'เปิดอยู่' : 'ปิดอยู่'}</span>
+                <span className="font-medium">
+                  {maintenanceOn ? t('announcements.maintenanceOn') : t('announcements.maintenanceOff')}
+                </span>
                 {maintenanceMut.isPending ? (
                   <Loader2 className="size-4 animate-spin text-app-muted" />
                 ) : null}
               </label>
               <div className="space-y-1">
-                <Label htmlFor="maint-msg">ข้อความ banner (ทั้งแอป)</Label>
+                <Label htmlFor="maint-msg">{t('announcements.bannerMessage')}</Label>
                 <Textarea
                   id="maint-msg"
                   rows={2}
@@ -276,7 +273,7 @@ export function AdminAnnouncementsPage() {
                 disabled={maintenanceMut.isPending}
                 onClick={() => maintenanceMut.mutate({ message: maintMessage })}
               >
-                บันทึกข้อความ
+                {t('announcements.saveMessage')}
               </Button>
             </CardContent>
           </Card>
@@ -286,7 +283,7 @@ export function AdminAnnouncementsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Megaphone className="size-4" />
-              รายการประกาศ
+              {t('announcements.listTitle')}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -296,27 +293,27 @@ export function AdminAnnouncementsPage() {
               <EmptyState
                 icon={AlertCircle}
                 className="m-4"
-                title="โหลดประกาศไม่สำเร็จ"
+                title={t('announcements.listLoadFailed')}
                 description={(listQ.error as Error).message}
-                action={{ label: 'ลองใหม่', onClick: () => void listQ.refetch() }}
+                action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
               />
             ) : (
               <div className="app-table-shell overflow-x-auto">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ระดับ</TableHead>
-                    <TableHead>หัวข้อ</TableHead>
-                    <TableHead>ช่วงเวลา</TableHead>
-                    <TableHead>สถานะ</TableHead>
-                    <TableHead className="text-right">การกระทำ</TableHead>
+                    <TableHead>{t('announcements.colLevel')}</TableHead>
+                    <TableHead>{t('announcements.colTitle')}</TableHead>
+                    <TableHead>{t('announcements.colSchedule')}</TableHead>
+                    <TableHead>{t('announcements.colStatus')}</TableHead>
+                    <TableHead className="text-right">{t('announcements.colActions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(listQ.data?.items ?? []).length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="py-8 text-center text-caption">
-                        ยังไม่มีประกาศ — กด「ประกาศใหม่」เพื่อสร้าง banner ในแอป
+                        {t('announcements.emptyList')}
                       </TableCell>
                     </TableRow>
                   ) : null}
@@ -332,9 +329,9 @@ export function AdminAnnouncementsPage() {
                       </TableCell>
                       <TableCell>
                         {row.active ? (
-                          <Badge className="bg-emerald-700">เปิด</Badge>
+                          <Badge className="bg-emerald-700">{t('announcements.activeBadge')}</Badge>
                         ) : (
-                          <Badge variant="outline">ปิด</Badge>
+                          <Badge variant="outline">{t('announcements.inactiveBadge')}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -344,7 +341,7 @@ export function AdminAnnouncementsPage() {
                               type="button"
                               size="icon"
                               variant="ghost"
-                              aria-label="แก้ไขประกาศ"
+                              aria-label={t('announcements.editAria')}
                               onClick={() => openEdit(row)}
                             >
                               <Pencil className="size-4" />
@@ -353,7 +350,7 @@ export function AdminAnnouncementsPage() {
                               type="button"
                               size="icon"
                               variant="ghost"
-                              aria-label="ลบประกาศ"
+                              aria-label={t('announcements.deleteAria')}
                               disabled={deleteMut.isPending}
                               onClick={() => setDeleteTarget(row)}
                             >
@@ -374,11 +371,13 @@ export function AdminAnnouncementsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editing ? 'แก้ไขประกาศ' : 'ประกาศใหม่'}</DialogTitle>
+            <DialogTitle>
+              {editing ? t('announcements.dialogEdit') : t('announcements.dialogNew')}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1">
-              <Label htmlFor="ann-level">ระดับ</Label>
+              <Label htmlFor="ann-level">{t('announcements.levelLabel')}</Label>
               <select
                 id="ann-level"
                 className="flex h-9 w-full rounded-button border border-input bg-transparent px-3 text-body-sm"
@@ -397,7 +396,7 @@ export function AdminAnnouncementsPage() {
               </select>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="ann-title">หัวข้อ</Label>
+              <Label htmlFor="ann-title">{t('announcements.titleLabel')}</Label>
               <Input
                 id="ann-title"
                 value={form.title}
@@ -405,18 +404,18 @@ export function AdminAnnouncementsPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="ann-body">เนื้อหา (plain / markdown)</Label>
+              <Label htmlFor="ann-body">{t('announcements.bodyLabel')}</Label>
               <Textarea
                 id="ann-body"
                 rows={4}
                 value={form.body}
-                placeholder="ข้อความเต็ม — แสดงใต้หัวข้อใน banner"
+                placeholder={t('announcements.bodyPlaceholderFull')}
                 onChange={(e) => setForm({ ...form, body: e.target.value })}
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="ann-start">เริ่ม</Label>
+                <Label htmlFor="ann-start">{t('announcements.annStart')}</Label>
                 <Input
                   id="ann-start"
                   type="datetime-local"
@@ -425,7 +424,7 @@ export function AdminAnnouncementsPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ann-end">สิ้นสุด (ว่างได้)</Label>
+                <Label htmlFor="ann-end">{t('announcements.annEnd')}</Label>
                 <Input
                   id="ann-end"
                   type="datetime-local"
@@ -440,7 +439,7 @@ export function AdminAnnouncementsPage() {
                 checked={form.dismissable}
                 onChange={(e) => setForm({ ...form, dismissable: e.target.checked })}
               />
-              ผู้ใช้ปิด banner ได้
+              {t('announcements.dismissibleLabel')}
             </label>
             <label className="flex items-center gap-2 text-body-sm">
               <input
@@ -448,19 +447,19 @@ export function AdminAnnouncementsPage() {
                 checked={form.active}
                 onChange={(e) => setForm({ ...form, active: e.target.checked })}
               />
-              เปิดใช้งาน
+              {t('announcements.activeLabel')}
             </label>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-              ยกเลิก
+              {tc('actions.cancel')}
             </Button>
             <Button
               type="button"
               disabled={!form.title.trim() || saveMut.isPending}
               onClick={() => saveMut.mutate()}
             >
-              บันทึก
+              {tc('actions.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -471,10 +470,10 @@ export function AdminAnnouncementsPage() {
           open
           onOpenChange={(open) => !open && setDeleteTarget(null)}
           tone="danger"
-          title="ลบประกาศ"
+          title={t('announcements.deleteTitle')}
           description={deleteTarget.title}
           phrase="DELETE"
-          confirmLabel="ลบประกาศ"
+          confirmLabel={t('announcements.deleteConfirm')}
           loading={deleteMut.isPending}
           onConfirm={() => {
             deleteMut.mutate(deleteTarget.id, {

@@ -14,12 +14,12 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatPlanningAvailableLine, type PlanningWorkcenterHours } from '@/lib/planning-available-hours'
+import { cn } from '@/lib/utils'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
-export type PlanningMultiAssignWorkcenter = {
-  wkctr: string
-  displayName: string
-}
+export type PlanningMultiAssignWorkcenter = PlanningWorkcenterHours
 
 export type PlanningMultiAssignResult = {
   assigned: string[]
@@ -50,6 +50,7 @@ export function PlanningMultiAssign({
   submitting = false,
   className,
 }: Props) {
+  const { t } = useTranslation(['scheduling', 'common'])
   const assignedSet = useMemo(() => new Set(assignedCodes.map((c) => c.trim())), [assignedCodes])
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -124,7 +125,7 @@ export function PlanningMultiAssign({
         return next
       })
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+      setErrorMsg(err instanceof Error ? err.message : t('filters.genericError'))
     }
   }
 
@@ -135,19 +136,17 @@ export function PlanningMultiAssign({
     <div className={`rounded-card border border-indigo-200 bg-indigo-50/40 p-3 ${className ?? ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="font-medium text-indigo-900">จ่ายงานหลายคน (Multi-assign)</p>
-          <p className="text-xs text-indigo-900/70">
-            ติ๊กช่างที่ต้องการ แล้วกด "เพิ่ม Assignee" เพื่อจ่ายงานพร้อมกันหลายคนในคลิกเดียว
-          </p>
+          <p className="font-medium text-indigo-900">{t('planning.multiTitle')}</p>
+          <p className="text-xs text-indigo-900/70">{t('planning.multiDesc')}</p>
         </div>
         <span className="rounded-full bg-indigo-600 px-2 py-1 text-xs font-medium text-white tabular-nums">
-          {selectedCount} เลือก
+          {t('planning.selectedCount', { count: selectedCount })}
         </span>
       </div>
 
       {!commentControlled ? (
         <div className="mt-3 space-y-1">
-          <Label htmlFor="multi-plan-comment">หมายเหตุ (ใช้ร่วมกับทุกคน)</Label>
+          <Label htmlFor="multi-plan-comment">{t('planning.commentShared')}</Label>
           <Input
             id="multi-plan-comment"
             value={comment}
@@ -161,7 +160,7 @@ export function PlanningMultiAssign({
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="ค้นหา wkctr หรือชื่อ…"
+          placeholder={t('planning.searchWkctr')}
           className="max-w-[260px]"
         />
         <Button
@@ -171,11 +170,11 @@ export function PlanningMultiAssign({
           onClick={toggleAllInView}
           disabled={availableInFilter.length === 0}
         >
-          {allSelectedInView ? 'ยกเลิกทั้งหมดในมุมมอง' : 'เลือกทั้งหมดในมุมมอง'}
+          {allSelectedInView ? t('planning.deselectAllInView') : t('planning.selectAllInView')}
         </Button>
         {selectedCount > 0 ? (
           <Button type="button" size="sm" variant="ghost" onClick={clearSelection}>
-            ล้างการเลือก
+            {t('planning.clearSelection')}
           </Button>
         ) : null}
       </div>
@@ -189,8 +188,8 @@ export function PlanningMultiAssign({
                 key={c}
                 type="button"
                 onClick={() => toggle(c)}
-                className="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-white px-2 py-1 text-xs text-indigo-900 hover:bg-indigo-100"
-                title="คลิกเพื่อนำออก"
+                className="inline-flex items-center gap-1 rounded-full border border-indigo-300 app-surface-panel px-2 py-1 text-xs text-indigo-900 hover:bg-[color-mix(in_srgb,var(--app-accent)_10%,var(--app-surface))] dark:text-indigo-200"
+                title={t('planning.clickToRemove')}
               >
                 <span className="font-mono">{c}</span>
                 {w?.displayName && w.displayName !== c ? <span className="text-indigo-900/70">— {w.displayName}</span> : null}
@@ -201,9 +200,9 @@ export function PlanningMultiAssign({
         </div>
       ) : null}
 
-      <div className="mt-3 max-h-64 overflow-auto rounded border border-indigo-200 bg-white">
+      <div className="mt-3 max-h-64 overflow-auto rounded border border-indigo-200 app-surface-panel">
         {filtered.length === 0 ? (
-          <p className="px-3 py-4 text-caption">ไม่มี workcenter ที่ตรงคำค้น</p>
+          <p className="px-3 py-4 text-caption">{t('planning.noWkctrMatch')}</p>
         ) : (
           <ul className="divide-y divide-[var(--app-border)]">
             {filtered.map((w) => {
@@ -211,22 +210,41 @@ export function PlanningMultiAssign({
               const checked = selected.has(w.wkctr)
               return (
                 <li key={w.wkctr} className="flex items-center justify-between gap-2 px-3 py-2">
-                  <label className={`flex flex-1 cursor-pointer items-center gap-2 ${already ? 'cursor-not-allowed opacity-50' : ''}`}>
+                  <label className={`flex flex-1 cursor-pointer items-start gap-2 ${already ? 'cursor-not-allowed opacity-50' : ''}`}>
                     <input
                       type="checkbox"
-                      className="h-4 w-4 accent-indigo-600"
+                      className="mt-1 h-4 w-4 shrink-0 accent-indigo-600"
                       checked={checked}
                       disabled={already}
                       onChange={() => toggle(w.wkctr)}
                     />
-                    <span className="font-mono text-body-sm text-app">{w.wkctr}</span>
-                    {w.displayName && w.displayName !== w.wkctr ? (
-                      <span className="text-caption">— {w.displayName}</span>
-                    ) : null}
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="font-mono text-body-sm text-app">{w.wkctr}</span>
+                        {w.displayName && w.displayName !== w.wkctr ? (
+                          <span className="text-caption">— {w.displayName}</span>
+                        ) : null}
+                      </span>
+                      {(() => {
+                        const line = formatPlanningAvailableLine(w)
+                        return line ? (
+                          <span
+                            className={cn(
+                              'mt-0.5 block text-[10px] font-medium',
+                              w.availableHours != null && w.availableHours <= 0
+                                ? 'text-red-700'
+                                : 'text-indigo-900/75',
+                            )}
+                          >
+                            {line}
+                          </span>
+                        ) : null
+                      })()}
+                    </span>
                   </label>
                   {already ? (
                     <span className="rounded bg-emerald-100 px-2 py-1 text-badge font-medium text-emerald-800">
-                      จ่ายแล้ว
+                      {t('shared.assigned')}
                     </span>
                   ) : null}
                 </li>
@@ -238,8 +256,11 @@ export function PlanningMultiAssign({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-app-muted">
-          {workcenters.length} workcenters • {assignedSet.size} จ่ายแล้ว •{' '}
-          {workcenters.length - assignedSet.size} ว่าง
+          {t('planning.stats', {
+            total: workcenters.length,
+            assigned: assignedSet.size,
+            available: workcenters.length - assignedSet.size,
+          })}
         </p>
         <Button
           type="button"
@@ -247,21 +268,30 @@ export function PlanningMultiAssign({
           disabled={submitting || selectedCount === 0}
           className="bg-indigo-600 hover:bg-indigo-700"
         >
-          {submitting ? 'กำลังจ่ายงาน…' : `เพิ่ม Assignee (${selectedCount})`}
+          {submitting
+            ? t('planning.submitting')
+            : t('planning.addAssignee', { count: selectedCount })}
         </Button>
       </div>
 
       {lastResult ? (
-        <div className="mt-3 rounded border border-indigo-200 bg-white p-2 text-xs text-app">
+        <div className="mt-3 rounded border border-indigo-200 app-surface-panel p-2 text-xs text-app">
           <p>
-            สรุป — เพิ่ม {lastResult.assigned.length} • ข้าม {lastResult.skipped.length} • ไม่พบ{' '}
-            {lastResult.notFound.length}
+            {t('planning.resultSummary', {
+              added: lastResult.assigned.length,
+              skipped: lastResult.skipped.length,
+              notFound: lastResult.notFound.length,
+            })}
           </p>
           {lastResult.skipped.length > 0 ? (
-            <p className="mt-1">ข้าม (จ่ายไปแล้ว): {lastResult.skipped.join(', ')}</p>
+            <p className="mt-1">
+              {t('planning.skippedList', { list: lastResult.skipped.join(', ') })}
+            </p>
           ) : null}
           {lastResult.notFound.length > 0 ? (
-            <p className="mt-1 text-red-700">ไม่พบ: {lastResult.notFound.join(', ')}</p>
+            <p className="mt-1 text-red-700">
+              {t('planning.notFoundList', { list: lastResult.notFound.join(', ') })}
+            </p>
           ) : null}
         </div>
       ) : null}

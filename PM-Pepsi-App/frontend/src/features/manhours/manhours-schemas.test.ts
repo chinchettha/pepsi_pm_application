@@ -3,6 +3,7 @@ import {
   backlogManhourResponseSchema,
   manhourChartBreakdownResponseSchema,
   manhourChartPerformanceResponseSchema,
+  manhourHrConfirmReportResponseSchema,
   manhourItemSchema,
   manhoursResponseSchema,
   worktimeMeResponseSchema,
@@ -93,6 +94,7 @@ describe('manhours frontend schemas', () => {
         position: null,
         wkctrtype: null,
         imgmember: null,
+        hasImage: false,
       },
       totalPlannedOrders: 0,
       utilizationPercent: 0,
@@ -112,6 +114,42 @@ describe('manhours frontend schemas', () => {
       confirmHours: 6,
     })
     expect(pie.wh).toBe(8)
+  })
+
+  it('parses HR vs Confirm team report contract', () => {
+    const parsed = manhourHrConfirmReportResponseSchema.parse({
+      range: { from: 1, to: 2, fromDate: '2026-04-01', toDate: '2026-04-30' },
+      period: 'month',
+      periodLabel: 'เมษายน 2026',
+      totals: {
+        range: { from: 1, to: 2, fromDate: '2026-04-01', toDate: '2026-04-30' },
+        wh: 100,
+        ot1: 10,
+        ot15: 5,
+        ot1hol: 0,
+        ot2: 2,
+        ot3: 1,
+        confirmHours: 80,
+      },
+      rows: [
+        {
+          idwkctr: 'HR001',
+          wkctr: 'PAC010',
+          displayName: 'นาย A',
+          wh: 40,
+          ot1: 5,
+          ot15: 2,
+          ot1hol: 0,
+          ot2: 1,
+          ot3: 0,
+          totalManhours: 48,
+          confirmHours: 35,
+          utilizationPercent: 72.92,
+        },
+      ],
+    })
+    expect(parsed.rows).toHaveLength(1)
+    expect(parsed.period).toBe('month')
   })
 
   it('parses backlog manhour modal summary contract', () => {

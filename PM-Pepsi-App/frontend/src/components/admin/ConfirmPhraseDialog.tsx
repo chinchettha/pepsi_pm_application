@@ -87,7 +87,7 @@ export function ConfirmPhraseDialog({
             {phraseLabel ?? `พิมพ์ ${phrase} เพื่อยืนยัน`}
           </Label>
           {isDanger ? (
-            <p className="rounded-button border border-red-200 bg-white px-3 py-2 font-mono text-sm font-semibold tracking-wide text-red-800">
+            <p className="rounded-button border border-red-200/70 app-surface-panel px-3 py-2 font-mono text-sm font-semibold tracking-wide text-form-error">
               {phrase}
             </p>
           ) : null}
@@ -100,7 +100,7 @@ export function ConfirmPhraseDialog({
             placeholder={isDanger ? 'พิมพ์ตามข้อความด้านบน' : undefined}
             className={cn(
               isDanger &&
-                'border-red-300 bg-white focus-visible:ring-red-400',
+                'border-red-300/70 bg-[var(--app-surface)] focus-visible:ring-red-400',
             )}
             aria-invalid={showMismatch}
             onChange={(e) => setTyped(e.target.value)}

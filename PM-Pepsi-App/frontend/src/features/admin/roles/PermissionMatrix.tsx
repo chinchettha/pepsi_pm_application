@@ -9,7 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Eye, EyeOff, Trash2 } from 'lucide-react'
+import { resolveRoleDisplayLabel } from '@/lib/role-display'
+import { useAppLocale } from '@/providers/I18nProvider'
+import { Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export type PermissionMatrixProps = {
   data: AdminRoleMatrixResponse
@@ -30,6 +33,7 @@ function RoleHeaderCell({
   onSimulate,
   onStopSimulate,
   onDelete,
+  onEditLabels,
 }: {
   role: AdminRole
   canWrite: boolean
@@ -37,8 +41,15 @@ function RoleHeaderCell({
   onSimulate: () => void
   onStopSimulate: () => void
   onDelete: () => void
+  onEditLabels?: () => void
 }) {
+  const { t } = useTranslation('admin')
+  const { locale } = useAppLocale()
   const simulating = previewRoleCode === role.roleCode
+  const displayName = resolveRoleDisplayLabel(
+    { roleNameTh: role.roleName, roleNameEn: role.roleNameEn, userst: role.roleCode },
+    locale,
+  )
   return (
     <div className="min-w-[7rem] space-y-1 text-center">
       <div
@@ -47,24 +58,38 @@ function RoleHeaderCell({
         title={role.roleColor}
       />
       <div className="font-semibold text-app">{role.roleCode}</div>
-      <p className="text-badge leading-tight text-app-muted">{role.roleName}</p>
+      <p className="text-badge leading-tight text-app-muted" title={role.roleNameEn}>
+        {displayName}
+      </p>
       <div className="flex flex-wrap justify-center gap-1">
         {role.isSystem ? (
           <Badge variant="secondary" className="px-1 py-0 text-badge">
-            system
+            {t('shared.system')}
           </Badge>
         ) : null}
         <Badge variant="outline" className="px-1 py-0 text-badge">
-          {role.userCount} users
+          {t('shared.usersCount', { count: role.userCount })}
         </Badge>
       </div>
       <div className="flex justify-center gap-1 pt-1">
+        {onEditLabels ? (
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            className="size-7"
+            aria-label={t('roles.editLabelsAria')}
+            onClick={onEditLabels}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+        ) : null}
         <Button
           type="button"
           size="icon"
           variant={simulating ? 'default' : 'outline'}
           className="size-7"
-          aria-label={simulating ? 'หยุดจำลองเมนู' : 'จำลองเมนูตาม role นี้'}
+          aria-label={simulating ? t('roles.stopSimulateMenu') : t('roles.simulateMenu')}
           onClick={simulating ? onStopSimulate : onSimulate}
         >
           {simulating ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
@@ -75,7 +100,7 @@ function RoleHeaderCell({
             size="icon"
             variant="outline"
             className="size-7 text-red-700 hover:text-red-800"
-            aria-label="ลบ role"
+            aria-label={t('roles.deleteRoleAria')}
             onClick={onDelete}
           >
             <Trash2 className="size-3.5" />
@@ -96,6 +121,7 @@ export function PermissionMatrix({
   onSimulate,
   onStopSimulate,
   onDeleteRole,
+  onEditRoleLabels,
 }: {
   data: AdminRoleMatrixResponse
   canWrite: boolean
@@ -106,14 +132,17 @@ export function PermissionMatrix({
   onSimulate: (role: AdminRole) => void
   onStopSimulate: () => void
   onDeleteRole: (role: AdminRole) => void
+  onEditRoleLabels?: (role: AdminRole) => void
 }) {
+  const { t } = useTranslation('admin')
+
   return (
     <div className="overflow-x-auto rounded-card border border-app">
       <Table>
         <TableHeader>
           <TableRow className="bg-app-subtle">
             <TableHead className="sticky left-0 z-20 min-w-[220px] bg-app-subtle">
-              สิทธิ์ (Permission)
+              {t('roles.permColumn')}
             </TableHead>
             {data.roles.map((role) => (
               <TableHead key={role.roleCode} className="align-top">
@@ -124,6 +153,9 @@ export function PermissionMatrix({
                   onSimulate={() => onSimulate(role)}
                   onStopSimulate={onStopSimulate}
                   onDelete={() => onDeleteRole(role)}
+                  onEditLabels={
+                    canWrite && onEditRoleLabels ? () => onEditRoleLabels(role) : undefined
+                  }
                 />
               </TableHead>
             ))}
@@ -150,7 +182,7 @@ export function PermissionMatrix({
                           disabled={pending !== null}
                           onClick={() => onToggleGroup(role.roleCode, g.group, true)}
                         >
-                          {role.roleCode} ทั้งกลุ่ม
+                          {t('roles.grantGroup', { role: role.roleCode })}
                         </Button>
                       ))}
                     </div>
@@ -160,7 +192,7 @@ export function PermissionMatrix({
             </TableRow>,
             ...g.permissions.map((perm) => (
               <TableRow key={perm.permCode}>
-                <TableCell className="sticky left-0 z-10 bg-white">
+                <TableCell className="admin-table-sticky sticky left-0 z-10 bg-[var(--admin-surface)]">
                   <div className="font-mono text-xs text-app">{perm.permCode}</div>
                   <p className="text-body-sm text-app">{perm.permName}</p>
                   {perm.description ? (

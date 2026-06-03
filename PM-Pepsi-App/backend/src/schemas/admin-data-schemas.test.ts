@@ -26,6 +26,7 @@ describe('§3.2 admin data — Zod contracts (backend)', () => {
       adminRoleSchema.parse({
         roleCode: 'A',
         roleName: 'Admin',
+        roleNameEn: 'Administrator',
         roleColor: '#E11D48',
         isSystem: true,
         description: null,

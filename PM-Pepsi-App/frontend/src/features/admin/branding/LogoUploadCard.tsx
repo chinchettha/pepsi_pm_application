@@ -6,6 +6,7 @@ import { logoLoginStyle, logoNavStyle } from '@/lib/branding-asset-css'
 import { cn } from '@/lib/utils'
 import { ImageIcon, Upload } from 'lucide-react'
 import type { ChangeEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type LogoUploadCardProps = {
   hasLogo: boolean
@@ -34,21 +35,23 @@ export function LogoUploadCard({
   onFileSelect,
   onDelete,
 }: LogoUploadCardProps) {
+  const { t } = useTranslation('admin')
+
   return (
     <Card className="admin-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ImageIcon className="size-5" aria-hidden />
-          โลโก้
+          {t('branding.logoCardTitle')}
         </CardTitle>
-        <CardDescription>PNG / JPEG / WebP / SVG → แปลงเป็น WebP สูงสุด 256px</CardDescription>
+        <CardDescription>{t('branding.logoCardDesc')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-start gap-6">
           {logoPreviewSrc ? (
             <>
               <div className="space-y-1">
-                <p className="text-xs text-app-muted">เมนู ({logoNavHeightPx}px)</p>
+                <p className="text-xs text-app-muted">{t('branding.logoNav', { px: logoNavHeightPx })}</p>
                 <img
                   src={logoPreviewSrc}
                   alt=""
@@ -57,7 +60,7 @@ export function LogoUploadCard({
                 />
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-app-muted">Login ({logoLoginHeightPx}px)</p>
+                <p className="text-xs text-app-muted">{t('branding.logoLogin', { px: logoLoginHeightPx })}</p>
                 <img
                   src={logoPreviewSrc}
                   alt=""
@@ -72,9 +75,9 @@ export function LogoUploadCard({
           <p className="text-caption">
             {logoPreviewSrc
               ? uploadPending
-                ? 'กำลังอัปโหลด… แสดงตัวอย่างจากไฟล์ที่เลือก'
-                : 'ใช้โลโก้กำหนดเอง'
-              : 'ใช้โลโก้ Pepsi เริ่มต้น'}
+                ? t('branding.logoUploading')
+                : t('branding.logoCustom')
+              : t('branding.logoPepsiDefault')}
           </p>
         </div>
         {canWrite ? (
@@ -85,7 +88,7 @@ export function LogoUploadCard({
               checked={removeBackground}
               onChange={(e) => onRemoveBackgroundChange(e.target.checked)}
             />
-            ลบพื้นหลังสว่างอัตโนมัติ (พื้นขาว/เทาอ่อน)
+            {t('branding.removeLightBg')}
           </label>
         ) : null}
         {canWrite ? (
@@ -97,12 +100,12 @@ export function LogoUploadCard({
               )}
             >
               <Upload className="size-4" aria-hidden />
-              อัปโหลดโลโก้
+              {t('branding.uploadLogo')}
               <input type="file" accept="image/*" className="sr-only" onChange={onFileSelect} />
             </Label>
             {hasLogo ? (
               <Button type="button" variant="outline" disabled={deletePending} onClick={onDelete}>
-                ลบโลโก้
+                {t('branding.deleteLogo')}
               </Button>
             ) : null}
           </div>

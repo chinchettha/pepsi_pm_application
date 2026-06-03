@@ -1,5 +1,5 @@
 /**
- * เมนูบน Engineering Board — ลิงก์ไปส่วนที่ต้อง login (แสดงใน sidebar แบบย่อ)
+ * Engineering Board sidebar — links to app sections that require login.
  */
 import { appNav, type NavEntry } from '@/components/layout/nav-config'
 import { NAV_ROUTE_PERMISSION } from '@/lib/nav-route-permissions'
@@ -7,6 +7,7 @@ import { isLoggedIn } from '@/features/auth/login-api'
 import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
 import { LogIn } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 
 function navItemsForBoard(): NavEntry[] {
@@ -22,6 +23,7 @@ function NavIcon({ icon: Icon }: { icon: LucideIcon }) {
 }
 
 export function BoardKioskNav({ collapsed = false }: { collapsed?: boolean }) {
+  const { t } = useTranslation('board')
   const location = useLocation()
   const loggedIn = isLoggedIn()
 
@@ -31,12 +33,10 @@ export function BoardKioskNav({ collapsed = false }: { collapsed?: boolean }) {
         'engineering-board__nav flex flex-col gap-1 overflow-y-auto',
         collapsed ? 'px-2 py-2' : 'p-3',
       )}
-      aria-label="เมนูแอป (ต้องเข้าสู่ระบบ)"
+      aria-label={t('kioskNav.appMenuAria')}
     >
       {!collapsed ? (
-        <p className="nav-menu-group-heading px-2 pb-1 pt-0">
-          เข้าใช้งานแอป (ต้อง login)
-        </p>
+        <p className="nav-menu-group-heading px-2 pb-1 pt-0">{t('kioskNav.loginSection')}</p>
       ) : null}
       {navItemsForBoard().map((entry, idx) =>
         entry.kind === 'heading' ? (
@@ -90,7 +90,7 @@ export function BoardKioskNav({ collapsed = false }: { collapsed?: boolean }) {
           )}
         >
           <LogIn className="size-4 shrink-0" aria-hidden />
-          <span className={cn(collapsed && 'sr-only')}>เข้าสู่ระบบ</span>
+          <span className={cn(collapsed && 'sr-only')}>{t('kioskNav.signIn')}</span>
         </Link>
       ) : (
         <Link
@@ -100,7 +100,7 @@ export function BoardKioskNav({ collapsed = false }: { collapsed?: boolean }) {
             collapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2',
           )}
         >
-          <span className={cn(collapsed && 'sr-only')}>เปิดแอปเต็มรูปแบบ</span>
+          <span className={cn(collapsed && 'sr-only')}>{t('kioskNav.openFullApp')}</span>
         </Link>
       )}
     </nav>

@@ -8,7 +8,6 @@ describe('work-order-workflow', () => {
         { step: 1, key: 'team', label: 't', done: true },
         { step: 2, key: 'assign', label: 'a', done: true },
         { step: 3, key: 'worktime', label: 'w', done: false },
-        { step: 4, key: 'confirm', label: 'c', done: false },
       ]),
     ).toBe('12')
   })

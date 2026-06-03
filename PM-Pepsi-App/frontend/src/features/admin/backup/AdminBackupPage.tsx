@@ -43,20 +43,23 @@ import {
 } from '@/components/ui/dialog'
 import { AlertCircle, DatabaseBackup, Download, Loader2, RefreshCcw, RotateCcw, Save, Trash2, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 const BACKUP_CACHE_TTL_MS = 10 * 60 * 1000
 const BACKUP_SCHEDULE_CACHE_KEY = 'admin.backup.schedule.v1'
 const BACKUP_LIST_CACHE_KEY = 'admin.backup.list.v1'
 
-function statusBadge(status: BackupHistoryItem['status']) {
-  if (status === 'success') return <Badge className="bg-emerald-700">สำเร็จ</Badge>
-  if (status === 'failed') return <Badge variant="destructive">ล้มเหลว</Badge>
-  if (status === 'running') return <Badge variant="secondary">กำลังรัน…</Badge>
+function statusBadge(status: BackupHistoryItem['status'], t: (key: string) => string) {
+  if (status === 'success') return <Badge className="bg-emerald-700">{t('backup.statusSuccess')}</Badge>
+  if (status === 'failed') return <Badge variant="destructive">{t('backup.statusFailed')}</Badge>
+  if (status === 'running') return <Badge variant="secondary">{t('backup.statusRunning')}</Badge>
   return <Badge variant="outline">{status}</Badge>
 }
 
 export function AdminBackupPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
   const canRead = usePermission('admin.backup.read')
   const canWrite = usePermission('admin.backup.write')
@@ -149,9 +152,9 @@ export function AdminBackupPage() {
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'backup'] })
-      toast.success('บันทึกตั้งค่าสำรองแล้ว')
+      toast.success(t('backup.saved'))
     },
-    onError: (e: Error) => toast.error(e.message || 'บันทึกไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('backup.saveFailed')),
   })
 
   const backupMut = useMutation({
@@ -159,26 +162,26 @@ export function AdminBackupPage() {
     onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: ['admin', 'backup'] })
       if (data.item.status === 'success') {
-        toast.success('สำรองข้อมูลสำเร็จ')
+        toast.success(t('backup.backupOk'))
       } else {
-        toast.error(data.item.errorText || 'สำรองข้อมูลล้มเหลว')
+        toast.error(data.item.errorText || t('backup.backupFailed'))
       }
     },
-    onError: (e: Error) => toast.error(e.message || 'เริ่มสำรองไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('backup.startFailed')),
   })
 
   const deleteMut = useMutation({
     mutationFn: deleteBackup,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'backup'] })
-      toast.success('ลบไฟล์สำรองแล้ว')
+      toast.success(t('backup.deleted'))
     },
-    onError: (e: Error) => toast.error(e.message || 'ลบไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('backup.deleteFailed')),
   })
 
   const restoreUploadMut = useMutation({
     mutationFn: () => {
-      if (!restoreFile) throw new Error('เลือกไฟล์ .sql.gz')
+      if (!restoreFile) throw new Error(t('backup.selectSqlGz'))
       return restoreBackupUpload(restoreFile)
     },
     onSuccess: (data) => {
@@ -187,9 +190,11 @@ export function AdminBackupPage() {
       refetchPublicSettings()
       setRestoreFile(null)
       setRestorePhrase('')
-      toast.success(`กู้คืนสำเร็จ (${(data.durationMs / 1000).toFixed(1)} วินาที)`)
+      toast.success(
+        t('backup.restoreOkSeconds', { seconds: (data.durationMs / 1000).toFixed(1) }),
+      )
     },
-    onError: (e: Error) => toast.error(e.message || 'กู้คืนไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('backup.restoreFailed')),
   })
 
   const restoreHistoryMut = useMutation({
@@ -200,21 +205,15 @@ export function AdminBackupPage() {
       setRestorePhrase('')
       void qc.invalidateQueries({ queryKey: ['settings', 'public'] })
       refetchPublicSettings()
-      toast.success(`กู้คืนจาก backup #${data.backupId} สำเร็จ`)
+      toast.success(t('backup.restoreFromOk', { id: data.backupId }))
     },
-    onError: (e: Error) => toast.error(e.message || 'กู้คืนไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('backup.restoreFailed')),
   })
 
   if (!canRead) {
     return (
       <AdminPageRoot tourTarget="admin-backup">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์ <code className="text-xs">admin.backup.read</code>
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.backup.read" />
       </AdminPageRoot>
     )
   }
@@ -232,9 +231,9 @@ export function AdminBackupPage() {
   return (
     <AdminPageShell
       tourTarget="admin-backup"
-      title="สำรอง & กู้คืน"
-      description="pg_dump → ไฟล์ .sql.gz · ตั้ง cron + retention · SHA256"
-      contentClassName="space-y-6"
+      title={t('backup.title')}
+      description={t('backup.description')}
+      hints={t('backup.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Button
@@ -248,9 +247,7 @@ export function AdminBackupPage() {
             <RefreshCcw
               className={`mr-1 size-3.5 ${scheduleQ.isFetching || listQ.isFetching ? 'animate-spin' : ''}`}
               aria-hidden
-            />
-            รีเฟรช
-          </Button>
+            />{t('shared.refresh')}</Button>
           {canWrite ? (
             <Button
               type="button"
@@ -263,7 +260,7 @@ export function AdminBackupPage() {
               ) : (
                 <DatabaseBackup className="mr-1 size-4" />
               )}
-              สำรองตอนนี้
+              {t('backup.backupNow')}
             </Button>
           ) : null}
         </>
@@ -271,17 +268,17 @@ export function AdminBackupPage() {
     >
         <Card className="admin-card">
           <CardHeader>
-            <CardTitle className="text-base">เครื่องมือ PostgreSQL (Windows / PATH)</CardTitle>
-            <CardDescription>ใช้ก่อนสำรองหรือกู้คืน — ต้องมี pg_dump และ psql</CardDescription>
+            <CardTitle className="text-base">{t('backup.pgToolsTitle')}</CardTitle>
+            <CardDescription>{t('backup.pgToolsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 text-body-sm sm:grid-cols-2">
             <p>
               <span className="font-medium text-app">pg_dump:</span>{' '}
               {pgOk ? (
-                <Badge className="ml-1 bg-emerald-700">พร้อม</Badge>
+                <Badge className="ml-1 bg-emerald-700">{t('backup.ready')}</Badge>
               ) : (
                 <Badge variant="destructive" className="ml-1">
-                  ไม่พบ
+                  {t('backup.notFound')}
                 </Badge>
               )}
               <code className="mt-1 block truncate font-mono text-xs text-app-muted">
@@ -291,10 +288,10 @@ export function AdminBackupPage() {
             <p>
               <span className="font-medium text-app">psql:</span>{' '}
               {psqlOk ? (
-                <Badge className="ml-1 bg-emerald-700">พร้อม</Badge>
+                <Badge className="ml-1 bg-emerald-700">{t('backup.ready')}</Badge>
               ) : (
                 <Badge variant="destructive" className="ml-1">
-                  ไม่พบ
+                  {t('backup.notFound')}
                 </Badge>
               )}
               <code className="mt-1 block truncate font-mono text-xs text-app-muted">
@@ -305,10 +302,9 @@ export function AdminBackupPage() {
         </Card>
 
         {!pgOk ? (
-          <Card className="border-amber-300 bg-amber-50">
-            <CardContent className="pt-6 text-body-sm text-amber-950">
-              ติดตั้ง PostgreSQL client tools หรือตั้ง env <code>PG_DUMP_PATH</code> /{' '}
-              <code>PSQL_PATH</code> ให้ service ที่รัน API เห็นใน PATH
+          <Card className="admin-callout admin-callout--amber border shadow-none">
+            <CardContent className="pt-6 text-body-sm">
+              <Trans t={t} i18nKey="backup.pgToolsHint" components={{ code: <code /> }} />
             </CardContent>
           </Card>
         ) : null}
@@ -316,14 +312,14 @@ export function AdminBackupPage() {
         {canRestore ? (
           <Card className="border-red-200 bg-red-50/50">
             <CardHeader>
-              <CardTitle className="text-base text-red-900">กู้คืนฐานข้อมูล</CardTitle>
+              <CardTitle className="text-base text-red-900">{t('backup.restoreCardTitle')}</CardTitle>
               <CardDescription className="text-red-800/80">
-                อัปโหลดไฟล์ <code>.sql.gz</code> จาก pg_dump — ระบบเปิดโหมดบำรุงรักษาอัตโนมัติระหว่าง restore
+                <Trans t={t} i18nKey="backup.restoreCardDesc" components={{ code: <code /> }} />
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="restore-file">ไฟล์ backup</Label>
+                <Label htmlFor="restore-file">{t('backup.restoreFileLabel')}</Label>
                 <Input
                   id="restore-file"
                   type="file"
@@ -333,7 +329,7 @@ export function AdminBackupPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="restore-phrase">พิมพ์ RESTORE เพื่อยืนยัน</Label>
+                <Label htmlFor="restore-phrase">{t('backup.restorePhraseLabel')}</Label>
                 <Input
                   id="restore-phrase"
                   value={restorePhrase}
@@ -350,9 +346,7 @@ export function AdminBackupPage() {
                 }
                 onClick={() => {
                   if (
-                    !window.confirm(
-                      'กู้คืนจะเขียนทับข้อมูลในฐานข้อมูลปัจจุบัน — ดำเนินการต่อ?',
-                    )
+                    !window.confirm(t('backup.restoreOverwriteWarn'))
                   ) {
                     return
                   }
@@ -364,7 +358,7 @@ export function AdminBackupPage() {
                 ) : (
                   <Upload className="mr-1 size-4" />
                 )}
-                กู้คืนจากไฟล์
+                {t('backup.restoreFromFile')}
               </Button>
             </CardContent>
           </Card>
@@ -373,19 +367,20 @@ export function AdminBackupPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="admin-card">
             <CardHeader>
-              <CardTitle className="text-base">สถานะ</CardTitle>
-              <CardDescription>backup ล่าสุดที่สำเร็จ</CardDescription>
+              <CardTitle className="text-base">{t('backup.statusCardTitle')}</CardTitle>
+              <CardDescription>{t('backup.statusCardDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-body-sm">
               {scheduleQ.isLoading ? <Skeleton className="h-16" /> : null}
               {last ? (
                 <>
                   <p>
-                    <span className="text-app-muted">เวลา:</span>{' '}
+                    <span className="text-app-muted">{t('backup.timeLabel')}</span>{' '}
                     {new Date(last.finishedAt ?? last.startedAt).toLocaleString('th-TH')}
                   </p>
                   <p>
-                    <span className="text-app-muted">ขนาด:</span> {formatBytes(last.sizeBytes)}
+                    <span className="text-app-muted">{t('backup.sizeLabel')}</span>{' '}
+                    {formatBytes(last.sizeBytes)}
                   </p>
                   {last.sha256 ? (
                     <p className="font-mono text-xs text-app-muted" title={last.sha256}>
@@ -395,21 +390,26 @@ export function AdminBackupPage() {
                   <p className="truncate font-mono text-xs text-app-muted">{last.filePath}</p>
                 </>
               ) : (
-                <p className="text-app-muted">ยังไม่มี backup สำเร็จ</p>
+                <p className="text-app-muted">{t('backup.noSuccessYet')}</p>
               )}
             </CardContent>
           </Card>
 
           <Card className="admin-card">
             <CardHeader>
-              <CardTitle className="text-base">ตั้งค่า schedule</CardTitle>
-              <CardDescription>cron แบบนาที+ชั่วโมง (เช่น 0 2 * * * = 02:00 ทุกวัน)</CardDescription>
+              <CardTitle className="text-base">{t('backup.scheduleCardTitle')}</CardTitle>
+              <CardDescription>{t('backup.scheduleCardDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <CronInput value={cron} disabled={!canWrite} onChange={setCron} />
+              <CronInput
+                value={cron}
+                disabled={!canWrite}
+                onChange={setCron}
+                hint={t('backup.cronHint')}
+              />
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <Label htmlFor="backup-retention">เก็บ (วัน)</Label>
+                  <Label htmlFor="backup-retention">{t('backup.retentionDays')}</Label>
                   <Input
                     id="backup-retention"
                     type="number"
@@ -421,7 +421,7 @@ export function AdminBackupPage() {
                   />
                 </div>
                 <div className="space-y-1 sm:col-span-2">
-                  <Label htmlFor="backup-dir">โฟลเดอร์ปลายทาง</Label>
+                  <Label htmlFor="backup-dir">{t('backup.targetFolder')}</Label>
                   <Input
                     id="backup-dir"
                     value={targetDir}
@@ -438,7 +438,7 @@ export function AdminBackupPage() {
                   onClick={() => saveScheduleMut.mutate()}
                 >
                   <Save className="mr-1 size-4" />
-                  บันทึกตั้งค่า
+                  {t('backup.saveSettings')}
                 </Button>
               ) : null}
             </CardContent>
@@ -447,7 +447,7 @@ export function AdminBackupPage() {
 
         <Card className="admin-card">
           <CardHeader>
-            <CardTitle className="text-base">ประวัติการสำรอง</CardTitle>
+            <CardTitle className="text-base">{t('backup.historyTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {listQ.isLoading && !listData ? (
@@ -456,15 +456,15 @@ export function AdminBackupPage() {
               <EmptyState
                 icon={AlertCircle}
                 className="m-4"
-                title="โหลดประวัติสำรองไม่สำเร็จ"
+                title={t('backup.historyLoadFailed')}
                 description={(listQ.error as Error).message}
-                action={{ label: 'ลองใหม่', onClick: () => void listQ.refetch() }}
+                action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
               />
             ) : (
               <>
                 {showingCache ? (
                   <div className="m-4 rounded-card border border-app bg-app-subtle px-3 py-2 text-xs text-app-muted">
-                    แสดงจาก IndexedDB (offline flag เปิด) — จะอัปเดตเมื่อโหลดจากเซิร์ฟเวอร์สำเร็จ
+                    {t('backup.showingCache')}
                   </div>
                 ) : null}
                 <div className="app-table-shell overflow-x-auto">
@@ -474,10 +474,10 @@ export function AdminBackupPage() {
                     <TableHead>ID</TableHead>
                     <TableHead>Trigger</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>ขนาด</TableHead>
+                    <TableHead>{t('backup.colSize')}</TableHead>
                     <TableHead>SHA256</TableHead>
-                    <TableHead>เริ่ม</TableHead>
-                    <TableHead className="text-right">การกระทำ</TableHead>
+                    <TableHead>{t('backup.colStarted')}</TableHead>
+                    <TableHead className="text-right">{t('backup.historyActions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -485,7 +485,7 @@ export function AdminBackupPage() {
                     <TableRow key={row.id}>
                       <TableCell>{row.id}</TableCell>
                       <TableCell>{row.trigger}</TableCell>
-                      <TableCell>{statusBadge(row.status)}</TableCell>
+                      <TableCell>{statusBadge(row.status, t)}</TableCell>
                       <TableCell>{formatBytes(row.sizeBytes)}</TableCell>
                       <TableCell className="max-w-[100px] truncate font-mono text-xs" title={row.sha256 ?? ''}>
                         {row.sha256 ? `${row.sha256.slice(0, 10)}…` : '—'}
@@ -501,7 +501,7 @@ export function AdminBackupPage() {
                                 type="button"
                                 size="icon"
                                 variant="ghost"
-                                aria-label="ดาวน์โหลด backup"
+                                aria-label={t('backup.downloadAria')}
                                 onClick={() => {
                                   const name =
                                     row.filePath?.split(/[/\\]/).pop() ??
@@ -516,7 +516,7 @@ export function AdminBackupPage() {
                                   type="button"
                                   size="icon"
                                   variant="ghost"
-                                  aria-label="กู้คืนจากไฟล์ backup นี้"
+                                  aria-label={t('backup.restoreAria')}
                                   disabled={restoreHistoryMut.isPending}
                                   onClick={() => {
                                     setRestoreTargetId(row.id)
@@ -534,10 +534,10 @@ export function AdminBackupPage() {
                               type="button"
                               size="icon"
                               variant="ghost"
-                              aria-label="ลบไฟล์ backup"
+                              aria-label={t('backup.deleteAria')}
                               disabled={deleteMut.isPending}
                               onClick={() => {
-                                if (!window.confirm('ลบไฟล์ backup นี้?')) return
+                                if (!window.confirm(t('backup.deleteConfirm'))) return
                                 deleteMut.mutate(row.id)
                               }}
                             >
@@ -559,13 +559,13 @@ export function AdminBackupPage() {
       <Dialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>กู้คืนจาก backup #{restoreTargetId}</DialogTitle>
-            <DialogDescription>
-              ข้อมูลปัจจุบันจะถูกเขียนทับ — พิมพ์ RESTORE เพื่อยืนยัน
-            </DialogDescription>
+            <DialogTitle>
+              {t('backup.restoreHistoryTitle', { id: restoreTargetId })}
+            </DialogTitle>
+            <DialogDescription>{t('backup.restoreHistoryDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            <Label htmlFor="restore-history-phrase">ยืนยัน</Label>
+            <Label htmlFor="restore-history-phrase">{t('backup.confirmLabel')}</Label>
             <Input
               id="restore-history-phrase"
               value={restorePhrase}
@@ -575,7 +575,7 @@ export function AdminBackupPage() {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setRestoreDialogOpen(false)}>
-              ยกเลิก
+              {tc('actions.cancel')}
             </Button>
             <Button
               type="button"
@@ -593,7 +593,7 @@ export function AdminBackupPage() {
               {restoreHistoryMut.isPending ? (
                 <Loader2 className="mr-1 size-4 animate-spin" />
               ) : null}
-              กู้คืน
+              {t('backup.restoreConfirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

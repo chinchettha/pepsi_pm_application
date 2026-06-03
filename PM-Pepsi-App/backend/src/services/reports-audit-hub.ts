@@ -4,7 +4,10 @@ import {
   getAuditRetentionDays,
 } from '../lib/audit-retention.js'
 import { isAuditTableMissing } from '../lib/audit-log.js'
+import { mapRevisionToHubItem } from '../lib/revision-display.js'
+import { listRecentRevisions } from '../lib/resource-revision.js'
 import type { AuditHubResponse } from '../schemas/reports-audit-hub.js'
+import { getAuditHubPlanWoSnapshot } from './audit-hub-plan-wo.js'
 
 const PREFIX_LABELS: { prefix: string; label: string }[] = [
   { prefix: 'iw37n.', label: 'IW37N' },
@@ -28,7 +31,7 @@ export async function getReportsAuditHub(pool: Pool): Promise<AuditHubResponse> 
   const range = defaultHubRange()
 
   try {
-    const [totalsRes, prefixRes] = await Promise.all([
+    const [totalsRes, prefixRes, planWo, revisionRows] = await Promise.all([
       pool.query<{
         events: string
         denied: string
@@ -60,6 +63,8 @@ export async function getReportsAuditHub(pool: Pool): Promise<AuditHubResponse> 
          LIMIT 20`,
         [range.from, range.to],
       ),
+      getAuditHubPlanWoSnapshot(pool),
+      listRecentRevisions(pool, { from: range.from, to: range.to, limit: 25 }),
     ])
 
     const row = totalsRes.rows[0]
@@ -84,9 +89,17 @@ export async function getReportsAuditHub(pool: Pool): Promise<AuditHubResponse> 
         workOrders: Number(row?.work_orders ?? 0),
       },
       byPrefix,
+      planWo,
+      recentRevisions: revisionRows.map(mapRevisionToHubItem),
     }
   } catch (err) {
     if (isAuditTableMissing(err)) {
+      const planWo = await getAuditHubPlanWoSnapshot(pool)
+      const revisionRows = await listRecentRevisions(pool, {
+        from: range.from,
+        to: range.to,
+        limit: 25,
+      })
       return {
         retentionDays,
         retentionCutoffDate: auditRetentionCutoffDate(retentionDays),
@@ -100,6 +113,8 @@ export async function getReportsAuditHub(pool: Pool): Promise<AuditHubResponse> 
           workOrders: 0,
         },
         byPrefix: [],
+        planWo,
+        recentRevisions: revisionRows.map(mapRevisionToHubItem),
       }
     }
     throw err

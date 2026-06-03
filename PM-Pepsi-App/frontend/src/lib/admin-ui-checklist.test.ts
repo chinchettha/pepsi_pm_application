@@ -34,9 +34,11 @@ describe('§3.1 admin UI checklist', () => {
   })
 
   it('buildAdminNavEntries matches implemented sections', async () => {
+    const { i18n } = await import('@/i18n')
     const { buildAdminNavEntries } = await import('./admin-nav-entries')
-    expect(buildAdminNavEntries().length).toBe(13)
-    expect(buildAdminNavEntries().map((e) => e.to).sort()).toEqual(
+    const entries = buildAdminNavEntries(i18n.getFixedT('en', 'admin'))
+    expect(entries.length).toBe(13)
+    expect(entries.map((e) => e.to).sort()).toEqual(
       ADMIN_SECTIONS.filter((s) => s.implemented)
         .map((s) => s.to)
         .sort(),

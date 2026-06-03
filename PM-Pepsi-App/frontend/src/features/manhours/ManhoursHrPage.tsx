@@ -2,7 +2,7 @@
  * Manhour HR — เทียบ PHP `W_manhours_hr.php` + % Utilization จาก `M_manhour_chart_performance.php`
  */
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -32,12 +32,15 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { AlertCircle, Printer, RefreshCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 function HourCell({ value }: { value: number }) {
   return <span className="tabular-nums">{value}</span>
 }
 
 export function ManhoursHrPage() {
+  const { t } = useTranslation('manhours')
+  const { t: tc } = useTranslation('common')
   const auth = getStoredAuthUser()
   const canRead = useAnyPermission(['manhours.read', 'manhours.admin'])
   const wkctrLabel = auth?.wkctr?.trim() || '—'
@@ -78,13 +81,14 @@ export function ManhoursHrPage() {
 
   if (!canRead) {
     return (
-      <AppPageShell title="Manhour HR" description="รายงาน manhour + % Utilization">
+      <AppPageShell title={t('hr.title')} description={t('hr.description', { wc: '—' })}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('hr.noAccess')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">manhours.read</code>
+              {tc('rbac.requiresPermission')}{' '}
+              <code className="text-xs">manhours.read</code>
             </>
           }
         />
@@ -94,10 +98,10 @@ export function ManhoursHrPage() {
 
   if (!auth?.wkctr?.trim() && auth?.userst !== 'A') {
     return (
-      <AppPageShell title="Manhour HR" description="รายงาน manhour + % Utilization">
+      <AppPageShell title={t('hr.title')} description={t('hr.description', { wc: '—' })}>
         <EmptyState
-          title="ต้องเข้าสู่ระบบด้วยรหัส Work center"
-          description="หน้านี้สำหรับช่างหรือ Admin ที่ระบุ WC"
+          title={t('hr.needWcTitle')}
+          description={t('hr.needWcDesc')}
         />
       </AppPageShell>
     )
@@ -105,25 +109,25 @@ export function ManhoursHrPage() {
 
   return (
     <AppPageShell
-      title="Manhour HR"
-      description={`รายงาน manhour + % Utilization (Confirm÷HR) — WC ${wkctrLabel}`}
-      contentClassName="space-y-6"
+      title={t('hr.title')}
+      description={t('hr.description', { wc: wkctrLabel })}
+      hints={t('hr.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Badge variant="secondary" className="gap-1 text-xs">
             <Printer className="size-3.5" aria-hidden />
-            {q.data?.totalRows ?? 0} แถว
+            {t('hr.badgeRows', { count: q.data?.totalRows ?? 0 })}
           </Badge>
           {team ? (
             <Badge variant="secondary" className="text-xs">
-              Utilization ทีม {team.utilizationPercent.toFixed(1)}%
+              {t('hr.badgeTeamUtil', { pct: team.utilizationPercent.toFixed(1) })}
             </Badge>
           ) : null}
           <Button variant="outline" size="sm" asChild>
-            <Link to="/summary-weekly">Eng Utilization (%PM)</Link>
+            <Link to="/summary-weekly">{t('hr.navEngUtil')}</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/manhours">Manhours</Link>
+            <Link to="/manhours">{t('hr.navManhours')}</Link>
           </Button>
           <Button
             variant="ghost"
@@ -132,34 +136,34 @@ export function ManhoursHrPage() {
             disabled={q.isFetching}
           >
             <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
+            {t('hr.refresh')}
           </Button>
         </>
       }
     >
+      <AppPageSection index={0}>
       <ReportsDateFilter
         key={`${submitted.from}-${submitted.to}`}
         initial={submitted}
         onSearch={setSubmitted}
       />
+      </AppPageSection>
 
+      <AppPageSection index={1}>
       <p className="text-caption">
-        ช่วงที่เลือก (ISO):{' '}
-        <span className="font-mono tabular-nums">
-          {submitted.from} – {submitted.to}
-        </span>
+        {t('hr.rangeSelected', { from: submitted.from, to: submitted.to })}
       </p>
 
       {range ? (
         <AppCard pad="compact" className="space-y-1">
-          <p className="text-body-sm font-medium text-app">% Utilization (Confirm ÷ HR)</p>
+          <p className="text-body-sm font-medium text-app">{t('hr.utilizationTitle')}</p>
           <p className="text-caption">
-            ช่วงคำนวณ (ISO):{' '}
-            <span className="font-mono tabular-nums">
-              {range.fromDate} – {range.toDate}
-            </span>
+            {t('hr.calcRange', { from: range.fromDate, to: range.toDate })}
             {q.data?.utilization.manhourWorkdayFrom && q.data?.utilization.manhourWorkdayTo
-              ? ` · manhour ใน DB (ISO): ${q.data.utilization.manhourWorkdayFrom} – ${q.data.utilization.manhourWorkdayTo}`
+              ? ` · ${t('hr.dbRange', {
+                  from: q.data.utilization.manhourWorkdayFrom,
+                  to: q.data.utilization.manhourWorkdayTo,
+                })}`
               : ''}
           </p>
         </AppCard>
@@ -170,31 +174,34 @@ export function ManhoursHrPage() {
       ) : q.isError ? (
         <EmptyState
           icon={AlertCircle}
-          title="โหลดรายงานไม่สำเร็จ"
+          title={t('hr.loadFailed')}
           description={(q.error as Error).message}
-          action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+          action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
         />
       ) : q.data ? (
         <>
           {team ? (
             <div className="grid gap-3 sm:grid-cols-3">
               <AppCard pad="compact">
-                <div className="text-xs text-app-muted">% Utilization ทีม</div>
+                <div className="text-xs text-app-muted">{t('hr.teamUtil')}</div>
                 <div className="mt-1 text-2xl font-semibold tabular-nums text-sky-800">
                   {team.utilizationPercent.toFixed(2)}%
                 </div>
                 <p className="mt-1 text-xs text-app-muted">
-                  Confirm {team.confirmHours.toFixed(1)} ชม. ÷ HR {team.manhourHours.toFixed(1)} ชม.
+                  {t('hr.teamUtilHint', {
+                    confirm: team.confirmHours.toFixed(1),
+                    hr: team.manhourHours.toFixed(1),
+                  })}
                 </p>
               </AppCard>
               <AppCard pad="compact">
-                <div className="text-xs text-app-muted">Confirm รวม</div>
+                <div className="text-xs text-app-muted">{t('hr.teamConfirm')}</div>
                 <div className="mt-1 text-2xl font-semibold tabular-nums">
                   {team.confirmHours.toFixed(1)}
                 </div>
               </AppCard>
               <AppCard pad="compact">
-                <div className="text-xs text-app-muted">HR รวม (Summary/W)</div>
+                <div className="text-xs text-app-muted">{t('hr.teamHr')}</div>
                 <div className="mt-1 text-2xl font-semibold tabular-nums">
                   {team.manhourHours.toFixed(1)}
                 </div>
@@ -203,21 +210,19 @@ export function ManhoursHrPage() {
           ) : null}
 
           <AppCard pad="compact" className="space-y-2">
-            <p className="text-body-sm font-medium text-app">Utilization รายคน</p>
-            <p className="text-xs text-app-muted">
-              เทียบ KPI รายงาน — ต่างจาก Eng Utilization ที่ใช้ %PM/%Reactive จาก WO
-            </p>
+            <p className="text-body-sm font-medium text-app">{t('hr.byPersonTitle')}</p>
+            <p className="text-xs text-app-muted">{t('hr.byPersonHint')}</p>
             <div className="app-table-shell overflow-x-auto">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
                     <TableHead className={cn(tableStickyClass(1), 'min-w-[5.5rem]')}>
-                      Work Center
+                      {t('hr.colWc')}
                     </TableHead>
-                    <TableHead>ชื่อ</TableHead>
-                    <TableHead className="text-right">Confirm ชม.</TableHead>
-                    <TableHead className="text-right">HR ชม.</TableHead>
-                    <TableHead className="text-right">% Util</TableHead>
+                    <TableHead>{t('page.colName')}</TableHead>
+                    <TableHead className="text-right">{t('hr.colConfirm')}</TableHead>
+                    <TableHead className="text-right">{t('hr.colHr')}</TableHead>
+                    <TableHead className="text-right">{t('hr.colUtil')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -246,8 +251,8 @@ export function ManhoursHrPage() {
                       <TableCell colSpan={5} className="p-0">
                         <EmptyState
                           className="border-0 bg-transparent py-8"
-                          title="ไม่มีข้อมูล utilization"
-                          description="ขยายช่วงวันที่หรือนำเข้าข้อมูล"
+                          title={t('hr.byPersonEmpty')}
+                          description={t('hr.byPersonEmptyHint')}
                         />
                       </TableCell>
                     </TableRow>
@@ -258,24 +263,24 @@ export function ManhoursHrPage() {
           </AppCard>
 
           <AppCard pad="compact" className="space-y-2">
-            <p className="text-body-sm font-medium text-app">รายละเอียด manhour (รายวัน)</p>
+            <p className="text-body-sm font-medium text-app">{t('hr.dailyTitle')}</p>
             <div className="app-table-shell overflow-x-auto">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-14">ลำดับ</TableHead>
-                    <TableHead>วันที่ทำงาน</TableHead>
-                    <TableHead>ชื่อ - สกุล</TableHead>
-                    <TableHead>ตำแหน่ง</TableHead>
+                    <TableHead className="w-14">{t('hr.colSeq')}</TableHead>
+                    <TableHead>{t('hr.colWorkDate')}</TableHead>
+                    <TableHead>{t('page.colName')}</TableHead>
+                    <TableHead>{t('hr.colPosition')}</TableHead>
                     <TableHead className="text-right">WH</TableHead>
                     <TableHead className="text-right">OT1</TableHead>
                     <TableHead className="text-right">OT1.5</TableHead>
                     <TableHead className="text-right">OT1HOL</TableHead>
                     <TableHead className="text-right">OT2</TableHead>
                     <TableHead className="text-right">OT3</TableHead>
-                    <TableHead className="text-right">Summary/W</TableHead>
-                    <TableHead className="text-right">OT net</TableHead>
-                    <TableHead className="text-right">% Util</TableHead>
+                    <TableHead className="text-right">{t('hr.colSummary')}</TableHead>
+                    <TableHead className="text-right">{t('hr.colOtNet')}</TableHead>
+                    <TableHead className="text-right">{t('hr.colUtil')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -327,8 +332,8 @@ export function ManhoursHrPage() {
                       <TableCell colSpan={13} className="p-0">
                         <EmptyState
                           className="border-0 bg-transparent py-10"
-                          title="ยังไม่มีข้อมูล manhour"
-                          description="ในช่วงวันที่ที่เลือก"
+                          title={t('hr.dailyEmpty')}
+                          description={t('hr.dailyEmptyHint')}
                         />
                       </TableCell>
                     </TableRow>
@@ -339,8 +344,9 @@ export function ManhoursHrPage() {
           </AppCard>
         </>
       ) : (
-        <EmptyState title="ไม่มีข้อมูล" description="เลือกช่วงวันที่แล้วกดค้นหา" />
+        <EmptyState title={t('hr.empty')} description={t('hr.emptyHint')} />
       )}
+      </AppPageSection>
     </AppPageShell>
   )
 }

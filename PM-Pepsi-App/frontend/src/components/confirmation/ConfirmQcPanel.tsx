@@ -12,6 +12,7 @@ import {
 import { usePermission } from '@/lib/use-permission'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { z } from 'zod'
 
 type ConfirmQc = z.infer<typeof workOrderConfirmQcSchema>
@@ -36,11 +37,12 @@ export type ConfirmQcPanelProps = {
 
 export function ConfirmQcPanel({
   idiw37,
-  wkorder,
+  wkorder: _wkorder,
   initialQc,
   enabled = true,
   onQcChange,
 }: ConfirmQcPanelProps) {
+  const { t } = useTranslation('confirmation')
   const qc = useQueryClient()
   const canReview = usePermission('confirmation.import')
   const [rejectNote, setRejectNote] = useState('')
@@ -61,6 +63,7 @@ export function ConfirmQcPanel({
     await qc.invalidateQueries({ queryKey: ['work-order'] })
     await qc.invalidateQueries({ queryKey: ['confirmation', 'qc', 'pending'] })
     await qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'confirm'] })
+    await qc.invalidateQueries({ queryKey: ['dashboard'] })
     onQcChange?.()
   }
 
@@ -89,60 +92,63 @@ export function ConfirmQcPanel({
   if (!data) return null
 
   return (
-    <section className="space-y-3 rounded-card border border-amber-200 bg-amber-50/80 p-3">
+    <section className="overflow-hidden rounded-card border border-amber-200/90 bg-gradient-to-br from-amber-50 via-[var(--app-surface)] to-[color-mix(in_srgb,var(--app-accent)_3%,var(--app-surface))] p-4 shadow-[var(--app-shadow-card)]">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h4 className="text-body-sm font-semibold text-app">Admin QC — ก่อนนับปิดงานในระบบ</h4>
-          <p className="text-xs text-app-muted">
-            WO {wkorder ?? '—'} · อนุมัติแล้วจึงนับใน Personnel Confirm / Export / workflow ขั้น 4
-          </p>
-        </div>
+        <h4 className="flex items-center gap-2 text-body-sm font-semibold text-amber-950">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+            ✓
+          </span>
+          {t('qc.adminTitle')}
+        </h4>
         <Badge variant={statusVariant(data.status)} role="status">
           {data.statusLabel}
         </Badge>
       </div>
 
-      <ul className="grid gap-1 text-xs text-app sm:grid-cols-2">
-        <li>รูป: {data.imageCount} (ก่อน {data.imageBefore} · หลัง {data.imageAfter})</li>
-        <li>ปิดงาน (supervisor): {data.closeCount}</li>
-        <li>เวลาช่าง (tbwrkclose): {data.worktimeCount}</li>
+      <ul className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+        <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app">
+          {t('qc.images')}: <strong>{data.imageCount}</strong> (
+          {t('qc.imagesDetail', { before: data.imageBefore, after: data.imageAfter })})
+        </li>
+        <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app">
+          {t('qc.closeCount')}: <strong>{data.closeCount}</strong>
+        </li>
+        <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app">
+          {t('qc.worktimeCount')}: <strong>{data.worktimeCount}</strong>
+        </li>
         {data.reviewedAt ? (
-          <li className="sm:col-span-2">
-            ตรวจโดย {data.reviewedBy ?? '—'} ·{' '}
+          <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app sm:col-span-2">
+            {t('qc.reviewedBy')} <strong>{data.reviewedBy ?? '—'}</strong> ·{' '}
             {new Date(data.reviewedAt).toLocaleString('th-TH')}
           </li>
         ) : null}
         {data.note ? (
-          <li className="sm:col-span-2 text-red-700">หมายเหตุ: {data.note}</li>
+          <li className="rounded-button border border-red-200/80 bg-red-50/80 px-3 py-2 text-red-800 sm:col-span-2">
+            {t('qc.note')}: {data.note}
+          </li>
         ) : null}
       </ul>
 
-      {!data.approved && !data.readyForReview ? (
-        <p className="text-xs text-app-muted">
-          ช่างยังไม่ส่งข้อมูล (รูป / เวลา / ปิดงาน) — ระบบจะตั้งสถานะ「รอตรวจ」เมื่อมีการบันทึก
-        </p>
-      ) : null}
-
       {canReview && data.status === 'pending' && data.readyForReview ? (
-        <div className="flex flex-wrap gap-2 border-t border-amber-200/80 pt-3">
+        <div className="mt-4 flex flex-col gap-3 border-t border-amber-200/80 pt-4 sm:flex-row sm:flex-wrap sm:items-end">
           <Button
             type="button"
             size="sm"
             disabled={approveMut.isPending || rejectMut.isPending}
             onClick={() => approveMut.mutate()}
           >
-            {approveMut.isPending ? 'กำลังอนุมัติ…' : 'อนุมัติ (เข้า Dashboard)'}
+            {approveMut.isPending ? t('qc.approving') : t('qc.approve')}
           </Button>
           <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
             <Label htmlFor="qc-reject-note" className="text-xs">
-              เหตุผลส่งกลับ (ถ้ามี)
+              {t('qc.rejectReasonLabel')}
             </Label>
             <Textarea
               id="qc-reject-note"
               rows={2}
               value={rejectNote}
               onChange={(e) => setRejectNote(e.target.value)}
-              placeholder="เช่น รูปหลังงานไม่ชัด"
+              placeholder={t('qc.rejectReasonPlaceholder')}
               maxLength={500}
             />
           </div>
@@ -153,19 +159,9 @@ export function ConfirmQcPanel({
             disabled={approveMut.isPending || rejectMut.isPending}
             onClick={() => rejectMut.mutate()}
           >
-            {rejectMut.isPending ? 'กำลังส่งกลับ…' : 'ส่งกลับแก้ไข'}
+            {rejectMut.isPending ? t('qc.rejecting') : t('qc.reject')}
           </Button>
         </div>
-      ) : null}
-
-      {canReview && data.status === 'rejected' ? (
-        <p className="text-xs text-red-700">
-          ส่งกลับแล้ว — ช่างแก้ไขรูป/เวลาแล้วระบบจะตั้ง「รอตรวจ」อีกครั้งเมื่อบันทึกใหม่
-        </p>
-      ) : null}
-
-      {!canReview && data.status === 'pending' ? (
-        <p className="text-xs text-amber-800">รอ Admin ตรวจและอนุมัติก่อนนับเป็นงานปิดครบในระบบ</p>
       ) : null}
 
       {(approveMut.error || rejectMut.error) && (

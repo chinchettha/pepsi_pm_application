@@ -33,6 +33,3 @@ export function parseBoardThemeFromSearchParams(params: URLSearchParams): BoardT
   return null
 }
 
-export function boardThemeLabel(theme: BoardThemeId): string {
-  return theme === 'light' ? 'สว่าง' : 'มืด'
-}

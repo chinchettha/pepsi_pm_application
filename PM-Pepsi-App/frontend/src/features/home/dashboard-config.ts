@@ -1,28 +1,32 @@
 import type { AuthUser } from '@/api/schemas'
 import type { NavEntry, NavLinkEntry } from '@/components/layout/nav-config'
+import type { TFunction } from 'i18next'
 
-/** คำอธิบายสั้นต่อ route — แสดงในการ์ดทางลัด (ไม่โชว์ชื่อ PHP) */
-export const ROUTE_HINTS: Record<string, string> = {
-  '/plan-calendar': 'จ่ายงานและติดตามแผนรายวัน',
-  '/calendar': 'ปฏิทินใบงานและย้ายแผน',
-  '/line-calendar': 'ตารางเวลาเส้นผลิต',
-  '/backlog': 'งานค้างและแผนที่ยังไม่จ่าย',
-  '/work-orders': 'ค้นหาและจัดการใบงาน',
-  '/confirmation': 'รับรองและปิดงาน',
-  '/planning': 'ตารางแผน PM/CM',
-  '/iw37n': 'นำเข้าข้อมูล SAP IW37N',
-  '/master-data': 'ข้อมูลหลักระบบ',
-  '/manhours': 'บันทึกชั่วโมงทำงาน',
-  '/manhours/admin': 'จัดการชั่วโมง (ผู้ดูแล)',
-  '/worktime': 'สรุป worktime ทั้งหมด',
-  '/personnel': 'โปรไฟล์และงานของฉัน',
-  '/personnel/confirm': 'ความคืบหน้าการยืนยันบุคลากร',
-  '/reports': 'KPI และแนวโน้ม',
-  '/manhours-hr': 'รายงาน manhour ตาม WC',
-  '/summary-weekly': 'สรุปรายสัปดาห์',
-  '/user-log': 'ประวัติการใช้งาน',
-  '/settings': 'โปรไฟล์และรหัสผ่าน',
-  '/admin': 'คอนโซลผู้ดูแลระบบ',
+const ROUTE_HINT_KEYS: Record<string, string> = {
+  '/plan-calendar': 'planCalendar',
+  '/calendar': 'calendar',
+  '/backlog': 'backlog',
+  '/work-orders': 'workOrders',
+  '/confirmation': 'confirmation',
+  '/planning': 'planning',
+  '/iw37n': 'iw37n',
+  '/master-data': 'masterData',
+  '/manhours': 'manhours',
+  '/worktime': 'worktime',
+  '/personnel': 'personnel',
+  '/personnel/confirm': 'personnelConfirm',
+  '/reports': 'reports',
+  '/manhours-hr': 'manhoursHr',
+  '/summary-weekly': 'summaryWeekly',
+  '/user-log': 'userLog',
+  '/settings': 'settings',
+  '/admin': 'admin',
+}
+
+function routeHint(to: string, t: TFunction<'home'>): string {
+  const slug = ROUTE_HINT_KEYS[to]
+  if (slug) return t(`routeHints.${slug}`)
+  return t('routeHints.default')
 }
 
 export function displayUserName(user: AuthUser): string {
@@ -33,7 +37,10 @@ export function displayUserName(user: AuthUser): string {
   return user.username
 }
 
-export function navItemsToQuickLinks(entries: NavEntry[]): {
+export function navItemsToQuickLinks(
+  entries: NavEntry[],
+  t: TFunction<'home'>,
+): {
   to: string
   label: string
   hint: string
@@ -44,7 +51,7 @@ export function navItemsToQuickLinks(entries: NavEntry[]): {
     .map((e) => ({
       to: e.to,
       label: e.label.replace(/\s*\/\s*.+$/, '').trim() || e.label,
-      hint: ROUTE_HINTS[e.to] ?? 'เปิดโมดูล',
+      hint: routeHint(e.to, t),
       icon: e.icon,
     }))
 }

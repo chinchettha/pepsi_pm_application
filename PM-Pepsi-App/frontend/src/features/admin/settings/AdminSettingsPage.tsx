@@ -22,6 +22,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { BoardKioskCard } from '@/features/admin/settings/BoardKioskCard'
 import { AlertCircle, Calendar, Flag, RefreshCcw, RotateCcw, Save, Settings2, ShieldAlert, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 const selectClass =
@@ -60,6 +61,7 @@ function SectionResetButton({
   disabled?: boolean
   onReset: (section: SettingsResetSection) => void
 }) {
+  const { t } = useTranslation('admin')
   return (
     <Button
       type="button"
@@ -68,12 +70,12 @@ function SectionResetButton({
       className="text-app-muted"
       disabled={disabled}
       onClick={() => {
-        if (!window.confirm(`คืนค่า${label}เป็นค่าเริ่มต้น?`)) return
+        if (!window.confirm(t('settings.resetSectionConfirm', { label }))) return
         onReset(section)
       }}
     >
       <RotateCcw className="mr-1 size-3.5" aria-hidden />
-      คืนค่ากลุ่มนี้
+      {t('settings.resetSectionBtn')}
     </Button>
   )
 }
@@ -91,6 +93,7 @@ function FlagToggle({
   disabled?: boolean
   onChange: (v: boolean) => void
 }) {
+  const { t } = useTranslation('admin')
   return (
     <div className="flex items-start justify-between gap-4 rounded-card border border-app p-3">
       <div>
@@ -104,13 +107,15 @@ function FlagToggle({
         disabled={disabled}
         onClick={() => onChange(!checked)}
       >
-        {checked ? 'เปิด' : 'ปิด'}
+        {checked ? t('settings.on') : t('settings.off')}
       </Button>
     </div>
   )
 }
 
 export function AdminSettingsPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
   const canRead = usePermission('admin.settings.read')
   const canWrite = usePermission('admin.settings.write')
@@ -142,9 +147,9 @@ export function AdminSettingsPage() {
     onSuccess: (data) => {
       setForm(data)
       invalidateSettingsCaches(qc)
-      toast.success('บันทึกตั้งค่าระบบแล้ว')
+      toast.success(t('settings.saved'))
     },
-    onError: (e: Error) => toast.error(e.message || 'บันทึกไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('settings.saveFailed')),
   })
 
   const resetMut = useMutation({
@@ -152,9 +157,9 @@ export function AdminSettingsPage() {
     onSuccess: (data) => {
       setForm(data)
       invalidateSettingsCaches(qc)
-      toast.success('คืนค่าตั้งค่าระบบเป็นค่าเริ่มต้นแล้ว')
+      toast.success(t('settings.resetAll'))
     },
-    onError: (e: Error) => toast.error(e.message || 'คืนค่าไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('settings.resetFailed')),
   })
 
   const sectionResetMut = useMutation({
@@ -162,9 +167,9 @@ export function AdminSettingsPage() {
     onSuccess: (data) => {
       setForm(data)
       invalidateSettingsCaches(qc)
-      toast.success('คืนค่ากลุ่มนี้แล้ว')
+      toast.success(t('settings.resetSection'))
     },
-    onError: (e: Error) => toast.error(e.message || 'คืนค่าไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('settings.resetFailed')),
   })
 
   const clearCacheMut = useMutation({
@@ -172,9 +177,9 @@ export function AdminSettingsPage() {
       await idbClear()
     },
     onSuccess: () => {
-      toast.success('ล้างแคช IndexedDB แล้ว')
+      toast.success(t('settings.cacheCleared'))
     },
-    onError: () => toast.error('ล้างแคชไม่สำเร็จ'),
+    onError: () => toast.error(t('settings.cacheClearFailed')),
   })
 
   const dirty =
@@ -205,7 +210,7 @@ export function AdminSettingsPage() {
       }
     }
     if (Object.keys(body).length === 0) {
-      toast.message('ไม่มีการเปลี่ยนแปลง')
+      toast.message(t('settings.noChanges'))
       return
     }
     saveMut.mutate(body)
@@ -214,13 +219,7 @@ export function AdminSettingsPage() {
   if (!canRead && !canWrite) {
     return (
       <AdminPageRoot tourTarget="admin-settings">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์เข้าถึงหน้านี้ (ต้องมี <code>admin.settings.read</code>)
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.settings.read" />
       </AdminPageRoot>
     )
   }
@@ -228,9 +227,9 @@ export function AdminSettingsPage() {
   return (
     <AdminPageShell
       tourTarget="admin-settings"
-      title="ตั้งค่าระบบ"
-      description="Timezone, ปี พ.ศ./ค.ศ., ขีดจำกัดอัปโหลด, feature flags และโหมดบำรุงรักษา"
-      contentClassName="space-y-6"
+      title={t('settings.title')}
+      description={t('settings.description')}
+      hints={['Timezone', 'Feature flags', 'Maintenance', 'Upload limit']}
       headerActions={
         <>
           <Button
@@ -241,9 +240,7 @@ export function AdminSettingsPage() {
             onClick={() => void q.refetch()}
             disabled={q.isFetching}
           >
-            <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
-          </Button>
+            <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />{t('shared.refresh')}</Button>
           {canWrite ? (
             <>
               <Button
@@ -254,7 +251,7 @@ export function AdminSettingsPage() {
                 onClick={() => setResetOpen(true)}
               >
                 <RotateCcw className="mr-2 size-4" aria-hidden />
-                คืนค่ามาตรฐาน
+                {t('settings.resetStandard')}
               </Button>
               <Button
                 type="button"
@@ -263,7 +260,7 @@ export function AdminSettingsPage() {
                 onClick={onSave}
               >
                 <Save className="mr-2 size-4" aria-hidden />
-                บันทึก
+                {t('settings.saveBtn')}
               </Button>
             </>
           ) : null}
@@ -275,9 +272,9 @@ export function AdminSettingsPage() {
         ) : q.isError ? (
           <EmptyState
             icon={AlertCircle}
-            title="โหลดตั้งค่าไม่สำเร็จ"
+            title={t('settings.loadFailed')}
             description={(q.error as Error).message}
-            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+            action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
           />
         ) : form ? (
           <div className="grid gap-6 lg:grid-cols-2">
@@ -286,14 +283,14 @@ export function AdminSettingsPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Calendar className="size-5" aria-hidden />
-                    Locale & วันที่
+                    {t('settings.sectionLocale')}
                   </CardTitle>
-                  <CardDescription>Timezone และรูปแบบแสดงวันที่ (พ.ศ./ค.ศ.)</CardDescription>
+                  <CardDescription>{t('settings.sectionLocaleDesc')}</CardDescription>
                 </div>
                 {canWrite ? (
                   <SectionResetButton
                     section="locale"
-                    label=" Locale & วันที่"
+                    label={t('settings.sectionLocale')}
                     disabled={sectionResetMut.isPending}
                     onReset={(s) => sectionResetMut.mutate(s)}
                   />
@@ -302,7 +299,7 @@ export function AdminSettingsPage() {
               <CardContent className="grid gap-4 sm:grid-cols-2">
                 <div className={settingsFieldRowClass}>
                   <Label htmlFor="locale" className={settingsFieldLabelClass}>
-                    ภาษา (Locale)
+                    {t('settings.localeLabel')}
                   </Label>
                   <select
                     id="locale"
@@ -313,13 +310,13 @@ export function AdminSettingsPage() {
                       setForm({ ...form, locale: e.target.value as AdminSettings['locale'] })
                     }
                   >
-                    <option value="th-TH">ไทย (th-TH)</option>
                     <option value="en-US">English (en-US)</option>
+                    <option value="th-TH">{t('settings.localeTh')}</option>
                   </select>
                 </div>
                 <div className={settingsFieldRowClass}>
                   <Label htmlFor="timezone" className={settingsFieldLabelClass}>
-                    Timezone (IANA)
+                    {t('settings.timezoneLabel')}
                   </Label>
                   <select
                     id="timezone"
@@ -336,7 +333,7 @@ export function AdminSettingsPage() {
                   </select>
                 </div>
                 <div className={settingsFieldRowClass}>
-                  <Label className={settingsFieldLabelClass}>ปีที่แสดง</Label>
+                  <Label className={settingsFieldLabelClass}>{t('settings.yearDisplayLabel')}</Label>
                   <div className="flex min-h-10 flex-wrap items-center gap-2">
                     <Button
                       type="button"
@@ -345,7 +342,7 @@ export function AdminSettingsPage() {
                       disabled={!canWrite}
                       onClick={() => setForm({ ...form, yearFormat: 'BE' })}
                     >
-                      พ.ศ. (BE)
+                      {t('settings.yearBe')}
                     </Button>
                     <Button
                       type="button"
@@ -354,13 +351,13 @@ export function AdminSettingsPage() {
                       disabled={!canWrite}
                       onClick={() => setForm({ ...form, yearFormat: 'AD' })}
                     >
-                      ค.ศ. (AD)
+                      {t('settings.yearAd')}
                     </Button>
                   </div>
                 </div>
                 <div className={settingsFieldRowClass}>
                   <Label htmlFor="dateFormat" className={settingsFieldLabelClass}>
-                    รูปแบบวันที่
+                    {t('settings.dateFormat')}
                   </Label>
                   <select
                     id="dateFormat"
@@ -386,12 +383,12 @@ export function AdminSettingsPage() {
               <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Settings2 className="size-5" aria-hidden />
-                  ขีดจำกัด
+                  {t('settings.sectionLimits')}
                 </CardTitle>
                 {canWrite ? (
                   <SectionResetButton
                     section="limits"
-                    label="ขีดจำกัด"
+                    label={t('settings.sectionLimits')}
                     disabled={sectionResetMut.isPending}
                     onReset={(s) => sectionResetMut.mutate(s)}
                   />
@@ -399,7 +396,7 @@ export function AdminSettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="uploadMaxMb">ขนาดอัปโหลดสูงสุด (MB)</Label>
+                  <Label htmlFor="uploadMaxMb">{t('settings.maxUploadMb')}</Label>
                   <Input
                     id="uploadMaxMb"
                     type="number"
@@ -413,7 +410,7 @@ export function AdminSettingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sessionTtlMin">อายุ session (นาที)</Label>
+                  <Label htmlFor="sessionTtlMin">{t('settings.sessionTtlMin')}</Label>
                   <Input
                     id="sessionTtlMin"
                     type="number"
@@ -425,10 +422,10 @@ export function AdminSettingsPage() {
                       setForm({ ...form, sessionTtlMin: Number(e.target.value) || 15 })
                     }
                   />
-                  <p className="text-xs text-app-muted">ค่าเริ่มต้น 480 นาที (8 ชั่วโมง) — ใช้กับ session cookie/token</p>
+                  <p className="text-xs text-app-muted">{t('settings.sessionTtlHint')}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="passwordMinLength">ความยาวรหัสผ่านขั้นต่ำ</Label>
+                  <Label htmlFor="passwordMinLength">{t('settings.passwordMinLength')}</Label>
                   <Input
                     id="passwordMinLength"
                     type="number"
@@ -440,10 +437,10 @@ export function AdminSettingsPage() {
                       setForm({ ...form, passwordMinLength: Number(e.target.value) || 8 })
                     }
                   />
-                  <p className="text-xs text-app-muted">ใช้เมื่อ admin reset password (4 ชนิดอักขระ)</p>
+                  <p className="text-xs text-app-muted">{t('settings.passwordMinHint')}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="maxLoginAttempts">จำนวนครั้ง login ผิดสูงสุด</Label>
+                  <Label htmlFor="maxLoginAttempts">{t('settings.maxLoginAttempts')}</Label>
                   <Input
                     id="maxLoginAttempts"
                     type="number"
@@ -455,7 +452,7 @@ export function AdminSettingsPage() {
                       setForm({ ...form, maxLoginAttempts: Number(e.target.value) || 3 })
                     }
                   />
-                  <p className="text-xs text-app-muted">ต่อ IP+ผู้ใช้ ภายใน 15 นาที (ก่อน lockout 429)</p>
+                  <p className="text-xs text-app-muted">{t('settings.maxLoginAttemptsHint')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -467,15 +464,12 @@ export function AdminSettingsPage() {
                     <Flag className="size-5" aria-hidden />
                     Feature flags
                   </CardTitle>
-                  <CardDescription>
-                    IndexedDB offline, Dashboard charts — Joyride tour / Optimistic UI / DnD calendar
-                    ยังไม่มี toggle ใน UI
-                  </CardDescription>
+                  <CardDescription>{t('settings.featureFlagsNote')}</CardDescription>
                 </div>
                 {canWrite ? (
                   <SectionResetButton
                     section="features"
-                    label=" Feature flags"
+                    label={t('settings.sectionFeatures')}
                     disabled={sectionResetMut.isPending}
                     onReset={(s) => sectionResetMut.mutate(s)}
                   />
@@ -483,24 +477,22 @@ export function AdminSettingsPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <FlagToggle
-                  label="IndexedDB offline"
-                  description="เก็บข้อมูลออฟไลน์เมื่อพร้อม deploy"
+                  label={t('settings.featureIndexeddb')}
+                  description={t('settings.featureIndexeddbDesc')}
                   checked={form.featureIndexeddbOffline}
                   disabled={!canWrite}
                   onChange={(v) => setForm({ ...form, featureIndexeddbOffline: v })}
                 />
                 <FlagToggle
-                  label="Dashboard charts ขั้นสูง"
-                  description="กราฟรายงานเพิ่มเติมบน Dashboard"
+                  label={t('settings.featureDashboardCharts')}
+                  description={t('settings.featureDashboardChartsDesc')}
                   checked={form.featureDashboardCharts}
                   disabled={!canWrite}
                   onChange={(v) => setForm({ ...form, featureDashboardCharts: v })}
                 />
                 <div className="rounded-card border border-app p-3">
-                  <p className="text-body-sm font-medium text-app">Offline cache (IndexedDB)</p>
-                  <p className="mt-1 text-xs text-app-muted">
-                    ล้างแคช readonly ที่ใช้ช่วยเปิดหน้า audit/backup เมื่อ DB ไม่ตอบ (กระทบเฉพาะ browser เครื่องนี้)
-                  </p>
+                  <p className="text-body-sm font-medium text-app">{t('settings.offlineCacheTitle')}</p>
+                  <p className="mt-1 text-xs text-app-muted">{t('settings.offlineCacheDesc')}</p>
                   <div className="mt-2">
                     <Button
                       type="button"
@@ -510,7 +502,7 @@ export function AdminSettingsPage() {
                       onClick={() => setClearCacheOpen(true)}
                     >
                       <Trash2 className="mr-1 size-4" aria-hidden />
-                      ล้างแคช IndexedDB
+                      {t('settings.clearIndexedDb')}
                     </Button>
                   </div>
                 </div>
@@ -519,10 +511,8 @@ export function AdminSettingsPage() {
 
             <Card className="admin-card lg:col-span-2">
               <CardHeader>
-                <CardTitle className="text-lg">คีย์ลับ (masked)</CardTitle>
-                <CardDescription>
-                  `GET /admin/settings/secrets` — ค่า `is_secret` ใน tbl_setting (migration 069+)
-                </CardDescription>
+                <CardTitle className="text-lg">{t('settings.secretsTitle')}</CardTitle>
+                <CardDescription>{t('settings.secretsDesc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 {secretsQ.isLoading ? (
@@ -536,16 +526,13 @@ export function AdminSettingsPage() {
                       >
                         <span className="font-mono text-xs">{s.settingKey}</span>
                         <span className="text-app-muted">
-                          {s.hasValue ? s.maskedValue : '(ว่าง)'}
+                          {s.hasValue ? s.maskedValue : t('settings.secretEmptyValue')}
                         </span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-caption">
-                    ยังไม่มีคีย์ลับ — รัน migration 069 (`app.license_key`) หรือเพิ่มแถว
-                    `is_secret=true` ใน tbl_setting
-                  </p>
+                  <p className="text-caption">{t('settings.secretsEmpty')}</p>
                 )}
               </CardContent>
             </Card>
@@ -555,16 +542,14 @@ export function AdminSettingsPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <ShieldAlert className="size-5" aria-hidden />
-                    โหมดบำรุงรักษา
+                    {t('settings.sectionMaintenance')}
                   </CardTitle>
-                  <CardDescription>
-                    Banner ทั้งแอป + 503 สำหรับ API แก้ไข (ยกเว้น admin ที่มีสิทธิ์ bypass)
-                  </CardDescription>
+                  <CardDescription>{t('settings.maintenanceCardDesc')}</CardDescription>
                 </div>
                 {canWrite ? (
                   <SectionResetButton
                     section="maintenance"
-                    label="โหมดบำรุงรักษา"
+                    label={t('settings.sectionMaintenance')}
                     disabled={sectionResetMut.isPending}
                     onReset={(s) => sectionResetMut.mutate(s)}
                   />
@@ -572,18 +557,18 @@ export function AdminSettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <FlagToggle
-                  label="เปิดโหมดบำรุงรักษา"
+                  label={t('settings.maintenanceEnable')}
                   checked={form.maintenanceEnabled}
                   disabled={!canWrite}
                   onChange={(v) => setForm({ ...form, maintenanceEnabled: v })}
                 />
                 <div className="space-y-2">
-                  <Label htmlFor="maintenanceMessage">ข้อความ banner</Label>
+                  <Label htmlFor="maintenanceMessage">{t('settings.maintenanceBannerLabel')}</Label>
                   <Input
                     id="maintenanceMessage"
                     disabled={!canWrite || !form.maintenanceEnabled}
                     value={form.maintenanceMessage}
-                    placeholder="ระบบอยู่ระหว่างบำรุงรักษา — บางฟังก์ชันอาจใช้งานไม่ได้ชั่วคราว"
+                    placeholder={t('settings.maintenanceBannerPlaceholder')}
                     onChange={(e) => setForm({ ...form, maintenanceMessage: e.target.value })}
                   />
                 </div>
@@ -598,10 +583,10 @@ export function AdminSettingsPage() {
         open={resetOpen}
         onOpenChange={setResetOpen}
         tone="danger"
-        title="คืนค่าตั้งค่าระบบ"
-        description="คืนค่า timezone, รูปแบบวันที่, feature flags และโหมดบำรุงรักษาเป็นค่าเริ่มต้น"
-        phrase="RESET"
-        confirmLabel="คืนค่ามาตรฐาน"
+        title={t('settings.resetAllTitle')}
+        description={t('settings.resetAllDescription')}
+        phrase={t('settings.resetPhrase')}
+        confirmLabel={t('settings.resetStandard')}
         loading={resetMut.isPending}
         onConfirm={() => {
           resetMut.mutate(undefined, {
@@ -614,10 +599,10 @@ export function AdminSettingsPage() {
         open={clearCacheOpen}
         onOpenChange={setClearCacheOpen}
         tone="danger"
-        title="ล้างแคช IndexedDB"
-        description="ล้างแคช readonly (audit/backup) บน browser เครื่องนี้ — ไม่กระทบข้อมูลบนเซิร์ฟเวอร์"
-        phrase="CLEAR"
-        confirmLabel="ล้างแคช"
+        title={t('settings.clearCacheTitle')}
+        description={t('settings.clearCacheDescription')}
+        phrase={t('settings.clearPhrase')}
+        confirmLabel={t('settings.clearConfirm')}
         loading={clearCacheMut.isPending}
         onConfirm={() => {
           clearCacheMut.mutate(undefined, {

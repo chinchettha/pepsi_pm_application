@@ -2,7 +2,7 @@
 
 > **ใช้ไฟล์นี้ติ๊กงาน UI/UX** คู่กับ [`skill-theme.md`](../../skill-theme.md) (สี Pepsi · wireframe · motion) และ [`WORK-PHASES.md`](../WORK-PHASES.md)
 
-**อัปเดต:** 2026-05-22 · **โฟกัสปัจจุบัน: U1**
+**อัปเดต:** 2026-06-02 · **UI polish U0–U3 + Dark D0–D4 ปิดแล้ว** — โฟกัสถัดไป: ฟีเจอร์จาก `MEETING-SUMMARY-REQUIREMENTS.md`
 
 ---
 
@@ -15,28 +15,31 @@
 | **ทุกหน้าเท่ากัน** | PageHeader · spacing · ตาราง · empty/loading · ไทยอ่านง่าย |
 | **Branding จาก Admin** | โลโก้ · wallpaper login · favicon — ไม่ hard-code |
 
-**ไม่บังคับ dark mode ใน Phase แรก** — โฟกัส light + contrast สำหรับโรงงาน/kiosk
+**Dark mode (2026-06):** ค่าเริ่มต้น Admin = **`system`** (ตาม OS) · ผู้ใช้สลับ light/dark ได้ที่ topbar · spec: [`docs/superpowers/specs/2026-06-02-dark-mode-ui-design.md`](../superpowers/specs/2026-06-02-dark-mode-ui-design.md)
 
 ---
 
 ## ภาพรวม Phase
 
 ```text
-[✓] U0  Design system    — token · component มาตรฐาน · audit:ui (mock/hex)
-       ↓
-[→] U1  App shell        — login · layout · admin · board · error  ← โฟกัส
-       ↓
-[ ] U2  หน้าตามเมนู      — ติ๊กทีละ route (ด้านล่าง)
-       ↓
-[ ] U3  Polish ข้ามหน้า  — motion · a11y · responsive · print
+[✓] U0  Design system
+[✓] U1  App shell
+[✓] U2  หน้าตามเมนู — AppPageShell + hints ทุก route หลัก
+[✓] U3  Polish ข้ามหน้า — motion · a11y · responsive · print
+
+[✓] D0  Dark foundation — Input/Textarea/Tabs
+[✓] D1  Dark shell — login · error · logout
+[✓] D2  Dark หน้าหลัก — calendar · WO · confirm · planning · master
+[✓] D3  Dark รอง + admin + reports
+[✓] D4  Board / print
 ```
 
 | Phase | ชื่อ | สถานะ | เกณฑ์ผ่านสั้นๆ |
 |-------|------|--------|----------------|
 | **U0** | Design system | **เสร็จ** | doc token · component มาตรฐาน · `/dev/ui` · `npm run audit:ui` ไม่มี `(mock)` |
-| **U1** | Shell | **กำลังทำ** | Login + sidebar ทุก route + Admin ชุดเดียวกัน |
-| **U2** | ทุกหน้า | รอ | แต่ละ route ผ่าน checklist ด้านล่าง ≥ 90% |
-| **U3** | Cross-cutting | รอ | โมบายล์ · keyboard · skeleton ทุก query หลัก |
+| **U1** | Shell | **เสร็จ** | Login + sidebar + Admin + board + error/logout |
+| **U2** | ทุกหน้า | **เสร็จ** | AppPageShell/AdminPageShell + hints + stack |
+| **U3** | Cross-cutting | **เสร็จ** | responsive · a11y · print · keepPreviousData |
 
 ---
 
@@ -89,9 +92,10 @@
 | **Command palette** | Ctrl+K | [x] ไอคอน + shortcut hint · [x] กลุ่มตามเมนู |
 | **Announcement** | banner | [x] ไม่บัง sidebar · [x] ปิดได้ |
 | **Footer** | ล่าง content | [x] เวอร์ชันแอป · [x] ไม่ชน dock |
-| **Admin layout** | `/admin/*` | [x] `macos-admin` + stripe Pepsi · [ ] breadcrumb ทุกหน้า · [ ] ทัวร์ Admin |
+| **Admin layout** | `/admin/*` | [x] `macos-admin` + stripe Pepsi · [x] breadcrumb ทุกหน้า (`AdminLayout`) · [x] ทัวร์ Admin (`AdminTour` + ปุ่ม Compass) |
 | **Engineering Board** | `/board` | [x] kiosk เต็มจอ · KPI 3m · ไม่มี sidebar · V2 โซน A–D → [ENGINEERING-BOARD-V2-REQUIREMENTS.md](ENGINEERING-BOARD-V2-REQUIREMENTS.md) |
-| **HTTP errors** | `/error/*`, 404 | [x] ภาพ/ข้อความไทย · glass + animation · [x] ปุ่มกลับ home/login |
+| **HTTP errors** | `/error/*`, 404 | [x] ภาพ/ข้อความไทย · glass + animation · [x] ปุ่มกลับ home/login · [x] ThemeToggle dark |
+| **Logout** | `/logout` | [x] glass card + glow · [x] spinner · redirect login |
 
 **เกณฑ์ผ่าน U1:** สลับ 5 route หลักแล้วรู้สึกว่า “แอปเดียวกัน” ไม่ใช่หลายธีม
 
@@ -300,10 +304,11 @@
 
 | Phase | หน้าที่ผ่านครบ 5 คอลัมน์ | รวมหน้า |
 |-------|-------------------------|--------|
-| U0 | **ผ่าน** (checklist § U0 ครบ) | design |
-| U1 | ~3 / 7 shell | shell ← **โฟกัส** (Login ✓) |
-| U2 | 9 / **~35** routes (+ `/planning`) | หน้าหลัก |
-| U3 | — | cross |
+| U0 | **ผ่าน** | design |
+| U1 | **7 / 7** | shell |
+| U2 | **~35 / ~35** | หน้าหลัก |
+| U3 | **ผ่าน** | cross |
+| D0–D4 | **ปิด** | dark + board + print |
 
 ---
 
@@ -330,3 +335,9 @@
 | 2026-05-22 | **U3 a11y** — focus ring · glass contrast · `IconButton`/`aria-label` · สถานะ WO/QC มีข้อความ |
 | 2026-05-22 | **U3 performance** — `keepPreviousData` (plan/line calendar, home, mass confirm) · `PersonnelAvatar` lazy+initials · รูป confirm โหลดเมื่อแท็บรูปใน WO modal |
 | 2026-05-22 | **U3 print/export** — พิมพ์กราฟ `/summary-weekly/chart/full` · `ReportExportButton` (ไอคอน+ไทย) บน confirm/IW37N/integration/audit |
+| 2026-06-02 | **U2 app-wide** — `AppPageShell` + `hints` + `SchedulingPageStack` ทุก route หลัก · Admin 12 หน้า + `/admin/users` · chart full · build green |
+| 2026-06-02 | **D1 shell dark** — login/error card glass · `text-form-error` · error `ThemeToggle` · logout glass card · board loading skeleton |
+| 2026-06-02 | **D2 หน้าหลัก** — Input/Textarea/Tabs token · `app-surface-panel` · scheduling hero links · FullCalendar dark · WO/calendar/confirm components |
+| 2026-06-02 | **D3 admin/reports** — `app-callout`/`admin-callout` · PermissionMatrix sticky · AuditDiff · Worktime tokens · admin banners |
+| 2026-06-02 | **D4 board/print** — gate glass panel · global `@media print` · admin breadcrumb dark |
+| 2026-06-02 | **ปิด UI polish** — `app-surface-panel--success` · `text-form-error` sweep · EngUtilizationMissingPhotos · อัปเดตสรุป U/D ครบ |

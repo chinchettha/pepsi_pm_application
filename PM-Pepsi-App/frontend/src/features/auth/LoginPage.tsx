@@ -2,6 +2,7 @@ import { resolvePostLoginPath } from '@/features/auth/auth-paths'
 import { LoginBackdrop } from '@/features/auth/LoginBackdrop'
 import { loginCardMotion, loginLogoMotion, loginToolbarMotion } from '@/features/auth/login-motion'
 import { LoginFeedbackDialog } from '@/components/auth/LoginFeedbackDialog'
+import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { usePublicSettings } from '@/providers/SettingsProvider'
 import { publicLogoUrl } from '@/lib/settings-api'
@@ -16,19 +17,16 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion } from 'framer-motion'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
-const loginSchema = z.object({
-  username: z.string().min(1, 'กรุณากรอกชื่อผู้ใช้'),
-  password: z.string().min(1, 'กรุณากรอกรหัสผ่าน'),
-})
-
-type LoginForm = z.infer<typeof loginSchema>
+type LoginForm = { username: string; password: string }
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const { settings, brandingCacheKey } = usePublicSettings()
@@ -42,6 +40,15 @@ export function LoginPage() {
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [postLoginPath, setPostLoginPath] = useState<string | null>(null)
   const [cardShake, setCardShake] = useState(false)
+
+  const loginSchema = useMemo(
+    () =>
+      z.object({
+        username: z.string().min(1, t('auth.usernameRequired')),
+        password: z.string().min(1, t('auth.passwordRequired')),
+      }),
+    [t],
+  )
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -74,8 +81,8 @@ export function LoginPage() {
       setPostLoginPath(target)
       showFeedback({
         kind: 'success',
-        title: 'เข้าสู่ระบบสำเร็จ',
-        message: `สวัสดี ${name}`,
+        title: t('auth.loginSuccess'),
+        message: t('auth.hello', { name }),
       })
     } catch (err) {
       showFeedback(resolveAuthFeedback(err))
@@ -103,7 +110,8 @@ export function LoginPage() {
       <div className="login-page__glow login-page__glow--accent" aria-hidden />
       <div className="login-page__glow login-page__glow--primary" aria-hidden />
 
-      <motion.div className="login-page__toolbar" {...loginToolbarMotion}>
+      <motion.div className="login-page__toolbar flex items-center gap-2" {...loginToolbarMotion}>
+        <LanguageSwitcher />
         <ThemeToggle />
       </motion.div>
 
@@ -130,26 +138,28 @@ export function LoginPage() {
           <div className="login-page__card-shine" aria-hidden />
           <div className="login-page__card-inner">
             <div className="login-page__card-header">
-              <h1 className="text-heading-page font-semibold text-app">เข้าสู่ระบบ</h1>
-              {appName ? <p className="mt-1 text-caption text-app-muted">{appName}</p> : null}
+              <h1 className="text-heading-page font-semibold text-app">{t('auth.signInTitle')}</h1>
+              {appName ? (
+                <p className="mt-1 text-caption text-app-muted">{t('auth.signInTo', { app: appName })}</p>
+              ) : null}
             </div>
 
             <form onSubmit={onSubmit} className="mt-6 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="login-username">ชื่อผู้ใช้</Label>
+                <Label htmlFor="login-username">{t('auth.username')}</Label>
                 <Input
                   id="login-username"
                   autoComplete="username"
-                  placeholder="ชื่อผู้ใช้"
+                  placeholder={t('auth.usernamePlaceholder')}
                   disabled={submitting || feedbackOpen}
                   {...form.register('username')}
                 />
                 {form.formState.errors.username ? (
-                  <p className="text-body-sm text-red-600">{form.formState.errors.username.message}</p>
+                  <p className="text-body-sm text-form-error">{form.formState.errors.username.message}</p>
                 ) : null}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="login-password">รหัสผ่าน</Label>
+                <Label htmlFor="login-password">{t('auth.password')}</Label>
                 <Input
                   id="login-password"
                   type="password"
@@ -158,16 +168,16 @@ export function LoginPage() {
                   {...form.register('password')}
                 />
                 {form.formState.errors.password ? (
-                  <p className="text-body-sm text-red-600">{form.formState.errors.password.message}</p>
+                  <p className="text-body-sm text-form-error">{form.formState.errors.password.message}</p>
                 ) : null}
               </div>
               <Button type="submit" className="w-full" disabled={submitting || feedbackOpen}>
-                {submitting ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}
+                {submitting ? t('auth.signingIn') : t('actions.login')}
               </Button>
             </form>
 
             <Button type="button" variant="ghost" className="mt-4 w-full" asChild>
-              <Link to="/">กลับหน้าแรก</Link>
+              <Link to="/">{t('auth.backHome')}</Link>
             </Button>
           </div>
         </motion.div>

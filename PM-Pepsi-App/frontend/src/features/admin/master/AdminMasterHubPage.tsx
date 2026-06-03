@@ -18,10 +18,13 @@ import { usePermission } from '@/lib/use-permission'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
 import { ExternalLink, RefreshCcw } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { MASTER_ENTITIES, masterDataHref } from './master-entities'
 
 export function AdminMasterHubPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
   const canRead = usePermission('master-data.read')
 
@@ -55,13 +58,7 @@ export function AdminMasterHubPage() {
   if (!canRead) {
     return (
       <AdminPageRoot tourTarget="admin-master">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์ <code className="text-xs">master-data.read</code>
-            </>
-          }
-        />
+        <AdminAccessDenied permission="master-data.read" />
       </AdminPageRoot>
     )
   }
@@ -69,9 +66,9 @@ export function AdminMasterHubPage() {
   return (
     <AdminPageShell
       tourTarget="admin-master"
-      title="ศูนย์ Master Data"
-      description={`สรุปข้อมูลหลัก ${MASTER_ENTITIES.length} ตาราง — เปิดแก้ไขที่หน้า Master Data`}
-      contentClassName="space-y-6"
+      title={t('master.hubTitle')}
+      description={t('master.hubDescription')}
+      hints={['Master data', 'Hub', 'Import', 'Sync']}
       headerActions={
         <Button
           type="button"
@@ -82,30 +79,30 @@ export function AdminMasterHubPage() {
           disabled={isRefreshing}
         >
           <RefreshCcw className={`mr-1 size-3.5 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden />
-          รีเฟรช
+          {t('shared.refresh')}
         </Button>
       }
     >
       <Card className="admin-card">
         <CardHeader>
-          <CardTitle className="text-base">ตาราง master ({MASTER_ENTITIES.length})</CardTitle>
-          <CardDescription>
-            จำนวนแถวและวันแก้ไขล่าสุดจาก audit master-data (ถ้ามี)
-          </CardDescription>
+          <CardTitle className="text-base">
+            {t('master.hubTableTitle', { count: MASTER_ENTITIES.length })}
+          </CardTitle>
+          <CardDescription>{t('master.hubTableDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           {anyError && !anyLoading ? (
             <p className="mb-3 text-body-sm text-amber-800">
-              บางตารางโหลดไม่สำเร็จ — ตรวจสิทธิ์ login และการเชื่อมต่อ backend
+              {t('master.partialLoadWarning')}
             </p>
           ) : null}
           <div className="app-table-shell overflow-x-auto">
             <Table embedded stickyHeader zebra>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ชื่อ</TableHead>
-                  <TableHead className="w-28 text-right">จำนวนแถว</TableHead>
-                  <TableHead className="w-40">แก้ไขล่าสุด</TableHead>
+                  <TableHead>{t('shared.name')}</TableHead>
+                  <TableHead className="w-28 text-right">{t('master.rowCount')}</TableHead>
+                  <TableHead className="w-40">{t('master.lastModified')}</TableHead>
                   <TableHead className="w-32" />
                 </TableRow>
               </TableHeader>
@@ -130,7 +127,7 @@ export function AdminMasterHubPage() {
                         {q?.isLoading && !q.data ? (
                           <Skeleton className="ml-auto h-5 w-12" />
                         ) : q?.isError ? (
-                          <span className="text-xs text-red-600" title="โหลด meta ไม่สำเร็จ">
+                          <span className="text-xs text-red-600" title={t('master.metaLoadFailed')}>
                             —
                           </span>
                         ) : (
@@ -141,7 +138,7 @@ export function AdminMasterHubPage() {
                       <TableCell>
                         <Button type="button" size="sm" variant="outline" asChild>
                           <Link to={masterDataHref(entity.id)}>
-                            เปิด
+                            {t('shared.open')}
                             <ExternalLink className="ml-1 size-3.5" aria-hidden />
                           </Link>
                         </Button>
@@ -151,7 +148,10 @@ export function AdminMasterHubPage() {
                 })}
                 <TableRow className="font-medium">
                   <TableCell>
-                    รวม ({loadedCount}/{MASTER_ENTITIES.length} ตารางโหลดแล้ว)
+                    {t('master.totalLoaded', {
+                      loaded: loadedCount,
+                      total: MASTER_ENTITIES.length,
+                    })}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {anyLoading ? (
@@ -168,19 +168,19 @@ export function AdminMasterHubPage() {
           {loadedCount === 0 && anyError && !anyLoading ? (
             <EmptyState
               className="mt-4"
-              title="โหลดสรุป master ไม่สำเร็จ"
-              description="ตรวจสิทธิ์ master-data.read และ backend"
-              action={{ label: 'ลองใหม่', onClick: refetchAll }}
+              title={t('master.title')}
+              description={t('master.description')}
+              action={{ label: tc('actions.retry'), onClick: refetchAll }}
             />
           ) : null}
           <p className="mt-3 text-xs text-app-muted">
-            ลิงก์เปิดแท็บ entity ที่ตรงกัน ·{' '}
+            {t('master.footerHint')}{' '}
             <Link to="/master-data" className="text-sky-700 underline">
-              ไปหน้า Master Data
+              {t('master.goMasterData')}
             </Link>
             {' · '}
             <Link to="/admin" className="text-sky-700 underline">
-              ศูนย์ผู้ดูแลระบบ
+              {t('master.adminConsole')}
             </Link>
           </p>
         </CardContent>

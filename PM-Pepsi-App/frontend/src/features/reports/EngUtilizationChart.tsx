@@ -13,6 +13,7 @@ import {
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 import type { EngUtilizationChartRow } from '@/lib/eng-utilization-chart'
+import { readCssVar } from '@/lib/css-tokens'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -32,7 +33,7 @@ export function EngUtilizationChart({
 }: Props) {
   const isFull = layout === 'fullscreen'
   const tickColor = kioskDark ? 'rgba(248, 250, 252, 0.72)' : undefined
-  const titleColor = kioskDark ? '#f8fafc' : undefined
+  const titleColor = kioskDark ? readCssVar('--app-text') : undefined
   const gridColor = kioskDark ? 'rgba(255, 255, 255, 0.1)' : undefined
   const legendColor = kioskDark ? 'rgba(248, 250, 252, 0.85)' : undefined
 

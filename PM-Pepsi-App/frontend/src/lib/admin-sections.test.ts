@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { i18n } from '@/i18n'
 import { ADMIN_SECTIONS, adminSectionForPath, getGroupedAdminSections } from './admin-sections'
 
 describe('adminSectionForPath', () => {
@@ -8,7 +9,7 @@ describe('adminSectionForPath', () => {
   })
 
   it('resolves nested admin routes', () => {
-    expect(adminSectionForPath('/admin/users')?.label).toBe('ผู้ใช้งาน')
+    expect(adminSectionForPath('/admin/users')?.segment).toBe('users')
     expect(adminSectionForPath('/admin/security')?.tourTarget).toBe('admin-security')
     expect(adminSectionForPath('/admin/about')?.tourTarget).toBe('admin-about')
   })
@@ -20,7 +21,7 @@ describe('adminSectionForPath', () => {
   })
 
   it('resolves Menu Builder route', () => {
-    expect(adminSectionForPath('/admin/menu')?.label).toBe('Menu Builder')
+    expect(adminSectionForPath('/admin/menu')?.segment).toBe('menu')
   })
 
   it('Master Data Hub uses master-data.read (not admin.settings.read)', () => {
@@ -42,7 +43,8 @@ describe('adminSectionForPath', () => {
   })
 
   it('groups admin sections for console', () => {
-    const groups = getGroupedAdminSections({ skipOverview: true })
+    const t = i18n.getFixedT('en', 'admin')
+    const groups = getGroupedAdminSections(t, { skipOverview: true })
     expect(groups.length).toBeGreaterThanOrEqual(4)
     const allSegments = groups.flatMap((g) => g.sections.map((s) => s.segment))
     expect(allSegments).toContain('users')

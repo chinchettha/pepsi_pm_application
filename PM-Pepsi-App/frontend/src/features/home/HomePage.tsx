@@ -1,7 +1,11 @@
 import { CanPermission } from '@/components/auth/CanPermission'
-import { PepsiStripe } from '@/components/brand/PepsiStripe'
-import { Sparkline, sparklineDelta, type SparklineTone } from '@/components/charts/Sparkline'
 import { AppPageContent } from '@/components/layout/AppPageContent'
+import {
+  AppPageHero,
+  appPageHeroBtnClass,
+  appPageHeroBtnPrimaryClass,
+} from '@/components/layout/AppPageHero'
+import { Sparkline, sparklineDelta, type SparklineTone } from '@/components/charts/Sparkline'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,6 +15,7 @@ import {
   navItemsToQuickLinks,
 } from '@/features/home/dashboard-config'
 import { fetchDashboardSummary } from '@/lib/api-public'
+import { readCssVar } from '@/lib/css-tokens'
 import { useAppNav } from '@/lib/use-app-nav'
 import { cn } from '@/lib/utils'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -23,7 +28,6 @@ import {
   CheckCircle2,
   ClipboardList,
   Database,
-  Sparkles,
   UserRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -36,18 +40,11 @@ import {
 } from 'react-joyride'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
+import { resolveRoleDisplayLabel } from '@/lib/role-display'
+import { useAppLocale } from '@/providers/I18nProvider'
+import type { AppLocale } from '@/lib/app-locale'
 import { useMemo, useState, type ReactNode } from 'react'
-
-const tourSteps: Step[] = [
-  {
-    target: '[data-tour="dashboard-kpi"]',
-    content: 'ตัวเลขและกราฟ 7 วันจาก PostgreSQL — คลิกการ์ดเพื่อไปโมดูลที่เกี่ยวข้อง',
-  },
-  {
-    target: '[data-tour="dashboard-quick"]',
-    content: 'ทางลัดตามสิทธิ์ของคุณ — เหมือนเมนูด้านซ้าย',
-  },
-]
+import { useTranslation } from 'react-i18next'
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 16 },
@@ -71,6 +68,8 @@ function KpiCard({
   sparkTone,
   index,
   reducedMotion,
+  last7DaysLabel,
+  openModuleLabel,
 }: {
   label: string
   value: string | number
@@ -82,6 +81,8 @@ function KpiCard({
   sparkTone: SparklineTone
   index: number
   reducedMotion: boolean
+  last7DaysLabel: string
+  openModuleLabel: string
 }) {
   const toneClass = {
     'pepsi-blue': 'dashboard-kpi--pepsi-blue',
@@ -117,7 +118,7 @@ function KpiCard({
                 height={40}
                 className="max-w-full shrink-0 opacity-95"
               />
-              <span className="text-caption">7 วันย้อนหลัง</span>
+              <span className="text-caption">{last7DaysLabel}</span>
             </div>
           </div>
           <p className="mt-3 text-body-sm font-medium text-[var(--app-text-muted)]">{label}</p>
@@ -139,7 +140,7 @@ function KpiCard({
           </div>
           <p className="mt-2 text-xs leading-relaxed text-[var(--app-text-muted)]">{hint}</p>
           <span className="dashboard-kpi__cta mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[var(--app-accent)]">
-            เปิดโมดูล
+            {openModuleLabel}
             <ArrowUpRight className="size-3.5" aria-hidden />
           </span>
         </div>
@@ -148,8 +149,8 @@ function KpiCard({
   )
 }
 
-function formatThaiDate(d: Date): string {
-  return d.toLocaleDateString('th-TH', {
+function formatHeroDate(d: Date, locale: AppLocale): string {
+  return d.toLocaleDateString(locale === 'th' ? 'th-TH' : 'en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -157,123 +158,97 @@ function formatThaiDate(d: Date): string {
   })
 }
 
-/** หัวหน้าแดชบอร์ด — เทียบเท่า `PageHeader` (hero แบบเต็มความกว้าง) */
+/** หัวหน้าแดชบอร์ด — hero มาตรฐานทุกหน้า */
 function DashboardHero({
   userName,
   wkctrBadge,
   isFetching,
   onStartTour,
-  reducedMotion,
+  locale,
 }: {
   userName: string
   wkctrBadge: ReactNode
   isFetching: boolean
   onStartTour: () => void
-  reducedMotion: boolean
+  locale: AppLocale
 }) {
+  const { t } = useTranslation('home')
   return (
-    <header className="dashboard-hero dashboard-hero--compact shrink-0">
-      <div className="dashboard-hero__mesh" aria-hidden />
-      {!reducedMotion ? (
+    <AppPageHero
+      title={t('greeting', { name: userName ? t('greetingName', { name: userName }) : '' })}
+      description={
         <>
-          <motion.div
-            className="dashboard-orb dashboard-orb--a"
-            animate={{ x: [0, 40, 10, 0], y: [0, -24, 12, 0], scale: [1, 1.08, 0.96, 1] }}
-            transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-            aria-hidden
-          />
-          <motion.div
-            className="dashboard-orb dashboard-orb--b"
-            animate={{ x: [0, -32, -8, 0], y: [0, 18, -12, 0], scale: [1, 0.94, 1.06, 1] }}
-            transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
-            aria-hidden
-          />
-          <motion.div
-            className="dashboard-orb dashboard-orb--c"
-            animate={{ x: [0, 20, -16, 0], y: [0, 28, 8, 0] }}
-            transition={{ duration: 19, repeat: Infinity, ease: 'easeInOut' }}
-            aria-hidden
-          />
+          {t('heroDescription', { date: formatHeroDate(new Date(), locale) })}
+          {wkctrBadge}
         </>
-      ) : null}
-
-      <motion.div
-        className="dashboard-hero__content dashboard-page__pad mx-auto w-full max-w-[1600px]"
-        initial={reducedMotion ? false : { opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="dashboard-hero__eyebrow">
-              <Sparkles className="size-4 shrink-0" aria-hidden />
-              แผนและบำรุงรักษา · Pepsi
-            </p>
-            <h1 className="dashboard-hero__title">สวัสดี{userName ? `, ${userName}` : ''}</h1>
-            <p className="dashboard-hero__subtitle">
-              แดชบอร์ดภาพรวมงานบำรุงรักษา — {formatThaiDate(new Date())}
-              {wkctrBadge}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={cn('dashboard-live', isFetching && 'dashboard-live--pulse')}>
-              <span className="dashboard-live__dot" />
-              {isFetching ? 'กำลังอัปเดต…' : 'ข้อมูลพร้อมใช้'}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="dashboard-hero__btn border-white/20 bg-white/10 text-white backdrop-blur-md hover:bg-white/20"
-              onClick={onStartTour}
-            >
-              แนะนำการใช้งาน
+      }
+      actions={
+        <>
+          <span className={cn('dashboard-live', isFetching && 'dashboard-live--pulse')}>
+            <span className="dashboard-live__dot" />
+            {isFetching ? t('liveUpdating') : t('liveReady')}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={appPageHeroBtnClass}
+            onClick={onStartTour}
+          >
+            {t('startTour')}
+          </Button>
+          <CanPermission permission="dashboard.read">
+            <Button asChild variant="outline" size="sm" className={appPageHeroBtnClass}>
+              <Link to="/board" target="_blank" rel="noopener noreferrer">
+                {t('engineeringBoard')}
+              </Link>
             </Button>
-            <CanPermission permission="dashboard.read">
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="dashboard-hero__btn border-white/20 bg-white/10 text-white backdrop-blur-md hover:bg-white/20"
-              >
-                <Link to="/board" target="_blank" rel="noopener noreferrer">
-                  จอ Engineering Board
-                </Link>
-              </Button>
-            </CanPermission>
-            <CanPermission permission="planning.read">
-              <Button asChild size="sm" className="dashboard-hero__btn-primary shadow-lg">
-                <Link to="/plan-calendar">
-                  ไปจ่ายงาน
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            </CanPermission>
-          </div>
-        </div>
-      </motion.div>
-      <PepsiStripe className="dashboard-hero__pepsi-stripe" />
-    </header>
+          </CanPermission>
+          <CanPermission permission="planning.read">
+            <Button asChild size="sm" className={appPageHeroBtnPrimaryClass}>
+              <Link to="/plan-calendar">
+                {t('goAssign')}
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </CanPermission>
+        </>
+      }
+    />
   )
 }
 
 export function HomePage() {
+  const { t, i18n } = useTranslation('home')
+  const { t: tc } = useTranslation('common')
+  const { locale } = useAppLocale()
   const [runTour, setRunTour] = useState(false)
   const reducedMotion = useReducedMotion()
   const user = getStoredAuthUser()
   const { entries } = useAppNav()
+
+  const tourSteps: Step[] = useMemo(
+    () => [
+      { target: '[data-tour="dashboard-kpi"]', content: t('tour.kpi') },
+      { target: '[data-tour="dashboard-quick"]', content: t('tour.quick') },
+    ],
+    [t],
+  )
   const dash = useQuery({
     queryKey: ['dashboard'],
-    queryFn: fetchDashboardSummary,
+    queryFn: () => fetchDashboardSummary(),
     placeholderData: keepPreviousData,
   })
 
-  const quickLinks = useMemo(() => navItemsToQuickLinks(entries), [entries])
+  const quickLinks = useMemo(
+    () => navItemsToQuickLinks(entries, t),
+    [entries, t, i18n.language],
+  )
 
   const handleJoyrideEvent = (data: EventData) => {
     if (data.type === EVENTS.TOUR_END) {
       setRunTour(false)
-      toast.success('จบการแนะนำเบื้องต้น')
+      toast.success(t('tourEnd'))
     }
     if (data.status === STATUS.SKIPPED) {
       setRunTour(false)
@@ -282,14 +257,15 @@ export function HomePage() {
 
   const trends = dash.data?.trends
 
-  const kpis =
-    dash.data == null || trends == null
-      ? null
-      : [
+  const kpis = useMemo(
+    () =>
+      dash.data == null || trends == null
+        ? null
+        : [
           {
-            label: 'ใบงานเปิด',
-            value: dash.data.openOrders.toLocaleString('th-TH'),
-            hint: 'สถานะ CRTD / REL',
+            label: t('kpi.openOrders'),
+            value: dash.data.openOrders.toLocaleString(locale === 'th' ? 'th-TH' : 'en-US'),
+            hint: t('kpi.openOrdersHint'),
             to: '/work-orders',
             icon: ClipboardList,
             tone: 'pepsi-blue' as const,
@@ -297,9 +273,9 @@ export function HomePage() {
             sparkTone: 'pepsi-blue' as const,
           },
           {
-            label: 'ปิดเดือนนี้',
-            value: dash.data.closedThisMonth.toLocaleString('th-TH'),
-            hint: 'นับจากวันที่ปิดจริง',
+            label: t('kpi.closedMonth'),
+            value: dash.data.closedThisMonth.toLocaleString(locale === 'th' ? 'th-TH' : 'en-US'),
+            hint: t('kpi.closedMonthHint'),
             to: '/work-orders',
             icon: CheckCircle2,
             tone: 'pepsi-red' as const,
@@ -307,9 +283,9 @@ export function HomePage() {
             sparkTone: 'pepsi-red' as const,
           },
           {
-            label: 'รอจ่ายงาน',
-            value: dash.data.pendingPersonnel.toLocaleString('th-TH'),
-            hint: 'ยังไม่มีแผนใน tbplangingwork',
+            label: t('kpi.pendingAssign'),
+            value: dash.data.pendingPersonnel.toLocaleString(locale === 'th' ? 'th-TH' : 'en-US'),
+            hint: t('kpi.pendingAssignHint'),
             to: '/planning',
             icon: UserRound,
             tone: 'pepsi-orange' as const,
@@ -317,24 +293,32 @@ export function HomePage() {
             sparkTone: 'pepsi-orange' as const,
           },
           {
-            label: 'นำเข้า IW37N ล่าสุด',
+            label: t('kpi.iw37nImport'),
             value: dash.data.iw37nLastImport
-              ? new Date(dash.data.iw37nLastImport).toLocaleDateString('th-TH')
+              ? new Date(dash.data.iw37nLastImport).toLocaleDateString(
+                  locale === 'th' ? 'th-TH' : 'en-US',
+                )
               : '—',
-            hint: `รวม 7 วัน: ${trends.importDaily.reduce((a, b) => a + b, 0)} batch`,
+            hint: t('kpi.iw37nImportHint', {
+              count: trends.importDaily.reduce((a, b) => a + b, 0),
+            }),
             to: '/iw37n',
             icon: Database,
             tone: 'pepsi-blue' as const,
             trend: trends.importDaily,
             sparkTone: 'pepsi-blue' as const,
           },
-        ]
+        ],
+    [dash.data, trends, t, locale],
+  )
 
   const wkctrBadge =
     user?.wkctr ? (
       <span className="dashboard-hero__badge">
         WC {user.wkctr}
-        {user.sysstatus ? ` · ${user.sysstatus}` : ''}
+        {user.userst || user.roleNameTh || user.sysstatus
+          ? ` · ${resolveRoleDisplayLabel(user, locale)}`
+          : ''}
       </span>
     ) : null
 
@@ -345,7 +329,7 @@ export function HomePage() {
         wkctrBadge={wkctrBadge}
         isFetching={dash.isFetching}
         onStartTour={() => setRunTour(true)}
-        reducedMotion={!!reducedMotion}
+        locale={locale}
       />
 
       <Joyride
@@ -355,16 +339,16 @@ export function HomePage() {
         scrollToFirstStep
         options={{
           buttons: ['back', 'primary', 'skip'],
-          primaryColor: '#004c97',
+          primaryColor: readCssVar('--brand-pepsi-blue'),
         }}
         onEvent={handleJoyrideEvent}
         styles={{ tooltipContainer: { zIndex: 10000 } }}
         locale={{
-          back: 'กลับ',
-          close: 'ปิด',
-          last: 'เสร็จ',
-          next: 'ถัดไป',
-          skip: 'ข้าม',
+          back: t('joyride.back'),
+          close: t('joyride.close'),
+          last: t('joyride.last'),
+          next: t('joyride.next'),
+          skip: t('joyride.skip'),
         }}
       />
 
@@ -376,23 +360,27 @@ export function HomePage() {
                 id="dashboard-kpi-heading"
                 className="text-lg font-semibold tracking-tight text-[var(--app-text)]"
               >
-                ภาพรวมวันนี้
+                {t('kpiSection.title')}
               </h2>
-              <p className="text-caption">ตัวชี้วัดหลักจากฐานข้อมูล — คลิกเพื่อเปิดรายละเอียด</p>
+              <p className="text-caption">{t('kpiSection.subtitle')}</p>
             </div>
             <CanPermission permission="reports.read">
               <Link
                 to="/reports"
                 className="hidden text-body-sm font-medium text-[var(--app-accent)] hover:underline sm:inline-flex sm:items-center sm:gap-1"
               >
-                ดูรายงานเต็ม
+                {t('kpiSection.fullReport')}
                 <ArrowRight className="size-3.5" aria-hidden />
               </Link>
             </CanPermission>
           </div>
 
           {dash.isLoading ? (
-            <div className="dashboard-kpi-grid" aria-busy="true" aria-label="กำลังโหลดตัวชี้วัด">
+            <div
+              className="dashboard-kpi-grid"
+              aria-busy="true"
+              aria-label={t('kpiSection.loading')}
+            >
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-[188px] rounded-card" />
               ))}
@@ -400,27 +388,34 @@ export function HomePage() {
           ) : dash.isError ? (
             <EmptyState
               icon={AlertCircle}
-              title="โหลดสรุปไม่สำเร็จ"
+              title={t('kpiSection.loadFailed')}
               description={
                 <>
-                  ตรวจการเชื่อมต่อ API หรือสิทธิ์{' '}
+                  {t('kpiSection.loadFailedHint')}{' '}
                   <code className="text-xs">dashboard.read</code>
                   {dash.error instanceof Error ? ` — ${dash.error.message}` : null}
                 </>
               }
-              action={{ label: 'ลองใหม่', onClick: () => void dash.refetch() }}
+              action={{ label: tc('actions.retry'), onClick: () => void dash.refetch() }}
             />
           ) : kpis ? (
             <div className="dashboard-kpi-grid">
               {kpis.map((k, i) => (
-                <KpiCard key={k.label} {...k} index={i} reducedMotion={!!reducedMotion} />
+                <KpiCard
+                  key={k.label}
+                  {...k}
+                  index={i}
+                  reducedMotion={!!reducedMotion}
+                  last7DaysLabel={t('kpiSection.last7Days')}
+                  openModuleLabel={t('kpiSection.openModule')}
+                />
               ))}
             </div>
           ) : (
             <EmptyState
-              title="ยังไม่มีข้อมูลสรุป"
-              description="ลองรีเฟรชหน้าหรือติดต่อผู้ดูแลระบบ"
-              action={{ label: 'รีเฟรช', onClick: () => void dash.refetch() }}
+              title={t('kpiSection.noData')}
+              description={t('kpiSection.noDataHint')}
+              action={{ label: t('kpiSection.refresh'), onClick: () => void dash.refetch() }}
             />
           )}
         </section>
@@ -431,15 +426,15 @@ export function HomePage() {
               id="dashboard-quick-heading"
               className="text-lg font-semibold tracking-tight text-[var(--app-text)]"
             >
-              ทางลัด
+              {t('quick.title')}
             </h2>
-            <p className="text-caption">โมดูลที่คุณเข้าถึงได้ — จัดตามเมนูระบบ</p>
+            <p className="text-caption">{t('quick.subtitle')}</p>
           </div>
 
           {quickLinks.length === 0 ? (
             <EmptyState
-              title="ไม่มีเมนูที่แสดง"
-              description="ตรวจสิทธิ์ RBAC ของบัญชีหรือรอโหลดเมนูจากระบบ"
+              title={t('quick.noMenu')}
+              description={t('quick.noMenuHint')}
             />
           ) : (
             <motion.div

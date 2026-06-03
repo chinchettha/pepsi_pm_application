@@ -24,6 +24,7 @@ import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { AlertCircle, Ban, Lock, RefreshCcw, ShieldAlert, ShieldX } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 const selectClass =
@@ -34,6 +35,8 @@ function deniedBadge() {
 }
 
 export function AdminSecurityPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const canRead = usePermission('admin.security.read')
   const canWrite = usePermission('admin.security.write')
   const [days, setDays] = useState(30)
@@ -48,13 +51,7 @@ export function AdminSecurityPage() {
   if (!canRead) {
     return (
       <AdminPageRoot tourTarget="admin-security">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์ <code className="text-xs">admin.security.read</code>
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.security.read" />
       </AdminPageRoot>
     )
   }
@@ -64,9 +61,9 @@ export function AdminSecurityPage() {
   return (
     <AdminPageShell
       tourTarget="admin-security"
-      title="รายงานความปลอดภัย"
-      description="Login ล้มเหลว · RBAC deny · Rate limit — จาก audit log"
-      contentClassName="space-y-6"
+      title={t('security.title')}
+      description={t('security.description')}
+      hints={['Login fail', 'RBAC deny', 'Rate limit', 'Audit']}
       headerActions={
         <Button
           type="button"
@@ -76,25 +73,23 @@ export function AdminSecurityPage() {
           onClick={() => void q.refetch()}
           disabled={q.isFetching}
         >
-          <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-          รีเฟรช
-        </Button>
+          <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />{t('shared.refresh')}</Button>
       }
     >
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
-            <Label htmlFor="sec-days">ช่วงเวลา (วัน)</Label>
+            <Label htmlFor="sec-days">{t('security.daysLabel')}</Label>
             <select
               id="sec-days"
               className={selectClass}
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
             >
-              <option value={7}>7 วัน</option>
-              <option value={14}>14 วัน</option>
-              <option value={30}>30 วัน</option>
-              <option value={60}>60 วัน</option>
-              <option value={90}>90 วัน</option>
+              {[7, 14, 30, 60, 90].map((d) => (
+                <option key={d} value={d}>
+                  {t('security.daysOption', { count: d })}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -108,32 +103,32 @@ export function AdminSecurityPage() {
         ) : q.isError && !data ? (
           <EmptyState
             icon={AlertCircle}
-            title="โหลดรายงานความปลอดภัยไม่สำเร็จ"
+            title={t('security.loadFailed')}
             description={(q.error as Error).message}
-            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+            action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
           />
         ) : data ? (
           <AdminKpiGrid className="sm:grid-cols-2 lg:grid-cols-3">
             <AdminKpiCard
               tone="danger"
               icon={Lock}
-              label="Login ล้มเหลว"
+              label={t('security.failedLoginKpi')}
               value={String(data.failedLogin.total)}
-              hint={`${days} วันล่าสุด`}
+              hint={t('security.failedLoginHint', { days })}
             />
             <AdminKpiCard
               tone="warning"
               icon={ShieldX}
-              label="RBAC ปฏิเสธ"
+              label={t('security.rbacDenyKpi')}
               value={String(data.denied.total)}
-              hint="action = rbac.deny"
+              hint={t('security.rbacDenyHint')}
             />
             <AdminKpiCard
               tone="info"
               icon={Ban}
-              label="Rate limit (429)"
+              label={t('security.rateLimitKpi')}
               value={String(data.rateLimitHits)}
-              hint={`${data.rateLimitedIps.length} IP`}
+              hint={t('security.rateLimitIpHint', { count: data.rateLimitedIps.length })}
             />
           </AdminKpiGrid>
         ) : null}
@@ -142,9 +137,9 @@ export function AdminSecurityPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Lock className="size-4" aria-hidden />
-              Login ล้มเหลวต่อวัน
+              {t('security.failedLoginChartTitle')}
             </CardTitle>
-            <CardDescription>กราฟจาก audit — login ที่ status = denied</CardDescription>
+            <CardDescription>{t('security.failedLoginChartDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             {q.isLoading && !data ? (
@@ -161,7 +156,7 @@ export function AdminSecurityPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Ban className="size-4" aria-hidden />
-              IP ที่โดน rate limit
+              {t('security.rateLimitTitle')}
             </CardTitle>
             <CardDescription>{data?.rateLimitNote}</CardDescription>
           </CardHeader>
@@ -170,17 +165,19 @@ export function AdminSecurityPage() {
               <Skeleton className="m-4 h-32" />
             ) : (data?.rateLimitedIps.length ?? 0) === 0 ? (
               <p className="p-4 text-caption">
-                ยังไม่มีเหตุการณ์ rate limit ใน audit — เกิดเมื่อเรียก API เกินโควต้า
+                {t('security.rateLimitEmpty')}
               </p>
             ) : (
               <div className="app-table-shell overflow-x-auto">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>IP</TableHead>
-                    <TableHead>ครั้ง (429)</TableHead>
-                    <TableHead>ล่าสุด</TableHead>
-                    {canWrite ? <TableHead className="text-right">การกระทำ</TableHead> : null}
+                    <TableHead>{t('security.colIp')}</TableHead>
+                    <TableHead>{t('security.colCount')}</TableHead>
+                    <TableHead>{t('security.colLatest')}</TableHead>
+                    {canWrite ? (
+                      <TableHead className="text-right">{t('security.colActions')}</TableHead>
+                    ) : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -210,24 +207,26 @@ export function AdminSecurityPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <ShieldAlert className="size-4" aria-hidden />
-                IP ผิดปกติ (denied ≥ 3)
+                {t('security.suspiciousIpTitle')}
               </CardTitle>
-              <CardDescription>รวม login / rbac / rate limit ในช่วง {days} วัน</CardDescription>
+              <CardDescription>{t('security.suspiciousIpDesc', { days })}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {q.isLoading && !data ? (
                 <Skeleton className="m-4 h-32" />
               ) : (data?.suspiciousIps.length ?? 0) === 0 ? (
-                <p className="p-4 text-caption">ไม่พบ IP ที่เกินเกณฑ์</p>
+                <p className="p-4 text-caption">{t('security.noSuspiciousIp')}</p>
               ) : (
                 <div className="app-table-shell overflow-x-auto">
                 <Table embedded stickyHeader zebra>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>IP</TableHead>
-                      <TableHead>จำนวน</TableHead>
-                      <TableHead>ล่าสุด</TableHead>
-                      {canWrite ? <TableHead className="text-right">การกระทำ</TableHead> : null}
+                      <TableHead>{t('security.colIp')}</TableHead>
+                      <TableHead>{t('security.colAmount')}</TableHead>
+                      <TableHead>{t('security.colLatest')}</TableHead>
+                      {canWrite ? (
+                        <TableHead className="text-right">{t('security.colActions')}</TableHead>
+                      ) : null}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -255,7 +254,7 @@ export function AdminSecurityPage() {
           <Card className="admin-card">
             <CardHeader>
               <CardTitle className="text-base">
-                RBAC ปฏิเสธ
+                {t('security.rbacDenyTitle')}
                 {data ? (
                   <Badge variant="secondary" className="ml-2 tabular-nums">
                     {data.denied.total}
@@ -263,9 +262,9 @@ export function AdminSecurityPage() {
                 ) : null}
               </CardTitle>
               <CardDescription>
-                จาก middleware —{' '}
+                {t('security.rbacDenyFromMiddleware')}{' '}
                 <Link to="/admin/audit?status=denied" className="text-sky-700 underline">
-                  ดูใน Audit
+                  {t('security.viewInAudit')}
                 </Link>
               </CardDescription>
             </CardHeader>
@@ -274,16 +273,16 @@ export function AdminSecurityPage() {
                 <Skeleton className="m-4 h-32" />
               ) : (data?.denied.items.length ?? 0) === 0 ? (
                 <p className="p-4 text-caption">
-                  ยังไม่มี rbac.deny — ลองเข้าหน้าโดยไม่มีสิทธิ์หรือเรียก API ที่ forbidden
+                  {t('security.rbacDenyEmpty')}
                 </p>
               ) : (
                 <div className="app-table-shell overflow-x-auto">
                 <Table embedded stickyHeader zebra>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>เวลา</TableHead>
-                      <TableHead>ผู้ใช้</TableHead>
-                      <TableHead>สิทธิ์ที่ขาด</TableHead>
+                      <TableHead>{t('security.colTime')}</TableHead>
+                      <TableHead>{t('security.colUser')}</TableHead>
+                      <TableHead>{t('security.missingPermission')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

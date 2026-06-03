@@ -21,6 +21,7 @@ import { usePermission } from '@/lib/use-permission'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -44,6 +45,8 @@ export type MassConfirmExportPanelProps = {
 }
 
 export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPanelProps) {
+  const { t } = useTranslation('confirmation')
+  const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
   const canQc = usePermission('confirmation.import')
   const [exporting, setExporting] = useState<'csv' | 'xlsx' | null>(null)
@@ -61,16 +64,17 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
   const approveMut = useMutation({
     mutationFn: () => postConfirmQcApproveBatch(batch.succeeded),
     onSuccess: async (res) => {
-      toast.success(`อนุมัติ QC ${res.approved.length} รายการ`)
+      toast.success(t('massExport.toastQcApproved', { count: res.approved.length }))
       await summaryQ.refetch()
       await qc.invalidateQueries({ queryKey: ['confirmation', 'qc', 'pending'] })
+      await qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
   const downloadExport = async (format: 'csv' | 'xlsx') => {
     if (!summary?.exportable) {
-      toast.error('ยังไม่มีแถวที่พร้อม export (ต้อง Admin QC อนุมัติก่อน)')
+      toast.error(t('massExport.noExportableRows'))
       return
     }
     try {
@@ -83,9 +87,9 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
         blob,
         format === 'csv' ? confirmationSapCsvFilename() : 'Export_Confirm.xlsx',
       )
-      toast.success(`ดาวน์โหลด CONFIRM_OUT (${summary.exportable} แถว)`)
+      toast.success(t('massExport.downloadSuccess', { count: summary.exportable }))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Export failed')
+      toast.error(e instanceof Error ? e.message : t('export.exportFailed'))
     } finally {
       setExporting(null)
     }
@@ -98,41 +102,42 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-body-sm font-semibold text-app">
-            Export Confirm หลัง Mass Confirm
+            {t('massExport.title')}
             {batchComplete ? (
               <Badge className="ml-2" variant="default">
-                ครบชุด {batch.succeeded.length} รายการ
+                {t('massExport.batchComplete', { count: batch.succeeded.length })}
               </Badge>
             ) : (
               <Badge className="ml-2" variant="secondary">
-                สำเร็จ {batch.succeeded.length} · ล้มเหลว {batch.failed.length}
+                {t('massExport.batchPartial', {
+                  ok: batch.succeeded.length,
+                  failed: batch.failed.length,
+                })}
               </Badge>
             )}
           </h3>
-          <p className="mt-1 text-xs text-app-muted">
-            ขั้นตอน: Admin อนุมัติ QC → ดาวน์โหลด CSV/XLSX เฉพาะชุดนี้ → ส่ง SAP (CONFIRM_OUT)
-          </p>
+          <p className="mt-1 text-xs text-app-muted">{t('massExport.stepsHint')}</p>
         </div>
         {onDismiss ? (
           <Button type="button" variant="ghost" size="sm" onClick={onDismiss}>
-            ปิด
+            {tc('actions.close')}
           </Button>
         ) : null}
       </div>
 
       {summaryQ.isLoading ? (
-        <p className="text-caption">กำลังตรวจสอบชุด…</p>
+        <p className="text-caption">{t('massExport.checkingBatch')}</p>
       ) : summary ? (
         <>
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded bg-white px-2 py-1 ring-1 ring-app">
-              พร้อม export: <strong>{summary.exportable}</strong>
+            <span className="rounded app-surface-panel px-2 py-1 ring-1 ring-app">
+              {t('massExport.readyExport')}: <strong>{summary.exportable}</strong>
             </span>
-            <span className="rounded bg-white px-2 py-1 ring-1 ring-app">
-              รอ QC: <strong>{summary.qcPending}</strong>
+            <span className="rounded app-surface-panel px-2 py-1 ring-1 ring-app">
+              {t('massExport.qcPending')}: <strong>{summary.qcPending}</strong>
             </span>
-            <span className="rounded bg-white px-2 py-1 ring-1 ring-app">
-              QC ผ่าน: <strong>{summary.qcApproved}</strong>
+            <span className="rounded app-surface-panel px-2 py-1 ring-1 ring-app">
+              {t('massExport.qcApproved')}: <strong>{summary.qcApproved}</strong>
             </span>
           </div>
 
@@ -140,9 +145,9 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>WO</TableHead>
-                  <TableHead>QC</TableHead>
-                  <TableHead>Export</TableHead>
+                  <TableHead>{t('massExport.colWo')}</TableHead>
+                  <TableHead>{t('massExport.colQc')}</TableHead>
+                  <TableHead>{t('massExport.colExport')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -151,15 +156,15 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
                     <TableCell className="text-xs font-medium">{row.wkorder}</TableCell>
                     <TableCell className="text-xs">
                       {row.qcStatus === 'pending'
-                        ? 'รอตรวจ'
+                        ? t('qc.statusPending')
                         : row.qcStatus === 'approved'
-                          ? 'ผ่าน'
+                          ? t('qc.statusApproved')
                           : row.qcStatus === 'rejected'
-                            ? 'ส่งกลับ'
+                            ? t('qc.statusRejected')
                             : '—'}
                     </TableCell>
                     <TableCell className="text-xs">
-                      {row.exportable ? 'พร้อม' : '—'}
+                      {row.exportable ? t('massExport.exportReady') : '—'}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -178,26 +183,26 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
               >
                 <ShieldCheck className="mr-1 h-4 w-4" />
                 {approveMut.isPending
-                  ? 'กำลังอนุมัติ QC…'
-                  : `อนุมัติ QC ทั้งชุด (${summary.qcPending})`}
+                  ? t('massExport.approvingQc')
+                  : t('massExport.approveQcBatch', { count: summary.qcPending })}
               </Button>
             ) : null}
             <ReportExportButton
               format="csv"
-              label="CONFIRM_OUT CSV (ชุดนี้)"
+              label={t('massExport.confirmOutCsv')}
               loading={exporting === 'csv'}
               disabled={!summary.exportable || exporting != null}
               onClick={() => void downloadExport('csv')}
             />
             <ReportExportButton
               format="xlsx"
-              label="Excel (ชุดนี้)"
+              label={t('massExport.excelBatch')}
               loading={exporting === 'xlsx'}
               disabled={!summary.exportable || exporting != null}
               onClick={() => void downloadExport('xlsx')}
             />
             <Button type="button" size="sm" variant="outline" asChild>
-              <Link to="/integration">ศูนย์ Integration</Link>
+              <Link to="/integration">{t('massExport.integrationCenter')}</Link>
             </Button>
           </div>
         </>
@@ -205,7 +210,7 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
 
       {batch.failed.length > 0 ? (
         <p className="text-xs text-amber-800">
-          มี {batch.failed.length} รายการปิดงานไม่สำเร็จ — export ด้านบนเฉพาะรายการที่สำเร็จ
+          {t('massExport.partialCloseFailed', { count: batch.failed.length })}
         </p>
       ) : null}
     </div>

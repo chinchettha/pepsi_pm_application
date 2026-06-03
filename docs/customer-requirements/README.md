@@ -5,8 +5,15 @@
 | เอกสาร | ใช้เมื่อ |
 |--------|---------|
 | [**MEETING-MINUTES.md**](MEETING-MINUTES.md) | **รายงานประชุมครั้งที่ 1–2** (เม.ย.–พ.ค. 2569) — requirement ล่าสุดจากลูกค้า |
+| [**MEETING-SUMMARY-REQUIREMENTS.md**](MEETING-SUMMARY-REQUIREMENTS.md) | **สรุปสไลด์ + รายการแก้งาน** — Integration · WO · Audit |
+| [**ENG-TECHNICIAN-CODES.md**](ENG-TECHNICIAN-CODES.md) | **รหัสช่าง PAC/PRO/UTI (25 คน)** + ตารางคำนวณเวลาปิดงาน |
+| [**ACTIVITY-TYPE-FILTER.md**](ACTIVITY-TYPE-FILTER.md) | **ตัวกรองกิจกรรม** Z1/Z2/Z5 บนปฏิทิน · WO · Backlog |
+| [**CALENDAR-DISPLAY.md**](CALENDAR-DISPLAY.md) | **สี / title / description** event บน `/calendar` |
+| [**MAINT-ACTIVITY-TYPE-ZB02.md**](MAINT-ACTIVITY-TYPE-ZB02.md) | **ประเภทงาน** MaintActivityType 19 รายการ (ZB02) |
+| [**PM-PLAN-TEAM-EE-UT.md**](PM-PLAN-TEAM-EE-UT.md) | **ทีม PM Plan** A/B/EE/UT + migration 088 (P → EE/UT) |
 | [**../USER-MANUAL-TH.md**](../USER-MANUAL-TH.md) | **คู่มือการใช้งานภาษาไทย** — ครบทุกหน้า/route |
 | [**../SETUP-NEW-MACHINE.md**](../SETUP-NEW-MACHINE.md) | **ติดตั้งเครื่องใหม่** — PostgreSQL, migration, backend, frontend, E2E |
+| [**UAT-ROUND-1-TH.md**](UAT-ROUND-1-TH.md) | **ชีต UAT รอบ 1** — checklist ภาษาไทย + กรอก requirement ต่อหน้า |
 | [**CATALOG.md**](CATALOG.md) | สารบัญไฟล์ทั้งหมด + แมปไป parity 01–15 |
 | [**LEGACY-ISSUES-CHECKLIST.md**](LEGACY-ISSUES-CHECKLIST.md) | บั๊ก/UX จาก Problem PM + screenshot ระบบเก่า (Must/Should) |
 | [**SAP-SAMPLE-PROBE.md**](SAP-SAMPLE-PROBE.md) | ผลตรวจ parser กับไฟล์ตัวอย่างลูกค้า (รัน 2026-05-21) |

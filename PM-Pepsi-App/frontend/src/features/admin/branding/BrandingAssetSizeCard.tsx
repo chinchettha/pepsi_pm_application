@@ -1,5 +1,6 @@
 import { Label } from '@/components/ui/label'
 import type { AdminBranding } from '@/api/schemas'
+import { useTranslation } from 'react-i18next'
 
 type BrandingAssetSizeCardProps = {
   form: AdminBranding
@@ -49,13 +50,15 @@ function SizeSlider({
 }
 
 export function BrandingAssetSizeCard({ form, disabled, onChange }: BrandingAssetSizeCardProps) {
+  const { t } = useTranslation('admin')
+
   return (
     <div className="space-y-4 rounded-card border border-app bg-app-subtle/80 p-4">
-      <p className="text-body-sm font-medium text-app">ขนาดแสดงผล</p>
+      <p className="text-body-sm font-medium text-app">{t('branding.displaySizeTitle')}</p>
       <SizeSlider
         id="logo-nav-height"
-        label="โลโก้ในเมนู / แถบบน"
-        hint={`${24}–${72}px · sidebar และ navbar`}
+        label={t('branding.logoNavLabel')}
+        hint={t('branding.logoNavHint', { min: 24, max: 72 })}
         min={24}
         max={72}
         value={form.logoNavHeightPx}
@@ -64,7 +67,7 @@ export function BrandingAssetSizeCard({ form, disabled, onChange }: BrandingAsse
       />
       <SizeSlider
         id="logo-login-height"
-        label="โลโก้หน้า Login"
+        label={t('branding.logoLoginLabel')}
         hint={`${40}–${128}px`}
         min={40}
         max={128}
@@ -74,8 +77,8 @@ export function BrandingAssetSizeCard({ form, disabled, onChange }: BrandingAsse
       />
       <SizeSlider
         id="favicon-size"
-        label="ไอคอน (Favicon)"
-        hint={`${16}–${48}px · แท็บเบราว์เซอร์ · อัปโหลด favicon ใหม่หลังเปลี่ยนขนาด`}
+        label={t('branding.faviconSizeLabel')}
+        hint={t('branding.faviconSizeHint', { min: 16, max: 48 })}
         min={16}
         max={48}
         value={form.faviconSizePx}

@@ -4,6 +4,7 @@ import type { PersonnelUserrole } from '../schemas/personnel-admin.js'
 import { generateTemporaryPassword } from '../lib/password-policy.js'
 import { getPasswordMinLength } from '../lib/security-settings.js'
 import { hashPassword } from '../lib/password.js'
+import { enrichAuthUser } from '../lib/role-labels.js'
 import { mapWorkcenterRow, mapMemberRow } from './auth.js'
 
 export async function listAdminMembers(pool: Pool): Promise<{
@@ -170,7 +171,8 @@ export async function loadAuthUserForImpersonation(
     )
     const row = rows[0]
     if (!row) return null
-    return { ...mapMemberRow(row), passMustChange: row.pass_must_change === true }
+    const user = { ...mapMemberRow(row), passMustChange: row.pass_must_change === true }
+    return enrichAuthUser(pool, user)
   }
 
   const { rows } = await pool.query<WorkcenterAuthRow>(
@@ -182,7 +184,8 @@ export async function loadAuthUserForImpersonation(
   )
   const row = rows[0]
   if (!row) return null
-  return { ...mapWorkcenterRow(row), passMustChange: row.pass_must_change === true }
+  const user = { ...mapWorkcenterRow(row), passMustChange: row.pass_must_change === true }
+  return enrichAuthUser(pool, user)
 }
 
 export function buildImpersonatedUser(

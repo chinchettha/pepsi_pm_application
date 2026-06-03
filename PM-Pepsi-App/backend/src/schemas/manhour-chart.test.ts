@@ -16,6 +16,7 @@ describe('manhour chart schemas', () => {
         position: 'ช่าง',
         wkctrtype: 'PM',
         imgmember: null,
+        hasImage: false,
       },
       totalPlannedOrders: 12,
       utilizationPercent: 85.5,

@@ -8,6 +8,7 @@ export { isRbacSchemaMissing } from '../lib/has-permission.js'
 type RoleRow = {
   role_code: string
   role_name: string
+  role_name_en: string
   role_color: string
   is_system: boolean
   description: string | null
@@ -16,9 +17,11 @@ type RoleRow = {
 }
 
 function mapRole(row: RoleRow): AdminRole {
+  const roleNameEn = row.role_name_en?.trim() || row.role_name
   return {
     roleCode: row.role_code,
     roleName: row.role_name,
+    roleNameEn,
     roleColor: row.role_color,
     isSystem: row.is_system,
     description: row.description,
@@ -28,7 +31,7 @@ function mapRole(row: RoleRow): AdminRole {
 }
 
 const ROLE_SELECT = `
-  SELECT r.role_code, r.role_name, r.role_color, r.is_system, r.description,
+  SELECT r.role_code, r.role_name, r.role_name_en, r.role_color, r.is_system, r.description,
          (SELECT COUNT(*)::int FROM app.tbworkcenter wc WHERE UPPER(TRIM(wc.userst)) = r.role_code) AS user_count,
          (SELECT COUNT(*)::int FROM app.tbl_role_permission rp WHERE rp.role_code = r.role_code AND rp.granted = true) AS perm_count
   FROM app.tbl_role r
@@ -125,16 +128,22 @@ export async function listPermissionsGrouped(pool: Pool) {
 
 export async function createRole(
   pool: Pool,
-  input: { roleCode: string; roleName: string; roleColor: string; description?: string | null },
+  input: {
+    roleCode: string
+    roleName: string
+    roleNameEn: string
+    roleColor: string
+    description?: string | null
+  },
 ): Promise<AdminRole> {
   const code = input.roleCode.toUpperCase()
   const existing = await getRole(pool, code)
   if (existing) throw new Error('ROLE_EXISTS')
 
   await pool.query(
-    `INSERT INTO app.tbl_role (role_code, role_name, role_color, is_system, description)
-     VALUES ($1, $2, $3, false, $4)`,
-    [code, input.roleName, input.roleColor, input.description ?? null],
+    `INSERT INTO app.tbl_role (role_code, role_name, role_name_en, role_color, is_system, description)
+     VALUES ($1, $2, $3, $4, false, $5)`,
+    [code, input.roleName, input.roleNameEn, input.roleColor, input.description ?? null],
   )
   clearPermissionCache()
   const role = await getRole(pool, code)
@@ -145,7 +154,12 @@ export async function createRole(
 export async function updateRole(
   pool: Pool,
   roleCode: string,
-  input: { roleName?: string; roleColor?: string; description?: string | null },
+  input: {
+    roleName?: string
+    roleNameEn?: string
+    roleColor?: string
+    description?: string | null
+  },
 ): Promise<AdminRole> {
   const code = roleCode.toUpperCase()
   const role = await getRole(pool, code)
@@ -154,13 +168,15 @@ export async function updateRole(
   await pool.query(
     `UPDATE app.tbl_role SET
        role_name = COALESCE($2, role_name),
-       role_color = COALESCE($3, role_color),
-       description = COALESCE($4, description),
+       role_name_en = COALESCE($3, role_name_en),
+       role_color = COALESCE($4, role_color),
+       description = COALESCE($5, description),
        updated_at = now()
      WHERE role_code = $1`,
     [
       code,
       input.roleName ?? null,
+      input.roleNameEn ?? null,
       input.roleColor ?? null,
       input.description !== undefined ? input.description : null,
     ],

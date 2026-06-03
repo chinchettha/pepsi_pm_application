@@ -1,0 +1,79 @@
+{
+  "page": {
+    "title": "WO/Confirmation",
+    "noAccessTitle": "ไม่มีสิทธิ์เข้าถึง",
+    "noAccessDesc": "ต้องมีสิทธิ์",
+    "hintSearchWo": "ค้นหาเลข WO",
+    "hintMassConfirm": "Mass Confirm ≤44",
+    "hintApproveTeco": "Approve → TECO",
+    "hintPhotos": "รูปก่อน/หลัง"
+  },
+  "links": {
+    "exportConfirmation": "Export Confirmation",
+    "workSchedulingCalendar": "ปฏิทิน Work scheduling",
+    "backlog": "Backlog",
+    "importIw37n": "นำเข้า IW37N"
+  },
+  "search": {
+    "filterTitle": "ค้นหาใบงาน",
+    "collapsedHint": "ค้นหา \"{{q}}\"",
+    "clear": "ล้าง",
+    "orderNumberLabel": "เลขที่ใบงาน",
+    "placeholder": "พิมพ์เลขที่ใบงานอย่างน้อย 2 ตัวอักษร…",
+    "emptyTitle": "ค้นหาเลขที่ใบงาน",
+    "emptyDescription": "พิมพ์เลขที่ใบงานแล้วกดค้นหา — Approve / Reject",
+    "listTitle": "รายการใบงาน",
+    "listSubtitle": "ค้นหา \"{{q}}\"",
+    "loadFailedTitle": "โหลดรายการไม่สำเร็จ",
+    "loadFailedFallback": "ตรวจการเชื่อมต่อ API",
+    "loadingListAria": "กำลังโหลดรายการ"
+  },
+  "table": {
+    "loadingAria": "กำลังโหลดรายการ",
+    "emptyTitle": "ไม่พบใบงาน",
+    "emptyDescription": "ลองค้นหาเลขที่อื่น หรือตรวจว่านำเข้า IW37N แล้ว",
+    "colOrderNumber": "เลขที่ใบงาน",
+    "colPmPhase": "Create / REL / Confirm",
+    "colMaintPlan": "แผนบำรุง",
+    "colTypeActivity": "ประเภท/กิจกรรม (ZB / ZD)",
+    "colEquipment": "อุปกรณ์",
+    "colFuncLoc": "Functional loc.",
+    "colApproveReject": "Approve / Reject"
+  },
+  "qc": {
+    "badgeTecoApproved": "TECO / อนุมัติแล้ว",
+    "badgeRejected": "ส่งกลับแก้ไข",
+    "badgePending": "รอตรวจ",
+    "noReviewPermission": "ไม่มีสิทธิ์ตรวจ",
+    "approveDisabledTitle": "ต้องมีรายละเอียด รูปก่อน/หลัง และบันทึกปิดงานก่อน",
+    "approve": "Approve",
+    "reject": "Reject",
+    "rejectPrompt": "เหตุผลส่งกลับ (ถ้ามี)"
+  },
+  "toast": {
+    "approveSuccess": "อนุมัติ {{wkorder}} — สถานะ TECO บน Dashboard ช่าง",
+    "approveFailed": "อนุมัติไม่สำเร็จ",
+    "rejectSent": "ส่งกลับ {{wkorder}} ให้ช่างแก้ไข",
+    "rejectFailed": "ส่งกลับไม่สำเร็จ"
+  },
+  "technician": {
+    "emptyTitle": "ค้นหาเลขที่ใบงาน",
+    "emptyDescription": "พิมพ์เลขที่ใบงานแล้วเลือกจากรายการ — ระบบจะแสดงสถานะช่าง (ค้างงาน / เสร็จงาน)",
+    "loadingAria": "กำลังโหลดใบงาน",
+    "loadFailedTitle": "โหลดใบงานไม่สำเร็จ",
+    "loadFailedFallback": "ไม่พบใบงาน",
+    "workOrderLabel": "ใบงาน {{wkorder}}",
+    "openDetailClose": "เปิดรายละเอียด / ปิดงาน",
+    "doneCount": "ช่างเสร็จงาน {{count}}",
+    "pendingCount": "ช่างค้างงาน {{count}}",
+    "closeHintSuffix": " — บันทึกในแท็บปิดงาน (รายละเอียด + รูปก่อน/หลัง)",
+    "hintNeedComment": "กรุณาบันทึกรายละเอียด (ความคิดเห็น) ก่อนปิดงาน",
+    "hintNeedImages": "กรุณาแนบรูปก่อนและหลังทำงานก่อนปิดงาน",
+    "noTechnicians": "ยังไม่มีช่างที่จ่ายงานหรือบันทึกปิดงาน — เปิดรายละเอียดเพื่อจ่ายงานหรือบันทึกปิดงาน",
+    "colTechCode": "รหัสช่าง",
+    "colName": "ชื่อ",
+    "colStatus": "สถานะ",
+    "statusDone": "เสร็จงาน",
+    "statusPending": "ค้างงาน"
+  }
+}

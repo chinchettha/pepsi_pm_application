@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Pencil, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export type MenuTreeNodeProps = {
   item: AdminMenuRow
@@ -13,8 +14,8 @@ export type MenuTreeNodeProps = {
   onDelete: () => void
 }
 
-/** Sortable row in Menu Builder DnD list (§7.1 MenuTreeNode) */
 export function MenuTreeNode({ item, canWrite, onEdit, onDelete }: MenuTreeNodeProps) {
+  const { t } = useTranslation('admin')
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.idmenu,
   })
@@ -39,7 +40,7 @@ export function MenuTreeNode({ item, canWrite, onEdit, onDelete }: MenuTreeNodeP
           className="cursor-grab touch-none rounded p-1 text-app-muted hover:bg-app-muted active:cursor-grabbing"
           {...attributes}
           {...listeners}
-          aria-label="ลากจัดลำดับ"
+          aria-label={t('menu.dragReorderAria')}
         >
           <GripVertical className="size-4" />
         </button>
@@ -49,7 +50,7 @@ export function MenuTreeNode({ item, canWrite, onEdit, onDelete }: MenuTreeNodeP
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={item.menuKind === 'heading' ? 'secondary' : 'outline'}>
-            {item.menuKind === 'heading' ? 'หัวข้อ' : 'เมนู'}
+            {item.menuKind === 'heading' ? t('menu.badgeHeading') : t('menu.badgeMenu')}
           </Badge>
           <span className="font-medium text-app">{item.menutitle}</span>
           <span className="text-xs text-app-muted">#{item.menuon}</span>
@@ -69,7 +70,7 @@ export function MenuTreeNode({ item, canWrite, onEdit, onDelete }: MenuTreeNodeP
             size="icon"
             variant="ghost"
             className="size-8"
-            aria-label="แก้ไขเมนู"
+            aria-label={t('menu.editMenuAria')}
             onClick={onEdit}
           >
             <Pencil className="size-3.5" />
@@ -79,7 +80,7 @@ export function MenuTreeNode({ item, canWrite, onEdit, onDelete }: MenuTreeNodeP
             size="icon"
             variant="ghost"
             className="size-8 text-red-700"
-            aria-label="ลบเมนู"
+            aria-label={t('menu.deleteMenuAria')}
             onClick={onDelete}
           >
             <Trash2 className="size-3.5" />

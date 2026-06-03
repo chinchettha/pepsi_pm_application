@@ -7,7 +7,7 @@
  *   (เทียบ `M_personel_confirm_form.php` ที่เป็น modal 4 แท็บ)
  */
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/table'
 import { MassConfirmBar, MASS_CONFIRM_MAX } from '@/components/confirmation/MassConfirmBar'
 import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDialog'
+import { WktypeDisplay } from '@/components/scheduling/WktypeDisplay'
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import { fetchPersonnelConfirm } from '@/lib/api-public'
 import { useAnyPermission } from '@/lib/use-permission'
@@ -41,18 +42,28 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 type StatusFilter = 'all' | 'not_started' | 'in_progress' | 'done' | 'qc_pending'
 
-const STATUS_TABS: { id: StatusFilter; label: string }[] = [
-  { id: 'all', label: 'ทั้งหมด' },
-  { id: 'qc_pending', label: 'รอ Admin QC' },
-  { id: 'not_started', label: 'ยังไม่เริ่ม' },
-  { id: 'in_progress', label: 'กำลังทำ' },
-  { id: 'done', label: 'ปิดครบ' },
+const STATUS_TAB_IDS: StatusFilter[] = [
+  'all',
+  'qc_pending',
+  'not_started',
+  'in_progress',
+  'done',
 ]
 
+const STATUS_TAB_LABEL_KEYS: Record<StatusFilter, string> = {
+  all: 'confirm.tabs.all',
+  qc_pending: 'confirm.tabs.qcPending',
+  not_started: 'confirm.tabs.notStarted',
+  in_progress: 'confirm.tabs.inProgress',
+  done: 'confirm.tabs.done',
+}
+
 function QcStatusBadge({ status }: { status: string | null }) {
+  const { t } = useTranslation('personnel')
   if (!status) return null
   const map: Record<string, string> = {
     pending: 'bg-amber-100 text-amber-900 ring-amber-200',
@@ -61,10 +72,10 @@ function QcStatusBadge({ status }: { status: string | null }) {
   }
   const label =
     status === 'pending'
-      ? 'รอ QC'
+      ? t('confirm.qc.pending')
       : status === 'approved'
-        ? 'QC ผ่าน'
-        : 'ส่งกลับ'
+        ? t('confirm.qc.approved')
+        : t('confirm.qc.rejected')
   return (
     <span
       className={`inline-flex rounded px-2 py-1 text-badge font-medium ring-1 ${map[status] ?? ''}`}
@@ -118,6 +129,8 @@ function SystBadge({ syst }: { syst: string | null }) {
 }
 
 export function PersonnelConfirmPage() {
+  const { t } = useTranslation('personnel')
+  const { t: tc } = useTranslation('common')
   const navigate = useNavigate()
   const authUser = getStoredAuthUser()
   const canConfirmRead =
@@ -125,7 +138,7 @@ export function PersonnelConfirmPage() {
 
   useEffect(() => {
     if (!canConfirmRead) {
-      toast.error('ไม่มีสิทธิ์เข้าถึง')
+      toast.error(t('confirm.accessDenied'))
       navigate('/personnel', { replace: true })
     }
   }, [canConfirmRead, navigate])
@@ -171,7 +184,7 @@ export function PersonnelConfirmPage() {
     }
     const next = new Set(pageIds.slice(0, MASS_CONFIRM_MAX))
     if (pageIds.length > MASS_CONFIRM_MAX) {
-      toast.message(`เลือกได้สูงสุด ${MASS_CONFIRM_MAX} รายการ (SAP)`)
+      toast.message(t('confirm.massSelectMax', { max: MASS_CONFIRM_MAX }))
     }
     setSelectedIds(next)
   }
@@ -184,7 +197,7 @@ export function PersonnelConfirmPage() {
         return next
       }
       if (next.size >= MASS_CONFIRM_MAX) {
-        toast.error(`เลือกได้สูงสุด ${MASS_CONFIRM_MAX} รายการ`)
+        toast.error(t('confirm.massSelectMax', { max: MASS_CONFIRM_MAX }))
         return prev
       }
       next.add(idiw37)
@@ -192,15 +205,18 @@ export function PersonnelConfirmPage() {
     })
   }
 
+  const hints = t('confirm.hints', { returnObjects: true }) as string[]
+
   if (!canConfirmRead) {
     return (
-      <AppPageShell title="ปิดงานรายบุคคล" description="สรุป % การปิดงานของช่างต่อ WO">
+      <AppPageShell title={t('confirm.title')} description={t('confirm.description')}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('confirm.accessDenied')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">personnel.confirm.read</code>
+              {tc('rbac.requiresPermission')}{' '}
+              <code className="text-xs">personnel.confirm.read</code>
             </>
           }
         />
@@ -210,22 +226,22 @@ export function PersonnelConfirmPage() {
 
   return (
     <AppPageShell
-      title="ปิดงานรายบุคคล"
-      description="สรุป % การปิดงานของช่างต่อ WO (view_countpersonelclose)"
-      contentClassName="space-y-4"
+      title={t('confirm.title')}
+      description={t('confirm.description')}
+      hints={hints}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">
-            Admin / QC
+            {t('confirm.badgeAdminQc')}
           </Badge>
           <Button asChild variant="outline" size="sm">
-            <Link to="/personnel">แดชบอร์ดส่วนตัว</Link>
+            <Link to="/personnel">{t('confirm.nav.dashboard')}</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <Link to="/admin/users">จัดการผู้ใช้</Link>
+            <Link to="/admin/users">{t('confirm.nav.manageUsers')}</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <Link to="/confirmation">รับรองงาน</Link>
+            <Link to="/confirmation">{t('confirm.nav.exportConfirmation')}</Link>
           </Button>
           <Button
             variant="outline"
@@ -234,36 +250,37 @@ export function PersonnelConfirmPage() {
             disabled={listQ.isFetching}
           >
             <RefreshCcw className="mr-2 size-3.5" aria-hidden />
-            รีเฟรช
+            {t('confirm.refresh')}
           </Button>
         </>
       }
     >
+        <AppPageSection index={0}>
         {/* Summary cards */}
         <div className="grid gap-3 sm:grid-cols-4">
           <SummaryCard
-            label="WO ที่เปิดทั้งหมด"
+            label={t('confirm.summary.totalOpen')}
             value={summary?.totalOpen ?? 0}
             icon={ClipboardList}
             tone="neutral"
             isLoading={listQ.isLoading}
           />
           <SummaryCard
-            label="ปิดครบทุกคน"
+            label={t('confirm.summary.fullyClosed')}
             value={summary?.fullyClosed ?? 0}
             icon={CheckCircle2}
             tone="emerald"
             isLoading={listQ.isLoading}
           />
           <SummaryCard
-            label="กำลังทำ"
+            label={t('confirm.summary.inProgress')}
             value={summary?.inProgress ?? 0}
             icon={Users}
             tone="blue"
             isLoading={listQ.isLoading}
           />
           <SummaryCard
-            label="ยังไม่เริ่ม"
+            label={t('confirm.summary.notStarted')}
             value={summary?.notStarted ?? 0}
             icon={CircleDashed}
             tone="amber"
@@ -277,14 +294,14 @@ export function PersonnelConfirmPage() {
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-app-muted" />
               <Input
-                placeholder="ค้นหา WO / Maintenance plan / Equipment / Description"
+                placeholder={t('confirm.search.placeholder')}
                 className="pl-8"
                 value={qInput}
                 onChange={(e) => setQInput(e.target.value)}
               />
             </div>
             <Button type="submit" variant="default" size="sm">
-              ค้นหา
+              {tc('actions.search')}
             </Button>
             {q ? (
               <Button
@@ -296,30 +313,32 @@ export function PersonnelConfirmPage() {
                   setQ('')
                 }}
               >
-                ล้าง
+                {t('confirm.search.clear')}
               </Button>
             ) : null}
           </form>
           <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
             <Filter className="size-4 text-app-muted" />
-            {STATUS_TABS.map((t) => (
+            {STATUS_TAB_IDS.map((tabId) => (
               <Button
-                key={t.id}
+                key={tabId}
                 type="button"
                 size="sm"
-                variant={status === t.id ? 'default' : 'outline'}
-                onClick={() => setStatus(t.id)}
+                variant={status === tabId ? 'default' : 'outline'}
+                onClick={() => setStatus(tabId)}
               >
-                {t.label}
+                {t(STATUS_TAB_LABEL_KEYS[tabId])}
                 {summary
                   ? ` (${
-                      t.id === 'all'
+                      tabId === 'all'
                         ? summary.totalOpen
-                        : t.id === 'not_started'
+                        : tabId === 'not_started'
                           ? summary.notStarted
-                          : t.id === 'in_progress'
+                          : tabId === 'in_progress'
                             ? summary.inProgress
-                            : summary.fullyClosed
+                            : tabId === 'qc_pending'
+                              ? (summary as { qcPending?: number }).qcPending ?? 0
+                              : summary.fullyClosed
                     })`
                   : ''}
               </Button>
@@ -343,9 +362,9 @@ export function PersonnelConfirmPage() {
           ) : errorMessage ? (
             <EmptyState
               icon={AlertCircle}
-              title="โหลดรายการไม่สำเร็จ"
+              title={t('confirm.table.loadFailed')}
               description={errorMessage}
-              action={{ label: 'ลองใหม่', onClick: () => void listQ.refetch() }}
+              action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
             />
           ) : (
             <div className="app-table-shell overflow-x-auto">
@@ -355,7 +374,7 @@ export function PersonnelConfirmPage() {
                   <TableHead className="w-10">
                     <input
                       type="checkbox"
-                      aria-label="เลือกทั้งหน้า"
+                      aria-label={t('confirm.table.selectAllPage')}
                       checked={allPageSelected}
                       ref={(el) => {
                         if (el) {
@@ -366,14 +385,14 @@ export function PersonnelConfirmPage() {
                       onChange={toggleSelectAllPage}
                     />
                   </TableHead>
-                  <TableHead className="w-[15%]">ปิด (%)</TableHead>
-                  <TableHead>ใบงาน</TableHead>
-                  <TableHead>แผนบำรุง</TableHead>
-                  <TableHead>ประเภท</TableHead>
-                  <TableHead>อุปกรณ์</TableHead>
-                  <TableHead>แผน</TableHead>
-                  <TableHead>แผนใหม่</TableHead>
-                  <TableHead className="text-right">ดำเนินการ</TableHead>
+                  <TableHead className="w-[15%]">{t('confirm.table.closePct')}</TableHead>
+                  <TableHead>{t('confirm.table.workOrder')}</TableHead>
+                  <TableHead>{t('confirm.table.maintPlan')}</TableHead>
+                  <TableHead>{t('confirm.table.type')}</TableHead>
+                  <TableHead>{t('confirm.table.equipment')}</TableHead>
+                  <TableHead>{t('confirm.table.plan')}</TableHead>
+                  <TableHead>{t('confirm.table.newPlan')}</TableHead>
+                  <TableHead className="text-right">{t('confirm.table.action')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -382,8 +401,8 @@ export function PersonnelConfirmPage() {
                     <TableCell colSpan={9} className="p-0">
                       <EmptyState
                         className="border-0 bg-transparent py-10"
-                        title="ไม่พบใบงาน"
-                        description="ลองเปลี่ยนตัวกรองหรือคำค้น"
+                        title={t('confirm.table.emptyTitle')}
+                        description={t('confirm.table.emptyHint')}
                       />
                     </TableCell>
                   </TableRow>
@@ -396,7 +415,7 @@ export function PersonnelConfirmPage() {
                       <TableCell>
                         <input
                           type="checkbox"
-                          aria-label={`เลือก ${it.wkorder}`}
+                          aria-label={t('confirm.table.selectRow', { workOrder: it.wkorder })}
                           checked={selectedIds.has(it.idiw37)}
                           onChange={() => toggleSelectRow(it.idiw37)}
                         />
@@ -405,19 +424,30 @@ export function PersonnelConfirmPage() {
                         <div className="space-y-1">
                           <ProgressBar percent={it.percentClose} />
                           <div className="text-caption tabular-nums">
-                            {it.closedCount}/{it.plannedCount} คน
+                            {t('confirm.table.peopleCount', {
+                              closed: it.closedCount,
+                              planned: it.plannedCount,
+                            })}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell title={it.shortText ?? ''}>
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-xs font-medium ring-1 transition hover:brightness-95"
-                          style={{
-                            backgroundColor: it.wkstcolor ?? '#e2e8f0',
-                            color: '#0f172a',
-                            borderColor: it.wkstcolor ?? '#cbd5e1',
-                          }}
+                          className={
+                            it.wkstcolor
+                              ? 'rounded px-2 py-1 text-xs font-medium ring-1 transition hover:brightness-95'
+                              : 'rounded px-2 py-1 text-xs font-medium ring-1 ring-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-text)] transition hover:brightness-95'
+                          }
+                          style={
+                            it.wkstcolor
+                              ? {
+                                  backgroundColor: it.wkstcolor,
+                                  color: 'var(--app-text)',
+                                  borderColor: it.wkstcolor,
+                                }
+                              : undefined
+                          }
                           onClick={() => setDetailId(String(it.idiw37))}
                         >
                           {it.wkorder}
@@ -433,7 +463,9 @@ export function PersonnelConfirmPage() {
                       >
                         {it.mntplan ?? '—'}
                       </TableCell>
-                      <TableCell className="text-xs">{it.wktype ?? '—'}</TableCell>
+                      <TableCell className="text-xs">
+                        {it.wktype ? <WktypeDisplay code={it.wktype} /> : '—'}
+                      </TableCell>
                       <TableCell
                         className="max-w-[16rem] truncate text-xs"
                         title={it.equdescrip ?? ''}
@@ -452,7 +484,7 @@ export function PersonnelConfirmPage() {
                           variant={it.hasConfirm ? 'default' : 'outline'}
                           onClick={() => setDetailId(String(it.idiw37))}
                         >
-                          {it.hasConfirm ? 'ดู / Confirm' : 'Confirm'}
+                          {it.hasConfirm ? t('confirm.table.viewConfirm') : t('confirm.table.confirm')}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -463,6 +495,7 @@ export function PersonnelConfirmPage() {
             </div>
           )}
         </AppCard>
+        </AppPageSection>
 
       <WorkOrderDetailDialog
         orderId={detailId}

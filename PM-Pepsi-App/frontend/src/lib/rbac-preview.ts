@@ -3,8 +3,28 @@ const STORAGE_KEY = 'pm_rbac_preview'
 
 export type RbacPreview = {
   roleCode: string
-  roleName: string
+  /** Thai label (role_name) */
+  roleNameTh: string
+  /** English label (role_name_en) */
+  roleNameEn: string
   permissions: string[]
+}
+
+function normalizeRbacPreview(parsed: unknown): RbacPreview | null {
+  if (!parsed || typeof parsed !== 'object') return null
+  const p = parsed as Record<string, unknown>
+  if (typeof p.roleCode !== 'string' || !Array.isArray(p.permissions)) return null
+  const legacyName = typeof p.roleName === 'string' ? p.roleName : ''
+  const roleNameTh =
+    typeof p.roleNameTh === 'string' ? p.roleNameTh : legacyName || String(p.roleCode)
+  const roleNameEn =
+    typeof p.roleNameEn === 'string' ? p.roleNameEn : legacyName || roleNameTh
+  return {
+    roleCode: p.roleCode,
+    roleNameTh,
+    roleNameEn,
+    permissions: p.permissions.filter((x): x is string => typeof x === 'string'),
+  }
 }
 
 /** Stable parse cache — required for useSyncExternalStore (referential equality). */
@@ -20,7 +40,7 @@ function readRbacPreview(): RbacPreview | null {
     return null
   }
   try {
-    cachedPreviewParsed = JSON.parse(raw) as RbacPreview
+    cachedPreviewParsed = normalizeRbacPreview(JSON.parse(raw))
   } catch {
     cachedPreviewParsed = null
   }
@@ -60,6 +80,12 @@ export function resetRbacPreviewCacheForTests(): void {
   cachedPreviewRaw = undefined
   cachedPreviewParsed = null
 }
+
+
+
+
+
+
 
 
 

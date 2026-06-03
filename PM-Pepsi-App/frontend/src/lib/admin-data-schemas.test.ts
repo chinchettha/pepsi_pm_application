@@ -27,7 +27,8 @@ describe('§3.2 admin data — Zod contracts (frontend)', () => {
   it('parses representative API payloads', () => {
     adminRoleSchema.parse({
       roleCode: 'H',
-      roleName: 'Manager',
+      roleName: 'ผู้จัดการ / หัวหน้างาน',
+      roleNameEn: 'Manager',
       roleColor: '#0A84FF',
       isSystem: true,
       description: null,

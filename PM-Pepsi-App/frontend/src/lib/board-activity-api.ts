@@ -30,10 +30,12 @@ export type BoardActivityResponse = z.infer<typeof boardActivityResponseSchema>
 export async function fetchBoardActivity(opts: {
   period: BoardPeriodId
   limit?: number
+  team?: 'A' | 'B' | 'EE' | 'UT'
 }): Promise<BoardActivityResponse> {
   const qs = new URLSearchParams()
   qs.set('period', opts.period)
   if (opts.limit != null) qs.set('limit', String(opts.limit))
+  if (opts.team) qs.set('team', opts.team)
   const json = await fetchApi<unknown>(`/api/v1/board/activity?${qs}`)
   return boardActivityResponseSchema.parse(json)
 }

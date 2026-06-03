@@ -5,6 +5,7 @@ import {
 } from '@/lib/board-activity-api'
 import { boardPersonnelAvatarUrl } from '@/lib/board-personnel-avatar'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   items: BoardActivityItem[]
@@ -60,8 +61,8 @@ function ActivityCardSkeleton() {
   return <div className="engineering-board__activity-card engineering-board__activity-card--skeleton" />
 }
 
-/** โซน C — Feed รับงาน / ปิดงาน (max 12) */
 export function BoardActivityFeed({ items, loading, error, carousel = false }: Props) {
+  const { t } = useTranslation('board')
   const showSkeleton = loading && items.length === 0
 
   return (
@@ -71,22 +72,22 @@ export function BoardActivityFeed({ items, loading, error, carousel = false }: P
           ? 'engineering-board__zone engineering-board__zone--c engineering-board__panel engineering-board__panel--activity engineering-board__panel--activity-carousel'
           : 'engineering-board__zone engineering-board__zone--c engineering-board__panel engineering-board__panel--activity'
       }
-      aria-label="โซน C — รับงานและปิดงานล่าสุด"
+      aria-label={t('activityFeed.aria')}
     >
       <div className="engineering-board__panel-head">
         <div>
-          <p className="engineering-board__zone-tag">โซน C · กิจกรรม</p>
+          <p className="engineering-board__zone-tag">{t('activityFeed.zoneTag')}</p>
           <h2 className="engineering-board__panel-title engineering-board__panel-title--flush">
-            รับงาน / ปิดงาน
+            {t('activityFeed.title')}
           </h2>
-          <p className="engineering-board__activity-sub">สูงสุด 12 รายการ · รีเฟรช 60 วินาที</p>
+          <p className="engineering-board__activity-sub">{t('activityFeed.sub')}</p>
         </div>
         {!loading && !error ? (
           <span className="engineering-board__panel-badge">{items.length}</span>
         ) : null}
       </div>
       {error ? (
-        <p className="engineering-board__activity-error">{error.message}</p>
+        <p className="engineering-board__activity-error">{t('activityFeed.error')}</p>
       ) : showSkeleton ? (
         <div className="engineering-board__activity-scroll">
           <div className="engineering-board__activity-list">
@@ -96,7 +97,7 @@ export function BoardActivityFeed({ items, loading, error, carousel = false }: P
           </div>
         </div>
       ) : items.length === 0 ? (
-        <p className="engineering-board__empty">ยังไม่มีรับงาน/ปิดงานในช่วงนี้</p>
+        <p className="engineering-board__empty">{t('activityFeed.empty')}</p>
       ) : (
         <div className="engineering-board__activity-scroll">
           <div className="engineering-board__activity-list">

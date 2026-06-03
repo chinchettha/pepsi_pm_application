@@ -129,7 +129,7 @@ export async function listPersonnelConfirm(
     }>(countSql, params),
   ])
 
-  const items = rowsRes.rows.map((r) => ({
+  const items: PersonnelConfirmListResponse['items'] = rowsRes.rows.map((r) => ({
     idiw37: Number(r.idiw37),
     wkorder: r.wkorder,
     mntplan: r.mntplan?.trim() ?? null,

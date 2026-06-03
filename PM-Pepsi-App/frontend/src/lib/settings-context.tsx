@@ -4,6 +4,7 @@ import { applyBrandingAssetCss } from '@/lib/branding-asset-css'
 import { fetchPublicSettings } from '@/lib/settings-api'
 import { useQuery } from '@tanstack/react-query'
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type SettingsContextValue = {
   settings: PublicSettings | undefined
@@ -17,12 +18,13 @@ export type SettingsContextValue = {
 const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 function MaintenanceBanner({ message }: { message: string }) {
+  const { t } = useTranslation()
   return (
     <div
       role="alert"
       className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-body-sm text-amber-950"
     >
-      {message.trim() || 'ระบบอยู่ระหว่างบำรุงรักษา — บางฟังก์ชันอาจใช้งานไม่ได้ชั่วคราว'}
+      {message.trim() || t('shell.maintenance')}
     </div>
   )
 }

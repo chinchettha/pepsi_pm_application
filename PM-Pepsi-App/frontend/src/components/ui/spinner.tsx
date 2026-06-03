@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 
@@ -9,23 +10,24 @@ const SPINNER_SIZE = {
 
 export function Spinner({
   size = 'md',
-  label = 'กำลังโหลด…',
+  label,
   className,
 }: {
   size?: keyof typeof SPINNER_SIZE
   label?: string
   className?: string
 }) {
+  const text = label ?? i18n.t('spinner.loading', { ns: 'common' })
   return (
     <span className={cn('inline-flex items-center gap-2 text-app-muted', className)} role="status">
       <Loader2 className={cn('animate-spin', SPINNER_SIZE[size])} aria-hidden />
-      <span className="text-caption">{label}</span>
+      <span className="text-caption">{text}</span>
     </span>
   )
 }
 
 export function SpinnerBlock({
-  label = 'กำลังโหลด…',
+  label,
   className,
 }: {
   label?: string

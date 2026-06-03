@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { Megaphone, X } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 function levelClass(level: ActiveAnnouncement['level']): string {
   switch (level) {
@@ -32,6 +33,8 @@ export function AnnouncementBannerRow({
   onDismiss: (id: number) => void
   className?: string
 }) {
+  const { t } = useTranslation('common')
+
   return (
     <div
       role="status"
@@ -54,8 +57,8 @@ export function AnnouncementBannerRow({
           size="icon"
           variant="ghost"
           className="app-announcement__dismiss shrink-0"
-          aria-label={`ปิดประกาศ: ${item.title}`}
-          title="ปิดประกาศ"
+          aria-label={t('announcements.dismissAria', { title: item.title })}
+          title={t('announcements.dismissTitle')}
           onClick={() => onDismiss(item.id)}
         >
           <X className="size-4" />
@@ -67,6 +70,7 @@ export function AnnouncementBannerRow({
 
 /** ประกาศที่ active — แสดงเฉพาะคอลัมน์เนื้อหา (ไม่ทับ sidebar) */
 export function AnnouncementBanner() {
+  const { t } = useTranslation('common')
   const [dismissed, setDismissed] = useState(() => readDismissedAnnouncements())
 
   const q = useQuery({
@@ -89,7 +93,7 @@ export function AnnouncementBanner() {
   if (visible.length === 0) return null
 
   return (
-    <div className="app-announcement-zone" role="region" aria-label="ประกาศระบบ">
+    <div className="app-announcement-zone" role="region" aria-label={t('announcements.regionAria')}>
       {visible.map((item) => (
         <AnnouncementBannerRow key={item.id} item={item} onDismiss={onDismiss} />
       ))}

@@ -41,6 +41,7 @@ import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { AlertCircle, History, Loader2, RefreshCcw, Search, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 const AUDIT_CACHE_TTL_MS = 10 * 60 * 1000
@@ -87,6 +88,8 @@ function AuditTableSkeleton({ rows = 8 }: { rows?: number }) {
 }
 
 export function AdminAuditPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const canRead = usePermission('admin.audit.read')
   const canDelete = usePermission('admin.audit.delete')
   const { settings } = usePublicSettings()
@@ -127,17 +130,17 @@ export function AdminAuditPage() {
 
   const exportMut = useMutation({
     mutationFn: () => downloadAuditCsv(applied),
-    onSuccess: () => toast.success('ดาวน์โหลด CSV แล้ว'),
-    onError: (e: Error) => toast.error(e.message || 'ส่งออกไม่สำเร็จ'),
+    onSuccess: () => toast.success(t('audit.csvDownloaded')),
+    onError: (e: Error) => toast.error(e.message || t('audit.exportFailed')),
   })
 
   const cleanupMut = useMutation({
     mutationFn: (olderThan: string) => deleteAuditOlderThan(olderThan),
     onSuccess: (deleted) => {
-      toast.success(`ลบ audit เก่าแล้ว ${deleted} แถว`)
+      toast.success(t('audit.purgedRows', { count: deleted }))
       void listQ.refetch()
     },
-    onError: (e: Error) => toast.error(e.message || 'ลบไม่สำเร็จ'),
+    onError: (e: Error) => toast.error(e.message || t('audit.purgeFailed')),
   })
 
   const rows = useMemo(
@@ -200,13 +203,7 @@ export function AdminAuditPage() {
   if (!canRead) {
     return (
       <AdminPageRoot tourTarget="admin-audit">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์ <code className="text-xs">admin.audit.read</code>
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.audit.read" />
       </AdminPageRoot>
     )
   }
@@ -214,14 +211,14 @@ export function AdminAuditPage() {
   return (
     <AdminPageShell
       tourTarget="admin-audit"
-      title="บันทึกกิจกรรม (Audit)"
-      description="ประวัติ login, mutation, RBAC denied — กรองและส่งออก CSV"
-      contentClassName="space-y-6"
+      title={t('audit.title')}
+      description={t('audit.description')}
+      hints={t('audit.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Badge variant="secondary">
             <History className="mr-1 size-3.5" aria-hidden />
-            {effectiveTotal.toLocaleString()} รายการ
+            {t('audit.totalItems', { count: effectiveTotal.toLocaleString() })}
           </Badge>
           <Button
             type="button"
@@ -231,29 +228,27 @@ export function AdminAuditPage() {
             onClick={() => void listQ.refetch()}
             disabled={listQ.isFetching}
           >
-            <RefreshCcw className={`mr-1 size-3.5 ${listQ.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
-          </Button>
+            <RefreshCcw className={`mr-1 size-3.5 ${listQ.isFetching ? 'animate-spin' : ''}`} aria-hidden />{t('shared.refresh')}</Button>
         </>
       }
     >
         {showingCache ? (
           <div className="rounded-card border border-app bg-app-subtle px-3 py-2 text-xs text-app-muted">
-            แสดงข้อมูลจาก IndexedDB (offline flag เปิด) — จะอัปเดตเมื่อโหลดจากเซิร์ฟเวอร์สำเร็จ
+            {t('audit.showingCache')}
           </div>
         ) : null}
         {idbCacheEnabled && !showingCache && listQ.isFetching && !listQ.isLoading ? (
-          <p className="text-xs text-app-muted">กำลังอัปเดตรายการ…</p>
+          <p className="text-xs text-app-muted">{t('audit.updatingList')}</p>
         ) : null}
         <Card className="admin-card">
           <CardHeader>
-            <CardTitle className="text-base">ตัวกรอง</CardTitle>
-            <CardDescription>ค่าเริ่มต้น: 24 ชั่วโมงล่าสุด</CardDescription>
+            <CardTitle className="text-base">{t('audit.filterTitle')}</CardTitle>
+            <CardDescription>{t('audit.filterDefault24h')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1">
-                <Label htmlFor="audit-from">จาก</Label>
+                <Label htmlFor="audit-from">{t('audit.filterFrom')}</Label>
                 <Input
                   id="audit-from"
                   type="datetime-local"
@@ -264,7 +259,7 @@ export function AdminAuditPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="audit-to">ถึง</Label>
+                <Label htmlFor="audit-to">{t('audit.filterTo')}</Label>
                 <Input
                   id="audit-to"
                   type="datetime-local"
@@ -275,11 +270,11 @@ export function AdminAuditPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="audit-actor">ผู้กระทำ (actor)</Label>
+                <Label htmlFor="audit-actor">{t('audit.filterActor')}</Label>
                 <Input
                   id="audit-actor"
                   list="audit-actor-suggestions"
-                  placeholder="รหัส WC / username"
+                  placeholder={t('audit.filterActorPlaceholder')}
                   value={filters.actorId ?? ''}
                   onChange={(e) =>
                     setFilters((f) => ({ ...f, actorId: e.target.value || undefined }))
@@ -292,7 +287,7 @@ export function AdminAuditPage() {
                 </datalist>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="audit-status">สถานะ</Label>
+                <Label htmlFor="audit-status">{t('audit.filterStatus')}</Label>
                 <select
                   id="audit-status"
                   className={selectClass}
@@ -304,17 +299,17 @@ export function AdminAuditPage() {
                     }))
                   }
                 >
-                  <option value="all">ทั้งหมด</option>
+                  <option value="all">{t('audit.statusAll')}</option>
                   <option value="ok">ok</option>
                   <option value="denied">denied</option>
                   <option value="error">error</option>
                 </select>
               </div>
               <div className="space-y-1 sm:col-span-2">
-                <Label htmlFor="audit-resource">ทรัพยากร (resource)</Label>
+                <Label htmlFor="audit-resource">{t('audit.filterResource')}</Label>
                 <Input
                   id="audit-resource"
-                  placeholder="เช่น tbl_setting, tbconfirm_comment"
+                  placeholder={t('audit.filterResourcePlaceholder')}
                   value={filters.resource ?? ''}
                   onChange={(e) =>
                     setFilters((f) => ({ ...f, resource: e.target.value || undefined }))
@@ -322,7 +317,7 @@ export function AdminAuditPage() {
                 />
               </div>
               <div className="space-y-1 sm:col-span-2">
-                <Label htmlFor="audit-q">ค้นหา</Label>
+                <Label htmlFor="audit-q">{t('audit.filterSearch')}</Label>
                 <Input
                   id="audit-q"
                   placeholder="action, resource, message"
@@ -333,7 +328,7 @@ export function AdminAuditPage() {
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium text-app-muted">กลุ่ม action</p>
+              <p className="mb-2 text-xs font-medium text-app-muted">{t('audit.actionGroups')}</p>
               <div className="flex flex-wrap gap-2">
                 {AUDIT_ACTION_GROUPS.map((g) => {
                   const on = (filters.actionPrefix ?? []).includes(g.prefix)
@@ -355,7 +350,7 @@ export function AdminAuditPage() {
             <div className="flex flex-wrap gap-2">
               <Button type="button" onClick={applyFilters}>
                 <Search className="mr-2 size-4" />
-                ค้นหา
+                {t('audit.searchBtn')}
               </Button>
               <Button
                 type="button"
@@ -366,11 +361,11 @@ export function AdminAuditPage() {
                   setApplied(d)
                 }}
               >
-                รีเซ็ต 24 ชม.
+                {t('audit.reset24h')}
               </Button>
               <ReportExportButton
                 format="csv"
-                label="ส่งออก CSV"
+                label={t('audit.exportCsv')}
                 loading={exportMut.isPending}
                 onClick={() => exportMut.mutate()}
               />
@@ -379,23 +374,23 @@ export function AdminAuditPage() {
         </Card>
 
         {canDelete ? (
-          <Card className="border-amber-200 bg-amber-50/50">
+          <Card className="admin-callout admin-callout--amber border shadow-none">
             <CardHeader>
-              <CardTitle className="text-base text-amber-900">ลบ log เก่า</CardTitle>
+              <CardTitle className="text-base text-amber-900">{t('audit.cleanupTitle')}</CardTitle>
               <CardDescription>
-                ลบรายการที่มีเวลา <strong>ก่อน</strong> วันที่ระบุ — เก็บ log{' '}
-                <strong>{metaQ.data?.retentionDays ?? 365} วัน</strong>
+                {t('audit.cleanupDescPrefix')}{' '}
+                <strong>{t('audit.cleanupDescDays', { days: metaQ.data?.retentionDays ?? 365 })}</strong>
                 {metaQ.data?.retentionCutoffDate ? (
                   <>
                     {' '}
-                    (ไม่ลบหลัง {metaQ.data.retentionCutoffDate})
+                    {t('audit.cleanupNotAfter', { date: metaQ.data.retentionCutoffDate })}
                   </>
                 ) : null}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
-                <Label htmlFor="cleanup-date">ลบก่อนวันที่</Label>
+                <Label htmlFor="cleanup-date">{t('audit.cleanupBefore')}</Label>
                 <Input
                   id="cleanup-date"
                   type="date"
@@ -410,9 +405,7 @@ export function AdminAuditPage() {
                 onClick={() => {
                   if (!cleanupDate) return
                   if (
-                    !window.confirm(
-                      `ยืนยันลบ audit log ทั้งหมดก่อน ${cleanupDate}? การกระทำนี้ไม่สามารถย้อนกลับได้`,
-                    )
+                    !window.confirm(t('audit.cleanupConfirmFull', { date: cleanupDate }))
                   ) {
                     return
                   }
@@ -424,7 +417,7 @@ export function AdminAuditPage() {
                 ) : (
                   <Trash2 className="mr-2 size-4" />
                 )}
-                ลบเก่า
+                {t('audit.cleanupBtn')}
               </Button>
             </CardContent>
           </Card>
@@ -435,11 +428,11 @@ export function AdminAuditPage() {
             <Table embedded stickyHeader zebra>
               <TableHeader>
                 <TableRow>
-                  <TableHead>เวลา</TableHead>
-                  <TableHead>ผู้กระทำ</TableHead>
-                  <TableHead>action</TableHead>
-                  <TableHead>resource</TableHead>
-                  <TableHead>status</TableHead>
+                  <TableHead>{t('audit.colTime')}</TableHead>
+                  <TableHead>{t('audit.colActor')}</TableHead>
+                  <TableHead>{t('audit.action')}</TableHead>
+                  <TableHead>{t('audit.resource')}</TableHead>
+                  <TableHead>{t('audit.filterStatus')}</TableHead>
                   <TableHead>IP</TableHead>
                   <TableHead className="text-right">diff</TableHead>
                 </TableRow>
@@ -452,20 +445,20 @@ export function AdminAuditPage() {
         ) : listQ.isError && effectiveRows.length === 0 ? (
           <EmptyState
             icon={AlertCircle}
-            title="โหลด audit ไม่สำเร็จ"
+            title={t('audit.loadFailed')}
             description={(listQ.error as Error).message}
-            action={{ label: 'ลองใหม่', onClick: () => void listQ.refetch() }}
+            action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
           />
         ) : (
           <div className="app-table-shell overflow-hidden">
             <Table embedded stickyHeader zebra>
               <TableHeader>
                 <TableRow>
-                  <TableHead>เวลา</TableHead>
-                  <TableHead>ผู้กระทำ</TableHead>
-                  <TableHead>action</TableHead>
-                  <TableHead>resource</TableHead>
-                  <TableHead>status</TableHead>
+                  <TableHead>{t('audit.colTime')}</TableHead>
+                  <TableHead>{t('audit.colActor')}</TableHead>
+                  <TableHead>{t('audit.action')}</TableHead>
+                  <TableHead>{t('audit.resource')}</TableHead>
+                  <TableHead>{t('audit.filterStatus')}</TableHead>
                   <TableHead>IP</TableHead>
                   <TableHead className="text-right">diff</TableHead>
                 </TableRow>
@@ -474,7 +467,7 @@ export function AdminAuditPage() {
                 {effectiveRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="py-8 text-center text-caption">
-                      ไม่พบรายการในช่วงที่เลือก
+                      {t('audit.emptyRows')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -508,7 +501,7 @@ export function AdminAuditPage() {
                           disabled={row.before == null && row.after == null}
                           onClick={() => setDiffRow(row)}
                         >
-                          ดู diff
+                          {t('audit.viewDiff')}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -536,12 +529,19 @@ export function AdminAuditPage() {
                   {listQ.isFetchingNextPage ? (
                     <Loader2 className="mr-2 size-4 animate-spin" />
                   ) : null}
-                  โหลดเพิ่ม ({effectiveRows.length} / {effectiveTotal})
+                  {t('audit.loadMore', {
+                    shown: effectiveRows.length,
+                    total: effectiveTotal,
+                  })}
                 </Button>
               </div>
             ) : (
               <p className="border-t border-app py-2 text-center text-xs text-app-muted">
-                แสดง {effectiveRows.length} จาก {effectiveTotal} (หน้าละ {PAGE_SIZE})
+                {t('audit.showingRange', {
+                  shown: effectiveRows.length,
+                  total: effectiveTotal,
+                  pageSize: PAGE_SIZE,
+                })}
               </p>
             )}
           </div>

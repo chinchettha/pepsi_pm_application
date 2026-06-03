@@ -46,11 +46,10 @@ export function WoPmPhaseLegend({ className }: { className?: string }) {
         className,
       )}
     >
-      <span className="font-medium text-app">สถานะ PM:</span>
+      <span className="font-medium text-app">Create / REL / Confirm:</span>
       {(['create', 'rel', 'confirm'] as const).map((p) => (
         <WoPmPhaseBadge key={p} phase={p} />
       ))}
-      <span className="text-app-muted">· แยกจาก Type (ZB/ZD) · อ้างอิง SAP syst</span>
     </div>
   )
 }

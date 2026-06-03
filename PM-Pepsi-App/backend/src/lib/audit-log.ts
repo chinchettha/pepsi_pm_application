@@ -4,6 +4,7 @@ import {
   auditLogInputSchema,
   type AuditActor,
   type AuditLogInput,
+  type AuditLogWriteInput,
 } from '../schemas/audit-log.js'
 import { getClientIp } from './request-ip.js'
 
@@ -96,8 +97,8 @@ export function auditMetaFromRequest(req: Request): Pick<AuditLogInput, 'ip' | '
 export async function auditLogFromRequest(
   pool: Pool,
   req: Request,
-  input: Omit<AuditLogInput, 'ip' | 'userAgent'>,
+  input: Omit<AuditLogWriteInput, 'ip' | 'userAgent'>,
 ): Promise<number | null> {
   const meta = auditMetaFromRequest(req)
-  return auditLog(pool, auditActorFromRequest(req), { ...input, ...meta })
+  return auditLog(pool, auditActorFromRequest(req), { status: 'ok', ...input, ...meta })
 }

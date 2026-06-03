@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { animate, type JSAnimation } from 'animejs'
 import { COLOR_PRESETS } from './branding-constants'
 import { useRef, type MutableRefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type ColorPickerCardProps = {
   primaryColor: string
@@ -23,6 +24,7 @@ export function ColorPickerCard({
   onAccentChange,
   onPreset,
 }: ColorPickerCardProps) {
+  const { t } = useTranslation('admin')
   const primaryRef = useRef<HTMLInputElement | null>(null)
   const accentRef = useRef<HTMLInputElement | null>(null)
   const primaryAnimRef = useRef<JSAnimation | null>(null)
@@ -47,8 +49,8 @@ export function ColorPickerCard({
   return (
     <Card className="admin-card lg:col-span-2">
       <CardHeader>
-        <CardTitle>สีธีม</CardTitle>
-        <CardDescription>Primary / Accent — ใช้กับ CSS variables ทั้งแอป</CardDescription>
+        <CardTitle>{t('branding.colorsTitle')}</CardTitle>
+        <CardDescription>{t('branding.colorsDesc')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -61,13 +63,13 @@ export function ColorPickerCard({
               disabled={!canWrite}
               onClick={() => onPreset(p.primary, p.accent)}
             >
-              {p.label}
+              {t(`branding.preset.${p.id}`)}
             </Button>
           ))}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="primaryColor">สีหลัก (Primary)</Label>
+            <Label htmlFor="primaryColor">{t('branding.primary')}</Label>
             <div className="flex gap-2">
               <Input
                 id="primaryColor"
@@ -90,7 +92,7 @@ export function ColorPickerCard({
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="accentColor">สีเน้น (Accent)</Label>
+            <Label htmlFor="accentColor">{t('branding.accent')}</Label>
             <div className="flex gap-2">
               <Input
                 id="accentColor"

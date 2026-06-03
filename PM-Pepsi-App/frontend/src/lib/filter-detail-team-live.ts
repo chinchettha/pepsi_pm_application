@@ -1,11 +1,15 @@
 import type { z } from 'zod'
 import type { workOrderFilterDetailResponseSchema } from '@/api/schemas'
+import {
+  isWorkOrderTeamCode,
+  type WorkOrderTeamField,
+} from '@/lib/wo-team'
 
 export type FilterDetailData = z.infer<typeof workOrderFilterDetailResponseSchema>
-export type TeamCode = '' | 'A' | 'B' | 'P'
+export type TeamCode = WorkOrderTeamField
 
 export function normalizeTeamCode(team: string | undefined): TeamCode {
-  if (team === 'A' || team === 'B' || team === 'P') return team
+  if (team && isWorkOrderTeamCode(team)) return team
   return ''
 }
 
@@ -25,7 +29,12 @@ type TeamTotals = FilterDetailData['teamA']
 
 function adjustBucket(
   bucket: TeamCode,
-  totals: { teamA: TeamTotals; teamB: TeamTotals; teamP: TeamTotals },
+  totals: {
+    teamA: TeamTotals
+    teamB: TeamTotals
+    teamEE: TeamTotals
+    teamUT: TeamTotals
+  },
   countDelta: number,
   workDelta: number,
 ): void {
@@ -35,14 +44,17 @@ function adjustBucket(
   } else if (bucket === 'B') {
     totals.teamB.count += countDelta
     totals.teamB.workSumMinutes += workDelta
-  } else if (bucket === 'P') {
-    totals.teamP.count += countDelta
-    totals.teamP.workSumMinutes += workDelta
+  } else if (bucket === 'EE') {
+    totals.teamEE.count += countDelta
+    totals.teamEE.workSumMinutes += workDelta
+  } else if (bucket === 'UT') {
+    totals.teamUT.count += countDelta
+    totals.teamUT.workSumMinutes += workDelta
   }
 }
 
 /**
- * ปรับ Team A/B/P จากค่า server โดยใช้ delta ของแถวในตารางที่เปลี่ยน team ชั่วคราว (radio ก่อน Save).
+ * ปรับ Team A/B/EE/UT จากค่า server โดยใช้ delta ของแถวในตารางที่เปลี่ยน team ชั่วคราว (radio ก่อน Save).
  * เทียบ LEGACY B.4c — ไม่ refresh ทั้งหน้า
  */
 export function applyPendingTeamToFilterDetail(
@@ -52,8 +64,9 @@ export function applyPendingTeamToFilterDetail(
 ): { data: FilterDetailData; hasPendingChanges: boolean } {
   const teamA = { ...base.teamA }
   const teamB = { ...base.teamB }
-  const teamP = { ...base.teamP }
-  const totals = { teamA, teamB, teamP }
+  const teamEE = { ...base.teamEE }
+  const teamUT = { ...base.teamUT }
+  const totals = { teamA, teamB, teamEE, teamUT }
   let hasPendingChanges = false
 
   for (const row of rows) {
@@ -66,7 +79,7 @@ export function applyPendingTeamToFilterDetail(
   }
 
   return {
-    data: { ...base, teamA, teamB, teamP },
+    data: { ...base, teamA, teamB, teamEE, teamUT },
     hasPendingChanges,
   }
 }

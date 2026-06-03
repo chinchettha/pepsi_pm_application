@@ -29,6 +29,10 @@ import {
   summaryWeeklyResponseSchema,
   manhourChartBreakdownResponseSchema,
   manhourChartPerformanceResponseSchema,
+  manhourHrConfirmReportResponseSchema,
+  manhourZbByPersonResponseSchema,
+  engUtilizationDailyResponseSchema,
+  worktimeSummaryOverallResponseSchema,
   manhoursResponseSchema,
   masterDataResponseSchema,
   masterDataMetaResponseSchema,
@@ -51,6 +55,7 @@ import {
   confirmationCommentsResponseSchema,
   confirmationImageDataResponseSchema,
   confirmationImagesResponseSchema,
+  confirmationImportPreviewResponseSchema,
   confirmationImportResponseSchema,
   confirmationMassCloseBodySchema,
   confirmationMassCloseResponseSchema,
@@ -69,6 +74,12 @@ import {
   workOrderDetailSchema,
   workOrderListItemSchema,
   workOrderModalDetailSchema,
+  woPmNoteBodySchema,
+  woPmNoteResponseSchema,
+  pmReadingBatchBodySchema,
+  pmReadingImportResultSchema,
+  woPmReadingBodySchema,
+  woPmReadingResponseSchema,
   workOrderPlanningBatchBodySchema,
   workOrderPlanningBatchResponseSchema,
   workOrderPlanningOkResponseSchema,
@@ -91,8 +102,11 @@ import { getApiBaseUrl } from '@/lib/api-client'
 import { z } from 'zod'
 
 export type WorkOrderListItem = z.infer<typeof workOrderListItemSchema>
-export async function fetchDashboardSummary() {
-  const json = await fetchApi<unknown>('/api/v1/dashboard/summary')
+export async function fetchDashboardSummary(opts?: { team?: 'A' | 'B' | 'EE' | 'UT' }) {
+  const qs = new URLSearchParams()
+  if (opts?.team) qs.set('team', opts.team)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/dashboard/summary${suffix}`)
   return dashboardSummarySchema.parse(json)
 }
 
@@ -120,6 +134,123 @@ export async function fetchWorkOrderModalDetail(id: string, date?: string) {
     : `/api/v1/work-orders/${encodeURIComponent(id)}/modal-detail`
   const json = await fetchApi<unknown>(path)
   return workOrderModalDetailSchema.parse(json)
+}
+
+export async function putWorkOrderPmNote(id: string, body: z.infer<typeof woPmNoteBodySchema>) {
+  const payload = woPmNoteBodySchema.parse(body)
+  const json = await fetchApi<unknown>(`/api/v1/work-orders/${encodeURIComponent(id)}/pm-note`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return woPmNoteResponseSchema.parse(json)
+}
+
+export async function fetchWorkOrderPmReadingsXlsx(orderId: string): Promise<Blob> {
+  const base = getApiBaseUrl()
+  const p = `/api/v1/work-orders/${encodeURIComponent(orderId)}/pm-readings/export.xlsx`
+  const url = base ? `${base}${p}` : p
+  const token = getAuthToken()
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+  return res.blob()
+}
+
+export async function fetchPmReadingsExportXlsx(opts: {
+  from: string
+  to: string
+  team?: 'A' | 'B' | 'EE' | 'UT'
+}): Promise<Blob> {
+  const base = getApiBaseUrl()
+  const qs = new URLSearchParams({ from: opts.from, to: opts.to })
+  if (opts.team) qs.set('team', opts.team)
+  const p = `/api/v1/pm-readings/export.xlsx?${qs}`
+  const url = base ? `${base}${p}` : p
+  const token = getAuthToken()
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+  return res.blob()
+}
+
+export async function fetchPmReadingsImportTemplateXlsx(): Promise<Blob> {
+  const base = getApiBaseUrl()
+  const p = '/api/v1/pm-readings/import-template.xlsx'
+  const url = base ? `${base}${p}` : p
+  const token = getAuthToken()
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+  return res.blob()
+}
+
+export async function postPmReadingsBatch(body: z.infer<typeof pmReadingBatchBodySchema>) {
+  const payload = pmReadingBatchBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/pm-readings/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return pmReadingImportResultSchema.parse(json)
+}
+
+export async function postPmReadingsImport(file: File) {
+  const base = getApiBaseUrl()
+  const p = '/api/v1/pm-readings/import'
+  const url = base ? `${base}${p}` : p
+  const token = getAuthToken()
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+  const json = await res.json()
+  return pmReadingImportResultSchema.parse(json)
+}
+
+export async function postWorkOrderPmReading(
+  id: string,
+  body: z.infer<typeof woPmReadingBodySchema>,
+) {
+  const payload = woPmReadingBodySchema.parse(body)
+  const json = await fetchApi<unknown>(`/api/v1/work-orders/${encodeURIComponent(id)}/pm-readings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return woPmReadingResponseSchema.parse(json)
 }
 
 export async function putWorkOrderPlanning(id: string, body: z.infer<typeof workOrderPlanningUpsertBodySchema>) {
@@ -205,7 +336,7 @@ export async function putWorkOrderTeam(id: string, team: z.infer<typeof workOrde
   return workOrderTeamPatchResponseSchema.parse(json)
 }
 
-/** Phase 3 — ตั้ง Team A/B/P หลาย `idiw37n` ครั้งเดียว (สูงสุด 100 รายการ) */
+/** Phase 3 — ตั้ง Team A/B/EE/UT หลาย `idiw37n` ครั้งเดียว (สูงสุด 100 รายการ) */
 export async function patchWorkOrderTeamBatch(
   body: z.infer<typeof workOrderTeamBulkBodySchema>,
 ) {
@@ -273,13 +404,6 @@ export async function postCalendarFilterDetail(body: CalendarSearchInput) {
     body: JSON.stringify(payload),
   })
   return workOrderFilterDetailResponseSchema.parse(json)
-}
-
-export async function fetchLineCalendarEvents(year: number, month: number) {
-  const json = await fetchApi<unknown>(
-    `/api/v1/line-calendar/events?year=${year}&month=${month}`,
-  )
-  return calendarEventsResponseSchema.parse(json)
 }
 
 /** เทียบ `M_plan_calendar.php` — events จาก `view_planwork` ตาม idwkctr */
@@ -560,6 +684,32 @@ export async function fetchManhourChartBreakdown(opts: {
   return manhourChartBreakdownResponseSchema.parse(json)
 }
 
+export async function fetchManhourHrConfirmReport(opts: {
+  period: 'month' | 'week'
+  month?: string
+  week?: string
+  from?: string
+  to?: string
+}) {
+  const qs = new URLSearchParams()
+  qs.set('period', opts.period)
+  if (opts.period === 'month' && opts.month) qs.set('month', opts.month)
+  if (opts.period === 'week' && opts.week) qs.set('week', opts.week)
+  if (opts.from) qs.set('from', opts.from)
+  if (opts.to) qs.set('to', opts.to)
+  const json = await fetchApi<unknown>(`/api/v1/manhours/chart/hr-confirm?${qs.toString()}`)
+  return manhourHrConfirmReportResponseSchema.parse(json)
+}
+
+export async function fetchManhourZbByPerson(opts: { from?: string; to?: string } = {}) {
+  const qs = new URLSearchParams()
+  if (opts.from) qs.set('from', opts.from)
+  if (opts.to) qs.set('to', opts.to)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/manhours/chart/zb-by-person${suffix}`)
+  return manhourZbByPersonResponseSchema.parse(json)
+}
+
 export async function fetchManhourHr(
   opts: {
     q?: string
@@ -659,6 +809,44 @@ export async function fetchWorktimeMe(opts: { from?: string; to?: string; limit?
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
   const json = await fetchApi<unknown>(`/api/v1/worktime/me${suffix}`)
   return worktimeMeResponseSchema.parse(json)
+}
+
+export async function fetchWorktimeSummaryOverall(opts: {
+  year?: number
+  month?: number
+  week?: string
+  from?: string
+  to?: string
+} = {}) {
+  const qs = new URLSearchParams()
+  if (opts.year != null) qs.set('year', String(opts.year))
+  if (opts.month != null) qs.set('month', String(opts.month))
+  if (opts.week) qs.set('week', opts.week)
+  if (opts.from) qs.set('from', opts.from)
+  if (opts.to) qs.set('to', opts.to)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/worktime/summary-overall${suffix}`)
+  return worktimeSummaryOverallResponseSchema.parse(json)
+}
+
+export async function fetchEngUtilizationDaily(opts: {
+  period?: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  week?: string
+  month?: string
+  year?: number
+  from?: string
+  to?: string
+} = {}) {
+  const qs = new URLSearchParams()
+  if (opts.period) qs.set('period', opts.period)
+  if (opts.week) qs.set('week', opts.week)
+  if (opts.month) qs.set('month', opts.month)
+  if (opts.year != null) qs.set('year', String(opts.year))
+  if (opts.from) qs.set('from', opts.from)
+  if (opts.to) qs.set('to', opts.to)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  const json = await fetchApi<unknown>(`/api/v1/worktime/eng-utilization/summary${suffix}`)
+  return engUtilizationDailyResponseSchema.parse(json)
 }
 
 /** เทียบ `W_worktime_view.php` — ตารางมอบหมายงาน (tbplangingwork) */
@@ -796,6 +984,7 @@ export type ReportsQuery = {
   from?: string
   to?: string
   weeksBack?: number
+  team?: 'A' | 'B' | 'EE' | 'UT'
 }
 
 function reportsQueryString(opts?: ReportsQuery): string {
@@ -803,6 +992,7 @@ function reportsQueryString(opts?: ReportsQuery): string {
   if (opts?.from) qs.set('from', opts.from)
   if (opts?.to) qs.set('to', opts.to)
   if (opts?.weeksBack != null) qs.set('weeksBack', String(opts.weeksBack))
+  if (opts?.team) qs.set('team', opts.team)
   const suffix = qs.toString()
   return suffix ? `?${suffix}` : ''
 }
@@ -1031,6 +1221,16 @@ export async function deletePersonnelClose(idwrkclose: number) {
   const ok = z.object({ ok: z.literal(true) }).safeParse(json)
   if (!ok.success) throw new Error('Unexpected response')
   return ok.data
+}
+
+export async function postConfirmationImportPreview(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  const json = await fetchApi<unknown>('/api/v1/confirmation/import/preview', {
+    method: 'POST',
+    body: form,
+  })
+  return confirmationImportPreviewResponseSchema.parse(json)
 }
 
 export async function postConfirmationImport(file: File) {

@@ -24,6 +24,8 @@ export const backupListQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).optional().default(0),
 })
 
+export type BackupListQuery = z.infer<typeof backupListQuerySchema>
+
 export const backupListResponseSchema = z.object({
   items: z.array(backupHistoryItemSchema),
   total: z.number().int(),

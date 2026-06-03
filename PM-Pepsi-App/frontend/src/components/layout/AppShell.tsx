@@ -13,22 +13,35 @@ import {
   useCommandPaletteShortcut,
 } from '@/components/command-palette/AppCommandPalette'
 import { Button } from '@/components/ui/button'
+import { resolveRoleDisplayLabel } from '@/lib/role-display'
 import {
   clearRbacPreview,
   getRbacPreviewSnapshot,
   subscribeRbacPreview,
 } from '@/lib/rbac-preview'
+import { useAppLocale } from '@/providers/I18nProvider'
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { Outlet, useNavigate } from 'react-router-dom'
 
 function RbacPreviewBanner({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const { t } = useTranslation()
+  const { locale } = useAppLocale()
   const preview = useSyncExternalStore(subscribeRbacPreview, getRbacPreviewSnapshot, () => null)
   if (!preview) return null
+  const roleLabel = resolveRoleDisplayLabel(preview, locale)
   return (
     <div className="app-tone-info flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2 text-body-sm">
       <span>
-        จำลองสิทธิ์ role <strong>{preview.roleCode}</strong> ({preview.roleName}) —{' '}
-        {preview.permissions.length} permissions
+        <Trans
+          i18nKey="shell.rbacPreview"
+          values={{
+            role: preview.roleCode,
+            name: roleLabel,
+            count: preview.permissions.length,
+          }}
+          components={{ strong: <strong /> }}
+        />
       </span>
       <Button
         type="button"
@@ -40,13 +53,14 @@ function RbacPreviewBanner({ navigate }: { navigate: ReturnType<typeof useNaviga
           navigate('/admin/roles')
         }}
       >
-        หยุดจำลอง
+        {t('shell.stopPreview')}
       </Button>
     </div>
   )
 }
 
 export function AppShell() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn())
   const authUser = loggedIn ? getStoredAuthUser() : null
@@ -72,9 +86,9 @@ export function AppShell() {
       <RbacPreviewBanner navigate={navigate} />
       {authUser?.passMustChange ? (
         <div className="border-b border-blue-200 bg-blue-50 px-4 py-2 text-body-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-100">
-          บัญชีนี้ต้องเปลี่ยนรหัสผ่าน —{' '}
+          {t('shell.mustChangePassword')}{' '}
           <a href="/settings" className="font-medium underline">
-            ไปที่ตั้งค่า → โปรไฟล์
+            {t('shell.goToProfile')}
           </a>
         </div>
       ) : null}

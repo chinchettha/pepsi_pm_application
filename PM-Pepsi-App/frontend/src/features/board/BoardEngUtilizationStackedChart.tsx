@@ -2,6 +2,7 @@ import { EngUtilizationChart } from '@/features/reports/EngUtilizationChart'
 import { toEngUtilizationChartRows } from '@/lib/eng-utilization-chart'
 import type { SummaryWeeklyRow } from '@/api/schemas'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const BOARD_CHART_TOP_N = 12
 
@@ -14,7 +15,6 @@ type Props = {
   kioskDark?: boolean
 }
 
-/** กราฟ stacked %PM / %Reactive / RCA — เทียบ Eng Utilization 2026.xlsx */
 export function BoardEngUtilizationStackedChart({
   rows,
   loading,
@@ -23,6 +23,7 @@ export function BoardEngUtilizationStackedChart({
   showRca,
   kioskDark = true,
 }: Props) {
+  const { t } = useTranslation('board')
 
   const chartRows = useMemo(() => {
     const all = rows ? toEngUtilizationChartRows(rows) : []
@@ -32,10 +33,10 @@ export function BoardEngUtilizationStackedChart({
   return (
     <section className="engineering-board__panel engineering-board__panel--chart">
       <h2 className="engineering-board__panel-title">
-        Eng Utilization — {rangeLabel}
+        {t('util.stackedTitle', { label: rangeLabel })}
       </h2>
       {loading ? (
-        <p className="text-body-sm opacity-60">กำลังโหลด Eng Utilization…</p>
+        <p className="text-body-sm opacity-60">{t('util.loadingChart')}</p>
       ) : error ? (
         <p className="text-body-sm text-red-300">{error.message}</p>
       ) : (
@@ -50,7 +51,7 @@ export function BoardEngUtilizationStackedChart({
       )}
       {!loading && !error && chartRows.length > 0 ? (
         <p className="engineering-board__panel-foot">
-          แสดง {chartRows.length} ช่าง (เรียงตาม HR hour) · Total ใน Excel = %PM + %Reactive
+          {t('util.chartFoot', { count: chartRows.length })}
         </p>
       ) : null}
     </section>

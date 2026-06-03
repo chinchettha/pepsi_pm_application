@@ -37,7 +37,7 @@ const SYSTEM_KEYS = [
 ] as const
 
 export const SETTINGS_DEFAULTS: AdminSettingsResponse = {
-  locale: 'th-TH',
+  locale: 'en-US',
   timezone: 'Asia/Bangkok',
   yearFormat: 'BE',
   dateFormat: 'dd/MM/yyyy',

@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge'
 import type { z } from 'zod'
 import type { workOrderWorkflowStepSchema } from '@/api/schemas'
 import { cn } from '@/lib/utils'
@@ -13,11 +12,11 @@ type WorkOrderWorkflowStepsProps = {
 }
 
 /**
- * เทียบ `ChackStatus.php` + suffix ใน `calendar.php` (1=Team, 2=Assign, 3=Worktime, 4=Confirm)
+ * ขั้นตอน workflow ใบงาน (PM Plan → ช่าง → Worktime)
  */
 export function WorkOrderWorkflowSteps({
   steps,
-  suffix,
+  suffix: _suffix,
   className,
   compact = false,
 }: WorkOrderWorkflowStepsProps) {
@@ -25,19 +24,10 @@ export function WorkOrderWorkflowSteps({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-app-muted">ขั้นตอนงาน</span>
-        {suffix ? (
-          <Badge variant="outline" className="font-mono text-xs">
-            {suffix}
-          </Badge>
-        ) : null}
-        <span className="text-caption">เทียบเลขท้าย title บนปฏิทิน PHP</span>
-      </div>
       <ol
         className={cn(
           'grid gap-2',
-          compact ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2',
+          compact ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2',
         )}
       >
         {steps.map((s) => (

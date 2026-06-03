@@ -1,4 +1,4 @@
-import type { AdminSection } from '@/lib/admin-sections'
+import type { LocalizedAdminSection } from '@/lib/admin-sections'
 
 import { usePermission } from '@/lib/use-permission'
 
@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom'
 
 
 
-export function AdminQuickLink({ section }: { section: AdminSection }) {
+export function AdminQuickLink({ section }: { section: LocalizedAdminSection }) {
 
   const allowed = usePermission(section.permission)
 

@@ -19,6 +19,31 @@ export const auditHubResponseSchema = z.object({
       count: z.number().int(),
     }),
   ),
+  planWo: z.object({
+    year: z.number().int(),
+    month: z.number().int(),
+    monthLabel: z.string(),
+    totalWo: z.number().int(),
+    pmWo: z.number().int(),
+    reactiveWo: z.number().int(),
+    openWo: z.number().int(),
+    assignedWo: z.number().int(),
+    movedWo: z.number().int(),
+  }),
+  recentRevisions: z.array(
+    z.object({
+      id: z.string(),
+      revisionNo: z.number().int(),
+      changeKind: z.string(),
+      changeLabel: z.string(),
+      summary: z.string(),
+      workOrder: z.string().nullable(),
+      jobDetail: z.string().nullable(),
+      actorId: z.string().nullable(),
+      actorRole: z.string().nullable(),
+      createdAt: z.string(),
+    }),
+  ),
 })
 
 export type AuditHubResponse = z.infer<typeof auditHubResponseSchema>

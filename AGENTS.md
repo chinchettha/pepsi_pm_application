@@ -35,7 +35,7 @@
 
 ## มาตรฐานโค้ดโปรเจกต์นี้
 
-- ข้อความ UI ภาษาไทยเมื่อเป็นหน้าสำหรับลูกค้า/ช่าง
+- ข้อความ UI: **ภาษาอังกฤษเป็นค่าเริ่มต้น** (`i18next`, สลับ EN/ไทยที่แถบบนและ Settings → Profile) — เพิ่มคีย์ใน `PM-Pepsi-App/frontend/src/i18n/locales/`
 - RBAC: ตรวจ permission ก่อนแสดงปุ่ม/เรียก API (`usePermission`, `CanPermission`)
 - รูป: เก็บใน PostgreSQL (BYTEA/WebP) ไม่ใช่โฟลเดอร์ `imgMember/` แบบ PHP
 - React Query: ตาราง/filter หนักใช้ `placeholderData: keepPreviousData`

@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { ErrorPageShell } from '@/features/errors/ErrorPageShell'
 import { Bug, Home, RefreshCw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 export type UnexpectedErrorPageProps = {
@@ -9,6 +10,7 @@ export type UnexpectedErrorPageProps = {
 }
 
 export function UnexpectedErrorPage({ error, onReset }: UnexpectedErrorPageProps) {
+  const { t } = useTranslation('errors')
   const showStack = import.meta.env.DEV
 
   const detail = showStack && error.stack ? (
@@ -29,21 +31,20 @@ export function UnexpectedErrorPage({ error, onReset }: UnexpectedErrorPageProps
   return (
     <ErrorPageShell
       codeDisplay="!"
-      titleTh="เกิดข้อผิดพลาดในแอป"
-      titleEn="Unexpected Error"
-      descriptionTh="มีบางอย่างผิดพลาดระหว่างแสดงผล คุณสามารถลองโหลดใหม่หรือกลับหน้าหลักได้"
+      title={t('unexpected.title')}
+      description={t('unexpected.description')}
       icon={Bug}
       tone="crash"
       detail={detail}
     >
       <Button type="button" className="gap-2" onClick={onReset}>
         <RefreshCw className="size-4" aria-hidden />
-        ลองแสดงผลอีกครั้ง
+        {t('shell.retryRender')}
       </Button>
       <Button type="button" variant="outline" className="gap-2" asChild>
         <Link to="/">
           <Home className="size-4" aria-hidden />
-          หน้าแรก
+          {t('shell.home')}
         </Link>
       </Button>
     </ErrorPageShell>

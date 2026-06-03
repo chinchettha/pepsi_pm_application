@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next'
+import { localizeAdminSection, localizeAdminSectionGroup } from '@/lib/admin-i18n'
 import type { LucideIcon } from 'lucide-react'
 import {
   Activity,
@@ -19,25 +21,22 @@ export type AdminSectionGroupId = 'overview' | 'access' | 'appearance' | 'data' 
 
 export type AdminSectionGroup = {
   id: AdminSectionGroupId
-  label: string
   order: number
 }
 
 export const ADMIN_SECTION_GROUPS: AdminSectionGroup[] = [
-  { id: 'overview', label: 'ภาพรวม', order: 0 },
-  { id: 'access', label: 'ผู้ใช้ & การเข้าถึง', order: 1 },
-  { id: 'appearance', label: 'ธีม & การแสดงผล', order: 2 },
-  { id: 'data', label: 'ข้อมูล & บันทึก', order: 3 },
-  { id: 'ops', label: 'ระบบ & สำรอง', order: 4 },
-  { id: 'comms', label: 'ประกาศ & ความปลอดภัย', order: 5 },
+  { id: 'overview', order: 0 },
+  { id: 'access', order: 1 },
+  { id: 'appearance', order: 2 },
+  { id: 'data', order: 3 },
+  { id: 'ops', order: 4 },
+  { id: 'comms', order: 5 },
 ]
 
 export type AdminSection = {
   /** Path segment after `/admin` (empty = console index) */
   segment: string
   to: string
-  label: string
-  description: string
   icon: LucideIcon
   permission: string
   group: AdminSectionGroupId
@@ -51,8 +50,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: '',
     to: '/admin',
-    label: 'Admin Console',
-    description: 'KPI และทางลัด',
     icon: LayoutDashboard,
     permission: 'admin.settings.read',
     group: 'overview',
@@ -62,8 +59,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'users',
     to: '/admin/users',
-    label: 'ผู้ใช้งาน',
-    description: 'Work center + member',
     icon: UserCog,
     permission: 'admin.users.read',
     group: 'access',
@@ -73,8 +68,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'roles',
     to: '/admin/roles',
-    label: 'บทบาท & สิทธิ์',
-    description: 'Permission matrix',
     icon: ShieldCheck,
     permission: 'admin.roles.read',
     group: 'access',
@@ -84,8 +77,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'menu',
     to: '/admin/menu',
-    label: 'Menu Builder',
-    description: 'จัดการ tbmenu + รูปแบบเมนูหลัก',
     icon: ListTree,
     permission: 'admin.menu.read',
     group: 'access',
@@ -95,8 +86,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'branding',
     to: '/admin/branding',
-    label: 'ธีม & โลโก้',
-    description: 'Logo, colors, typography',
     icon: Palette,
     permission: 'admin.branding.read',
     group: 'appearance',
@@ -106,8 +95,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'settings',
     to: '/admin/settings',
-    label: 'ตั้งค่าระบบ',
-    description: 'Locale, flags, limits',
     icon: Settings2,
     permission: 'admin.settings.read',
     group: 'appearance',
@@ -117,8 +104,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'master',
     to: '/admin/master',
-    label: 'Master Data Hub',
-    description: 'สรุป 17 ตาราง master',
     icon: Boxes,
     permission: 'master-data.read',
     group: 'data',
@@ -128,8 +113,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'audit',
     to: '/admin/audit',
-    label: 'Audit log',
-    description: 'กิจกรรม + export',
     icon: History,
     permission: 'admin.audit.read',
     group: 'data',
@@ -139,8 +122,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'health',
     to: '/admin/health',
-    label: 'สุขภาพระบบ',
-    description: 'DB, disk, migration',
     icon: Activity,
     permission: 'admin.health.read',
     group: 'ops',
@@ -150,8 +131,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'backup',
     to: '/admin/backup',
-    label: 'สำรอง & กู้คืน',
-    description: 'pg_dump + schedule',
     icon: DatabaseBackup,
     permission: 'admin.backup.read',
     group: 'ops',
@@ -161,8 +140,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'announcements',
     to: '/admin/announcements',
-    label: 'ประกาศ',
-    description: 'Banner / maintenance',
     icon: Megaphone,
     permission: 'admin.announcement.read',
     group: 'comms',
@@ -172,8 +149,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'security',
     to: '/admin/security',
-    label: 'ความปลอดภัย',
-    description: 'Failed login, RBAC deny',
     icon: Lock,
     permission: 'admin.security.read',
     group: 'comms',
@@ -183,8 +158,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     segment: 'about',
     to: '/admin/about',
-    label: 'เกี่ยวกับระบบ',
-    description: 'Version, vendor',
     icon: Info,
     permission: 'admin.about.read',
     group: 'comms',
@@ -193,16 +166,21 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   },
 ]
 
+export type LocalizedAdminSection = AdminSection & { label: string; description: string }
+
 export type GroupedAdminSections = {
-  group: AdminSectionGroup
-  sections: AdminSection[]
+  group: AdminSectionGroup & { label: string }
+  sections: LocalizedAdminSection[]
 }
 
 /** Sections grouped for Admin Console quick links & command palette */
-export function getGroupedAdminSections(opts?: {
-  /** Exclude console index (segment '') */
-  skipOverview?: boolean
-}): GroupedAdminSections[] {
+export function getGroupedAdminSections(
+  t: TFunction<'admin'>,
+  opts?: {
+    /** Exclude console index (segment '') */
+    skipOverview?: boolean
+  },
+): GroupedAdminSections[] {
   const skipOverview = opts?.skipOverview ?? true
   const pool = ADMIN_SECTIONS.filter((s) => {
     if (!s.implemented) return false
@@ -211,8 +189,10 @@ export function getGroupedAdminSections(opts?: {
   })
 
   return ADMIN_SECTION_GROUPS.map((group) => ({
-    group,
-    sections: pool.filter((s) => s.group === group.id),
+    group: localizeAdminSectionGroup(group, t),
+    sections: pool
+      .filter((s) => s.group === group.id)
+      .map((s) => localizeAdminSection(s, t)),
   })).filter((g) => g.sections.length > 0)
 }
 
@@ -224,7 +204,7 @@ export const ADMIN_READ_PERMISSIONS = [
   ]),
 ] as string[]
 
-/** จำนวนหน้า admin ที่ implement แล้ว (รวม Console) */
+/** Count of implemented admin pages (includes Console) */
 export function countAccessibleAdminSections(
   permissions: string[] | undefined,
 ): { total: number; accessible: number } {

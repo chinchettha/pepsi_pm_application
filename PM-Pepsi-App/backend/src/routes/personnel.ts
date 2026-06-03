@@ -3,6 +3,7 @@
  * รวมถึง upload ภาพ (แปลงเป็น WebP เก็บใน DB) และ Excel import
  */
 import { getMulterFileSizeLimit } from '../lib/upload-settings.js'
+import { WkctrCodeConflictError } from '../lib/wkctr-code.js'
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
 import multer from 'multer'
@@ -235,6 +236,10 @@ export function registerPersonnelRoutes(
           .status(out.mode === 'inserted' ? 201 : 200)
           .json(personnelAdminOkSchema.parse({ ok: true, idwkctr: out.idwkctr }))
       } catch (err) {
+        if (err instanceof WkctrCodeConflictError) {
+          res.status(409).json({ error: 'WKCTR_CONFLICT', message: err.message })
+          return
+        }
         if (isSchemaMissing(err)) {
           res.status(503).json({ error: 'SCHEMA_NOT_READY', message: SCHEMA_HINT_ADMIN })
           return
@@ -266,6 +271,10 @@ export function registerPersonnelRoutes(
         })
         res.json(personnelAdminOkSchema.parse({ ok: true, idwkctr: out.idwkctr }))
       } catch (err) {
+        if (err instanceof WkctrCodeConflictError) {
+          res.status(409).json({ error: 'WKCTR_CONFLICT', message: err.message })
+          return
+        }
         if (isSchemaMissing(err)) {
           res.status(503).json({ error: 'SCHEMA_NOT_READY', message: SCHEMA_HINT_ADMIN })
           return

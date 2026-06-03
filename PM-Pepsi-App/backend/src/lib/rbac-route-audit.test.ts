@@ -13,7 +13,6 @@ const RBAC_ROUTE_FILES = [
   'dashboard.ts',
   'backlog.ts',
   'calendar.ts',
-  'line-calendar.ts',
   'iw37n.ts',
   'reports.ts',
   'planning.ts',

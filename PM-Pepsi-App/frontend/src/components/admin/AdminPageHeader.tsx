@@ -3,6 +3,7 @@ import { adminSectionGroupLabel } from '@/lib/admin-breadcrumb'
 import { adminSectionForPath } from '@/lib/admin-sections'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
 
 /** Page title bar — คู่ `AdminPageRoot` + breadcrumb ใน `AdminLayout` */
@@ -10,6 +11,7 @@ export function AdminPageHeader({
   title,
   description,
   eyebrow,
+  meta,
   children,
   className,
 }: {
@@ -17,13 +19,16 @@ export function AdminPageHeader({
   description?: string
   /** override กลุ่มเมนู (ค่าเริ่มต้นจาก path ปัจจุบัน) */
   eyebrow?: string
+  /** hint chips + meta ใต้หัวข้อ */
+  meta?: ReactNode
   children?: ReactNode
   className?: string
 }) {
+  const { t } = useTranslation('admin')
   const { pathname } = useLocation()
   const section = adminSectionForPath(pathname)
-  const groupLabel = adminSectionGroupLabel(section)
-  const eyebrowText = eyebrow ?? groupLabel ?? 'Pepsi PM · ผู้ดูแลระบบ'
+  const groupLabel = adminSectionGroupLabel(section, t)
+  const eyebrowText = eyebrow ?? groupLabel ?? t('breadcrumb.admin')
 
   return (
     <header className={cn('admin-page-header', className)}>
@@ -38,6 +43,7 @@ export function AdminPageHeader({
                 {description}
               </p>
             ) : null}
+            {meta}
           </div>
         </div>
         {children ? <div className="flex shrink-0 flex-wrap gap-2">{children}</div> : null}

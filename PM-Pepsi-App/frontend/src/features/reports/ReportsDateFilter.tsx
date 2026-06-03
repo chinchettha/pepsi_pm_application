@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { format, subDays } from 'date-fns'
 import { Search } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type ReportsDateFilterValue = {
   from: string
@@ -33,13 +34,14 @@ type Props = {
   onSearch: (value: ReportsDateFilterValue) => void
 }
 
-function formatSummary(from: string, to: string): string {
-  if (from && to) return `${from} → ${to}`
-  if (from || to) return from || to
-  return 'เลือกช่วงวันที่'
-}
-
 export function ReportsDateFilter({ initial, showWeeksBack, onSearch }: Props) {
+  const { t } = useTranslation('reports')
+
+  function formatSummary(from: string, to: string): string {
+    if (from && to) return t('dateFilter.summaryRange', { from, to })
+    if (from || to) return from || to
+    return t('dateFilter.summaryEmpty')
+  }
   const base = initial ?? defaultReportsDateRange()
   const [fromDate, setFromDate] = useState(base.from)
   const [toDate, setToDate] = useState(base.to)
@@ -59,16 +61,16 @@ export function ReportsDateFilter({ initial, showWeeksBack, onSearch }: Props) {
   const fields = (
     <>
       <div className="space-y-1">
-        <Label htmlFor="reports-from">เริ่มวันที่</Label>
+        <Label htmlFor="reports-from">{t('dateFilter.from')}</Label>
         <DatePicker id="reports-from" value={fromDate} onChange={setFromDate} />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="reports-to">ถึงวันที่</Label>
+        <Label htmlFor="reports-to">{t('dateFilter.to')}</Label>
         <DatePicker id="reports-to" value={toDate} onChange={setToDate} />
       </div>
       {showWeeksBack ? (
         <div className="space-y-1">
-          <Label htmlFor="reports-weeks">สัปดาห์ย้อนหลัง (ถ้าไม่ระบุวัน)</Label>
+          <Label htmlFor="reports-weeks">{t('dateFilter.weeksBack')}</Label>
           <Input
             id="reports-weeks"
             type="number"
@@ -95,10 +97,10 @@ export function ReportsDateFilter({ initial, showWeeksBack, onSearch }: Props) {
       <FilterDateDrawer
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        title="ช่วงวันที่รายงาน"
+        title={t('dateFilter.drawerTitle')}
         summary={formatSummary(fromDate, toDate)}
         applyDisabled={applyDisabled}
-        applyLabel="นำไปใช้"
+        applyLabel={t('dateFilter.apply')}
         onApply={apply}
       >
         <div className="space-y-4">{fields}</div>
@@ -113,7 +115,7 @@ export function ReportsDateFilter({ initial, showWeeksBack, onSearch }: Props) {
           onClick={apply}
         >
           <Search className="mr-2 size-4" aria-hidden />
-          นำไปใช้
+          {t('dateFilter.apply')}
         </Button>
       </AppCard>
 

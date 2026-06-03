@@ -1,12 +1,13 @@
 import { KpiStatCard } from '@/components/kpi/KpiStatCard'
 import { KpiStatGrid } from '@/components/kpi/KpiStatGrid'
-import { AppCard } from '@/components/layout/AppCard'
+import { SchedulingSection } from '@/components/scheduling/SchedulingPageLayout'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { z } from 'zod'
 import type { workOrderFilterDetailResponseSchema } from '@/api/schemas'
-import { Filter } from 'lucide-react'
+import { BarChart3, Filter } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 type FilterDetailData = z.infer<typeof workOrderFilterDetailResponseSchema>
 
@@ -20,6 +21,8 @@ type FilterDetailSummaryProps = {
   teamOnly?: boolean
   isLivePreview?: boolean
   isRefreshing?: boolean
+  collapsible?: boolean
+  defaultOpen?: boolean
 }
 
 export function FilterDetailSummary({
@@ -32,42 +35,73 @@ export function FilterDetailSummary({
   teamOnly = false,
   isLivePreview = false,
   isRefreshing = false,
+  collapsible = false,
+  defaultOpen = true,
 }: FilterDetailSummaryProps) {
-  return (
-    <AppCard pad="compact">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="text-body-sm font-medium text-app">{title}</p>
-        {isLivePreview ? (
-          <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900">
-            อัปเดตทันที (ยังไม่บันทึก)
-          </Badge>
-        ) : null}
-        {isRefreshing ? (
-          <Badge variant="secondary" className="text-app-muted">
-            กำลัง sync…
-          </Badge>
-        ) : null}
-      </div>
-      {subtitle ? <p className="mt-1 text-xs text-app-muted">{subtitle}</p> : null}
+  const { t, i18n } = useTranslation('scheduling')
+  const locale = i18n.language.startsWith('th') ? 'th-TH' : 'en-US'
 
+  const badge = (
+    <>
+      {isLivePreview ? (
+        <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900">
+          {t('filterDetail.livePreview')}
+        </Badge>
+      ) : null}
+      {isRefreshing ? (
+        <Badge variant="secondary" className="text-app-muted">
+          {t('filterDetail.syncing')}
+        </Badge>
+      ) : null}
+    </>
+  )
+
+  const collapsedHint = isLoading
+    ? t('filterDetail.collapsedLoading')
+    : isError
+      ? t('filterDetail.collapsedError')
+      : data
+        ? t('filterDetail.collapsedSummary', {
+            orders: data.totalOrders.toLocaleString(locale),
+            percent: data.completionPercent,
+          })
+        : t('filterDetail.collapsedDefault')
+
+  return (
+    <SchedulingSection
+      icon={BarChart3}
+      title={title}
+      description={subtitle}
+      badge={badge}
+      collapsible={collapsible}
+      defaultOpen={defaultOpen}
+      collapsedHint={collapsedHint}
+      bodyClassName="space-y-4"
+    >
       {isLoading ? (
-        <div className="mt-3 space-y-2">
-          <Skeleton className="h-10 w-full rounded-card" />
-          <Skeleton className="h-16 w-full rounded-card" />
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full rounded-card" />
+          <Skeleton className="h-20 w-full rounded-card" />
         </div>
       ) : isError ? (
-        <p className="mt-3 text-body-sm text-red-600">{(error as Error)?.message ?? 'โหลดสรุปไม่สำเร็จ'}</p>
+        <p className="text-body-sm text-red-600">
+          {(error as Error)?.message ?? t('filterDetail.loadFailed')}
+        </p>
       ) : data ? (
-        <div className="mt-3 space-y-3">
+        <>
           {!teamOnly ? (
             <KpiStatCard
               tone="amber"
-              label="WorkOrder"
+              label={t('filterDetail.workOrderLabel')}
               value={data.totalOrders}
+              className="transition-transform duration-200 hover:scale-[1.01]"
               footer={
                 <>
                   <p className="text-app-muted">
-                    ปิดแล้ว: {data.completionCount} ใบ · Completion {data.completionPercent}%
+                    {t('filterDetail.closedFooter', {
+                      count: data.completionCount,
+                      percent: data.completionPercent,
+                    })}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {data.byWkzb.map((x) => (
@@ -81,51 +115,64 @@ export function FilterDetailSummary({
             />
           ) : null}
 
-          <KpiStatGrid>
+          <KpiStatGrid className="sm:grid-cols-2 lg:grid-cols-4">
             <KpiStatCard
               tone="emerald"
-              label="TeamA (No.)"
+              label={t('filterDetail.teamA')}
               value={data.teamA.count}
+              className="transition-transform duration-200 hover:scale-[1.02]"
               footer={
                 <>
-                  <p className="text-app-muted">Work (Min)</p>
+                  <p className="text-app-muted">{t('shared.workMin')}</p>
                   <p className="tabular-nums">{data.teamA.workSumMinutes}</p>
                 </>
               }
             />
             <KpiStatCard
               tone="rose"
-              label="TeamB (No.)"
+              label={t('filterDetail.teamB')}
               value={data.teamB.count}
+              className="transition-transform duration-200 hover:scale-[1.02]"
               footer={
                 <>
-                  <p className="text-app-muted">Work (Min)</p>
+                  <p className="text-app-muted">{t('shared.workMin')}</p>
                   <p className="tabular-nums">{data.teamB.workSumMinutes}</p>
                 </>
               }
             />
             <KpiStatCard
               tone="info"
-              label="TeamP (No.)"
-              value={data.teamP.count}
+              label={t('filterDetail.teamEE')}
+              value={data.teamEE.count}
+              className="transition-transform duration-200 hover:scale-[1.02]"
               footer={
                 <>
-                  <p className="text-app-muted">Work (Min)</p>
-                  <p className="tabular-nums">{data.teamP.workSumMinutes}</p>
+                  <p className="text-app-muted">{t('shared.workMin')}</p>
+                  <p className="tabular-nums">{data.teamEE.workSumMinutes}</p>
+                </>
+              }
+            />
+            <KpiStatCard
+              tone="amber"
+              label={t('filterDetail.teamUT')}
+              value={data.teamUT.count}
+              className="transition-transform duration-200 hover:scale-[1.02]"
+              footer={
+                <>
+                  <p className="text-app-muted">{t('shared.workMin')}</p>
+                  <p className="tabular-nums">{data.teamUT.workSumMinutes}</p>
                 </>
               }
             />
           </KpiStatGrid>
-        </div>
+        </>
       ) : (
-        <div className="mt-3">
-          <EmptyState
-            icon={Filter}
-            title="ยังไม่มีสรุป"
-            description="กด Search เพื่อดูสรุปตามตัวกรอง"
-          />
-        </div>
+        <EmptyState
+          icon={Filter}
+          title={t('filterDetail.emptyTitle')}
+          description={t('filterDetail.emptyDesc')}
+        />
       )}
-    </AppCard>
+    </SchedulingSection>
   )
 }

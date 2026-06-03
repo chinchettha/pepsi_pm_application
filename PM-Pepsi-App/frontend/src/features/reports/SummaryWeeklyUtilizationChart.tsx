@@ -2,6 +2,7 @@
  * Technician Utilizations — เทียบ `W_summary_weekly_chart.php`, `W_summary_weekly_chart2.php`
  */
 import type { SummaryWeeklyUtilizationBar } from '@/api/schemas'
+import { readCssVar } from '@/lib/css-tokens'
 import {
   BarElement,
   CategoryScale,
@@ -12,6 +13,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
+import { useTranslation } from 'react-i18next'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -39,9 +41,10 @@ export function SummaryWeeklyUtilizationChart({
   layout = 'compact',
   kioskDark = false,
 }: Props) {
+  const { t } = useTranslation('reports')
   const isFull = layout === 'fullscreen'
   const tickColor = kioskDark ? 'rgba(248, 250, 252, 0.7)' : undefined
-  const titleColor = kioskDark ? '#f8fafc' : undefined
+  const titleColor = kioskDark ? readCssVar('--app-text') : undefined
   const gridColor = kioskDark ? 'rgba(255, 255, 255, 0.08)' : undefined
 
   return (
@@ -50,7 +53,7 @@ export function SummaryWeeklyUtilizationChart({
         labels: items.map((c) => c.idwkctr),
         datasets: [
           {
-            label: 'Summary (ชม.)',
+            label: t('engUtil.chartDatasetSummary'),
             data: items.map((c) => c.summaryHours),
             backgroundColor: barColors(items.length, variant),
           },
@@ -63,14 +66,15 @@ export function SummaryWeeklyUtilizationChart({
         plugins: {
           title: {
             display: true,
-            text: 'Technician Utilizations',
+            text: t('engUtil.chartTitle'),
             font: { size: isFull ? 18 : 14 },
             color: titleColor,
           },
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.parsed.y ?? 0} ชม.`,
+              label: (ctx) =>
+                t('engUtil.chartTooltipHours', { n: ctx.parsed.y ?? 0 }),
             },
           },
         },
@@ -87,7 +91,7 @@ export function SummaryWeeklyUtilizationChart({
             beginAtZero: true,
             title: {
               display: true,
-              text: 'ชั่วโมง (Summary/W)',
+              text: t('engUtil.chartYAxis'),
               color: tickColor,
             },
             ticks: { color: tickColor },

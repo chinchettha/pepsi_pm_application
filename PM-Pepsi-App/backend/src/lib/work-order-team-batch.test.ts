@@ -19,6 +19,15 @@ describe('workOrderTeamBulkBodySchema', () => {
     const parsed = workOrderTeamBulkBodySchema.safeParse({ ids, team: 'B' })
     expect(parsed.success).toBe(false)
   })
+
+  it('accepts EE and UT', () => {
+    expect(workOrderTeamBulkBodySchema.safeParse({ ids: ['1'], team: 'EE' }).success).toBe(true)
+    expect(workOrderTeamBulkBodySchema.safeParse({ ids: ['1'], team: 'UT' }).success).toBe(true)
+  })
+
+  it('rejects legacy team P', () => {
+    expect(workOrderTeamBulkBodySchema.safeParse({ ids: ['1'], team: 'P' }).success).toBe(false)
+  })
 })
 
 const databaseUrl = process.env.DATABASE_URL?.trim()

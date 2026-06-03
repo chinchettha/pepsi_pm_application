@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useTranslation } from 'react-i18next'
 
 export type SemanticColorCardProps = {
   successColor: string
@@ -32,6 +33,7 @@ export function SemanticColorCard({
   onDangerChange,
   onInfoChange,
 }: SemanticColorCardProps) {
+  const { t } = useTranslation('admin')
   const values = { successColor, warningColor, dangerColor, infoColor }
   const handlers = {
     successColor: onSuccessChange,
@@ -43,8 +45,8 @@ export function SemanticColorCard({
   return (
     <Card className="admin-card lg:col-span-2">
       <CardHeader>
-        <CardTitle>สีสถานะ (Semantic)</CardTitle>
-        <CardDescription>Success / Warning / Danger / Info — ใช้กับ badge, toast, KPI</CardDescription>
+        <CardTitle>{t('branding.semanticTitle')}</CardTitle>
+        <CardDescription>{t('branding.semanticDesc')}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2">

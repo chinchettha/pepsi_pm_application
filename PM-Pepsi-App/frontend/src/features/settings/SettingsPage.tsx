@@ -1,5 +1,5 @@
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { ProfilePanel } from '@/features/settings/ProfilePanel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,12 +17,16 @@ import {
 import { apiUrl, getApiBaseUrl } from '@/lib/api-client'
 import { fetchPublicHealth } from '@/lib/health-api'
 import { fetchUsers } from '@/lib/api-public'
+import { appLocaleToBcp47 } from '@/lib/app-locale'
 import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { AlertCircle, RefreshCcw } from 'lucide-react'
+import { AlertCircle, RefreshCcw, Settings } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export function SettingsPage() {
+  const { t, i18n } = useTranslation()
   const canRead = usePermission('admin.settings.read')
+  const locale = appLocaleToBcp47(i18n.language === 'th' ? 'th' : 'en')
 
   const health = useQuery({
     queryKey: ['health'],
@@ -41,13 +45,14 @@ export function SettingsPage() {
 
   if (!canRead) {
     return (
-      <AppPageShell title="ตั้งค่า" description="โปรไฟล์และการเชื่อมต่อระบบ">
+      <AppPageShell title={t('settings.title')} description={t('settings.description')}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('settings.noAccess')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">admin.settings.read</code>
+              {t('settings.noAccessDesc')}{' '}
+              <code className="text-xs">admin.settings.read</code>
             </>
           }
         />
@@ -57,15 +62,22 @@ export function SettingsPage() {
 
   return (
     <AppPageShell
-      title="ตั้งค่า"
-      description="โปรไฟล์ผู้ใช้ · ตรวจการเชื่อมต่อ API · รายชื่อผู้ใช้ระบบ"
-      contentClassName="mx-auto max-w-4xl space-y-4"
+      title={t('settings.title')}
+      description={t('settings.description')}
+      hints={[t('settings.tabs.profile'), t('settings.hintApiHealth'), t('settings.tabs.users')]}
+      contentClassName="mx-auto max-w-4xl"
     >
+      <AppPageSection index={0}>
+      <AppPageSectionCard
+        icon={Settings}
+        title={t('settings.title')}
+        description={`${t('settings.tabs.profile')} · ${t('settings.tabs.connection')} · ${t('settings.tabs.users')}`}
+      >
       <Tabs defaultValue="profile" className="w-full">
         <TabsList>
-          <TabsTrigger value="profile">โปรไฟล์</TabsTrigger>
-          <TabsTrigger value="connection">การเชื่อมต่อ</TabsTrigger>
-          <TabsTrigger value="users">ผู้ใช้ระบบ</TabsTrigger>
+          <TabsTrigger value="profile">{t('settings.tabs.profile')}</TabsTrigger>
+          <TabsTrigger value="connection">{t('settings.tabs.connection')}</TabsTrigger>
+          <TabsTrigger value="users">{t('settings.tabs.users')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="mt-4">
@@ -74,25 +86,25 @@ export function SettingsPage() {
 
         <TabsContent value="connection" className="mt-4 space-y-4">
           <AppCard pad="compact" className="space-y-2">
-            <h3 className="text-body-sm font-semibold text-app">ที่อยู่ API</h3>
+            <h3 className="text-body-sm font-semibold text-app">{t('settings.connection.apiAddress')}</h3>
             <p className="text-body-sm">
               <span className="font-medium">VITE_API_URL:</span>{' '}
               <code className="rounded bg-app-muted px-2 py-1 text-xs">
-                {getApiBaseUrl() || '(ว่าง = same-origin)'}
+                {getApiBaseUrl() || t('settings.connection.viteEmpty')}
               </code>
             </p>
             <p className="text-body-sm">
-              Health:{' '}
+              {t('settings.connection.health')}:{' '}
               <code className="rounded bg-app-muted px-2 py-1 text-xs">
                 {apiUrl('/api/v1/health')}
               </code>
             </p>
-            <p className="text-xs text-app-muted">ดูค่าใน `.env` / `.env.example`</p>
+            <p className="text-xs text-app-muted">{t('settings.connection.envHint')}</p>
           </AppCard>
 
           <AppCard pad="compact">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-body-sm font-semibold text-app">สุขภาพ API</h3>
+              <h3 className="text-body-sm font-semibold text-app">{t('settings.connection.apiHealth')}</h3>
               <Button
                 variant="ghost"
                 size="sm"
@@ -103,7 +115,7 @@ export function SettingsPage() {
                   className={`mr-1 size-3.5 ${health.isFetching ? 'animate-spin' : ''}`}
                   aria-hidden
                 />
-                รีเฟรช
+                {t('settings.connection.refresh')}
               </Button>
             </div>
             {health.isLoading && !health.data ? (
@@ -115,23 +127,26 @@ export function SettingsPage() {
               <EmptyState
                 icon={AlertCircle}
                 className="mt-3 border-0 bg-transparent py-6"
-                title="เชื่อมต่อ API ไม่ได้"
+                title={t('settings.connection.connectFailed')}
                 description={(health.error as Error).message}
-                action={{ label: 'ลองใหม่', onClick: () => void health.refetch() }}
+                action={{
+                  label: t('actions.retry'),
+                  onClick: () => void health.refetch(),
+                }}
               />
             ) : health.data ? (
               <dl className="mt-3 grid gap-2 text-body-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs text-app-muted">สถานะ</dt>
+                  <dt className="text-xs text-app-muted">{t('settings.connection.status')}</dt>
                   <dd>
-                    <Badge className="bg-emerald-700">พร้อม</Badge>
+                    <Badge className="bg-emerald-700">{t('settings.connection.ready')}</Badge>
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-app-muted">เวลาเซิร์ฟเวอร์</dt>
+                  <dt className="text-xs text-app-muted">{t('settings.connection.serverTime')}</dt>
                   <dd className="tabular-nums">
                     {health.data.time
-                      ? new Date(health.data.time).toLocaleString('th-TH')
+                      ? new Date(health.data.time).toLocaleString(locale)
                       : '—'}
                   </dd>
                 </div>
@@ -146,9 +161,9 @@ export function SettingsPage() {
           ) : users.isError ? (
             <EmptyState
               icon={AlertCircle}
-              title="โหลดรายชื่อผู้ใช้ไม่สำเร็จ"
+              title={t('settings.users.loadFailed')}
               description={(users.error as Error).message}
-              action={{ label: 'ลองใหม่', onClick: () => void users.refetch() }}
+              action={{ label: t('actions.retry'), onClick: () => void users.refetch() }}
             />
           ) : (
             <AppCard pad="compact" className="p-0">
@@ -157,9 +172,9 @@ export function SettingsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
-                      <TableHead>ชื่อผู้ใช้</TableHead>
-                      <TableHead>บทบาท</TableHead>
-                      <TableHead>ใช้งาน</TableHead>
+                      <TableHead>{t('settings.users.colUsername')}</TableHead>
+                      <TableHead>{t('settings.users.colRole')}</TableHead>
+                      <TableHead>{t('settings.users.colActive')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -168,7 +183,7 @@ export function SettingsPage() {
                         <TableCell colSpan={4} className="p-0">
                           <EmptyState
                             className="border-0 bg-transparent py-8"
-                            title="ไม่มีข้อมูล"
+                            title={t('settings.users.empty')}
                           />
                         </TableCell>
                       </TableRow>
@@ -180,7 +195,9 @@ export function SettingsPage() {
                           <TableCell>
                             <Badge variant="outline">{u.role}</Badge>
                           </TableCell>
-                          <TableCell>{u.active ? 'ใช่' : 'ไม่'}</TableCell>
+                          <TableCell>
+                            {u.active ? t('settings.users.yes') : t('settings.users.no')}
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -191,6 +208,8 @@ export function SettingsPage() {
           )}
         </TabsContent>
       </Tabs>
+      </AppPageSectionCard>
+      </AppPageSection>
     </AppPageShell>
   )
 }

@@ -12,7 +12,6 @@ import { registerBacklogRoutes } from './routes/backlog.js'
 import { registerCalendarRoutes } from './routes/calendar.js'
 import { registerIw37nRoutes } from './routes/iw37n.js'
 import { registerIntegrationRoutes } from './routes/integration.js'
-import { registerLineCalendarRoutes } from './routes/line-calendar.js'
 import { registerMasterDataRoutes } from './routes/master-data.js'
 import { registerSchedulingRoutes } from './routes/scheduling.js'
 import { registerWorkOrderRoutes } from './routes/work-orders.js'
@@ -32,6 +31,8 @@ import { registerAnnouncementsRoutes } from './routes/announcements.js'
 import { registerAdminSecurityRoutes } from './routes/admin-security.js'
 import { registerAdminAboutRoutes } from './routes/admin-about.js'
 import { registerBoardActivityRoutes } from './routes/board-activity.js'
+import { registerBoardPmReadingsRoutes } from './routes/board-pm-readings.js'
+import { registerPmReadingsRoutes } from './routes/pm-readings.js'
 import { registerBoardKioskRoutes } from './routes/board-kiosk.js'
 import { registerSettingsRoutes } from './routes/settings.js'
 import { registerUserPrefRoutes } from './routes/user-pref.js'
@@ -73,6 +74,8 @@ export function createApp(opts: {
   registerSettingsRoutes(app, opts.pool)
   registerBoardKioskRoutes(app, opts.pool, opts.sessionSecret)
   registerBoardActivityRoutes(app, opts.pool, opts.sessionSecret)
+  registerBoardPmReadingsRoutes(app, opts.pool, opts.sessionSecret)
+  registerPmReadingsRoutes(app, opts.pool, opts.sessionSecret)
   registerAuthRoutes(app, opts.pool, opts.sessionSecret)
   registerUserPrefRoutes(app, opts.pool, opts.sessionSecret)
   registerUsersRoutes(app, opts.pool, opts.sessionSecret)
@@ -99,7 +102,6 @@ export function createApp(opts: {
   registerBacklogRoutes(app, opts.pool, opts.sessionSecret)
   registerIw37nRoutes(app, opts.pool, opts.sessionSecret)
   registerIntegrationRoutes(app, opts.pool, opts.sessionSecret)
-  registerLineCalendarRoutes(app, opts.pool, opts.sessionSecret)
   registerManhoursRoutes(app, opts.pool, opts.sessionSecret)
   registerPersonnelRoutes(app, opts.pool, opts.sessionSecret)
   registerReportsRoutes(app, opts.pool, opts.sessionSecret)

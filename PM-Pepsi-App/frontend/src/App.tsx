@@ -8,7 +8,6 @@ import { HttpErrorPage } from '@/features/errors/HttpErrorPage'
 import { HomePage } from '@/features/home/HomePage'
 import { IntegrationPage } from '@/features/integration/IntegrationPage'
 import { Iw37nPage } from '@/features/iw37n/Iw37nPage'
-import { ManhourAdminPage } from '@/features/manhours/ManhourAdminPage'
 import { ManhoursHrPage } from '@/features/manhours/ManhoursHrPage'
 import { ManhoursPage } from '@/features/manhours/ManhoursPage'
 import { WorktimePage } from '@/features/manhours/WorktimePage'
@@ -17,11 +16,7 @@ import { PersonnelConfirmPage } from '@/features/personnel/PersonnelConfirmPage'
 import { PersonnelPage } from '@/features/personnel/PersonnelPage'
 import { PlanCalendarPage } from '@/features/plan-calendar/PlanCalendarPage'
 import { PlanningPage } from '@/features/planning/PlanningPage'
-import { LineCalendarPage } from '@/features/line-calendar/LineCalendarPage'
-import {
-  ConfirmationExportParityPage,
-  ConfirmationParityPage,
-} from '@/features/parity/SidebarParityPages'
+import { ConfirmationPage } from '@/features/confirmation/ConfirmationPage'
 import { ActivityLogPage } from '@/features/reports/ActivityLogPage'
 import { AuditorHubPage } from '@/features/reports/AuditorHubPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
@@ -47,6 +42,7 @@ import { SettingsPage } from '@/features/settings/SettingsPage'
 import { UserLogPage } from '@/features/user-log/UserLogPage'
 import { EngineeringBoardPage } from '@/features/board/EngineeringBoardPage'
 import { WorkOrdersPage } from '@/features/work-orders/WorkOrdersPage'
+import { PmVibrationPage } from '@/features/pm-vibration/PmVibrationPage'
 import { UiPlaygroundPage } from '@/features/dev/UiPlaygroundPage'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
@@ -67,18 +63,19 @@ export default function App() {
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="calendar/wc/:code" element={<CalendarPage />} />
           <Route path="plan-calendar" element={<PlanCalendarPage />} />
-          <Route path="line-calendar" element={<LineCalendarPage />} />
+          <Route path="line-calendar" element={<Navigate to="/plan-calendar" replace />} />
           <Route path="backlog" element={<BacklogPage />} />
           <Route path="work-orders" element={<WorkOrdersPage />} />
           <Route path="work-orders/:id" element={<WorkOrdersPage />} />
-          <Route path="confirmation" element={<ConfirmationParityPage />} />
-          <Route path="confirmation/export" element={<ConfirmationExportParityPage />} />
+          <Route path="pm-vibration" element={<PmVibrationPage />} />
+          <Route path="confirmation" element={<ConfirmationPage />} />
+          <Route path="confirmation/export" element={<Navigate to="/confirmation" replace />} />
           <Route path="planning" element={<PlanningPage />} />
           <Route path="integration" element={<IntegrationPage />} />
           <Route path="iw37n" element={<Iw37nPage />} />
           <Route path="master-data" element={<MasterDataPage />} />
           <Route path="manhours" element={<ManhoursPage />} />
-          <Route path="manhours/admin" element={<ManhourAdminPage />} />
+          <Route path="manhours/admin" element={<Navigate to="/manhours" replace />} />
           <Route path="worktime" element={<WorktimePage />} />
           <Route path="personnel" element={<PersonnelPage />} />
           <Route path="personnel/admin" element={<Navigate to="/admin/users" replace />} />

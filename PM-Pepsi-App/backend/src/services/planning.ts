@@ -1,5 +1,6 @@
 import type { Pool } from 'pg'
 import type { z } from 'zod'
+import { resolveCalendarWorkHours } from '../lib/calendar-event-display.js'
 import type { planningItemSchema } from '../schemas/planning.js'
 
 type PlanningItem = z.infer<typeof planningItemSchema>
@@ -26,6 +27,9 @@ type PlanRow = {
   pwteam: string | null
   idwkctr: string | null
   cday: string | number | null
+  work: string | number | null
+  untime: string | null
+  import_wkctr: string | null
 }
 
 function unixToMonth(sec: number | null): string {
@@ -72,6 +76,8 @@ function mapRow(row: PlanRow): PlanningItem {
     planDate: unixToIsoDate(row.bscstart),
     movedDate: cday ? unixToIsoDate(cday) : undefined,
     closedDate: unixToIsoDate(row.actfinish) || undefined,
+    workHours: resolveCalendarWorkHours(row.work, row.untime) || undefined,
+    importWkctr: row.import_wkctr?.trim() || undefined,
   }
 }
 
@@ -82,14 +88,16 @@ export async function listPlanningForUser(
 ): Promise<PlanningItem[]> {
   const statusSql =
     status === 'closed'
-      ? `syst NOT IN ('CRTD', 'REL')`
-      : `syst IN ('CRTD', 'REL')`
+      ? `vp.syst NOT IN ('CRTD', 'REL')`
+      : `vp.syst IN ('CRTD', 'REL')`
   const r = await pool.query<PlanRow>(
-    `SELECT idiw37, wkorder, wktype, operationshorttext, functionalloc, equdescrip,
-            bscstart, actfinish, syst, idplanw, wkctrpw, pwteam, idwkctr, cday
-     FROM app.view_planwork
-     WHERE idwkctr = $1 AND ${statusSql}
-     ORDER BY bscstart DESC NULLS LAST
+    `SELECT vp.idiw37, vp.wkorder, vp.wktype, vp.operationshorttext, vp.functionalloc, vp.equdescrip,
+            vp.bscstart, vp.actfinish, vp.syst, vp.idplanw, vp.wkctrpw, vp.pwteam, vp.idwkctr, vp.cday,
+            i.work, i.untime, i.wkctr AS import_wkctr
+     FROM app.view_planwork vp
+     JOIN app.tbiw37n i ON i.idiw37 = vp.idiw37
+     WHERE vp.idwkctr = $1 AND ${statusSql}
+     ORDER BY vp.bscstart DESC NULLS LAST
      LIMIT 500`,
     [idwkctr],
   )

@@ -8,6 +8,8 @@ import { createRequirePermission } from '../middleware/require-permission.js'
 import {
   manhourChartBreakdownResponseSchema,
   manhourChartPerformanceResponseSchema,
+  manhourHrConfirmReportResponseSchema,
+  manhourZbByPersonResponseSchema,
   manhourImportResponseSchema,
   manhourItemSchema,
   manhourHrListResponseSchema,
@@ -15,8 +17,10 @@ import {
   manhourOkResponseSchema,
   manhourUpsertBodySchema,
   manhoursSummaryResponseSchema,
+  worktimeSummaryOverallResponseSchema,
   worktimeMeResponseSchema,
   worktimePlanningResponseSchema,
+  engUtilizationDailyResponseSchema,
 } from '../schemas/manhours.js'
 import {
   getManhourChartBreakdown,
@@ -24,6 +28,9 @@ import {
   resolveManhourChartRange,
 } from '../services/manhour-chart.js'
 import { getManhoursHrUtilization } from '../services/manhours-hr-utilization.js'
+import { getManhourHrConfirmReport } from '../services/manhour-hr-confirm.js'
+import { getManhourZbByPerson } from '../services/manhour-zb-by-person.js'
+import { getWorktimeSummaryOverall } from '../services/worktime-summary-overall.js'
 import {
   deleteManhour,
   getManhour,
@@ -35,6 +42,8 @@ import {
   upsertManhour,
 } from '../services/manhours.js'
 import { listWorktimePlanningAssignments } from '../services/worktime-planning.js'
+import { loadEngUtilizationDailyFromIw47Xlsx } from '../services/eng-utilization-daily.js'
+import { getEngUtilizationSummary } from '../services/eng-utilization-summary.js'
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -124,6 +133,51 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
         return
       }
       res.json(manhourChartBreakdownResponseSchema.parse(data))
+    } catch (err) {
+      if (isSchemaMissing(err)) {
+        res.status(503).json({ error: 'SCHEMA_NOT_READY', message: schemaHint })
+        return
+      }
+      throw err
+    }
+  })
+
+  app.get('/api/v1/manhours/chart/hr-confirm', ...requireManhoursRead, async (req, res: Response) => {
+    const period = typeof req.query.period === 'string' ? req.query.period : undefined
+    const month = typeof req.query.month === 'string' ? req.query.month : undefined
+    const week = typeof req.query.week === 'string' ? req.query.week : undefined
+    const from = typeof req.query.from === 'string' ? req.query.from : undefined
+    const to = typeof req.query.to === 'string' ? req.query.to : undefined
+    const idwkctrgroup =
+      (await isManhoursAdmin(req)) && typeof req.query.idwkctrgroup === 'string'
+        ? req.query.idwkctrgroup.trim()
+        : undefined
+    try {
+      const data = await getManhourHrConfirmReport(pool, {
+        period,
+        month,
+        week,
+        from,
+        to,
+        idwkctrgroup,
+      })
+      res.json(manhourHrConfirmReportResponseSchema.parse(data))
+    } catch (err) {
+      if (isSchemaMissing(err)) {
+        res.status(503).json({ error: 'SCHEMA_NOT_READY', message: schemaHint })
+        return
+      }
+      const msg = err instanceof Error ? err.message : 'Invalid period'
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: msg })
+    }
+  })
+
+  app.get('/api/v1/manhours/chart/zb-by-person', ...requireManhoursRead, async (req, res: Response) => {
+    const from = typeof req.query.from === 'string' ? req.query.from : undefined
+    const to = typeof req.query.to === 'string' ? req.query.to : undefined
+    try {
+      const data = await getManhourZbByPerson(pool, { fromInput: from, toInput: to })
+      res.json(manhourZbByPersonResponseSchema.parse(data))
     } catch (err) {
       if (isSchemaMissing(err)) {
         res.status(503).json({ error: 'SCHEMA_NOT_READY', message: schemaHint })
@@ -363,7 +417,7 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
       voidAudit(pool, req, {
         action: 'manhours.import',
         resource: 'tbmanhours',
-        after: { fileName: req.file.originalname, ...result },
+        after: { ...result, fileName: req.file.originalname },
       })
       res.json(manhourImportResponseSchema.parse(result))
     } catch (err) {
@@ -434,4 +488,47 @@ export function registerManhoursRoutes(app: Express, pool: Pool, sessionSecret: 
       throw err
     }
   })
+
+  app.get('/api/v1/worktime/summary-overall', ...requireManhoursRead, async (req, res: Response) => {
+    const year = Number(req.query.year ?? new Date().getFullYear())
+    const month = typeof req.query.month === 'string' ? Number(req.query.month) : undefined
+    const weekLabel = typeof req.query.week === 'string' ? req.query.week : undefined
+    const fromInput = typeof req.query.from === 'string' ? req.query.from : undefined
+    const toInput = typeof req.query.to === 'string' ? req.query.to : undefined
+    try {
+      const data = await getWorktimeSummaryOverall(pool, { year, month, weekLabel, fromInput, toInput })
+      res.json(worktimeSummaryOverallResponseSchema.parse(data))
+    } catch (err) {
+      if (isSchemaMissing(err)) {
+        res.status(503).json({ error: 'SCHEMA_NOT_READY', message: schemaHint })
+        return
+      }
+      const msg = err instanceof Error ? err.message : ''
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: msg || 'Invalid request' })
+    }
+  })
+
+  app.get(
+    '/api/v1/worktime/eng-utilization/summary',
+    ...requireManhoursRead,
+    async (req, res: Response) => {
+      try {
+        const period = typeof req.query.period === 'string' ? req.query.period : undefined
+        const week = typeof req.query.week === 'string' ? req.query.week : undefined
+        const month = typeof req.query.month === 'string' ? req.query.month : undefined
+        const year = typeof req.query.year === 'string' ? Number(req.query.year) : undefined
+        const from = typeof req.query.from === 'string' ? req.query.from : undefined
+        const to = typeof req.query.to === 'string' ? req.query.to : undefined
+
+        const data = await getEngUtilizationSummary(pool, { period, week, month, year, from, to })
+        res.json(engUtilizationDailyResponseSchema.parse(data))
+      } catch (err) {
+        if (isSchemaMissing(err)) {
+          res.status(503).json({ error: 'SCHEMA_NOT_READY', message: schemaHint })
+          return
+        }
+        throw err
+      }
+    },
+  )
 }

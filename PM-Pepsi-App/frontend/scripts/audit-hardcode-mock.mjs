@@ -20,6 +20,7 @@ const allowHexFiles = new Set([
   'features/admin/roles/CreateRoleDialog.tsx',
   'features/settings/settings-schemas.test.ts',
   'features/board/engineering-board.css',
+  'features/board/engineering-board-theme.css',
 ])
 
 /** Dev-only or thin wrappers — not counted as "no API" production gaps */

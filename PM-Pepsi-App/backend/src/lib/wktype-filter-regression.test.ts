@@ -90,11 +90,11 @@ describeIfDb('wktype filter regression (B.2)', () => {
       wktype: ['ZB02'],
     })
 
-    expect(calAll.length).toBeGreaterThan(0)
-    if (calZb02.length > 0) {
-      expect(calZb02.length).toBeLessThanOrEqual(calAll.length)
+    expect(calAll.items.length).toBeGreaterThan(0)
+    if (calZb02.items.length > 0) {
+      expect(calZb02.items.length).toBeLessThanOrEqual(calAll.items.length)
     }
-    expect(calZb02.length).toBeGreaterThan(0)
+    expect(calZb02.items.length).toBeGreaterThan(0)
   }, 60_000)
 
   it('empty wktype array does not add IN () clause (same as all types in range)', async (ctx) => {

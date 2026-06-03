@@ -6,8 +6,10 @@ import { PepsiStripe } from '@/components/brand/PepsiStripe'
 import { BoardKpiZone } from '@/features/board/BoardKpiZone'
 import type { SparklineTone } from '@/components/charts/Sparkline'
 import { BoardActivityFeed } from '@/features/board/BoardActivityFeed'
+import { BoardPmReadingsPanel } from '@/features/board/BoardPmReadingsPanel'
 import { BoardCarouselShell } from '@/features/board/BoardCarouselShell'
 import { BoardPeriodSelector } from '@/features/board/BoardPeriodSelector'
+import { BoardTeamSelector, type BoardTeamId } from '@/features/board/BoardTeamSelector'
 import { BoardThemeToggle } from '@/features/board/BoardThemeToggle'
 import { BoardZoneB } from '@/features/board/BoardZoneB'
 import { useBoardCarousel } from '@/features/board/use-board-carousel'
@@ -20,6 +22,7 @@ import {
   fetchSummaryWeekly,
 } from '@/lib/api-public'
 import { fetchBoardActivity } from '@/lib/board-activity-api'
+import { fetchBoardPmReadings } from '@/lib/board-pm-readings-api'
 import {
   parseBoardCarouselFromSearchParams,
   readBoardCarouselEnabled,
@@ -29,6 +32,7 @@ import { applyBoardKioskFromSearchParams, getBoardKioskToken } from '@/lib/board
 import { useBoardKioskViewport } from '@/lib/use-board-kiosk-viewport'
 import { fetchBoardKioskStatus } from '@/lib/board-kiosk-api'
 import { AnnouncementBannerRow } from '@/components/layout/AnnouncementBanner'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   dismissAnnouncement,
   readDismissedAnnouncements,
@@ -37,30 +41,23 @@ import { fetchActiveAnnouncements } from '@/lib/announcements-api'
 import { usePublicSettings } from '@/providers/SettingsProvider'
 import { usePermission } from '@/lib/use-permission'
 import { useQuery } from '@tanstack/react-query'
+import { useI18nFormat } from '@/lib/use-i18n-format'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import './engineering-board.css'
 import './engineering-board-theme.css'
 import './engineering-board-display.css'
 
 const REFRESH_MS = 60_000
+const TEAM_IDS: readonly BoardTeamId[] = ['all', 'A', 'B', 'EE', 'UT'] as const
 
-function formatClock(now: Date): string {
-  return now.toLocaleTimeString('th-TH', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
+function parseBoardTeamFromSearchParams(sp: URLSearchParams): BoardTeamId {
+  const raw = (sp.get('team') || '').trim()
+  if (TEAM_IDS.includes(raw as BoardTeamId)) return raw as BoardTeamId
+  return 'all'
 }
 
-function formatDate(now: Date): string {
-  return now.toLocaleDateString('th-TH', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
 
 function deltaClass(n: number): string {
   if (n > 0) return 'delta-up'
@@ -69,6 +66,8 @@ function deltaClass(n: number): string {
 }
 
 export function EngineeringBoardPage() {
+  const { t } = useTranslation('board')
+  const { bcp47 } = useI18nFormat()
   const [searchParams] = useSearchParams()
   const [kioskReady, setKioskReady] = useState(false)
   const loggedIn = isLoggedIn()
@@ -81,6 +80,7 @@ export function EngineeringBoardPage() {
   const { isFullscreen, toggleFullscreen } = useBoardKioskViewport()
   const { theme, setTheme, themeClass, kioskDark } = useBoardTheme()
   const { period, range, rangeLabel, setPeriod } = useBoardPeriod()
+  const [team, setTeam] = useState<BoardTeamId>(() => parseBoardTeamFromSearchParams(searchParams))
   const [showRcaUtil, setShowRcaUtil] = useState(false)
   const [carouselEnabled, setCarouselEnabled] = useState(() => readBoardCarouselEnabled())
   const carousel = useBoardCarousel({ enabled: carouselEnabled })
@@ -97,6 +97,7 @@ export function EngineeringBoardPage() {
       setCarouselEnabled(fromUrl)
       writeBoardCarouselEnabled(fromUrl)
     }
+    setTeam(parseBoardTeamFromSearchParams(searchParams))
     setKioskReady(true)
   }, [searchParams])
 
@@ -124,29 +125,42 @@ export function EngineeringBoardPage() {
   }, [])
 
   const dashQ = useQuery({
-    queryKey: ['dashboard', 'board'],
-    queryFn: fetchDashboardSummary,
+    queryKey: ['dashboard', 'board', team],
+    queryFn: () => fetchDashboardSummary({ team: team === 'all' ? undefined : team }),
     enabled: canFetchData,
     refetchInterval: REFRESH_MS,
   })
 
   const kpiQ = useQuery({
-    queryKey: ['reports-kpi', 'board', 8],
-    queryFn: () => fetchKpi({ weeksBack: 8 }),
+    queryKey: ['reports-kpi', 'board', 8, team],
+    queryFn: () => fetchKpi({ weeksBack: 8, team: team === 'all' ? undefined : team }),
     enabled: canFetchData,
     refetchInterval: REFRESH_MS,
   })
 
   const weeklyQ = useQuery({
-    queryKey: ['summary-weekly', 'board', period, range.from, range.to],
-    queryFn: () => fetchSummaryWeekly({ from: range.from, to: range.to }),
+    queryKey: ['summary-weekly', 'board', period, range.from, range.to, team],
+    queryFn: () =>
+      fetchSummaryWeekly({ from: range.from, to: range.to, team: team === 'all' ? undefined : team }),
     enabled: canFetchData,
     refetchInterval: REFRESH_MS * 2,
   })
 
   const activityQ = useQuery({
-    queryKey: ['board', 'activity', period],
-    queryFn: () => fetchBoardActivity({ period, limit: 12 }),
+    queryKey: ['board', 'activity', period, team],
+    queryFn: () => fetchBoardActivity({ period, limit: 12, team: team === 'all' ? undefined : team }),
+    enabled: canFetchData,
+    refetchInterval: REFRESH_MS,
+  })
+
+  const pmReadingsQ = useQuery({
+    queryKey: ['board', 'pm-readings', period, team],
+    queryFn: () =>
+      fetchBoardPmReadings({
+        period,
+        limit: 8,
+        team: team === 'all' ? undefined : team,
+      }),
     enabled: canFetchData,
     refetchInterval: REFRESH_MS,
   })
@@ -167,35 +181,35 @@ export function EngineeringBoardPage() {
     dashQ.data && trends
       ? [
           {
-            label: 'ใบงานเปิด',
-            value: dashQ.data.openOrders.toLocaleString('th-TH'),
-            hint: 'CRTD / REL',
+            label: t('kpi.openOrders'),
+            value: dashQ.data.openOrders.toLocaleString(bcp47),
+            hint: t('kpi.openHint'),
             trend: trends.openDaily,
             tone: 'pepsi-blue' as SparklineTone,
           },
           {
-            label: 'ปิดเดือนนี้',
-            value: dashQ.data.closedThisMonth.toLocaleString('th-TH'),
-            hint: 'เดือนปฏิทินปัจจุบัน',
+            label: t('kpi.closedMonth'),
+            value: dashQ.data.closedThisMonth.toLocaleString(bcp47),
+            hint: t('kpi.closedHint'),
             trend: trends.closedDaily,
             tone: 'pepsi-red' as SparklineTone,
           },
           {
-            label: 'รอจ่ายงาน',
-            value: dashQ.data.pendingPersonnel.toLocaleString('th-TH'),
-            hint: 'ยังไม่มีแผน',
+            label: t('kpi.pendingPersonnel'),
+            value: dashQ.data.pendingPersonnel.toLocaleString(bcp47),
+            hint: t('kpi.pendingHint'),
             trend: trends.pendingDaily,
             tone: 'pepsi-orange' as SparklineTone,
           },
           {
-            label: 'นำเข้า IW37N',
+            label: t('kpi.iw37nImport'),
             value: dashQ.data.iw37nLastImport
-              ? new Date(dashQ.data.iw37nLastImport).toLocaleString('th-TH', {
+              ? new Date(dashQ.data.iw37nLastImport).toLocaleString(bcp47, {
                   dateStyle: 'short',
                   timeStyle: 'short',
                 })
-              : '—',
-            hint: 'ล่าสุดจาก batch',
+              : t('kpi.noImport'),
+            hint: t('kpi.iw37nHint'),
             trend: trends.importDaily,
             tone: 'pepsi-blue' as SparklineTone,
             compactValue: true,
@@ -217,8 +231,13 @@ export function EngineeringBoardPage() {
 
   if (!kioskReady || kioskStatusQ.isLoading) {
     return (
-      <div className={`${boardRootClass} flex items-center justify-center p-8`}>
-        <p className="text-lg opacity-80">กำลังเตรียม Engineering Board…</p>
+      <div className={`${boardRootClass} flex flex-col items-center justify-center gap-6 p-8`}>
+        <p className="text-lg font-medium opacity-90">{t('preparing')}</p>
+        <div className="grid w-full max-w-4xl gap-4 sm:grid-cols-3">
+          <Skeleton className="h-28 rounded-card opacity-60" />
+          <Skeleton className="h-28 rounded-card opacity-60" />
+          <Skeleton className="h-28 rounded-card opacity-60" />
+        </div>
       </div>
     )
   }
@@ -226,25 +245,27 @@ export function EngineeringBoardPage() {
   if (!canFetchData) {
     const needToken = kioskStatusQ.data?.tokenRequired
     return (
-      <div className={`${boardRootClass} engineering-board--gate flex flex-col items-center justify-center gap-4 p-8 text-center`}>
-        <h1 className="text-2xl font-semibold">Engineering Board (Kiosk)</h1>
-        {needToken ? (
-          <p className="max-w-lg text-base opacity-80">
-            ต้องใช้ลิงก์ที่มี <code className="rounded bg-white/10 px-1">?token=…</code> จาก Admin →
-            ตั้งค่าระบบ → Engineering Board Kiosk
-          </p>
-        ) : (
-          <p className="max-w-lg text-base opacity-80">
-            โหมด kiosk ปิดอยู่ — ติดต่อผู้ดูแลระบบ หรือ{' '}
-            <Link to="/login" className="engineering-board__footer-link underline">
-              เข้าสู่ระบบ
-            </Link>
-          </p>
-        )}
-        <BoardThemeToggle value={theme} onChange={setTheme} />
-        <Link to="/login" className="engineering-board__footer-link underline">
-          เข้าสู่ระบบแอปเต็มรูปแบบ
-        </Link>
+      <div className={`${boardRootClass} engineering-board--gate flex flex-col items-center justify-center p-8`}>
+        <div className="engineering-board--gate-panel">
+          <h1 className="text-2xl font-semibold">{t('kioskTitle')}</h1>
+          {needToken ? (
+            <p className="max-w-lg text-base opacity-80">
+              {t('kioskTokenHint')}{' '}
+              <code className="rounded bg-white/10 px-1">?token=…</code>
+            </p>
+          ) : (
+            <p className="max-w-lg text-base opacity-80">
+              {t('kioskLoginHint')}{' '}
+              <Link to="/login" className="engineering-board__footer-link underline">
+                {t('signIn')}
+              </Link>
+            </p>
+          )}
+          <BoardThemeToggle value={theme} onChange={setTheme} />
+          <Link to="/login" className="engineering-board__footer-link underline">
+            {t('fullAppLogin')}
+          </Link>
+        </div>
       </div>
     )
   }
@@ -261,26 +282,45 @@ export function EngineeringBoardPage() {
           <header className="engineering-board__header">
             <div className="engineering-board__header-brand">
               <p className="engineering-board__eyebrow">
-                Engineering Board
+                {t('header.eyebrow')}
                 <span className="engineering-board__eyebrow-dot" aria-hidden>
                   ·
                 </span>
-                {loggedIn ? 'Signed in' : 'Kiosk'}
+                {loggedIn ? t('header.signedIn') : t('header.kiosk')}
               </p>
               <h1 className="engineering-board__title">{appName}</h1>
-              <p className="engineering-board__meta">{formatDate(now)}</p>
+              <p className="engineering-board__meta">
+                {now.toLocaleDateString(bcp47, {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
             </div>
             <div className="engineering-board__header-tools">
               <BoardThemeToggle value={theme} onChange={setTheme} />
               <BoardPeriodSelector value={period} onChange={setPeriod} />
+              <BoardTeamSelector value={team} onChange={setTeam} />
               <div className="engineering-board__clock-block">
-                <div className="engineering-board__clock">{formatClock(now)}</div>
+                <div className="engineering-board__clock">
+                  {now.toLocaleTimeString(bcp47, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </div>
                 <p className="engineering-board__refresh-meta">
                   {lastRefresh
-                    ? `อัปเดต ${lastRefresh.toLocaleTimeString('th-TH')}`
-                    : 'กำลังโหลด…'}
-                  {dashQ.isFetching || weeklyQ.isFetching || activityQ.isFetching
-                    ? ' · รีเฟรช'
+                    ? t('header.updatedAt', {
+                        time: lastRefresh.toLocaleTimeString(bcp47),
+                      })
+                    : t('header.loading')}
+                  {dashQ.isFetching ||
+                  weeklyQ.isFetching ||
+                  activityQ.isFetching ||
+                  pmReadingsQ.isFetching
+                    ? t('header.refreshing')
                     : ''}
                 </p>
               </div>
@@ -327,12 +367,21 @@ export function EngineeringBoardPage() {
                   />
                 }
                 zoneC={
-                  <BoardActivityFeed
-                    items={activityQ.data?.items ?? []}
-                    loading={activityQ.isLoading}
-                    error={activityQ.isError ? (activityQ.error as Error) : null}
-                    carousel={carouselEnabled}
-                  />
+                  <div className="engineering-board__zone-c-stack">
+                    <BoardPmReadingsPanel
+                      data={pmReadingsQ.data}
+                      loading={pmReadingsQ.isLoading}
+                      error={pmReadingsQ.isError ? (pmReadingsQ.error as Error) : null}
+                      carousel={carouselEnabled}
+                      rangeLabel={rangeLabel}
+                    />
+                    <BoardActivityFeed
+                      items={activityQ.data?.items ?? []}
+                      loading={activityQ.isLoading}
+                      error={activityQ.isError ? (activityQ.error as Error) : null}
+                      carousel={carouselEnabled}
+                    />
+                  </div>
                 }
               />
             )}
@@ -341,16 +390,16 @@ export function EngineeringBoardPage() {
           <footer className="engineering-board__footer">
             <span className="engineering-board__live">
               <span className="engineering-board__live-dot" />
-              Live · รีเฟรชทุก {REFRESH_MS / 1000} วินาที
+              {t('footer.live', { seconds: REFRESH_MS / 1000 })}
             </span>
             <span>
               {loggedIn ? (
                 <Link to="/" className="engineering-board__footer-link">
-                  กลับแอป
+                  {t('footer.backApp')}
                 </Link>
               ) : (
                 <Link to="/login" className="engineering-board__footer-link">
-                  เข้าสู่ระบบ
+                  {t('signIn')}
                 </Link>
               )}
               {' · '}
@@ -359,7 +408,7 @@ export function EngineeringBoardPage() {
                 className="engineering-board__footer-link border-0 bg-transparent p-0 cursor-pointer"
                 onClick={toggleCarousel}
               >
-                {carouselEnabled ? 'แสดงทั้งหมด' : 'สไลด์ A→B→C'}
+                {carouselEnabled ? t('carousel.showAll') : t('carousel.slideZones')}
               </button>
               {' · '}
               <button
@@ -367,7 +416,7 @@ export function EngineeringBoardPage() {
                 className="engineering-board__footer-link border-0 bg-transparent p-0 cursor-pointer"
                 onClick={() => void toggleFullscreen()}
               >
-                {isFullscreen ? 'ออกจากเต็มจอ' : 'เต็มจอ'}
+                {isFullscreen ? t('kioskNav.exitFullscreen') : t('kioskNav.fullscreen')}
               </button>
               <span className="opacity-60"> (F11)</span>
             </span>

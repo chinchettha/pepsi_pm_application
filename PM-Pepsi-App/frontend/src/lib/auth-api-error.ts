@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n'
 import { isMaintenanceModeError } from '@/lib/maintenance-error'
 
 export type AuthFeedbackKind =
@@ -32,12 +33,16 @@ export function isAuthApiError(err: unknown): err is AuthApiError {
   return err instanceof AuthApiError
 }
 
-const TITLES: Record<string, { kind: AuthFeedbackKind; title: string }> = {
-  INVALID_CREDENTIALS: { kind: 'invalid', title: 'เข้าสู่ระบบไม่สำเร็จ' },
-  LOGIN_LOCKED: { kind: 'lockout', title: 'ถูกระงับชั่วคราว' },
-  IP_BLOCKED: { kind: 'blocked', title: 'ไม่สามารถเข้าถึงได้' },
-  MAINTENANCE: { kind: 'maintenance', title: 'ระบบปิดปรับปรุง' },
-  RATE_LIMIT: { kind: 'rate_limit', title: 'คำขอมากเกินไป' },
+const TITLE_KEYS: Record<string, { kind: AuthFeedbackKind; key: string }> = {
+  INVALID_CREDENTIALS: { kind: 'invalid', key: 'auth.feedback.invalidTitle' },
+  LOGIN_LOCKED: { kind: 'lockout', key: 'auth.feedback.lockoutTitle' },
+  IP_BLOCKED: { kind: 'blocked', key: 'auth.feedback.blockedTitle' },
+  MAINTENANCE: { kind: 'maintenance', key: 'auth.feedback.maintenanceTitle' },
+  RATE_LIMIT: { kind: 'rate_limit', key: 'auth.feedback.rateLimitTitle' },
+}
+
+function tAuth(key: string): string {
+  return i18n.t(key, { ns: 'common' })
 }
 
 /** แปลง error จาก login API → ข้อความ popup */
@@ -45,16 +50,16 @@ export function resolveAuthFeedback(err: unknown): AuthFeedbackState {
   if (isMaintenanceModeError(err)) {
     return {
       kind: 'maintenance',
-      title: TITLES.MAINTENANCE.title,
+      title: tAuth('auth.feedback.maintenanceTitle'),
       message: err.message,
     }
   }
 
   if (isAuthApiError(err)) {
-    const mapped = err.code ? TITLES[err.code] : undefined
+    const mapped = err.code ? TITLE_KEYS[err.code] : undefined
     return {
       kind: mapped?.kind ?? (err.httpStatus === 429 ? 'rate_limit' : 'generic'),
-      title: mapped?.title ?? 'เกิดข้อผิดพลาด',
+      title: mapped ? tAuth(mapped.key) : tAuth('auth.feedback.genericTitle'),
       message: err.message,
     }
   }
@@ -73,24 +78,26 @@ export function resolveAuthFeedback(err: unknown): AuthFeedbackState {
     if (/network|failed to fetch|load failed/i.test(err.message)) {
       return {
         kind: 'generic',
-        title: 'เชื่อมต่อไม่สำเร็จ',
-        message: 'ตรวจสอบเครือข่ายหรือลองใหม่อีกครั้ง',
+        title: tAuth('auth.feedback.networkTitle'),
+        message: tAuth('auth.feedback.networkMessage'),
       }
     }
     return {
       kind: 'generic',
-      title: 'เกิดข้อผิดพลาด',
+      title: tAuth('auth.feedback.genericTitle'),
       message: err.message,
     }
   }
 
   return {
     kind: 'generic',
-    title: 'เกิดข้อผิดพลาด',
-    message: 'ไม่สามารถเข้าสู่ระบบได้ — ลองใหม่อีกครั้ง',
+    title: tAuth('auth.feedback.genericTitle'),
+    message: tAuth('auth.feedback.genericMessage'),
   }
 }
 
 export function authFeedbackConfirmLabel(kind: AuthFeedbackKind): string {
-  return kind === 'success' ? 'ดำเนินการต่อ' : 'ตกลง'
+  return kind === 'success'
+    ? tAuth('auth.feedback.confirmContinue')
+    : tAuth('auth.feedback.confirmOk')
 }

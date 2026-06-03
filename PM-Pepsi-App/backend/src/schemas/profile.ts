@@ -7,6 +7,8 @@ export const userProfileSchema = z.object({
   username: z.string(),
   displayName: z.string(),
   sysstatus: z.string(),
+  roleNameTh: z.string().optional(),
+  roleNameEn: z.string().optional(),
   userst: z.string().optional(),
   plnt: z.string().nullable().optional(),
   wkctr: z.string().optional(),

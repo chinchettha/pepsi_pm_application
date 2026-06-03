@@ -1,4 +1,4 @@
-import type { Pool } from 'pg'
+import type { Pool, PoolClient } from 'pg'
 import {
   type ConfirmQcStatus,
   confirmQcStatusLabel,
@@ -30,7 +30,7 @@ async function hasTbwrkcloseTable(pool: Pool): Promise<boolean> {
   return Boolean(r.rows[0]?.reg)
 }
 
-export async function touchConfirmQcPending(pool: Pool, idiw37: number): Promise<void> {
+export async function touchConfirmQcPending(pool: Pool | PoolClient, idiw37: number): Promise<void> {
   await pool.query(
     `UPDATE app.tbiw37n
      SET confirm_qc_status = 'pending',
@@ -38,6 +38,20 @@ export async function touchConfirmQcPending(pool: Pool, idiw37: number): Promise
          confirm_qc_by = NULL,
          confirm_qc_note = NULL
      WHERE idiw37 = $1`,
+    [idiw37],
+  )
+}
+
+/** หลัง Admin อนุมัติ — แสดงบน Dashboard ช่างเป็นสถานะ TECO (เขียว) */
+export async function applyTecoSystemStatus(pool: Pool, idiw37: number): Promise<void> {
+  await pool.query(
+    `UPDATE app.tbiw37n i
+     SET syst = 'TECO',
+         wkstcolor = COALESCE(
+           (SELECT w.wkstcolor FROM app.tbwkstatus w WHERE w.syst = 'TECO' LIMIT 1),
+           '#16a34a'
+         )
+     WHERE i.idiw37 = $1`,
     [idiw37],
   )
 }
@@ -60,6 +74,9 @@ export async function setConfirmQcStatus(
     [idiw37, status, reviewedBy, note ?? ''],
   )
   if (!r.rows[0]) return null
+  if (status === 'approved') {
+    await applyTecoSystemStatus(pool, idiw37)
+  }
   return getConfirmQcSnapshot(pool, idiw37)
 }
 

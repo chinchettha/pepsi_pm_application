@@ -1,4 +1,8 @@
 import type { Pool } from 'pg'
+import {
+  PM_EXECUTION_META,
+  resolvePmExecutionStatus,
+} from '../lib/wo-pm-execution.js'
 import { resolveWoPmPhase } from '../lib/wo-pm-phase.js'
 import {
   getMoveOverColor,
@@ -18,6 +22,9 @@ type PlanWorkRow = {
   syst: string | null
   operationshorttext: string | null
   wkstcolor: string | null
+  percent_close: string | number | null
+  has_confirm: string | number | null
+  confirm_qc_status: string | null
 }
 
 /** วันที่แสดงบนปฏิทิน — เทียบ `M_plan_calendar.php` (cday ถ้าย้ายแผน ไม่งั้น bscstart) */
@@ -59,13 +66,22 @@ export function mapPlanWorkRowToEvent(
   if (displayUnix == null) return null
 
   const syst = (row.syst ?? '').trim()
+  const pmExecutionStatus = resolvePmExecutionStatus({
+    syst,
+    percentClose: row.percent_close,
+    hasConfirm: row.has_confirm,
+    confirmQcStatus: row.confirm_qc_status,
+  })
+  const execColor = PM_EXECUTION_META[pmExecutionStatus].color
   const color =
     isCrossMonthMove(row) && (syst === 'REL' || syst === 'CRTD')
       ? moveColor
-      : (row.wkstcolor ?? '#6b7280')
+      : execColor
 
   const wktype = row.wktype?.trim() ?? ''
-  const title = wktype ? `${row.wkorder} / ${wktype}` : row.wkorder
+  const execLabel = PM_EXECUTION_META[pmExecutionStatus].label
+  const baseTitle = wktype ? `${row.wkorder} / ${wktype}` : row.wkorder
+  const title = `[${execLabel}] ${baseTitle}`
 
   return {
     id: String(row.idiw37),
@@ -77,12 +93,13 @@ export function mapPlanWorkRowToEvent(
     canMovePlan: isPlanMovableStatus(syst),
     syst,
     pmPhase: resolveWoPmPhase(syst),
+    pmExecutionStatus,
   }
 }
 
 /**
  * ปฏิทินจ่ายงานช่าง — เทียบ `M_plan_calendar.php`
- * `view_planwork` กรอง `idwkctr` = session, สถานะเปิด CRTD/REL
+ * `view_planwork` กรอง `idwkctr` = session — รวมงานปิดแล้วในเดือน
  */
 export async function listPlanCalendarEvents(
   pool: Pool,
@@ -94,15 +111,20 @@ export async function listPlanCalendarEvents(
   const moveColor = await getMoveOverColor(pool)
 
   const r = await pool.query<PlanWorkRow>(
-    `SELECT idiw37, wkorder, wktype, bscstart, cday, syst, operationshorttext, wkstcolor
-     FROM app.view_planwork
-     WHERE idwkctr = $1
-       AND syst IN ('CRTD', 'REL')
-       AND bscstart IS NOT NULL
-       AND bscstart > 0
-       AND COALESCE(NULLIF(cday, 0), bscstart) >= $2
-       AND COALESCE(NULLIF(cday, 0), bscstart) < $3
-     ORDER BY bscstart DESC
+    `SELECT pw.idiw37, pw.wkorder, pw.wktype, pw.bscstart, pw.cday, pw.syst,
+            pw.operationshorttext, pw.wkstcolor,
+            COALESCE(v.percent_close, 0) AS percent_close,
+            COALESCE(v.has_confirm, 0) AS has_confirm,
+            i.confirm_qc_status
+     FROM app.view_planwork pw
+     LEFT JOIN app.view_countpersonelclose v ON v.idiw37 = pw.idiw37
+     LEFT JOIN app.tbiw37n i ON i.idiw37 = pw.idiw37
+     WHERE pw.idwkctr = $1
+       AND pw.bscstart IS NOT NULL
+       AND pw.bscstart > 0
+       AND COALESCE(NULLIF(pw.cday, 0), pw.bscstart) >= $2
+       AND COALESCE(NULLIF(pw.cday, 0), pw.bscstart) < $3
+     ORDER BY pw.bscstart DESC
      LIMIT 500`,
     [idwkctr, startSec, endSec],
   )

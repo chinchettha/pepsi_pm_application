@@ -6,6 +6,7 @@ import { changePasswordResponseSchema } from '@/api/schemas'
 import { fetchApi } from '@/lib/fetch-api'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 function applySession(token: string, user: unknown) {
   sessionStorage.setItem('pm_auth_token', token)
@@ -14,6 +15,7 @@ function applySession(token: string, user: unknown) {
 }
 
 export function ChangePasswordForm() {
+  const { t } = useTranslation()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -40,21 +42,19 @@ export function ChangePasswordForm() {
   return (
     <div className="app-card app-card-pad space-y-4">
       <div>
-        <h3 className="text-body-sm font-semibold text-app">เปลี่ยนรหัสผ่าน</h3>
-        <p className="mt-1 text-xs text-app-muted">
-          เทียบ `member_change_password.php` — รองรับบัญชี Work center และสมาชิก (member)
-        </p>
+        <h3 className="text-body-sm font-semibold text-app">{t('settings.password.title')}</h3>
+        <p className="mt-1 text-xs text-app-muted">{t('settings.password.hint')}</p>
       </div>
 
       {success ? (
         <p className="rounded-card border border-emerald-200 bg-emerald-50 px-3 py-2 text-body-sm text-emerald-900">
-          บันทึกรหัสผ่านใหม่เรียบร้อย
+          {t('settings.password.success')}
         </p>
       ) : null}
 
       <div className="grid max-w-md gap-3">
         <div className="space-y-1">
-          <Label htmlFor="pwd-current">รหัสผ่านเดิม</Label>
+          <Label htmlFor="pwd-current">{t('settings.password.current')}</Label>
           <Input
             id="pwd-current"
             type="password"
@@ -67,7 +67,7 @@ export function ChangePasswordForm() {
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="pwd-new">รหัสผ่านใหม่</Label>
+          <Label htmlFor="pwd-new">{t('settings.password.new')}</Label>
           <Input
             id="pwd-new"
             type="password"
@@ -80,7 +80,7 @@ export function ChangePasswordForm() {
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="pwd-confirm">ยืนยันรหัสผ่านใหม่</Label>
+          <Label htmlFor="pwd-confirm">{t('settings.password.confirm')}</Label>
           <Input
             id="pwd-confirm"
             type="password"
@@ -108,7 +108,7 @@ export function ChangePasswordForm() {
           mut.isPending
         }
       >
-        แก้ไขรหัสผ่าน
+        {t('settings.password.submit')}
       </Button>
     </div>
   )

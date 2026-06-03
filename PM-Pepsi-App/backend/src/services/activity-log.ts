@@ -1,8 +1,12 @@
 import type { Pool } from 'pg'
 import {
   activityActionLabel,
+  extractJobDetailFromPayload,
   extractLineFromPayload,
+  extractResourceFromPayload,
+  extractTimeRangeFromPayload,
   extractWorkOrderFromPayload,
+  formatActivityResourceLabel,
 } from '../lib/activity-log-enrich.js'
 import { isAuditTableMissing } from '../lib/audit-log.js'
 import type { ActivityLogListResponse } from '../schemas/activity-log.js'
@@ -31,6 +35,8 @@ type AuditRow = {
   actor_wkctr: string | null
   wkorder: string | null
   functionalloc: string | null
+  operationshorttext: string | null
+  wo_wkctr: string | null
 }
 
 function mapAuditRow(row: AuditRow) {
@@ -38,6 +44,18 @@ function mapAuditRow(row: AuditRow) {
   const woFromJson = extractWorkOrderFromPayload(row.before_json, row.after_json)
   const productLine = lineFromJson ?? (row.functionalloc?.trim() || null)
   const workOrder = woFromJson ?? (row.wkorder?.trim() || null)
+  const payloadResource = extractResourceFromPayload(row.before_json, row.after_json)
+  const { startedAt, endedAt } = extractTimeRangeFromPayload(row.before_json, row.after_json)
+  const jobDetail =
+    row.operationshorttext?.trim() ||
+    extractJobDetailFromPayload(row.before_json, row.after_json) ||
+    null
+  const resourceLabel = formatActivityResourceLabel(
+    row.resource,
+    row.resource_id,
+    payloadResource,
+    row.wo_wkctr,
+  )
 
   return {
     id: `audit-${row.id}`,
@@ -47,6 +65,10 @@ function mapAuditRow(row: AuditRow) {
     actorDisplayName: row.actor_display_name?.trim() || row.actor_wkctr?.trim() || row.actor_id,
     productLine,
     workOrder,
+    jobDetail,
+    resourceLabel,
+    startedAt,
+    endedAt,
     action: row.action,
     actionLabel: activityActionLabel(row.action),
     resource: row.resource?.trim() || null,
@@ -77,6 +99,10 @@ function mapUserLogRow(row: UserLogRow) {
     actorDisplayName: row.display_name?.trim() || row.wkctr?.trim() || row.username,
     productLine: null,
     workOrder: null,
+    jobDetail: null,
+    resourceLabel: row.wkctr?.trim() || row.username?.trim() || null,
+    startedAt: null,
+    endedAt: null,
     action,
     actionLabel: activityActionLabel(action),
     resource: 'tbworkcenter_userlog',
@@ -111,7 +137,7 @@ export async function listActivityLog(
     params.push(`%${query.q.trim()}%`)
     const i = params.length
     auditWhere.push(
-      `(a.action ILIKE $${i} OR COALESCE(a.resource,'') ILIKE $${i} OR COALESCE(a.resource_id,'') ILIKE $${i} OR COALESCE(a.message,'') ILIKE $${i} OR COALESCE(a.actor_id,'') ILIKE $${i} OR COALESCE(wc.wkctr,'') ILIKE $${i} OR COALESCE(i.wkorder,'') ILIKE $${i})`,
+      `(a.action ILIKE $${i} OR COALESCE(a.resource,'') ILIKE $${i} OR COALESCE(a.resource_id,'') ILIKE $${i} OR COALESCE(a.message,'') ILIKE $${i} OR COALESCE(a.actor_id,'') ILIKE $${i} OR COALESCE(wc.wkctr,'') ILIKE $${i} OR COALESCE(i.wkorder,'') ILIKE $${i} OR COALESCE(i.functionalloc,'') ILIKE $${i} OR COALESCE(i.operationshorttext,'') ILIKE $${i} OR COALESCE(i.wkctr,'') ILIKE $${i})`,
     )
     userWhere.push(
       `(COALESCE(u.username,'') ILIKE $${i} OR COALESCE(wc2.wkctr,'') ILIKE $${i})`,
@@ -142,7 +168,9 @@ export async function listActivityLog(
         )), '') AS actor_display_name,
         wc.wkctr AS actor_wkctr,
         i.wkorder,
-        i.functionalloc
+        i.functionalloc,
+        i.operationshorttext,
+        i.wkctr AS wo_wkctr
       FROM app.tbl_audit_log a
       LEFT JOIN app.tbworkcenter wc
         ON wc.idwkctr = a.actor_id OR wc.wkctr = a.actor_id

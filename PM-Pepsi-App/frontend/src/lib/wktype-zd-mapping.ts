@@ -1,40 +1,43 @@
-/** สอดคล้อง backend/src/lib/wktype-zd-mapping.ts — อิงประชุมลูกค้า ครั้งที่ 2 */
-export const WKTYPE_MAPPING_SOURCE =
-  'ประชุมลูกค้า ครั้งที่ 2 (7 พ.ค. 2569)'
+/** Aligns with backend/src/lib/wktype-zd-mapping.ts — customer meeting #2 */
+import { i18n } from '@/i18n'
+import { lookupMaintActivityType } from '@/lib/maint-activity-type-zb02-lookup'
 
 export type WktypeZdZbRow = {
   zb: string
   zd: string
-  zdLabelTh: string
-  iw37nLabel: string
 }
 
 export const WKTYPE_ZD_ZB_ROWS: readonly WktypeZdZbRow[] = [
-  {
-    zb: 'ZB05',
-    zd: 'ZD01',
-    zdLabelTh: 'Breakdown / เครื่องหยุด',
-    iw37nLabel: 'Breakdown (IW37N)',
-  },
-  {
-    zb: 'ZB02',
-    zd: 'ZD02',
-    zdLabelTh: 'Preventive Maintenance (PM)',
-    iw37nLabel: 'PM (ไฟล์ AcZB02)',
-  },
-  {
-    zb: 'ZB01',
-    zd: 'ZD05',
-    zdLabelTh: 'General Repair',
-    iw37nLabel: 'Corrective (IW37N)',
-  },
+  { zb: 'ZB05', zd: 'ZD01' },
+  { zb: 'ZB02', zd: 'ZD02' },
+  { zb: 'ZB01', zd: 'ZD05' },
 ] as const
 
 const BY_ZB = new Map(WKTYPE_ZD_ZB_ROWS.map((r) => [r.zb.toUpperCase(), r]))
 
+function wktypeZdLabel(zb: string): string {
+  return i18n.t(`wktype.zd.${zb}`, { ns: 'scheduling', defaultValue: zb })
+}
+
+function wktypeMappingSource(): string {
+  return i18n.t('wktype.mappingSource', { ns: 'scheduling' })
+}
+
 function lookup(code: string): WktypeZdZbRow | null {
   const c = code.trim().toUpperCase()
   return c ? (BY_ZB.get(c) ?? null) : null
+}
+
+export function formatMaintCodeLead(mat: string | null | undefined): {
+  code: string
+  label: string
+} | null {
+  const raw = (mat ?? '').trim()
+  if (!raw) return null
+  const row = lookupMaintActivityType(raw)
+  const code = row?.mat ?? (Number.isFinite(Number(raw)) ? String(Number(raw)).padStart(3, '0') : raw)
+  const label = row ? `${code} ${row.description}` : code
+  return { code, label }
 }
 
 export function formatWktypeDisplay(code: string): {
@@ -46,12 +49,28 @@ export function formatWktypeDisplay(code: string): {
   const c = code.trim()
   const row = lookup(c)
   if (row) {
+    const zdLabel = wktypeZdLabel(row.zb)
     return {
       code: c,
       primary: `${c} · ${row.zd}`,
-      tooltip: `${row.zd} ${row.zdLabelTh} — ${WKTYPE_MAPPING_SOURCE}`,
+      tooltip: `${row.zd} ${zdLabel} — ${wktypeMappingSource()}`,
       zdCode: row.zd,
     }
   }
   return { code: c, primary: c, tooltip: c, zdCode: null }
+}
+
+/** Maintenance Code prefix when ZB02 / ZD02 */
+export function formatWktypeDisplayWithMat(code: string, mat?: string | null) {
+  const base = formatWktypeDisplay(code)
+  const wk = code.trim().toUpperCase()
+  const maint = formatMaintCodeLead(mat)
+  if (maint && (wk === 'ZB02' || base.zdCode === 'ZD02')) {
+    return {
+      ...base,
+      primary: `${maint.code} · ${base.primary}`,
+      tooltip: `${maint.label} — ${base.tooltip}`,
+    }
+  }
+  return base
 }

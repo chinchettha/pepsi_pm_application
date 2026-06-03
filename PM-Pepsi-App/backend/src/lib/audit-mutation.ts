@@ -1,15 +1,15 @@
 import type { Request } from 'express'
 import type { Pool } from 'pg'
-import type { AuditLogInput } from '../schemas/audit-log.js'
+import type { AuditLogWriteInput } from '../schemas/audit-log.js'
 import { auditLogFromRequest } from './audit-log.js'
 
 /** Fire-and-forget audit on successful mutation (non-blocking). */
 export function voidAudit(
   pool: Pool,
   req: Request,
-  input: Omit<AuditLogInput, 'ip' | 'userAgent'>,
+  input: Omit<AuditLogWriteInput, 'ip' | 'userAgent'>,
 ): void {
-  void auditLogFromRequest(pool, req, { status: 'ok', ...input })
+  void auditLogFromRequest(pool, req, input)
 }
 
 export function voidAuditDenied(

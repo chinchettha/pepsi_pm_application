@@ -2,7 +2,7 @@
  * Eng Utilization + สรุปรายสัปดาห์ — เทียบ `Eng Utilization 2026.xlsx` + `W_summary_weekly.php`
  */
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -24,19 +24,19 @@ import { SummaryWeeklyImportHint } from '@/features/reports/SummaryWeeklyImportH
 import { SummaryWeeklyUtilizationChart } from '@/features/reports/SummaryWeeklyUtilizationChart'
 import { fetchSummaryWeekly } from '@/lib/api-public'
 import {
-  ENG_UTILIZATION_PERIOD_PRESETS,
   type EngUtilizationPeriodId,
   excelStylePercentTotal,
   formatEngUtilizationLabel,
   engUtilizationYearlyHint,
-  getEngUtilizationPeriodPreset,
   resolveEngUtilizationDateRange,
   toEngUtilizationChartRows,
 } from '@/lib/eng-utilization-chart'
+import { engUtilizationPeriodPresets } from '@/lib/reports-i18n'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { AlertCircle, ExternalLink, RefreshCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 function chartFullHref(variant: 'chart' | 'chart2', from: string, to: string) {
   const qs = new URLSearchParams({ variant, from, to })
@@ -44,6 +44,8 @@ function chartFullHref(variant: 'chart' | 'chart2', from: string, to: string) {
 }
 
 export function SummaryWeeklyPage() {
+  const { t } = useTranslation('reports')
+  const { t: tc } = useTranslation('common')
   const canRead = usePermission('reports.read')
   const [periodId, setPeriodId] = useState<EngUtilizationPeriodId>('weekly')
   const [submitted, setSubmitted] = useState(() => resolveEngUtilizationDateRange('weekly'))
@@ -51,7 +53,8 @@ export function SummaryWeeklyPage() {
   const [hideWithoutPhoto, setHideWithoutPhoto] = useState(false)
   const canManagePhotos = useAnyPermission(['admin.users.write', 'personnel.write'])
 
-  const periodPreset = getEngUtilizationPeriodPreset(periodId)
+  const periodPresets = useMemo(() => engUtilizationPeriodPresets(t), [t])
+  const periodPreset = periodPresets.find((p) => p.id === periodId) ?? periodPresets[1]!
 
   const q = useQuery({
     queryKey: ['summary-weekly', periodId, submitted],
@@ -92,13 +95,14 @@ export function SummaryWeeklyPage() {
 
   if (!canRead) {
     return (
-      <AppPageShell title="Eng Utilization" description="กราฟและตาราง %PM / %Reactive ต่อช่าง">
+      <AppPageShell title={t('engUtil.title')} description={t('engUtil.description')}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('engUtil.noAccess')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">reports.read</code>
+              {tc('rbac.requiresPermission')}{' '}
+              <code className="text-xs">reports.read</code>
             </>
           }
         />
@@ -108,21 +112,21 @@ export function SummaryWeeklyPage() {
 
   return (
     <AppPageShell
-      title="Eng Utilization"
-      description="กราฟและตาราง %PM (ZB02) / %Reactive (ZB01·ZB05) ต่อช่าง — ข้อมูลจาก IW37N + manhour + confirm หลัง import SAP"
-      contentClassName="space-y-6"
+      title={t('engUtil.title')}
+      description={t('engUtil.description')}
+      hints={t('engUtil.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           {q.data?.rows ? (
             <Badge variant="secondary" className="text-xs">
-              {engChartRows.length} ช่าง
+              {t('engUtil.badgeTechCount', { count: engChartRows.length })}
             </Badge>
           ) : null}
           <Button variant="outline" size="sm" asChild>
-            <Link to="/reports">รายงาน KPI</Link>
+            <Link to="/reports">{t('engUtil.navKpi')}</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/manhours-hr">Manhour HR</Link>
+            <Link to="/manhours-hr">{t('engUtil.navManhourHr')}</Link>
           </Button>
           <Button
             variant="ghost"
@@ -131,14 +135,15 @@ export function SummaryWeeklyPage() {
             disabled={q.isFetching}
           >
             <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
+            {t('engUtil.refresh')}
           </Button>
         </>
       }
     >
+      <AppPageSection index={0}>
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          {ENG_UTILIZATION_PERIOD_PRESETS.map((p) => (
+          {periodPresets.map((p) => (
             <Button
               key={p.id}
               type="button"
@@ -152,8 +157,10 @@ export function SummaryWeeklyPage() {
           ))}
         </div>
         <p className="text-xs text-app-muted">
-          ช่วงอัตโนมัติ ({periodPreset.label}):{' '}
-          {periodId === 'yearly' ? engUtilizationYearlyHint() : periodPreset.hint} — ปรับวันที่เองได้ด้านล่าง
+          {t('engUtil.autoRange', {
+            preset: periodPreset.label,
+            hint: periodId === 'yearly' ? engUtilizationYearlyHint() : periodPreset.hint,
+          })}
         </p>
       </div>
 
@@ -164,7 +171,9 @@ export function SummaryWeeklyPage() {
           setSubmitted(value)
         }}
       />
+      </AppPageSection>
 
+      <AppPageSection index={1}>
       {q.data?.importCoverage ? (
         <SummaryWeeklyImportHint
           coverage={q.data.importCoverage}
@@ -178,17 +187,20 @@ export function SummaryWeeklyPage() {
       ) : q.isError ? (
         <EmptyState
           icon={AlertCircle}
-          title="โหลดรายงานไม่สำเร็จ"
+          title={t('engUtil.loadFailed')}
           description={(q.error as Error).message}
-          action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+          action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
         />
       ) : q.data ? (
         <>
           {q.data.range ? (
             <p className="text-caption">
-              ช่วงข้อมูล (ISO): {q.data.range.fromDate} – {q.data.range.toDate} · แสดง{' '}
-              {displayChartRows.length}
-              {hideWithoutPhoto ? ` / ${engChartRows.length}` : ''} ช่าง (มี HR hour)
+              {t('engUtil.rangeIso', {
+                from: q.data.range.fromDate,
+                to: q.data.range.toDate,
+                shown: String(displayChartRows.length),
+                total: hideWithoutPhoto ? ` / ${engChartRows.length}` : '',
+              })}
             </p>
           ) : null}
 
@@ -199,9 +211,7 @@ export function SummaryWeeklyPage() {
 
           <AppCard pad="compact" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-body-sm font-medium text-app">
-                กริดรูปช่าง (เทียบ Eng Utilization 2026.xlsx)
-              </p>
+              <p className="text-body-sm font-medium text-app">{t('engUtil.gridTitle')}</p>
               <label className="flex items-center gap-2 text-caption">
                 <input
                   type="checkbox"
@@ -210,7 +220,7 @@ export function SummaryWeeklyPage() {
                   className="size-4 rounded border-app"
                   disabled={missingPhotoCount === 0}
                 />
-                ซ่อนคนไม่มีรูป
+                {t('engUtil.hideNoPhoto')}
                 {missingPhotoCount > 0 ? (
                   <span className="text-app-muted">({missingPhotoCount})</span>
                 ) : null}
@@ -221,9 +231,7 @@ export function SummaryWeeklyPage() {
 
           <AppCard pad="compact" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-body-sm font-medium text-app">
-                กราฟรวม Utilization (stacked %)
-              </p>
+              <p className="text-body-sm font-medium text-app">{t('engUtil.chartStacked')}</p>
               <label className="flex items-center gap-2 text-caption">
                 <input
                   type="checkbox"
@@ -231,7 +239,7 @@ export function SummaryWeeklyPage() {
                   onChange={(e) => setShowRcaInChart(e.target.checked)}
                   className="size-4 rounded border-app"
                 />
-                รวม %RCA ในกราฟ
+                {t('engUtil.includeRca')}
               </label>
             </div>
             <EngUtilizationChart
@@ -239,15 +247,12 @@ export function SummaryWeeklyPage() {
               layout="compact"
               showRca={showRcaInChart}
             />
-            <p className="text-xs text-app-muted">
-              คอลัมน์ Total ใน Excel = %PM + %Reactive (ไม่รวม RCA) · ตารางด้านล่างคอลัมน์ Total รวม RCA
-            </p>
           </AppCard>
 
           <AppCard pad="compact">
             <details>
               <summary className="cursor-pointer text-body-sm font-medium text-app">
-                กราฟชั่วโมงรวม (legacy W_summary_weekly_chart2)
+                {t('engUtil.legacyChart')}
               </summary>
               <div className="mt-4">
                 <SummaryWeeklyUtilizationChart items={chart} variant="chart2" layout="compact" />
@@ -255,13 +260,13 @@ export function SummaryWeeklyPage() {
                   <Button variant="ghost" size="sm" className="h-auto px-1 text-sky-700" asChild>
                     <a href={fullChart2} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="mr-1 inline size-3.5" aria-hidden />
-                      ดูกราฟแบบขยาย
+                      {t('engUtil.expandChart')}
                     </a>
                   </Button>
                   <span className="mx-2 text-app-muted">|</span>
                   <Button variant="ghost" size="sm" className="h-auto px-1 text-app-muted" asChild>
                     <a href={fullChart} target="_blank" rel="noopener noreferrer">
-                      chart (legacy)
+                      {t('engUtil.legacyChartLink')}
                     </a>
                   </Button>
                 </p>
@@ -274,19 +279,19 @@ export function SummaryWeeklyPage() {
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">No.</TableHead>
-                    <TableHead>Work Center</TableHead>
-                    <TableHead className="text-right">PM (ชม.)</TableHead>
-                    <TableHead className="text-right">Reactive (ชม.)</TableHead>
-                    <TableHead className="text-right">RCA (ชม.)</TableHead>
-                    <TableHead className="text-right">Wo</TableHead>
-                    <TableHead className="text-right">HR hour</TableHead>
+                    <TableHead className="w-12">{t('engUtil.colNo')}</TableHead>
+                    <TableHead>{t('engUtil.colWc')}</TableHead>
+                    <TableHead className="text-right">{t('engUtil.colPmHrs')}</TableHead>
+                    <TableHead className="text-right">{t('engUtil.colReactiveHrs')}</TableHead>
+                    <TableHead className="text-right">{t('engUtil.colRcaHrs')}</TableHead>
+                    <TableHead className="text-right">{t('engUtil.cardWo')}</TableHead>
+                    <TableHead className="text-right">{t('engUtil.colHrHour')}</TableHead>
                     <TableHead className="text-right">OT hour</TableHead>
-                    <TableHead className="text-right">%PM</TableHead>
-                    <TableHead className="text-right">%Reactive</TableHead>
-                    <TableHead className="text-right">%RCA</TableHead>
-                    <TableHead className="text-right">Total (Excel)</TableHead>
-                    <TableHead className="text-right">Total+RCA</TableHead>
+                    <TableHead className="text-right">{t('engUtil.colPctPm')}</TableHead>
+                    <TableHead className="text-right">{t('engUtil.colPctReactive')}</TableHead>
+                    <TableHead className="text-right">{t('engUtil.colPctRca')}</TableHead>
+                    <TableHead className="text-right">{t('engUtil.colTotalExcel')}</TableHead>
+                    <TableHead className="text-right">{t('engUtil.colTotalRca')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -339,8 +344,8 @@ export function SummaryWeeklyPage() {
                       <TableCell colSpan={13} className="p-0">
                         <EmptyState
                           className="border-0 bg-transparent py-10"
-                          title="ยังไม่มีข้อมูล"
-                          description="ขยายช่วงวันที่หรือ import manhour"
+                          title={t('engUtil.tableEmpty')}
+                          description={t('engUtil.tableEmptyHint')}
                         />
                       </TableCell>
                     </TableRow>
@@ -351,8 +356,9 @@ export function SummaryWeeklyPage() {
           </AppCard>
         </>
       ) : (
-        <EmptyState title="ไม่มีข้อมูล" description="เลือกช่วงวันที่แล้วกดค้นหา" />
+        <EmptyState title={t('engUtil.empty')} description={t('engUtil.emptyHint')} />
       )}
+      </AppPageSection>
     </AppPageShell>
   )
 }

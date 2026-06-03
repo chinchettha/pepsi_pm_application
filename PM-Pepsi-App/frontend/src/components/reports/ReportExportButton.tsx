@@ -1,38 +1,39 @@
 import { Button, type ButtonProps } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Download, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export type ReportExportFormat = 'csv' | 'xlsx' | 'excel'
 
-const FORMAT_LABEL: Record<ReportExportFormat, string> = {
-  csv: 'ดาวน์โหลด CSV',
-  xlsx: 'ดาวน์โหลด Excel',
-  excel: 'ดาวน์โหลด Excel',
-}
-
 export type ReportExportButtonProps = Omit<ButtonProps, 'children'> & {
   format?: ReportExportFormat
-  /** ข้อความไทย — ถ้าไม่ระบุ ใช้ตาม `format` */
+  /** Override label — defaults to i18n by format */
   label?: string
   loading?: boolean
   loadingLabel?: string
 }
 
-/** ปุ่มส่งออกรายงาน — ไอคอน Download + ข้อความไทย (มาตรฐาน U3) */
 export function ReportExportButton({
   format,
   label,
   loading = false,
-  loadingLabel = 'กำลังดาวน์โหลด…',
+  loadingLabel,
   className,
   disabled,
   variant = 'outline',
   size = 'sm',
   ...props
 }: ReportExportButtonProps) {
+  const { t } = useTranslation('reports')
+  const formatLabel =
+    format === 'csv'
+      ? t('export.csv')
+      : format === 'xlsx' || format === 'excel'
+        ? t('export.excel')
+        : t('export.default')
   const text = loading
-    ? loadingLabel
-    : (label ?? (format ? FORMAT_LABEL[format] : 'ดาวน์โหลด'))
+    ? (loadingLabel ?? t('export.loading'))
+    : (label ?? formatLabel)
 
   return (
     <Button

@@ -1,6 +1,7 @@
 import { CanPermission } from '@/components/auth/CanPermission'
-import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
+import { KpiStatGrid } from '@/components/kpi/KpiStatGrid'
+import { KpiStatCard } from '@/components/kpi/KpiStatCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -28,6 +29,7 @@ import { AlertCircle } from 'lucide-react'
 import { Bar, Line } from 'react-chartjs-2'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 ChartJS.register(
   CategoryScale,
@@ -41,6 +43,8 @@ ChartJS.register(
 )
 
 export function ReportsPage() {
+  const { t } = useTranslation('reports')
+  const { t: tc } = useTranslation('common')
   const canRead = usePermission('reports.read')
   const initial = defaultReportsDateRange(56)
   const [submitted, setSubmitted] = useState(() => ({
@@ -69,13 +73,14 @@ export function ReportsPage() {
 
   if (!canRead) {
     return (
-      <AppPageShell title="รายงานและแดชบอร์ด" description="KPI utilization และ backlog รายสัปดาห์">
+      <AppPageShell title={t('page.title')} description={t('page.description')}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('page.noAccess')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">reports.read</code>
+              {tc('rbac.requiresPermission')}{' '}
+              <code className="text-xs">reports.read</code>
             </>
           }
         />
@@ -85,32 +90,33 @@ export function ReportsPage() {
 
   return (
     <AppPageShell
-      title="รายงานและแดชบอร์ด"
-      description="KPI utilization + backlog รายสัปดาห์ — เทียบ W_summary_weekly"
-      contentClassName="space-y-6"
+      title={t('page.title')}
+      description={t('page.description')}
+      hints={t('page.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">
-            Week-to-Week
+            {t('page.badgeWeekToWeek')}
           </Badge>
           <CanPermission permission="reports.read">
             <Button variant="outline" size="sm" asChild>
-              <Link to="/summary-weekly">สรุปรายสัปดาห์</Link>
+              <Link to="/summary-weekly">{t('page.navSummaryWeekly')}</Link>
             </Button>
           </CanPermission>
           <CanPermission permission="reports.read">
             <Button variant="outline" size="sm" asChild>
-              <Link to="/activity-log">Activity Log</Link>
+              <Link to="/activity-log">{t('page.navActivityLog')}</Link>
             </Button>
           </CanPermission>
           <CanPermission permission="reports.read">
             <Button variant="outline" size="sm" asChild>
-              <Link to="/reports/audit">Auditor Hub</Link>
+              <Link to="/reports/audit">{t('page.navAuditorHub')}</Link>
             </Button>
           </CanPermission>
         </>
       }
     >
+        <AppPageSection index={0}>
         <ReportsDateFilter
           initial={submitted}
           showWeeksBack
@@ -122,49 +128,47 @@ export function ReportsPage() {
             })
           }
         />
+        </AppPageSection>
 
+        <AppPageSection index={1}>
         {q.isLoading && !q.data ? (
           <Skeleton className="h-96 w-full rounded-card" />
         ) : q.isError ? (
           <EmptyState
             icon={AlertCircle}
-            title="โหลด KPI ไม่สำเร็จ"
+            title={t('page.loadFailed')}
             description={(q.error as Error).message}
-            action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+            action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
           />
         ) : q.data ? (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <AppCard pad="compact">
-                <div className="text-xs text-app-muted">Utilization เฉลี่ย (Confirm/HR)</div>
-                <div className="mt-1 text-2xl font-semibold tabular-nums">{avgUtil}%</div>
-              </AppCard>
-              <AppCard pad="compact">
-                <div className="text-xs text-app-muted">Backlog ล่าสุด (ชม.)</div>
-                <div className="mt-1 text-2xl font-semibold tabular-nums">
-                  {q.data.backlogHours[q.data.backlogHours.length - 1] ?? 0}
-                </div>
-              </AppCard>
-              <AppCard pad="compact">
-                <div className="text-xs text-app-muted">ช่วงข้อมูล</div>
-                <div className="mt-1 text-body-sm font-medium text-app">
-                  {q.data.range.fromDate} – {q.data.range.toDate}
-                </div>
-                <div className="text-xs text-app-muted">
-                  {q.data.labels[0]} – {q.data.labels[q.data.labels.length - 1]}
-                </div>
-              </AppCard>
-            </div>
-            <AppCard pad="compact" className="space-y-3">
-              <p className="text-body-sm font-medium text-app">Week-to-Week (Utilization & Backlog)</p>
-              <p className="text-xs text-app-muted">
-                เปรียบเทียบสัปดาห์ต่อสัปดาห์ในช่วงที่เลือก — สัปดาห์ Pepsi (เริ่ม 1 ม.ค.)
-              </p>
+            <KpiStatGrid className="mb-4 gap-3 sm:grid-cols-3">
+              <KpiStatCard label={t('page.kpiAvgUtil')} value={`${avgUtil}%`} />
+              <KpiStatCard
+                label={t('page.kpiBacklogLatest')}
+                value={String(q.data.backlogHours[q.data.backlogHours.length - 1] ?? 0)}
+              />
+              <KpiStatCard
+                label={t('page.kpiDataRange')}
+                value={`${q.data.range.fromDate} – ${q.data.range.toDate}`}
+                footer={`${q.data.labels[0]} – ${q.data.labels[q.data.labels.length - 1]}`}
+              />
+            </KpiStatGrid>
+            <AppPageSectionCard
+              icon={AlertCircle}
+              title={t('page.weekToWeekTitle')}
+              description={t('page.weekToWeekDesc')}
+              bodyClassName="space-y-3"
+            >
               <WeekToWeekTable rows={q.data.weekToWeek} />
-            </AppCard>
+            </AppPageSectionCard>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <AppCard pad="compact">
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <AppPageSectionCard
+                icon={AlertCircle}
+                title={t('page.chartUtilization')}
+                bodyClassName="!p-3"
+              >
                 <Bar
                   data={{
                     labels: q.data.labels,
@@ -178,18 +182,24 @@ export function ReportsPage() {
                   }}
                   options={{
                     responsive: true,
-                    plugins: { title: { display: true, text: 'Utilization (%)' } },
+                    plugins: {
+                      title: { display: true, text: t('page.chartUtilizationTitle') },
+                    },
                     scales: { y: { max: 100 } },
                   }}
                 />
-              </AppCard>
-              <AppCard pad="compact">
+              </AppPageSectionCard>
+              <AppPageSectionCard
+                icon={AlertCircle}
+                title={t('page.chartBacklogTrend')}
+                bodyClassName="!p-3"
+              >
                 <Line
                   data={{
                     labels: q.data.labels,
                     datasets: [
                       {
-                        label: 'Backlog (ชม.)',
+                        label: t('page.chartBacklogDataset'),
                         data: q.data.backlogHours,
                         borderColor: 'rgb(24,24,27)',
                         backgroundColor: 'rgba(24,24,27,0.1)',
@@ -200,15 +210,22 @@ export function ReportsPage() {
                   }}
                   options={{
                     responsive: true,
-                    plugins: { title: { display: true, text: 'แนวโน้ม Backlog' } },
+                    plugins: {
+                      title: { display: true, text: t('page.chartBacklogTitle') },
+                    },
                   }}
                 />
-              </AppCard>
+              </AppPageSectionCard>
             </div>
           </>
         ) : (
-          <EmptyState title="ไม่มีข้อมูล KPI" description="เลือกช่วงวันที่แล้วกดค้นหา" />
+          <EmptyState
+            icon={AlertCircle}
+            title={t('page.empty')}
+            description={t('page.emptyHint')}
+          />
         )}
+        </AppPageSection>
     </AppPageShell>
   )
 }

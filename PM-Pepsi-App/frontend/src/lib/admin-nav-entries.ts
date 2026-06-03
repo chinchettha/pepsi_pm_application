@@ -1,12 +1,14 @@
 import type { NavLinkEntry } from '@/components/layout/nav-config'
+import { tAdminSectionLabel } from '@/lib/admin-i18n'
 import { ADMIN_SECTIONS } from '@/lib/admin-sections'
+import type { TFunction } from 'i18next'
 
-/** Sidebar items สำหรับโซน `/admin/*` — สอดคล้อง ADMIN_SECTIONS (12 หน้า) */
-export function buildAdminNavEntries(): NavLinkEntry[] {
+/** Sidebar items for `/admin/*` — aligned with ADMIN_SECTIONS */
+export function buildAdminNavEntries(t: TFunction<'admin'>): NavLinkEntry[] {
   return ADMIN_SECTIONS.filter((s) => s.implemented).map((s) => ({
     kind: 'item' as const,
     to: s.to,
-    label: s.label,
+    label: tAdminSectionLabel(s.segment, t),
     icon: s.icon,
     menuright: 'A',
     permission: s.permission,

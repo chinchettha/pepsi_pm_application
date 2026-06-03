@@ -1,5 +1,4 @@
-import { AppCard } from '@/components/layout/AppCard'
-import { AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -13,15 +12,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { fetchUserLog } from '@/lib/api-public'
+import { appLocaleToBcp47 } from '@/lib/app-locale'
 import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { AlertCircle, RefreshCcw } from 'lucide-react'
+import { AlertCircle, History, RefreshCcw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
-/** แสดง IP client — localhost เป็น ::1 ใน dev */
-function formatClientIp(ip: string | null | undefined): string {
+function formatClientIp(ip: string | null | undefined, localhostLabel: string): string {
   if (!ip?.trim()) return '—'
   const v = ip.trim()
-  if (v === '::1' || v === '::ffff:127.0.0.1') return '127.0.0.1 (localhost)'
+  if (v === '::1' || v === '::ffff:127.0.0.1') return localhostLabel
   return v
 }
 
@@ -30,15 +30,17 @@ function formatServerHost(host: string | null | undefined): string {
   return host.trim()
 }
 
-function formatAction(action: string): string {
-  const a = action.toLowerCase()
-  if (a === 'login') return 'เข้าสู่ระบบ'
-  if (a === 'logout') return 'ออกจากระบบ'
-  return action
-}
-
 export function UserLogPage() {
+  const { t, i18n } = useTranslation('userLog')
   const canRead = usePermission('user-log.read')
+  const locale = appLocaleToBcp47(i18n.language === 'th' ? 'th' : 'en')
+
+  const formatAction = (action: string): string => {
+    const a = action.toLowerCase()
+    if (a === 'login') return t('actionLogin')
+    if (a === 'logout') return t('actionLogout')
+    return action
+  }
 
   const q = useQuery({
     queryKey: ['user-log', 50, 0],
@@ -52,13 +54,14 @@ export function UserLogPage() {
 
   if (!canRead) {
     return (
-      <AppPageShell title="ประวัติการใช้งาน" description="บันทึก login / logout">
+      <AppPageShell title={t('title')} description={t('description')}>
         <EmptyState
           icon={AlertCircle}
-          title="ไม่มีสิทธิ์เข้าถึง"
+          title={t('noAccess')}
           description={
             <>
-              ต้องมีสิทธิ์ <code className="text-xs">user-log.read</code>
+              {t('noAccessDesc')}{' '}
+              <code className="text-xs">user-log.read</code>
             </>
           }
         />
@@ -68,13 +71,13 @@ export function UserLogPage() {
 
   return (
     <AppPageShell
-      title="ประวัติการใช้งาน"
-      description="เทียบ M_UserLog.php — IP ผู้ใช้ (userIp) และเครื่องเซิร์ฟเวอร์ (myIp)"
-      contentClassName="space-y-6"
+      title={t('title')}
+      description={t('description')}
+      hints={t('hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">
-            {rows.length} รายการล่าสุด
+            {t('recentCount', { count: rows.length })}
           </Badge>
           <Button
             variant="ghost"
@@ -83,31 +86,32 @@ export function UserLogPage() {
             disabled={q.isFetching}
           >
             <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
+            {t('refresh')}
           </Button>
         </>
       }
     >
+      <AppPageSection index={0}>
       {q.isLoading && !q.data ? (
         <Skeleton className="h-64 w-full rounded-card" />
       ) : q.isError ? (
         <EmptyState
           icon={AlertCircle}
-          title="โหลดประวัติไม่สำเร็จ"
+          title={t('loadFailed')}
           description={(q.error as Error).message}
-          action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+          action={{ label: t('actions.retry', { ns: 'common' }), onClick: () => void q.refetch() }}
         />
       ) : (
-        <AppCard pad="compact" className="p-0">
+        <AppPageSectionCard icon={History} title={t('cardTitle')} description={t('cardDesc')} bodyClassName="!p-0">
           <div className="app-table-shell overflow-x-auto">
             <Table embedded stickyHeader zebra>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">ลำดับ</TableHead>
-                  <TableHead>วันที่-เวลา</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead>IP ผู้ใช้</TableHead>
-                  <TableHead>เซิร์ฟเวอร์</TableHead>
+                  <TableHead className="w-16">{t('colSeq')}</TableHead>
+                  <TableHead>{t('colDateTime')}</TableHead>
+                  <TableHead>{t('colStatus')}</TableHead>
+                  <TableHead>{t('colUserIp')}</TableHead>
+                  <TableHead>{t('colServer')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,8 +120,8 @@ export function UserLogPage() {
                     <TableCell colSpan={5} className="p-0">
                       <EmptyState
                         className="border-0 bg-transparent py-10"
-                        title="ยังไม่มีบันทึก"
-                        description="ยังไม่มี login/logout ในระบบ"
+                        title={t('emptyTitle')}
+                        description={t('emptyDesc')}
                       />
                     </TableCell>
                   </TableRow>
@@ -127,12 +131,12 @@ export function UserLogPage() {
                       <TableCell className="tabular-nums">{idx + 1}</TableCell>
                       <TableCell className="whitespace-nowrap text-body-sm tabular-nums">
                         {row.actionTime
-                          ? new Date(row.actionTime).toLocaleString('th-TH')
+                          ? new Date(row.actionTime).toLocaleString(locale)
                           : '—'}
                       </TableCell>
                       <TableCell>{formatAction(row.action)}</TableCell>
                       <TableCell className="font-mono text-xs tabular-nums">
-                        {formatClientIp(row.userIp)}
+                        {formatClientIp(row.userIp, t('localhost'))}
                       </TableCell>
                       <TableCell className="font-mono text-xs tabular-nums">
                         {formatServerHost(row.myIp)}
@@ -143,8 +147,9 @@ export function UserLogPage() {
               </TableBody>
             </Table>
           </div>
-        </AppCard>
+        </AppPageSectionCard>
       )}
+      </AppPageSection>
     </AppPageShell>
   )
 }

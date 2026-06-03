@@ -26,6 +26,7 @@ export type OrderRow = {
   idiw37: number
   wkorder: string
   wktype: string | null
+  wkctr: string | null
   bscstart: string | number | null
   actfinish: string | number | null
   cday: string | number | null
@@ -91,6 +92,7 @@ export function mapOrderRowToEvent(
     canMovePlan: isPlanMovableStatus(syst),
     syst,
     pmPhase: resolveWoPmPhase(syst),
+    wkctr: row.wkctr?.trim() || undefined,
   }
 }
 
@@ -113,12 +115,13 @@ export function monthRangeSec(year: number, month: number) {
 
 export function appendInFilter(
   column: string,
-  values: string[],
+  values: string[] | undefined,
   params: unknown[],
 ): string {
-  if (values.length === 0) return ''
+  const list = values ?? []
+  if (list.length === 0) return ''
   const start = params.length + 1
-  const placeholders = values.map((_, i) => `$${start + i}`).join(', ')
-  params.push(...values)
+  const placeholders = list.map((_, i) => `$${start + i}`).join(', ')
+  params.push(...list)
   return ` AND ${column} IN (${placeholders})`
 }

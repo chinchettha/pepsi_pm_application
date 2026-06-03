@@ -138,8 +138,16 @@ export function registerCalendarRoutes(
       }
       const body = parsed.data
       try {
-        const items = await listCalendarEventsFiltered(pool, body)
-        res.json(calendarEventsResponseSchema.parse({ items, year: body.year, month: body.month }))
+        const { items, dayHourTotals, dayOrderCounts } = await listCalendarEventsFiltered(pool, body)
+        res.json(
+          calendarEventsResponseSchema.parse({
+            items,
+            year: body.year,
+            month: body.month,
+            dayHourTotals,
+            dayOrderCounts,
+          }),
+        )
       } catch (err) {
         if (isSchemaMissing(err)) {
           res.status(503).json({

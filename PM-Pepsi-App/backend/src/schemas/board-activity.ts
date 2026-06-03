@@ -30,6 +30,7 @@ export const boardActivityResponseSchema = z.object({
 export const boardActivityQuerySchema = z.object({
   period: z.enum(BOARD_PERIOD_IDS).default('7d'),
   limit: z.coerce.number().int().min(1).max(12).default(12),
+  team: z.enum(['A', 'B', 'EE', 'UT']).optional(),
 })
 
 export type BoardActivityItem = z.infer<typeof boardActivityItemSchema>

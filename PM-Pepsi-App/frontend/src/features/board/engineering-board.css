@@ -76,6 +76,27 @@ html.board-kiosk-root #root {
   font-size: 0.9em;
 }
 
+.engineering-board--gate-panel {
+  display: flex;
+  max-width: 32rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  border-radius: var(--board-radius);
+  border: 1px solid var(--board-border);
+  background: var(--board-panel-bg);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.engineering-board--theme-light .engineering-board--gate-panel {
+  background: var(--board-panel-bg);
+  box-shadow: var(--board-kpi-shadow);
+}
+
 /* ── Header ── */
 .engineering-board__header {
   display: flex;
@@ -525,6 +546,83 @@ html.board-kiosk-root #root {
 
 .engineering-board__zone--c {
   min-height: 0;
+}
+
+.engineering-board__zone-c-stack {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.5rem, 1.2vw, 0.85rem);
+  min-height: 0;
+}
+
+.engineering-board__panel--pm-readings {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.engineering-board__pm-readings-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: min(42vh, 22rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.engineering-board__pm-readings-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+}
+
+.engineering-board__pm-reading-card {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(15, 23, 42, 0.55);
+  padding: 0.55rem 0.65rem 0.65rem;
+}
+
+.engineering-board__pm-reading-head {
+  margin-bottom: 0.35rem;
+}
+
+.engineering-board__pm-reading-wo {
+  margin: 0;
+  font-size: clamp(0.75rem, 1.2vw, 0.85rem);
+  font-weight: 700;
+  color: #7dd3fc;
+}
+
+.engineering-board__pm-reading-meta {
+  margin: 0.1rem 0 0;
+  font-size: clamp(0.62rem, 1vw, 0.72rem);
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.engineering-board__pm-reading-machine,
+.engineering-board__pm-reading-pmlist {
+  margin: 0.08rem 0 0;
+  font-size: clamp(0.65rem, 1.05vw, 0.75rem);
+  color: rgba(248, 250, 252, 0.78);
+}
+
+.engineering-board__pm-reading-latest {
+  margin: 0.2rem 0 0;
+  font-size: clamp(0.6rem, 0.95vw, 0.68rem);
+  color: rgba(248, 250, 252, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.engineering-board__pm-reading-chart {
+  min-height: 7.5rem;
+}
+
+.engineering-board__pm-reading-chart .rounded-button {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.35rem;
 }
 
 .engineering-board__panel--activity {

@@ -1,7 +1,6 @@
 import type { Iw37nImportPreviewResponse, Iw37nImportSummary } from '@/api/schemas'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { formatIw37nDuplicateMessage } from '@/lib/iw37n-import-messages'
 import {
   Table,
   TableBody,
@@ -11,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 export type Iw37nImportRow = Iw37nImportPreviewResponse['rows'][number]
@@ -22,6 +22,13 @@ function actionBadgeClass(action: Iw37nImportRow['action']): string {
   if (action === 'updated') return 'border-transparent bg-sky-700 text-white hover:bg-sky-800'
   if (action === 'inserted') return 'border-transparent bg-emerald-700 text-white hover:bg-emerald-800'
   return ''
+}
+
+function duplicateBatchRef(
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  batchId: string | null,
+): string {
+  return batchId ? t('review.duplicateRef', { id: batchId }) : ''
 }
 
 type Iw37nImportReviewPanelProps = {
@@ -39,6 +46,7 @@ export function Iw37nImportReviewPanel({
   onCancel,
   committing = false,
 }: Iw37nImportReviewPanelProps) {
+  const { t } = useTranslation('integration')
   const [filter, setFilter] = useState<RowFilter>('all')
 
   const filteredRows = useMemo(() => {
@@ -53,9 +61,13 @@ export function Iw37nImportReviewPanel({
   return (
     <div className="mt-4 space-y-4 rounded-card border border-amber-300/80 bg-amber-50/50 p-4">
       <div>
-        <h4 className="text-body-sm font-semibold text-amber-950">สรุปก่อนนำเข้า (ตรวจสอบด้วยมือ)</h4>
+        <h4 className="text-body-sm font-semibold text-amber-950">{t('review.title')}</h4>
         <p className="mt-1 text-xs text-amber-900/80">
-          {summary.fileName} · {summary.totalRows} แถว · SHA {summary.sha256.slice(0, 12)}… · สถานะที่คาดหวัง{' '}
+          {t('review.rowSummary', {
+            fileName: summary.fileName,
+            total: summary.totalRows,
+            sha: summary.sha256.slice(0, 12),
+          })}{' '}
           <Badge variant="secondary" className="ml-1 text-xs">
             {summary.wouldStatus}
           </Badge>
@@ -67,32 +79,36 @@ export function Iw37nImportReviewPanel({
           role="alert"
           className="rounded-button border border-purple-400 bg-purple-50 px-3 py-2 text-body-sm text-purple-950"
         >
-          <p className="font-medium">{formatIw37nDuplicateMessage(summary.duplicateOfBatchId)}</p>
-          <p className="mt-1 text-xs text-purple-800/90">
-            เทียบ PHP: นำเข้าไฟล์เดิมซ้ำได้ — ระบบจะ upsert ตาม wkorder+OpAc เหมือนเดิม (มีบันทึก batch ซ้ำไว้ตรวจสอบ)
+          <p className="font-medium">
+            {t('review.duplicateTitle', {
+              batchRef: duplicateBatchRef(t, summary.duplicateOfBatchId),
+            })}
           </p>
+          <p className="mt-1 text-xs text-purple-800/90">{t('review.duplicateHint')}</p>
           {summary.duplicateOfBatchId ? (
             <Link
               to="/iw37n"
               className="mt-2 inline-block text-xs font-medium text-purple-900 underline hover:text-purple-700"
             >
-              เปิดหน้า IW37N → batch #{summary.duplicateOfBatchId}
+              {t('review.openIw37n', { id: summary.duplicateOfBatchId })}
             </Link>
           ) : null}
         </div>
       ) : null}
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-        <Stat label="เพิ่ม" value={summary.inserted} tone="emerald" />
-        <Stat label="อัปเดต" value={summary.updated} tone="sky" />
-        <Stat label="ข้าม" value={summary.skipped} tone="zinc" />
-        <Stat label="ผิดพลาด" value={summary.errors} tone="red" />
-        <Stat label="รวม" value={summary.totalRows} tone="zinc" />
+        <Stat label={t('review.statInserted')} value={summary.inserted} tone="emerald" />
+        <Stat label={t('review.statUpdated')} value={summary.updated} tone="sky" />
+        <Stat label={t('review.statSkipped')} value={summary.skipped} tone="zinc" />
+        <Stat label={t('review.statErrors')} value={summary.errors} tone="red" />
+        <Stat label={t('review.statTotal')} value={summary.totalRows} tone="zinc" />
       </div>
 
       {summary.errorGroups.length > 0 ? (
         <div className="rounded-button border border-red-200 bg-red-50/80 px-3 py-2">
-          <p className="text-xs font-medium text-red-900">สรุป error ({summary.errors} แถว)</p>
+          <p className="text-xs font-medium text-red-900">
+            {t('review.errorSummary', { count: summary.errors })}
+          </p>
           <ul className="mt-1 max-h-32 space-y-1 overflow-y-auto text-xs text-red-800">
             {summary.errorGroups.map((g) => (
               <li key={g.message}>
@@ -106,10 +122,13 @@ export function Iw37nImportReviewPanel({
       <div className="flex flex-wrap gap-2">
         {(
           [
-            ['all', `ทั้งหมด (${rows.length})`],
-            ['error', `ผิดพลาด (${summary.errors})`],
-            ['skipped', `ข้าม (${summary.skipped})`],
-            ['ok', `สำเร็จ (${summary.inserted + summary.updated})`],
+            ['all', t('review.filterAll', { count: rows.length })],
+            ['error', t('review.filterError', { count: summary.errors })],
+            ['skipped', t('review.filterSkipped', { count: summary.skipped })],
+            [
+              'ok',
+              t('review.filterOk', { count: summary.inserted + summary.updated }),
+            ],
           ] as const
         ).map(([key, label]) => (
           <Button
@@ -128,18 +147,18 @@ export function Iw37nImportReviewPanel({
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-14 text-center">ลำดับ</TableHead>
-              <TableHead>ผลลัพธ์</TableHead>
-              <TableHead>ใบงาน/Op</TableHead>
-              <TableHead>ประเภท</TableHead>
-              <TableHead>ข้อความ</TableHead>
+              <TableHead className="w-14 text-center">{t('review.table.row')}</TableHead>
+              <TableHead>{t('review.table.action')}</TableHead>
+              <TableHead>{t('review.table.wkorder')}</TableHead>
+              <TableHead>{t('review.table.wktype')}</TableHead>
+              <TableHead>{t('review.table.message')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-caption">
-                  ไม่มีแถวในตัวกรองนี้
+                  {t('review.filterEmpty')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -167,17 +186,17 @@ export function Iw37nImportReviewPanel({
 
       <div className="flex flex-wrap gap-2 border-t border-amber-200/80 pt-3">
         <Button type="button" disabled={!canCommit || committing} onClick={onCommit}>
-          {committing ? 'กำลัง commit…' : 'ยืนยันนำเข้า (commit)'}
+          {committing ? t('review.committing') : t('review.commit')}
         </Button>
         <Button type="button" variant="outline" disabled={committing} onClick={onCancel}>
-          ยกเลิก / เลือกไฟล์ใหม่
+          {t('review.cancel')}
         </Button>
         {summary.isDuplicate ? (
           <p className="self-center text-xs font-medium text-purple-900">
-            ไม่สามารถ commit ไฟล์ซ้ำ — เลือกไฟล์อื่น
+            {t('review.cannotCommitDuplicate')}
           </p>
         ) : !canCommit ? (
-          <p className="self-center text-xs text-amber-800">ไม่มีแถว insert/update — แก้ไฟล์ก่อน commit</p>
+          <p className="self-center text-xs text-amber-800">{t('review.cannotCommitNoRows')}</p>
         ) : null}
       </div>
     </div>

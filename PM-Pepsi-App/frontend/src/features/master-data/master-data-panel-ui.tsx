@@ -1,6 +1,7 @@
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export function MasterDataPanelSkeleton() {
   return (
@@ -18,22 +19,24 @@ export function MasterDataPanelError({
   error: unknown
   onRetry?: () => void
 }) {
+  const { t } = useTranslation('masterData')
   const message = error instanceof Error ? error.message : String(error)
   return (
     <EmptyState
       icon={AlertCircle}
-      title="โหลดไม่สำเร็จ"
+      title={t('panel.loadFailed')}
       description={message}
-      action={onRetry ? { label: 'ลองใหม่', onClick: onRetry } : undefined}
+      action={onRetry ? { label: t('panel.retry'), onClick: onRetry } : undefined}
     />
   )
 }
 
 export function MasterDataPanelEmpty({ description }: { description?: string }) {
+  const { t } = useTranslation('masterData')
   return (
     <EmptyState
-      title="ไม่มีข้อมูล"
-      description={description ?? 'ตรวจ migration/seed หรือนำเข้าข้อมูล'}
+      title={t('panel.empty')}
+      description={description ?? t('panel.emptyHint')}
     />
   )
 }

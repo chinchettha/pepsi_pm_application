@@ -1,5 +1,6 @@
 import type { ReportsImportCoverage } from '@/api/schemas'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 type Props = {
   coverage: ReportsImportCoverage
@@ -16,7 +17,7 @@ export function SummaryWeeklyImportHint({ coverage, rowCount, onApplySapRange }:
 
   if (!hasSap && !hasMh) {
     return (
-      <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-body-sm text-amber-900">
+      <div className="app-callout app-callout--amber">
         ยังไม่มีข้อมูล IW37N / manhour ในระบบ — นำเข้า SAP ที่{' '}
         <strong>/integration</strong> หรือบันทึก manhour ก่อน แล้วเลือกช่วงวันที่ให้ครอบข้อมูล
       </div>
@@ -25,7 +26,7 @@ export function SummaryWeeklyImportHint({ coverage, rowCount, onApplySapRange }:
 
   if (!emptyInRange && !wrongRange) {
     return (
-      <div className="rounded-card border border-emerald-200 bg-emerald-50 px-4 py-3 text-body-sm text-emerald-900">
+      <div className="app-callout app-callout--emerald">
         ข้อมูลรายงานจาก DB หลัง import — IW37N {coverage.iw37nCount.toLocaleString()} แถว
         {coverage.iw37nBscstartFrom && coverage.iw37nBscstartTo
           ? ` · แผนงาน ${coverage.iw37nBscstartFrom} – ${coverage.iw37nBscstartTo}`
@@ -43,7 +44,7 @@ export function SummaryWeeklyImportHint({ coverage, rowCount, onApplySapRange }:
   const suggested = coverage.suggestedSapRange
 
   return (
-    <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-body-sm text-amber-900 space-y-2">
+    <div className={cn('app-callout app-callout--amber space-y-2')}>
       <p>
         ช่วงวันที่ที่เลือกไม่ทับข้อมูล SAP ใน DB
         {coverage.iw37nBscstartFrom && coverage.iw37nBscstartTo
@@ -56,14 +57,14 @@ export function SummaryWeeklyImportHint({ coverage, rowCount, onApplySapRange }:
           type="button"
           size="sm"
           variant="outline"
-          className="border-amber-300 bg-white"
+          className="border-[color-mix(in_srgb,var(--sys-orange-light)_35%,var(--app-border))] bg-[var(--app-surface)]"
           onClick={() => onApplySapRange(suggested.from, suggested.to)}
         >
           ใช้ช่วงข้อมูล SAP ({suggested.from} – {suggested.to})
         </Button>
       ) : null}
       {!hasMh ? (
-        <p className="text-xs text-amber-800">
+        <p className="text-xs opacity-80">
           ยังไม่มี manhour — ตาราง %PM/%Reactive ต้องมี HR hour จาก manhour ในช่วงเดียวกัน
         </p>
       ) : null}

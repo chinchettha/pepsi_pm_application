@@ -8,7 +8,9 @@ export const roleCodeSchema = z
 
 export const adminRoleSchema = z.object({
   roleCode: z.string(),
+  /** Thai display name */
   roleName: z.string(),
+  roleNameEn: z.string(),
   roleColor: z.string(),
   isSystem: z.boolean(),
   description: z.string().nullable(),
@@ -55,6 +57,7 @@ export const adminRoleMatrixResponseSchema = z.object({
 export const createRoleBodySchema = z.object({
   roleCode: roleCodeSchema,
   roleName: z.string().trim().min(1).max(120),
+  roleNameEn: z.string().trim().min(1).max(120),
   roleColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -64,6 +67,7 @@ export const createRoleBodySchema = z.object({
 
 export const updateRoleBodySchema = z.object({
   roleName: z.string().trim().min(1).max(120).optional(),
+  roleNameEn: z.string().trim().min(1).max(120).optional(),
   roleColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)

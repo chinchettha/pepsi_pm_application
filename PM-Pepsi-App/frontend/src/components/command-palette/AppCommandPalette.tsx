@@ -17,6 +17,7 @@ import { Command } from 'cmdk'
 import type { LucideIcon } from 'lucide-react'
 import { Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 type PaletteItem = {
@@ -43,7 +44,7 @@ function navGroupOrder(entries: NavEntry[]): string[] {
 
 function flattenNavItems(entries: NavEntry[]): PaletteItem[] {
   const out: PaletteItem[] = []
-  let group = 'เมนูหลัก'
+  let group = ''
   for (const e of entries) {
     if (e.kind === 'heading') {
       group = e.label
@@ -69,6 +70,8 @@ export function AppCommandPalette({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const { t: tAdmin } = useTranslation('admin')
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const authUser = useAuthUser()
   const { entries } = useAppNav()
@@ -87,22 +90,29 @@ export function AppCommandPalette({
 
   const adminItems = useMemo(() => {
     const groupLabel = new Map(
-      getGroupedAdminSections({ skipOverview: false }).map((g) => [g.group.id, g.group.label]),
+      getGroupedAdminSections(tAdmin, { skipOverview: false }).map((g) => [g.group.id, g.group.label]),
     )
-    return ADMIN_SECTIONS.filter((s) => s.implemented)
+    return getGroupedAdminSections(tAdmin, { skipOverview: false })
+      .flatMap((g) => g.sections)
       .filter((s) => hasPermission(authUser, s.permission))
       .map((s) => ({
         id: `admin-${s.segment || 'console'}`,
         label: s.label,
         hint: s.description,
-        group: `ผู้ดูแลระบบ · ${groupLabel.get(s.group) ?? s.group}`,
+        group: `${tAdmin('breadcrumb.admin')} · ${groupLabel.get(s.group) ?? s.group}`,
         to: s.to,
         icon: s.icon,
         disabled: false,
       }))
-  }, [authUser])
+  }, [authUser, tAdmin])
 
-  const navItems = useMemo(() => flattenNavItems(entries), [entries])
+  const navItems = useMemo(() => {
+    const items = flattenNavItems(entries)
+    const mainGroup = t('commandPalette.mainNavGroup')
+    return items.map((item) =>
+      item.group === '' ? { ...item, group: mainGroup } : item,
+    )
+  }, [entries, t])
 
   const run = useCallback(
     (to: string) => {
@@ -137,22 +147,22 @@ export function AppCommandPalette({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogHeader className="sr-only">
-        <DialogTitle>ค้นหาและไปยังหน้า</DialogTitle>
-        <DialogDescription>Command palette — กด Enter เพื่อเปิดหน้า</DialogDescription>
+        <DialogTitle>{t('commandPalette.title')}</DialogTitle>
+        <DialogDescription>{t('commandPalette.description')}</DialogDescription>
       </DialogHeader>
       <DialogContent className="app-command-palette gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <Command className="app-command-palette__cmd" label="ค้นหาหน้า">
+        <Command className="app-command-palette__cmd" label={t('commandPalette.label')}>
           <div className="app-command-palette__input-row flex items-center gap-2 border-b border-app px-3">
             <Search className="size-4 shrink-0 text-app-muted" aria-hidden />
             <Command.Input
-              placeholder="ค้นหาเมนูหรือหน้า…"
+              placeholder={t('commandPalette.placeholder')}
               className="flex h-12 min-w-0 flex-1 bg-transparent py-3 text-body-sm outline-none placeholder:text-app-muted"
             />
             <CommandPaletteShortcutBadge className="shrink-0 text-app-muted" />
           </div>
           <Command.List className="max-h-[min(360px,50vh)] overflow-y-auto p-2">
             <Command.Empty className="py-6 text-center text-caption text-app-muted">
-              ไม่พบรายการ
+              {t('commandPalette.empty')}
             </Command.Empty>
             {orderedGroups.map(({ name, items }) => (
               <Command.Group key={name} heading={name} className="app-command-palette__group">
@@ -190,7 +200,7 @@ export function AppCommandPalette({
             ))}
           </Command.List>
           <div className="app-command-palette__footer flex items-center justify-between gap-2 border-t border-app px-3 py-2 text-caption text-app-muted">
-            <span>↑↓ เลือก · Enter เปิดหน้า · Esc ปิด</span>
+            <span>{t('commandPalette.footer')}</span>
             <CommandPaletteShortcutBadge />
           </div>
         </Command>

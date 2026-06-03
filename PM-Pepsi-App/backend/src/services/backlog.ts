@@ -8,9 +8,9 @@ import type {
   backlogSearchBodySchema,
 } from '../schemas/backlog.js'
 import { formatUntimeUnit, manhourDateWhereSql } from '../lib/manhour-minutes.js'
-import { buildWktypeFilterOptions } from '../lib/wktype-zd-mapping.js'
+import { listActivityFilterOptions } from '../lib/activity-type-label.js'
+import { listWktypeZdFilterOptions } from '../lib/wktype-zd-mapping.js'
 import {
-  appendInFilter,
   FACTORY_CODE,
   sqlFactoryScope,
   getMoveOverColor,
@@ -26,12 +26,6 @@ type FilterOptions = z.infer<typeof backlogFilterOptionsResponseSchema>
 type BacklogManhourSearch = z.infer<typeof backlogManhourSearchBodySchema>
 type BacklogManhourSummary = z.infer<typeof backlogManhourResponseSchema>
 type BacklogFilterDetail = z.infer<typeof backlogFilterDetailResponseSchema>
-
-function padMatLabel(mat: string, descrip: string | null): string {
-  const n = Number(mat)
-  const code = Number.isFinite(n) ? String(n).padStart(2, '0') : mat
-  return descrip ? `${code} = ${descrip}` : code
-}
 
 function parseIsoYyyyMmDdToSec(v: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim())
@@ -57,25 +51,36 @@ const MH_ACT_MIN_SQL = `CASE
   ELSE COALESCE(actwork, 0)
 END`
 
+/** เงื่อนไขงานค้าง (CRTD/REL) ในเดือน — เฉพาะใบที่มีศูนย์งาน */
+function backlogMonthScope(startSec: number, endSec: number, factory: string): {
+  fromOrder: string
+  fromOrderWithWc: string
+  whereClause: string
+  params: unknown[]
+} {
+  const whereClause = `WHERE ${sqlFactoryScope('o', '$3')}
+        AND o.syst IN ('CRTD', 'REL')
+        AND o.bscstart IS NOT NULL
+        AND o.bscstart > 0
+        AND NULLIF(TRIM(o.wkctr), '') IS NOT NULL
+        AND (
+          (o.bscstart >= $1 AND o.bscstart < $2)
+          OR (o.actfinish >= $1 AND o.actfinish < $2)
+          OR (o.cday >= $1 AND o.cday < $2)
+        )`
+  return {
+    fromOrder: 'FROM app.view_order o',
+    fromOrderWithWc: `FROM app.view_order o
+      LEFT JOIN app.tbworkcenter wc ON wc.wkctr = TRIM(o.wkctr)`,
+    whereClause,
+    params: [startSec, endSec, factory],
+  }
+}
+
 export async function listBacklogFilterOptions(pool: Pool): Promise<FilterOptions> {
   const factory = `%${FACTORY_CODE}%`
 
-  const [activitiesR, wktypesR, wktypesMasterR, wcR, fnR, fnMasterR, eqR] = await Promise.all([
-    pool.query<{ mat: string; matdescrip: string | null }>(
-      `SELECT mat, matdescrip FROM app.tbactivitytype ORDER BY mat`,
-    ),
-    pool.query<{ wktype: string }>(
-      `SELECT DISTINCT wktype
-       FROM app.tbiw37n
-       WHERE wktype IS NOT NULL AND wktype <> ''
-         AND syst IN ('CRTD', 'REL')
-         AND ${sqlFactoryScope('', '$1')}
-       ORDER BY wktype`,
-      [factory],
-    ),
-    pool.query<{ wkzb: string; zbdescrip: string | null }>(
-      `SELECT wkzb, zbdescrip FROM app.tbwkzb ORDER BY wkzb`,
-    ),
+  const [wcR, fnR, fnMasterR, eqR] = await Promise.all([
     pool.query<{ wkctr: string; namewkctr: string | null; surnamewkctr: string | null }>(
       `SELECT wkctr, namewkctr, surnamewkctr FROM app.tbworkcenter ORDER BY wkctr`,
     ),
@@ -101,11 +106,8 @@ export async function listBacklogFilterOptions(pool: Pool): Promise<FilterOption
   ])
 
   return {
-    activities: activitiesR.rows.map((r) => ({
-      code: r.mat,
-      label: padMatLabel(r.mat, r.matdescrip),
-    })),
-    wktypes: buildWktypeFilterOptions(wktypesMasterR.rows, wktypesR.rows),
+    activities: listActivityFilterOptions(),
+    wktypes: listWktypeZdFilterOptions(),
     workcenters: wcR.rows.map((r) => {
       const name = [r.namewkctr, r.surnamewkctr].filter(Boolean).join(' ').trim()
       return {
@@ -141,28 +143,15 @@ export async function listBacklogEvents(
   const { year, month } = body
   const { startSec, endSec, prefix } = monthRangeSec(year, month)
   const moveColor = await getMoveOverColor(pool)
+  const factory = `%${FACTORY_CODE}%`
+  const scope = backlogMonthScope(startSec, endSec, factory)
 
-  const params: unknown[] = [startSec, endSec, `%${FACTORY_CODE}%`]
-  let sql = `
-    SELECT idiw37, wkorder, wktype, bscstart, actfinish, cday, syst, operationshorttext, wkstcolor
-    FROM app.view_order
-    WHERE ${sqlFactoryScope('', '$3')}
-      AND syst IN ('CRTD', 'REL')
-      AND bscstart IS NOT NULL
-      AND bscstart > 0
-      AND (
-        (bscstart >= $1 AND bscstart < $2)
-        OR (actfinish >= $1 AND actfinish < $2)
-        OR (cday >= $1 AND cday < $2)
-      )`
-
-  sql += appendInFilter('mat', body.activity, params)
-  sql += appendInFilter('wktype', body.wktype, params)
-  sql += appendInFilter('functionalloc', body.functionalloc, params)
-  sql += appendInFilter('equipment', body.equipment, params)
-  sql += appendInFilter('wkctr', body.wkctr, params)
-
-  sql += ` ORDER BY bscstart DESC LIMIT 2500`
+  const params = [...scope.params]
+  const sql = `
+    SELECT o.idiw37, o.wkorder, o.wktype, o.wkctr, o.bscstart, o.actfinish, o.cday, o.syst, o.operationshorttext, o.wkstcolor
+    ${scope.fromOrder}
+    ${scope.whereClause}
+    ORDER BY o.bscstart DESC LIMIT 2500`
 
   const r = await pool.query<OrderRow>(sql, params)
   const items: CalendarEvent[] = []
@@ -305,30 +294,7 @@ export async function getBacklogFilterDetail(
   const { year, month } = body
   const { startSec, endSec } = monthRangeSec(year, month)
   const factory = `%${FACTORY_CODE}%`
-
-  const buildWhere = (includeWktype: boolean) => {
-    const params: unknown[] = [startSec, endSec, factory]
-    let where = `
-      FROM app.view_order
-      WHERE ${sqlFactoryScope('', '$3')}
-        AND syst IN ('CRTD', 'REL')
-        AND bscstart IS NOT NULL
-        AND bscstart > 0
-        AND (
-          (bscstart >= $1 AND bscstart < $2)
-          OR (actfinish >= $1 AND actfinish < $2)
-          OR (cday >= $1 AND cday < $2)
-        )`
-
-    where += appendInFilter('mat', body.activity, params)
-    if (includeWktype) where += appendInFilter('wktype', body.wktype, params)
-    where += appendInFilter('functionalloc', body.functionalloc, params)
-    where += appendInFilter('equipment', body.equipment, params)
-    where += appendInFilter('wkctr', body.wkctr, params)
-    return { where, params }
-  }
-
-  const { where: whereAll, params: paramsAll } = buildWhere(true)
+  const scope = backlogMonthScope(startSec, endSec, factory)
 
   const totalsR = await pool.query<{
     total_orders: string
@@ -337,28 +303,47 @@ export async function getBacklogFilterDetail(
     team_a_work: string
     team_b_count: string
     team_b_work: string
-    team_p_count: string
-    team_p_work: string
+    team_ee_count: string
+    team_ee_work: string
+    team_ut_count: string
+    team_ut_work: string
   }>(
     `SELECT
        COUNT(*)::text AS total_orders,
-       COUNT(*) FILTER (WHERE syst NOT IN ('CRTD', 'REL'))::text AS completion_count,
-       COUNT(*) FILTER (WHERE team = 'A')::text AS team_a_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'A'), 0)::text AS team_a_work,
-       COUNT(*) FILTER (WHERE team = 'B')::text AS team_b_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'B'), 0)::text AS team_b_work,
-       COUNT(*) FILTER (WHERE team = 'P')::text AS team_p_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'P'), 0)::text AS team_p_work
-     ${whereAll}`,
-    paramsAll,
+       COUNT(*) FILTER (WHERE o.syst NOT IN ('CRTD', 'REL'))::text AS completion_count,
+       COUNT(*) FILTER (WHERE o.team = 'A')::text AS team_a_count,
+       COALESCE(SUM(COALESCE(o.work, 0)) FILTER (WHERE o.team = 'A'), 0)::text AS team_a_work,
+       COUNT(*) FILTER (WHERE o.team = 'B')::text AS team_b_count,
+       COALESCE(SUM(COALESCE(o.work, 0)) FILTER (WHERE o.team = 'B'), 0)::text AS team_b_work,
+       COUNT(*) FILTER (WHERE o.team = 'EE')::text AS team_ee_count,
+       COALESCE(SUM(COALESCE(o.work, 0)) FILTER (WHERE o.team = 'EE'), 0)::text AS team_ee_work,
+       COUNT(*) FILTER (WHERE o.team = 'UT')::text AS team_ut_count,
+       COALESCE(SUM(COALESCE(o.work, 0)) FILTER (WHERE o.team = 'UT'), 0)::text AS team_ut_work
+     ${scope.fromOrder}
+     ${scope.whereClause}`,
+    scope.params,
   )
 
-  const totalOrders = Number(totalsR.rows[0]?.total_orders ?? 0) || 0
-  const completionCount = Number(totalsR.rows[0]?.completion_count ?? 0) || 0
-  const completionPercent =
-    totalOrders > 0 ? Math.round((completionCount / totalOrders) * 100) : 0
-
-  const { where: whereNoType, params: paramsNoType } = buildWhere(false)
+  const wcR = await pool.query<{
+    wkctr: string
+    namewkctr: string | null
+    surnamewkctr: string | null
+    cnt: string
+    work_sum: string
+  }>(
+    `SELECT
+       TRIM(o.wkctr) AS wkctr,
+       wc.namewkctr,
+       wc.surnamewkctr,
+       COUNT(*)::text AS cnt,
+       COALESCE(SUM(COALESCE(o.work, 0)), 0)::text AS work_sum
+     ${scope.fromOrderWithWc}
+     ${scope.whereClause}
+     GROUP BY TRIM(o.wkctr), wc.namewkctr, wc.surnamewkctr
+     HAVING COUNT(*) > 0
+     ORDER BY TRIM(o.wkctr)`,
+    scope.params,
+  )
 
   const byWkzbR = await pool.query<{
     wkzb: string
@@ -368,13 +353,19 @@ export async function getBacklogFilterDetail(
     `SELECT z.wkzb, z.zbdescrip, COALESCE(x.cnt, 0)::text AS cnt
      FROM app.tbwkzb z
      LEFT JOIN (
-       SELECT wktype, COUNT(*)::int AS cnt
-       ${whereNoType}
-       GROUP BY wktype
+       SELECT o.wktype, COUNT(*)::int AS cnt
+       ${scope.fromOrder}
+       ${scope.whereClause}
+       GROUP BY o.wktype
      ) x ON x.wktype = z.wkzb
      ORDER BY z.wkzb`,
-    paramsNoType,
+    scope.params,
   )
+
+  const totalOrders = Number(totalsR.rows[0]?.total_orders ?? 0) || 0
+  const completionCount = Number(totalsR.rows[0]?.completion_count ?? 0) || 0
+  const completionPercent =
+    totalOrders > 0 ? Math.round((completionCount / totalOrders) * 100) : 0
 
   return {
     year,
@@ -387,6 +378,15 @@ export async function getBacklogFilterDetail(
       label: r.zbdescrip ? `${r.wkzb} = ${r.zbdescrip}` : r.wkzb,
       count: Number(r.cnt) || 0,
     })),
+    byWorkcenter: wcR.rows.map((r) => {
+      const name = [r.namewkctr, r.surnamewkctr].filter(Boolean).join(' ').trim()
+      return {
+        code: r.wkctr,
+        label: name ? `${r.wkctr} = ${name}` : r.wkctr,
+        count: Number(r.cnt) || 0,
+        workSumMinutes: Number(r.work_sum) || 0,
+      }
+    }),
     teamA: {
       count: Number(totalsR.rows[0]?.team_a_count ?? 0) || 0,
       workSumMinutes: Number(totalsR.rows[0]?.team_a_work ?? 0) || 0,
@@ -395,9 +395,13 @@ export async function getBacklogFilterDetail(
       count: Number(totalsR.rows[0]?.team_b_count ?? 0) || 0,
       workSumMinutes: Number(totalsR.rows[0]?.team_b_work ?? 0) || 0,
     },
-    teamP: {
-      count: Number(totalsR.rows[0]?.team_p_count ?? 0) || 0,
-      workSumMinutes: Number(totalsR.rows[0]?.team_p_work ?? 0) || 0,
+    teamEE: {
+      count: Number(totalsR.rows[0]?.team_ee_count ?? 0) || 0,
+      workSumMinutes: Number(totalsR.rows[0]?.team_ee_work ?? 0) || 0,
+    },
+    teamUT: {
+      count: Number(totalsR.rows[0]?.team_ut_count ?? 0) || 0,
+      workSumMinutes: Number(totalsR.rows[0]?.team_ut_work ?? 0) || 0,
     },
   }
 }

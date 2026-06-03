@@ -115,6 +115,9 @@ export async function addPersonnelClose(
     endT: string
   },
 ): Promise<void> {
+  const { assertWorkOrderCloseReady } = await import('../lib/work-order-close-guard.js')
+  await assertWorkOrderCloseReady(pool, opts.idiw37)
+
   const d1 = parseDdMmYyyy(opts.startD)
   const d2 = parseDdMmYyyy(opts.endD)
   const t1 = parseHhMm(opts.startT)

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   buildWktypeFilterOptions,
   formatWktypeDisplay,
+  formatWktypeDisplayWithMat,
   formatWktypeFilterLabel,
+  listWktypeZdFilterOptions,
 } from './wktype-zd-mapping.js'
 
 describe('wktype-zd-mapping', () => {
@@ -23,5 +25,17 @@ describe('wktype-zd-mapping', () => {
     )
     expect(opts.map((o) => o.code)).toEqual(['ZB01', 'ZB02'])
     expect(opts[1].label).toContain('ZD02')
+  })
+
+  it('listWktypeZdFilterOptions returns ZB with ZD labels', () => {
+    const opts = listWktypeZdFilterOptions()
+    expect(opts.map((o) => o.code)).toEqual(['ZB05', 'ZB02', 'ZB01'])
+    expect(opts[1].label).toContain('ZD02')
+  })
+
+  it('formatWktypeDisplayWithMat puts Maint Code before ZB02 · ZD02', () => {
+    const d = formatWktypeDisplayWithMat('ZB02', '2')
+    expect(d.primary).toBe('002 · ZB02 · ZD02')
+    expect(d.tooltip).toContain('Preventive Maintenance')
   })
 })

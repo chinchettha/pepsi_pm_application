@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { Upload } from 'lucide-react'
 import type { ChangeEvent } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 
 export type LoginBackgroundCardProps = {
   hasLoginBackground: boolean
@@ -24,12 +25,14 @@ export function LoginBackgroundCard({
   onFileSelect,
   onDelete,
 }: LoginBackgroundCardProps) {
+  const { t } = useTranslation('admin')
+
   return (
     <Card className="admin-card lg:col-span-2">
       <CardHeader>
-        <CardTitle>พื้นหลังหน้า Login (Wallpaper)</CardTitle>
+        <CardTitle>{t('branding.loginBgTitle')}</CardTitle>
         <CardDescription>
-          แสดงที่ <code className="text-xs">/login</code> เท่านั้น — PNG / JPEG / WebP สูงสุด 8MB → WebP กว้างสุด 1920px
+          <Trans t={t} i18nKey="branding.loginBgDesc" components={{ code: <code className="text-xs" /> }} />
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -44,7 +47,7 @@ export function LoginBackgroundCard({
           {previewSrc ? (
             <img src={previewSrc} alt="" className="size-full object-cover" />
           ) : (
-            <p className="text-caption">ยังไม่ตั้งพื้นหลัง — ใช้สีพื้นตามธีม</p>
+            <p className="text-caption">{t('branding.loginBgEmpty')}</p>
           )}
         </div>
         {canWrite ? (
@@ -56,7 +59,7 @@ export function LoginBackgroundCard({
               )}
             >
               <Upload className="size-4" aria-hidden />
-              อัปโหลดพื้นหลัง
+              {t('branding.uploadLoginBg')}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
@@ -66,7 +69,7 @@ export function LoginBackgroundCard({
             </Label>
             {hasLoginBackground ? (
               <Button type="button" variant="outline" disabled={deletePending} onClick={onDelete}>
-                ลบพื้นหลัง
+                {t('branding.deleteLoginBg')}
               </Button>
             ) : null}
           </div>

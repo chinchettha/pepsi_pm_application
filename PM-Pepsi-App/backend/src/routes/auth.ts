@@ -19,6 +19,7 @@ import { SESSION_COOKIE_NAME, signSessionToken, verifySessionToken } from '../li
 import { voidAudit } from '../lib/audit-mutation.js'
 import { auditActorFromUser, auditLog, auditMetaFromRequest } from '../lib/audit-log.js'
 import { listPermissionsForUserst } from '../lib/has-permission.js'
+import { enrichAuthUser } from '../lib/role-labels.js'
 import { createRequireApiAuth, getTokenFromRequest } from '../middleware/require-api-auth.js'
 import { createRequirePermission } from '../middleware/require-permission.js'
 
@@ -117,8 +118,9 @@ export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: stri
 
     }
 
-    const permissions = await listPermissionsForUserst(pool, user.userst)
-    res.json(authSessionResponseSchema.parse({ user: { ...user, permissions } }))
+    const enriched = await enrichAuthUser(pool, user)
+    const permissions = await listPermissionsForUserst(pool, enriched.userst)
+    res.json(authSessionResponseSchema.parse({ user: { ...enriched, permissions } }))
 
   })
 
@@ -163,7 +165,7 @@ export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: stri
 
 
 
-      const clientIp = getClientIp(req)
+      const clientIp = getClientIp(req) ?? 'unknown'
 
       const lock = await isLoginLocked(pool, clientIp, username)
       if (lock.locked) {

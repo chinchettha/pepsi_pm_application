@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 export function NavMenuList({
   entries,
@@ -27,11 +28,13 @@ export function NavMenuList({
   /** แถบไอคอน — ซ่อนข้อความ (desktop collapsed) */
   collapsed?: boolean
 }) {
+  const { t } = useTranslation()
+
   if (variant === 'navbar') {
     return (
       <div
         className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1"
-        aria-label="เมนูหลัก"
+        aria-label={t('nav.mainMenu')}
       >
         {entries.map((entry, idx) =>
           entry.kind === 'heading' ? (
@@ -61,13 +64,13 @@ export function NavMenuList({
         collapsed && 'sidebar-nav--collapsed',
         collapsed ? 'px-2 py-2' : 'px-2 py-2',
       )}
-      aria-label="เมนูหลัก"
+      aria-label={t('nav.mainMenu')}
       data-collapsed={collapsed ? 'true' : 'false'}
     >
       {showMeta && !collapsed ? (
         <p className="mb-1 px-2 text-sidebar-muted">
-          เมนูจาก <code className="opacity-80">tbmenu</code>
-          {navSource === 'api' ? ' (API+DB)' : ' (fallback)'}
+          {t('nav.fromTbmenu')} <code className="opacity-80">tbmenu</code>
+          {navSource === 'api' ? ` ${t('nav.apiDb')}` : ` ${t('nav.fallback')}`}
           {userst ? ` · ${userst}` : ''}
         </p>
       ) : null}
@@ -134,7 +137,7 @@ function NavGroupHeading({
   return (
     <div
       className={cn(
-        'nav-menu-group-heading nav-menu-group-heading--sidebar',
+        'nav-menu-group-heading nav-menu-group-heading--sidebar transition-[opacity,max-height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
         isFirst && 'nav-menu-group-heading--first',
       )}
     >
@@ -195,9 +198,12 @@ function NavMenuLink({
       <Icon className="nav-menu-link__icon size-4 shrink-0" aria-hidden />
       <span
         className={cn(
-          'nav-menu-link__label min-w-0 leading-snug',
-          collapsed && 'sr-only',
+          'nav-menu-link__label min-w-0 overflow-hidden leading-snug whitespace-nowrap',
+          collapsed
+            ? 'pointer-events-none max-w-0 opacity-0'
+            : 'max-w-[14rem] opacity-100',
         )}
+        aria-hidden={collapsed}
       >
         {item.label}
       </span>

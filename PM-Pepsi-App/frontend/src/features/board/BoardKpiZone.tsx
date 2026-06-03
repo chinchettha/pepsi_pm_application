@@ -1,4 +1,5 @@
 import { Sparkline, type SparklineTone } from '@/components/charts/Sparkline'
+import { useTranslation } from 'react-i18next'
 
 export type BoardKpiItem = {
   label: string
@@ -19,6 +20,7 @@ type Props = {
 
 /** โซน A — KPI 4 การ์ด (อ่านจากระยะ ~3 m) */
 export function BoardKpiZone({ items, loading, carousel = false }: Props) {
+  const { t } = useTranslation('board')
   return (
     <section
       className={
@@ -26,9 +28,9 @@ export function BoardKpiZone({ items, loading, carousel = false }: Props) {
           ? 'engineering-board__zone engineering-board__zone--a engineering-board__kpi-row engineering-board__kpi-row--carousel'
           : 'engineering-board__zone engineering-board__zone--a engineering-board__kpi-row'
       }
-      aria-label="โซน A — ตัวชี้วัดหลัก"
+      aria-label={t('zoneAAria')}
     >
-      <p className="engineering-board__zone-tag">โซน A · KPI</p>
+      <p className="engineering-board__zone-tag">{t('zoneA')}</p>
       <div className="engineering-board__grid">
         {loading && items.length === 0
           ? Array.from({ length: 4 }, (_, i) => (

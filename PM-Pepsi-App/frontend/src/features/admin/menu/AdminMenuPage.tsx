@@ -37,8 +37,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Download, GripVertical, Menu, Plus, RefreshCcw } from 'lucide-react'
+import { AlertCircle, Download, Menu, Plus, RefreshCcw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { MenuEditDialog } from './MenuEditDialog'
 import { MenuNavLayoutCard } from './MenuNavLayoutCard'
@@ -56,6 +57,7 @@ function MenuPreviewPanel({
   previewRole: string
   previewPermissions?: string[]
 }) {
+  const { t } = useTranslation('admin')
   const entries = useMemo(
     () => previewNavForRole(rows, previewRole, previewPermissions),
     [rows, previewRole, previewPermissions],
@@ -67,10 +69,12 @@ function MenuPreviewPanel({
         Preview · role {previewRole}
         {previewPermissions ? (
           <span className="ml-1 font-normal normal-case text-app-muted">
-            ({previewPermissions.length} สิทธิ์จาก matrix)
+            {t('menu.previewPerms', { count: previewPermissions.length })}
           </span>
         ) : (
-          <span className="ml-1 font-normal normal-case text-app-muted">(menuright เทียบ userst)</span>
+          <span className="ml-1 font-normal normal-case text-app-muted">
+            {t('menu.menurightNote')}
+          </span>
         )}
       </p>
       <nav className="space-y-1">
@@ -95,7 +99,7 @@ function MenuPreviewPanel({
           )
         })}
         {entries.length === 0 ? (
-          <p className="px-2 py-4 text-app-muted">ไม่มีเมนูสำหรับ role นี้</p>
+          <p className="px-2 py-4 text-app-muted">{t('menu.noMenuForRole')}</p>
         ) : null}
       </nav>
     </div>
@@ -103,6 +107,8 @@ function MenuPreviewPanel({
 }
 
 export function AdminMenuPage() {
+  const { t } = useTranslation('admin')
+  const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
   const authUser = useAuthUser()
   const canRead = usePermission('admin.menu.read')
@@ -160,10 +166,10 @@ export function AdminMenuPage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: MENU_KEY })
       void qc.invalidateQueries({ queryKey: ['nav-menu'] })
-      toast.success('จัดลำดับเมนูแล้ว')
+      toast.success(t('menu.reordered'))
     },
     onError: () => {
-      toast.error('จัดลำดับไม่สำเร็จ')
+      toast.error(t('menu.reorderFailed'))
       if (q.data) setLocalRows(q.data)
     },
   })
@@ -171,23 +177,23 @@ export function AdminMenuPage() {
   const syncMut = useMutation({
     mutationFn: syncAdminMenuFromPhp,
     onSuccess: (res) => {
-      toast.success(`Sync จาก PHP แล้ว (${res.statements} คำสั่ง)`)
+      toast.success(t('menu.synced', { count: res.statements }))
       setSyncOpen(false)
       invalidateAll()
     },
     onError: (e: Error) => {
-      toast.error(e.message || 'Sync ไม่สำเร็จ — ตรวจไฟล์ import_tbmenu_pg.sql')
+      toast.error(e.message || t('menu.syncFailed'))
     },
   })
 
   const deleteMut = useMutation({
     mutationFn: deleteAdminMenuItem,
     onSuccess: () => {
-      toast.success('ลบเมนูแล้ว')
+      toast.success(t('menu.deleted'))
       void qc.invalidateQueries({ queryKey: MENU_KEY })
       void qc.invalidateQueries({ queryKey: ['nav-menu'] })
     },
-    onError: () => toast.error('ลบไม่สำเร็จ'),
+    onError: () => toast.error(t('menu.deleteFailed')),
   })
 
   const sensors = useSensors(
@@ -220,13 +226,7 @@ export function AdminMenuPage() {
   if (!canRead && !canWrite) {
     return (
       <AdminPageRoot tourTarget="admin-menu">
-        <AdminAccessDenied
-          message={
-            <>
-              ไม่มีสิทธิ์ <code className="text-xs">admin.menu.read</code>
-            </>
-          }
-        />
+        <AdminAccessDenied permission="admin.menu.read" />
       </AdminPageRoot>
     )
   }
@@ -234,9 +234,9 @@ export function AdminMenuPage() {
   return (
     <AdminPageShell
       tourTarget="admin-menu"
-      title="เมนู"
-      description="จัดรายการเมนูหลักจาก tbmenu — ลากเรียง · ตัวอย่างตาม role · รูปแบบ shell ทั้งระบบ"
-      contentClassName="space-y-6"
+      title={t('menu.title')}
+      description={t('menu.description')}
+      hints={t('menu.hints', { returnObjects: true }) as string[]}
       headerActions={
         <>
           <Button
@@ -247,13 +247,11 @@ export function AdminMenuPage() {
             onClick={() => void q.refetch()}
             disabled={q.isFetching}
           >
-            <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />
-            รีเฟรช
-          </Button>
+            <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />{t('shared.refresh')}</Button>
           {canWrite ? (
             <Button type="button" variant="outline" className="admin-toolbar-btn" onClick={() => setSyncOpen(true)}>
               <Download className="mr-1 size-4" />
-              ซิงค์จาก PHP
+              {t('menu.syncFromPhp')}
             </Button>
           ) : null}
         </>
@@ -271,11 +269,11 @@ export function AdminMenuPage() {
             }}
           >
             <Plus className="mr-1 size-4" />
-            เพิ่มเมนู
+            {t('menu.addMenu')}
           </Button>
         ) : null}
         <label className="flex flex-col gap-1 text-caption sm:flex-row sm:items-center">
-          <span>ตัวอย่าง role</span>
+          <span>{t('menu.previewRoleLabel')}</span>
           <select
             className="h-9 max-w-xs rounded-button border border-app px-2 text-body-sm"
             value={previewRole}
@@ -288,10 +286,7 @@ export function AdminMenuPage() {
             ))}
           </select>
           {!canRolesRead ? (
-            <span className="text-xs text-app-muted">
-              มีสิทธิ์ <code className="text-code">admin.roles.read</code> จะโหลด role จาก matrix
-              และกรองเมนูตามสิทธิ์จริง
-            </span>
+            <span className="text-xs text-app-muted">{t('menu.rolesReadHint')}</span>
           ) : null}
         </label>
       </div>
@@ -301,11 +296,11 @@ export function AdminMenuPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Menu className="size-4" />
-              รายการเมนู
+              {t('menu.listTitle')}
             </CardTitle>
             <CardDescription>
-              ลาก <GripVertical className="inline size-3" /> เพื่อเรียง — บันทึก menuon อัตโนมัติ
-              {reorderMut.isPending ? ' (กำลังบันทึก…)' : null}
+              {t('menu.listDesc')}
+              {reorderMut.isPending ? t('menu.listDescSaving') : null}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -314,9 +309,9 @@ export function AdminMenuPage() {
             ) : q.isError ? (
               <EmptyState
                 icon={AlertCircle}
-                title="โหลดเมนูไม่สำเร็จ"
+                title={t('menu.loadFailed')}
                 description={(q.error as Error).message}
-                action={{ label: 'ลองใหม่', onClick: () => void q.refetch() }}
+                action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
               />
             ) : (
               <DndContext
@@ -336,7 +331,8 @@ export function AdminMenuPage() {
                           setDialogOpen(true)
                         }}
                         onDelete={() => {
-                          if (!window.confirm(`ลบ "${item.menutitle}"?`)) return
+                          if (!window.confirm(t('menu.deleteConfirm', { title: item.menutitle })))
+                            return
                           deleteMut.mutate(item.idmenu)
                         }}
                       />
@@ -350,11 +346,8 @@ export function AdminMenuPage() {
 
         <Card className="admin-card">
           <CardHeader>
-            <CardTitle className="text-base">ตัวอย่างเมนู (Sidebar)</CardTitle>
-            <CardDescription>
-              รายการจาก tbmenu — กรองตาม menuright (legacy) หรือตามสิทธิ์ matrix ถ้ามี{' '}
-              <code className="text-code">admin.roles.read</code>
-            </CardDescription>
+            <CardTitle className="text-base">{t('menu.sidebarPreviewTitle')}</CardTitle>
+            <CardDescription>{t('menu.sidebarPreviewDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <MenuPreviewPanel
@@ -378,11 +371,11 @@ export function AdminMenuPage() {
           open
           onOpenChange={(open) => !open && setSyncOpen(false)}
           tone="danger"
-          title="ซิงค์เมนูจาก PHP"
-          description="ลบ tbmenu ทั้งหมดแล้วนำเข้าจาก database/seeds/generated/import_tbmenu_pg.sql — รัน import-auth-from-mysql.ps1 ก่อนถ้ายังไม่มีไฟล์"
+          title={t('menu.syncTitle')}
+          description={t('menu.syncDesc')}
           phrase="SYNC_MENU"
-          phraseLabel="พิมพ์ SYNC_MENU เพื่อยืนยัน"
-          confirmLabel="ซิงค์"
+          phraseLabel={t('menu.syncPhrase')}
+          confirmLabel={t('menu.syncConfirm')}
           loading={syncMut.isPending}
           onConfirm={() => syncMut.mutate()}
         />

@@ -52,20 +52,32 @@ function parseRange(opts: {
  */
 export async function getReportsKpi(
   pool: Pool,
-  opts: { fromInput?: string; toInput?: string; weeksBack?: number } = {},
+  opts: { fromInput?: string; toInput?: string; weeksBack?: number; team?: string } = {},
 ): Promise<ReportsKpiResponse> {
   const range = parseRange(opts)
   const labels = weekLabelsInRange(range)
+  const team = opts.team && ['A', 'B', 'EE', 'UT'].includes(opts.team) ? opts.team : null
 
   const [mhRes, confirmRes, backlogRes] = await Promise.all([
     pool.query<{ week_label: string; total: string }>(
       `SELECT
          ${WEEK_LABEL_SQL.manhours} AS week_label,
          COALESCE(SUM(wh + ot1 + ot15 + ot1hol + ot2 + ot3), 0)::text AS total
-       FROM app.tbmanhours
-       WHERE workday >= $1 AND workday <= $2
+       FROM app.tbmanhours m
+       WHERE m.workday >= $1 AND m.workday <= $2
+         AND (
+           $3::text IS NULL OR EXISTS (
+             SELECT 1
+             FROM app.view_exportconfirm c
+             INNER JOIN app.tbiw37n i ON i.idiw37 = c.idiw37
+             INNER JOIN app.tbworkcenter wc ON wc.idwkctr = m.idwkctr
+             WHERE c.wkctr = wc.wkctr
+               AND c.endate >= $1 AND c.endate <= $2
+               AND i.team = $3::text
+           )
+         )
        GROUP BY 1`,
-      [range.from, range.to],
+      [range.from, range.to, team],
     ),
     pool.query<{ week_label: string; total: string }>(
       `SELECT
@@ -73,8 +85,9 @@ export async function getReportsKpi(
          COALESCE(SUM(timewk), 0)::text AS total
        FROM app.view_exportconfirm
        WHERE endate >= $1 AND endate <= $2
+         AND ($3::text IS NULL OR team = $3::text)
        GROUP BY 1`,
-      [range.from, range.to],
+      [range.from, range.to, team],
     ),
     pool.query<{ week_label: string; hours: string }>(
       `SELECT
@@ -82,10 +95,11 @@ export async function getReportsKpi(
          (COALESCE(SUM(${ACTWORK_MINUTES_SQL}), 0) / 60.0)::text AS hours
        FROM app.view_order
        WHERE syst IN ('CRTD', 'REL')
+         AND ($3::text IS NULL OR team = $3::text)
          AND bscstart IS NOT NULL
          AND bscstart >= $1 AND bscstart <= $2
        GROUP BY 1`,
-      [range.from, range.to],
+      [range.from, range.to, team],
     ),
   ])
 
@@ -113,11 +127,12 @@ export async function getReportsKpi(
  */
 export async function getSummaryWeekly(
   pool: Pool,
-  opts: { fromInput?: string; toInput?: string; weeksBack?: number } = {},
+  opts: { fromInput?: string; toInput?: string; weeksBack?: number; team?: string } = {},
 ): Promise<SummaryWeeklyResponse> {
   const range = parseRange(opts)
   const { from, to } = range
   const activeWc = personnelIsActiveSql('wc')
+  const team = opts.team && ['A', 'B', 'EE', 'UT'].includes(opts.team) ? opts.team : null
 
   const [utilRes, mhRes, pmRes, reaRes, rcaRes, woRes] = await Promise.all([
     pool.query<{ idwkctr: string; wkctr: string; summary: string }>(
@@ -129,10 +144,20 @@ export async function getSummaryWeekly(
        INNER JOIN app.tbworkcenter wc ON wc.idwkctr = m.idwkctr
        WHERE m.workday >= $1 AND m.workday <= $2
          AND ${activeWc}
+         AND (
+           $3::text IS NULL OR EXISTS (
+             SELECT 1
+             FROM app.view_exportconfirm c
+             INNER JOIN app.tbiw37n i ON i.idiw37 = c.idiw37
+             WHERE c.wkctr = wc.wkctr
+               AND c.endate >= $1 AND c.endate <= $2
+               AND i.team = $3::text
+           )
+         )
        GROUP BY wc.idwkctr, wc.wkctr
        ORDER BY SUM(m.wh + m.ot1 + m.ot15 + m.ot1hol + m.ot2 + m.ot3) DESC
        LIMIT 200`,
-      [from, to],
+      [from, to, team],
     ),
     pool.query<{
       idwkctr: string
@@ -161,8 +186,18 @@ export async function getSummaryWeekly(
        INNER JOIN app.tbworkcenter wc ON wc.idwkctr = m.idwkctr
        WHERE m.workday >= $1 AND m.workday <= $2
          AND ${activeWc}
+         AND (
+           $3::text IS NULL OR EXISTS (
+             SELECT 1
+             FROM app.view_exportconfirm c
+             INNER JOIN app.tbiw37n i ON i.idiw37 = c.idiw37
+             WHERE c.wkctr = wc.wkctr
+               AND c.endate >= $1 AND c.endate <= $2
+               AND i.team = $3::text
+           )
+         )
        GROUP BY wc.idwkctr, wc.wkctr, wc.titlewkctr, wc.namewkctr, wc.surnamewkctr, wc.imgmember_data`,
-      [from, to],
+      [from, to, team],
     ),
     pool.query<{ wkctr: string; minutes: string; sample_act: string; sample_untime: string }>(
       `SELECT
@@ -172,10 +207,11 @@ export async function getSummaryWeekly(
          COALESCE(MAX(untime::text), 'Min') AS sample_untime
        FROM app.view_order
        WHERE ${sqlWktypeInList(SUMMARY_WEEKLY_PM_WKTYPES)}
+         AND ($3::text IS NULL OR team = $3::text)
          AND bscstart IS NOT NULL
          AND bscstart >= $1 AND bscstart <= $2
        GROUP BY wkctr`,
-      [from, to],
+      [from, to, team],
     ),
     pool.query<{ wkctr: string; minutes: string; sample_act: string; sample_untime: string }>(
       `SELECT
@@ -185,26 +221,30 @@ export async function getSummaryWeekly(
          COALESCE(MAX(untime::text), 'Min') AS sample_untime
        FROM app.view_order
        WHERE ${sqlWktypeInList(SUMMARY_WEEKLY_REACTIVE_WKTYPES)}
+         AND ($3::text IS NULL OR team = $3::text)
          AND bscstart IS NOT NULL
          AND bscstart >= $1 AND bscstart <= $2
        GROUP BY wkctr`,
-      [from, to],
+      [from, to, team],
     ),
     pool.query<{ wkctr: string; minutes: string }>(
-      `SELECT wkctr, COALESCE(SUM(timewk), 0)::text AS minutes
-       FROM app.view_confirmation
-       WHERE endate >= $1 AND endate <= $2
-       GROUP BY wkctr`,
-      [from, to],
+      `SELECT c.wkctr, COALESCE(SUM(c.timewk), 0)::text AS minutes
+       FROM app.view_confirmation c
+       INNER JOIN app.tbiw37n i ON i.idiw37 = c.idiw37
+       WHERE c.endate >= $1 AND c.endate <= $2
+         AND ($3::text IS NULL OR i.team = $3::text)
+       GROUP BY c.wkctr`,
+      [from, to, team],
     ),
     pool.query<{ wkctr: string; n: string }>(
       `SELECT wkctr, COUNT(DISTINCT idiw37)::text AS n
        FROM app.view_order
        WHERE wkctr IS NOT NULL AND trim(wkctr) <> ''
+         AND ($3::text IS NULL OR team = $3::text)
          AND bscstart IS NOT NULL
          AND bscstart >= $1 AND bscstart <= $2
        GROUP BY wkctr`,
-      [from, to],
+      [from, to, team],
     ),
   ])
 
