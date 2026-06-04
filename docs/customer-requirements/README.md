@@ -10,10 +10,12 @@
 | [**ACTIVITY-TYPE-FILTER.md**](ACTIVITY-TYPE-FILTER.md) | **ตัวกรองกิจกรรม** Z1/Z2/Z5 บนปฏิทิน · WO · Backlog |
 | [**CALENDAR-DISPLAY.md**](CALENDAR-DISPLAY.md) | **สี / title / description** event บน `/calendar` |
 | [**MAINT-ACTIVITY-TYPE-ZB02.md**](MAINT-ACTIVITY-TYPE-ZB02.md) | **ประเภทงาน** MaintActivityType 19 รายการ (ZB02) |
-| [**PM-PLAN-TEAM-EE-UT.md**](PM-PLAN-TEAM-EE-UT.md) | **ทีม PM Plan** A/B/EE/UT + migration 088 (P → EE/UT) |
+| [**PM-MEASUREMENTS-3PHASE-CURRENT.md**](PM-MEASUREMENTS-3PHASE-CURRENT.md) | **PM ค่าวัด** — กระแส R/S/T vs Vibration X/Y/Z · Excel template |
+| [**PM-MANUAL-ENTRY-WORK-ORDER-FORM.md**](PM-MANUAL-ENTRY-WORK-ORDER-FORM.md) | **Manual entry ตามฟอร์ม WO กระดาษ** — ฟิลด์ §header · 3 เฟส · กราห · Comments หน้า 2 |
 | [**../USER-MANUAL-TH.md**](../USER-MANUAL-TH.md) | **คู่มือการใช้งานภาษาไทย** — ครบทุกหน้า/route |
 | [**../SETUP-NEW-MACHINE.md**](../SETUP-NEW-MACHINE.md) | **ติดตั้งเครื่องใหม่** — PostgreSQL, migration, backend, frontend, E2E |
 | [**UAT-ROUND-1-TH.md**](UAT-ROUND-1-TH.md) | **ชีต UAT รอบ 1** — checklist ภาษาไทย + กรอก requirement ต่อหน้า |
+| [**UAT-ROUND-2-TH.md**](UAT-ROUND-2-TH.md) · [**UAT-ROUND-2-TH.docx**](UAT-ROUND-2-TH.docx) | **ชีต UAT รอบ 2** — PM ฟอร์มกระดาษ · i18n · regression P0 + comment กลับทีม (Word สำหรับส่งลูกค้า) |
 | [**CATALOG.md**](CATALOG.md) | สารบัญไฟล์ทั้งหมด + แมปไป parity 01–15 |
 | [**LEGACY-ISSUES-CHECKLIST.md**](LEGACY-ISSUES-CHECKLIST.md) | บั๊ก/UX จาก Problem PM + screenshot ระบบเก่า (Must/Should) |
 | [**SAP-SAMPLE-PROBE.md**](SAP-SAMPLE-PROBE.md) | ผลตรวจ parser กับไฟล์ตัวอย่างลูกค้า (รัน 2026-05-21) |

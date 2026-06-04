@@ -172,7 +172,19 @@
 **ขั้นตอนหลัก**
 
 1. เลือกช่วง **เดือน / สัปดาห์ / รายวัน** (ตามตัวควบคุม FullCalendar)
-2. **กรอง** work center, ทีม, สถานะ ตามแถบตัวกรอง
+2. **กรอง** ตามแถบ **ตัวกรองงาน** (เลือกหลายค่า — Ctrl/Cmd ค้าง):
+
+   | หัวข้อ | ตัวอย่างค่า |
+   |--------|-------------|
+   | **กิจกรรม** | Z1 = Break Down Maintenance · Z2 = Preventive Maintenance · Z5 = Corrective Maintenance |
+   | **ประเภทงาน (MaintActivityType · ZB02)** | 001 Inspection · 002 Preventive Maintenance · … (19 รายการ) |
+   | สถานะระบบ (syst) | CRTD, REL, … |
+   | ศูนย์งาน (wkctr) | PAC007, … |
+   | **ทีม (A / B / EE / UT)** | A, B, EE, UT |
+
+   **การแสดงบนปฏิทิน:** ปุ่ม **รวมทั้งหมด / Z1 / Z2 / Z5** ใต้ legend สี · title รูปแบบ `{เลข WO เต็ม} / {wktype}` · ย้ายแผนครั้งที่ N แสดง `/N` · สี **ม่วง** กำลังทำ · **ส้ม** โอนย้าย · **เขียว** เสร็จแล้ว · ชี้เมาส์ที่ event ดู description (FL, Equipment, Operation ฯลฯ)
+
+   รายละเอียด: [`customer-requirements/ACTIVITY-TYPE-FILTER.md`](customer-requirements/ACTIVITY-TYPE-FILTER.md) · [`customer-requirements/CALENDAR-DISPLAY.md`](customer-requirements/CALENDAR-DISPLAY.md)
 3. **คลิก event** → เปิดรายละเอียด WO (modal)
 4. **ลาก event** เปลี่ยนวัน (ถ้ามีสิทธิ์ write) — บนมือถือใช้ **กดค้าง ~0.4 วินาที** แล้วลาก
 5. ดู **suffix ตัวเลข workflow** บน event (ขั้นตอน 1–4 รวม confirm)
@@ -205,7 +217,7 @@
 
 **ขั้นตอน**
 
-1. ตั้ง **ตัวกรอง** (วันที่, สถานะ, ประเภทงาน)
+1. ตั้ง **ตัวกรอง** (วันที่, กิจกรรม Z1/Z2/Z5, สถานะ, ประเภทงาน)
 2. กด **ค้นหา** — ตารางแสดง WO ค้าง
 3. เปิด WO จากแถว → modal รายละเอียด · ไปจ่ายงานใน Planning/Calendar
 
@@ -217,12 +229,12 @@
 |--------|------------|
 | **URL** | `/work-orders` · `/work-orders/:id` (เปิด modal WO โดยตรง) |
 | **สิทธิ์** | `work-orders.read` · แก้ทีม `work-orders.write` |
-| **จุดประสงค์** | ค้นหา WO แบบละเอียด · สรุป filter · จัดทีม A/B/P แบบ batch |
+| **จุดประสงค์** | ค้นหา WO แบบละเอียด · สรุป filter · จัดทีม A/B/EE/UT แบบ batch |
 
 **ตัวกรอง (เลือกได้หลายค่า — Ctrl/Cmd ค้าง)**
 
 - คำค้น (WO, equipment, ฯลฯ)
-- Activity · Wktype (ZD/ZB) · Status · Work center · Team · Functional loc · Equipment
+- **ประเภทงาน** (MaintActivityType MAT 001–040 ใต้ ZB02) · Wktype legacy ZB* · Status · Work center · Team · Functional loc · Equipment
 - ช่วงวันที่ (ถ้าตั้ง)
 
 **ขั้นตอนค้นหา**
@@ -246,7 +258,7 @@
 **จัดทีมแบบ batch**
 
 1. เลือก checkbox หลายแถว
-2. เลือกทีม A / B / P
+2. เลือกทีม A / B / EE / UT
 3. บันทึก — UI อัปเดตทันที (optimistic) โดยไม่กระตุกทั้งตาราง
 
 ---

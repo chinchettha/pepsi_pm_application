@@ -40,6 +40,7 @@ import {
   sqlFactoryScope,
 } from './scheduling-shared.js'
 import { formatUnixDate } from './scheduling-move.js'
+import { buildWoPmFormHeader } from '../lib/wo-pm-form-header.js'
 import {
   buildTaskMeasurementFields,
   loadWoPmExecution,
@@ -989,6 +990,10 @@ export async function getWorkOrderModalDetail(
 
   return {
     date,
+    woHeader: buildWoPmFormHeader(row, {
+      firstTask: taskRows[0] ?? null,
+      materialCount: matR.rows.length,
+    }),
     taskList: {
       mntplan,
       summary,

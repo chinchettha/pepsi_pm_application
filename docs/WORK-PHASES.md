@@ -159,7 +159,7 @@
 ### Phase 7 — P2 รายงาน / Audit
 
 - [~] Weekly report สอดคล้องข้อมูลหลัง import ([MEETING ครั้งที่ 1 §1](customer-requirements/MEETING-MINUTES.md)) — PM=**ZB02** · Reactive=ZB01/ZB05 · `importCoverage` + ปุ่มช่วง SAP บน `/summary-weekly` · UAT เทียบ Excel หลัง Phase 2
-- [~] Activity log ครบฟิลด์ (คน, line, เวลา) · Week-to-Week — `/activity-log` + `GET /reports/activity-log` · Week-to-Week ใน `/reports` (`weekToWeek` จาก KPI)
+- [~] Activity log ครบฟิลด์ + Week-to-Week UI — **[x]** คอลัมน์ครบ + W2W บน `/activity-log` · UAT เทียบ Excel ลูกค้ายังค้าง
 - [x] Eng Utilization `/summary-weekly` — ข้อมูล live จาก DB (ไม่ import Excel ทุกครั้ง)
 - [~] Utilization ใน `/manhours-hr` ตรวจกับข้อมูลจริง — Confirm÷HR จาก `view_exportconfirm` + `tbmanhours` · ตัวกรองวันที่ · เทียบ `M_manhour_chart_performance`
 - [~] Admin: ช่างที่โผล่ใน Eng Utilization **ไม่มีรูป** ต้องปิดที่ Users ก่อน go-live — แบนเนอร์ + bulk TERMINATED ที่ `/admin/users` · Eng Util กรองเฉพาะ workstatus ใช้งาน · ปุ่มกรอง **ไม่มีรูป**
@@ -176,7 +176,7 @@
 
 ### Phase Future — นอก parity ปัจจุบัน
 
-- [ ] Machine vibration / Predictive maintenance
+- [~] Machine vibration / Predictive maintenance — WO modal บันทึกค่า + กราฟ 3 แกน (`092_wo_pm_execution.sql`); predictive analytics ยังไม่มี
 - [ ] Handheld แยก (`Hand held system.pptx`)
 
 ---

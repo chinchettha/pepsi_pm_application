@@ -126,7 +126,7 @@ pg_dump "postgresql://..." -f pepsi_pm_backup.sql
 
 ```powershell
 # จากไฟล์ .dump
-pg_restore -d "postgresql://pepsipm:รหัส@127.0.0.1:5433/pepsi_pm" --no-owner --role=pepsipm -c pepsi_pm_backup.dump
+pg_restore -d "postgresql://pepsipm:pepsipm@127.0.0.1:5433/pepsi_pm" --no-owner --role=pepsipm -c pepsi_pm_backup.dump
 
 # จากไฟล์ .sql
 psql "postgresql://pepsipm:รหัส@127.0.0.1:5433/pepsi_pm" -f pepsi_pm_backup.sql
@@ -376,4 +376,6 @@ npm run test:e2e:smoke
 | [`ON-SITE-DATABASE-SETUP.md`](ON-SITE-DATABASE-SETUP.md) | ติดตั้งโรงงาน / Docker |
 | [`USER-MANUAL-TH.md`](USER-MANUAL-TH.md) | คู่มือผู้ใช้ทุกหน้า |
 | [`customer-requirements/E2E-SMOKE.md`](customer-requirements/E2E-SMOKE.md) | Playwright smoke |
+| [`customer-requirements/UAT-ROUND-1-TH.md`](customer-requirements/UAT-ROUND-1-TH.md) | **ชีต UAT รอบ 1** ให้ลูกค้าติ๊กทดสอบ |
+| [`customer-requirements/UAT-ROUND-2-TH.md`](customer-requirements/UAT-ROUND-2-TH.md) | **ชีต UAT รอบ 2** — PM manual · comment กลับ |
 | [`customer-requirements/HARDCODE-MOCK-AUDIT.md`](customer-requirements/HARDCODE-MOCK-AUDIT.md) | เกณฑ์ mock/hardcode |

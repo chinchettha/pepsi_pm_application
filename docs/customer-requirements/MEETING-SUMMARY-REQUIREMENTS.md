@@ -20,7 +20,7 @@
 | PM ค่าวัด + กราฟ (กระแส / Vibration) | WO modal แท็บ Task | **[x]** | `tbwo_pm_reading` · กราฟเส้น 3 แกน |
 | ส่งออก Excel ค่าวัด | `/pm-vibration`, WO modal | **[x]** | ไม่มีปุ่ม export บน `/board` (kiosk ดูอย่างเดียว) |
 | Engineering Board — ค่าวัด PM | `/board` โซน C | **[x]** | กราฟ + สรุป · รีเฟรช 60s |
-| หน้า PM Vibration | `/pm-vibration` | **[x]** | กรอกหลายแถว · นำเข้า Excel · template |
+| หน้า PM ค่าวัด | `/pm-vibration` | **[~]** | Import Excel · manual แถว generic — **UI ต้องตรงฟอร์ม WO** ([`PM-MANUAL-ENTRY-WORK-ORDER-FORM.md`](PM-MANUAL-ENTRY-WORK-ORDER-FORM.md)) |
 | Mass Confirm 44 + team batch | `/work-orders`, `/personnel/confirm` | **[x]** | มีก่อนหน้านี้แล้ว |
 | Integration IW37N / Confirm IN·OUT | `/integration`, `/iw37n`, `/confirmation` | **[x]** | แกน parity — UAT ข้อมูลจริงยัง P0 |
 

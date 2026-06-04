@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { woPmFormHeaderSchema } from '../lib/wo-pm-form-header.js'
 import { pmPlanTeamFieldSchema } from '../lib/pm-plan-team.js'
 import { woPmPhaseSchema } from '../lib/wo-pm-phase.js'
 import { SAP_MASS_CONFIRM_MAX } from '../lib/mass-confirm-limit.js'
@@ -459,8 +460,11 @@ export const workOrderPlanningSchema = z.object({
   groups: z.array(workOrderPlanningGroupSchema),
 })
 
+export { woPmFormHeaderSchema } from '../lib/wo-pm-form-header.js'
+
 export const workOrderModalDetailResponseSchema = z.object({
   date: z.string(),
+  woHeader: woPmFormHeaderSchema,
   taskList: workOrderTaskListSchema,
   machine: workOrderMachineSchema,
   planning: workOrderPlanningSchema,

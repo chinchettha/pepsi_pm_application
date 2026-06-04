@@ -6,6 +6,8 @@
 
 ## สิ่งที่ลูกค้าต้องการ (จาก WO + ตัวอย่างกราฟ)
 
+**Manual entry ตามฟอร์มกระดาษ WO (4 ภาพลูกค้า):** ดูสเปกเต็ม [`PM-MANUAL-ENTRY-WORK-ORDER-FORM.md`](PM-MANUAL-ENTRY-WORK-ORDER-FORM.md) — มี 2 โหมด manual (จุดเดียวต่อ task / หลายจุดเวลาทำกราฟ) + หน้า 2 Comments and Findings
+
 ### 1) กระแสไฟฟ้า 3 เฟส — **ความต้องการหลัก PM ZB02**
 
 | รายการ | รายละเอียด |
@@ -71,7 +73,7 @@
 | จุด | การทำงาน |
 |-----|----------|
 | WO modal แท็บ Task | ต่อ **แถว task list** (เครื่องจักร + รายการ PM) — กรอก R/S/T 3 ช่อง |
-| `/pm-vibration` | บันทึก bulk + import Excel (route เดิม · ชื่อเมนูใหม่) |
+| `/pm-vibration` | บันทึก bulk + import Excel · **manual ตามฟอร์ม WO** (ดู [`PM-MANUAL-ENTRY-WORK-ORDER-FORM.md`](PM-MANUAL-ENTRY-WORK-ORDER-FORM.md)) |
 | Master PM (`pmlist`) | ข้อความมี "กระแส"/"3 เฟส" → auto เป็นกระแส 3 เฟส |
 
 ---
