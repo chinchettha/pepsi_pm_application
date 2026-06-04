@@ -21,7 +21,16 @@ export const woPmReadingSchema = z.object({
   wkctr: z.string(),
 })
 
+export const woPmNoteEntrySchema = z.object({
+  identry: z.number().int(),
+  note: z.string(),
+  wkctr: z.string(),
+  createdBy: z.string(),
+  createdAt: z.string(),
+})
+
 export const woPmExecutionSchema = z.object({
+  notes: z.array(woPmNoteEntrySchema),
   note: z.string(),
   noteUpdatedAt: z.string().nullable(),
   noteWkctr: z.string(),
@@ -30,12 +39,12 @@ export const woPmExecutionSchema = z.object({
 })
 
 export const woPmNoteBodySchema = z.object({
-  note: z.string().max(4000),
+  note: z.string().trim().min(1).max(4000),
 })
 
 export const woPmNoteResponseSchema = z.object({
   ok: z.literal(true),
-  noteUpdatedAt: z.string(),
+  entry: woPmNoteEntrySchema,
 })
 
 export const woPmReadingBodySchema = z.object({

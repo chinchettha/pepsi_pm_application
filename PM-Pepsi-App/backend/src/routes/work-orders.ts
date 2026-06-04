@@ -74,7 +74,7 @@ import {
 } from '../services/work-orders.js'
 import {
   createWoPmReading,
-  upsertWoPmNote,
+  appendWoPmNote,
 } from '../services/wo-pm-execution-data.js'
 import {
   buildPmReadingsXlsxBuffer,
@@ -201,6 +201,7 @@ function isSchemaMissing(err: unknown): boolean {
     message.includes('tbwrkclose') ||
     message.includes('view_personelclose') ||
     message.includes('confirm_qc') ||
+    message.includes('tbwo_pm_note_entry') ||
     message.includes('tbwo_pm_note') ||
     message.includes('tbwo_pm_reading')
   )
@@ -507,24 +508,30 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND' })
           return
         }
-        const noteUpdatedAt = await upsertWoPmNote(
+        const wkctr = user.wkctr || user.username || ''
+        const entry = await appendWoPmNote(
           pool,
           idiw37,
           parsed.data.note,
-          user.wkctr || user.username || '',
+          wkctr,
+          user.username || wkctr,
         )
         voidAudit(pool, req, {
           action: 'confirmation.write',
-          resource: 'tbwo_pm_note',
-          resourceId: String(idiw37),
-          after: sanitizeAuditPayload({ noteLen: parsed.data.note.length }),
+          resource: 'tbwo_pm_note_entry',
+          resourceId: String(entry.identry),
+          after: sanitizeAuditPayload({ idiw37, noteLen: parsed.data.note.length }),
         })
-        res.json(woPmNoteResponseSchema.parse({ ok: true, noteUpdatedAt }))
+        res.json(woPmNoteResponseSchema.parse({ ok: true, entry }))
       } catch (err) {
+        if (err instanceof Error && err.message === 'EMPTY_PM_NOTE') {
+          res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Comment cannot be empty' })
+          return
+        }
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
-            message: 'Run database/migrations/092_wo_pm_execution.sql',
+            message: 'Run database/migrations/092_wo_pm_execution.sql and 097_tbwo_pm_note_entry.sql',
           })
           return
         }

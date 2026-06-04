@@ -19,6 +19,7 @@ function isSchemaMissing(err: unknown): boolean {
     message.includes('does not exist') ||
     message.includes('undefined table') ||
     message.includes('tbwo_pm_reading') ||
+    message.includes('tbwo_pm_note_entry') ||
     message.includes('tbwo_pm_note')
   )
 }

@@ -3,6 +3,7 @@ import { woPmFormHeaderSchema } from '../lib/wo-pm-form-header.js'
 import { pmPlanTeamFieldSchema } from '../lib/pm-plan-team.js'
 import { woPmPhaseSchema } from '../lib/wo-pm-phase.js'
 import { SAP_MASS_CONFIRM_MAX } from '../lib/mass-confirm-limit.js'
+import { woPmExecutionSchema } from './pm-execution.js'
 
 export const workOrderListItemSchema = z.object({
   id: z.string(),
@@ -469,28 +470,7 @@ export const workOrderModalDetailResponseSchema = z.object({
   machine: workOrderMachineSchema,
   planning: workOrderPlanningSchema,
   materials: workOrderMaterialsSchema,
-  pmExecution: z.object({
-    note: z.string(),
-    noteUpdatedAt: z.string().nullable(),
-    noteWkctr: z.string(),
-    canEdit: z.boolean(),
-    readings: z.array(
-      z.object({
-        idreading: z.number().int(),
-        machine: z.string(),
-        pmlist: z.string(),
-        kind: z.enum(['current_3phase', 'vibration_3axis']),
-        measuredAt: z.string(),
-        v1: z.number(),
-        v2: z.number(),
-        v3: z.number(),
-        unit: z.string(),
-        warningLimit: z.number().nullable(),
-        alarmLimit: z.number().nullable(),
-        wkctr: z.string(),
-      }),
-    ),
-  }),
+  pmExecution: woPmExecutionSchema,
 })
 
 export const workOrderPlanningUpsertBodySchema = z.object({

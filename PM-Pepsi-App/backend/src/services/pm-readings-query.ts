@@ -98,7 +98,11 @@ async function queryPmReadingDbRows(
             n.note AS pm_note
      FROM app.tbwo_pm_reading r
      INNER JOIN app.tbiw37n i ON i.idiw37 = r.idiw37
-     LEFT JOIN app.tbwo_pm_note n ON n.idiw37 = r.idiw37
+     LEFT JOIN LATERAL (
+       SELECT string_agg(e.note, E'\\n---\\n' ORDER BY e.created_at ASC, e.identry ASC) AS note
+       FROM app.tbwo_pm_note_entry e
+       WHERE e.idiw37 = r.idiw37
+     ) n ON true
      WHERE timezone($1, r.measured_at)::date >= $2::date
        AND timezone($1, r.measured_at)::date <= $3::date
        AND ($4::text IS NULL OR i.team = $4::text)
@@ -120,7 +124,11 @@ export async function listPmReadingExportRowsForWo(
             n.note AS pm_note
      FROM app.tbwo_pm_reading r
      INNER JOIN app.tbiw37n i ON i.idiw37 = r.idiw37
-     LEFT JOIN app.tbwo_pm_note n ON n.idiw37 = r.idiw37
+     LEFT JOIN LATERAL (
+       SELECT string_agg(e.note, E'\\n---\\n' ORDER BY e.created_at ASC, e.identry ASC) AS note
+       FROM app.tbwo_pm_note_entry e
+       WHERE e.idiw37 = r.idiw37
+     ) n ON true
      WHERE r.idiw37 = $1
      ORDER BY r.measured_at ASC, r.idreading ASC
      LIMIT 2000`,

@@ -4,6 +4,7 @@ import {
   pmMeasurementMeta,
   type PmMeasurementKind,
 } from '../lib/pm-measurement-kind.js'
+import { deriveLatestPmNote, type WoPmNoteEntry } from '../lib/wo-pm-note-entry.js'
 
 export type WoPmReadingRow = {
   idreading: number
@@ -21,6 +22,7 @@ export type WoPmReadingRow = {
 }
 
 export type WoPmExecutionPayload = {
+  notes: WoPmNoteEntry[]
   note: string
   noteUpdatedAt: string | null
   noteWkctr: string
@@ -43,10 +45,12 @@ type ReadingDbRow = {
   wkctr: string
 }
 
-type NoteDbRow = {
+type NoteEntryDbRow = {
+  identry: string
   note: string
   wkctr: string
-  updated_at: Date
+  created_by: string
+  created_at: Date
 }
 
 function mapReading(r: ReadingDbRow): WoPmReadingRow {
@@ -66,9 +70,23 @@ function mapReading(r: ReadingDbRow): WoPmReadingRow {
   }
 }
 
+function mapNoteEntry(r: NoteEntryDbRow): WoPmNoteEntry {
+  return {
+    identry: Number(r.identry),
+    note: r.note?.trim() ?? '',
+    wkctr: r.wkctr?.trim() ?? '',
+    createdBy: r.created_by?.trim() ?? '',
+    createdAt: r.created_at.toISOString(),
+  }
+}
+
 function isPmExecutionSchemaMissing(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err)
-  return msg.includes('tbwo_pm_note') || msg.includes('tbwo_pm_reading')
+  return (
+    msg.includes('tbwo_pm_note_entry') ||
+    msg.includes('tbwo_pm_note') ||
+    msg.includes('tbwo_pm_reading')
+  )
 }
 
 export async function loadWoPmExecution(
@@ -81,6 +99,7 @@ export async function loadWoPmExecution(
   } catch (err) {
     if (isPmExecutionSchemaMissing(err)) {
       return {
+        notes: [],
         note: '',
         noteUpdatedAt: null,
         noteWkctr: '',
@@ -92,16 +111,24 @@ export async function loadWoPmExecution(
   }
 }
 
+async function loadNoteEntries(pool: Pool, idiw37: number): Promise<WoPmNoteEntry[]> {
+  const noteR = await pool.query<NoteEntryDbRow>(
+    `SELECT identry, note, wkctr, created_by, created_at
+     FROM app.tbwo_pm_note_entry
+     WHERE idiw37 = $1
+     ORDER BY created_at ASC, identry ASC`,
+    [idiw37],
+  )
+  return noteR.rows.map(mapNoteEntry)
+}
+
 async function loadWoPmExecutionInner(
   pool: Pool,
   idiw37: number,
   canEdit: boolean,
 ): Promise<WoPmExecutionPayload> {
-  const noteR = await pool.query<NoteDbRow>(
-    `SELECT note, wkctr, updated_at FROM app.tbwo_pm_note WHERE idiw37 = $1`,
-    [idiw37],
-  )
-  const noteRow = noteR.rows[0]
+  const notes = await loadNoteEntries(pool, idiw37)
+  const latest = deriveLatestPmNote(notes)
 
   const readR = await pool.query<ReadingDbRow>(
     `SELECT idreading, machine, pmlist, kind, measured_at, v1, v2, v3, unit,
@@ -113,29 +140,34 @@ async function loadWoPmExecutionInner(
   )
 
   return {
-    note: noteRow?.note?.trim() ?? '',
-    noteUpdatedAt: noteRow?.updated_at ? noteRow.updated_at.toISOString() : null,
-    noteWkctr: noteRow?.wkctr?.trim() ?? '',
+    notes,
+    note: latest.note,
+    noteUpdatedAt: latest.noteUpdatedAt,
+    noteWkctr: latest.noteWkctr,
     canEdit,
     readings: readR.rows.map(mapReading),
   }
 }
 
-export async function upsertWoPmNote(
+export async function appendWoPmNote(
   pool: Pool,
   idiw37: number,
   note: string,
   wkctr: string,
-): Promise<WoPmExecutionPayload['noteUpdatedAt']> {
-  const r = await pool.query<{ updated_at: Date }>(
-    `INSERT INTO app.tbwo_pm_note (idiw37, note, wkctr, updated_at)
-     VALUES ($1, $2, $3, now())
-     ON CONFLICT (idiw37) DO UPDATE
-       SET note = EXCLUDED.note, wkctr = EXCLUDED.wkctr, updated_at = now()
-     RETURNING updated_at`,
-    [idiw37, note.trim(), wkctr.trim()],
+  createdBy: string,
+): Promise<WoPmNoteEntry> {
+  const trimmed = note.trim()
+  if (!trimmed) {
+    throw new Error('EMPTY_PM_NOTE')
+  }
+
+  const r = await pool.query<NoteEntryDbRow>(
+    `INSERT INTO app.tbwo_pm_note_entry (idiw37, note, wkctr, created_by, created_at)
+     VALUES ($1, $2, $3, $4, now())
+     RETURNING identry, note, wkctr, created_by, created_at`,
+    [idiw37, trimmed, wkctr.trim(), createdBy.trim()],
   )
-  return r.rows[0]?.updated_at?.toISOString() ?? new Date().toISOString()
+  return mapNoteEntry(r.rows[0]!)
 }
 
 export async function createWoPmReading(

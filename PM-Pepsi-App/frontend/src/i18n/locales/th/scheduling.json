@@ -440,14 +440,18 @@
   },
   "pmComment": {
     "title": "Comments and Findings (PM)",
-    "description": "บันทึกเหตุผลเมื่อแผน PM ออกมาแต่ไม่ได้ทำ / ผลการตรวจ — แยกจากหมายเหตุจ่ายงานและความเห็นปิดงาน",
+    "description": "บันทึกเหตุผลเมื่อแผน PM ออกมาแต่ไม่ได้ทำ / ผลการตรวจ — แยกจากหมายเหตุจ่ายงานและความเห็นปิดงาน · บันทึกได้หลายครั้งต่อ WO",
+    "historyAria": "ประวัติ comment PM",
+    "addLabel": "เพิ่ม comment ใหม่",
+    "addComment": "บันทึก comment",
     "exporting": "กำลังส่งออก…",
     "exportExcel": "ส่งออก Excel",
     "exported": "ส่งออก Excel แล้ว",
     "placeholder": "เช่น แผนออกวันที่ 26.05 แต่เครื่องหยุด — เลื่อนทำวันที่ 29.05",
-    "saveNote": "บันทึกหมายเหตุ PM",
-    "saved": "บันทึกหมายเหตุ PM แล้ว",
-    "empty": "ยังไม่มีหมายเหตุ PM",
+    "saveNote": "บันทึก comment",
+    "saved": "บันทึก comment PM แล้ว",
+    "empty": "ยังไม่มี comment PM",
+    "readOnlyEmpty": "ยังไม่มี comment PM",
     "updatedAt": "อัปเดตล่าสุด {{at}}{{wkctr}}"
   },
   "taskList": {

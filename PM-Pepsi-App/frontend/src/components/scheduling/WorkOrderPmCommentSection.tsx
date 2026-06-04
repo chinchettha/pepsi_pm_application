@@ -1,12 +1,11 @@
 import type { WoPmExecution } from '@/api/schemas'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { fetchWorkOrderPmReadingsXlsx, putWorkOrderPmNote } from '@/lib/api-public'
-import { useMutation } from '@tanstack/react-query'
+import { fetchWorkOrderPmReadingsXlsx } from '@/lib/api-public'
 import { Download, MessageSquareText } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { WorkOrderPmCommentThread } from './WorkOrderPmCommentThread'
 
 type Props = {
   orderId: string
@@ -32,25 +31,9 @@ export function WorkOrderPmCommentSection({
   onSaved,
   wkorderLabel,
 }: Props) {
-  const { t, i18n } = useTranslation(['scheduling', 'common'])
-  const dateLocale = i18n.language.startsWith('th') ? 'th-TH' : 'en-US'
-  const [note, setNote] = useState(pmExecution.note)
+  const { t } = useTranslation(['scheduling', 'common'])
   const [exporting, setExporting] = useState(false)
-  const canEdit = pmExecution.canEdit
   const hasReadings = pmExecution.readings.length > 0
-
-  useEffect(() => {
-    setNote(pmExecution.note)
-  }, [pmExecution.note, orderId])
-
-  const saveMut = useMutation({
-    mutationFn: () => putWorkOrderPmNote(orderId, { note }),
-    onSuccess: () => {
-      toast.success(t('pmComment.saved'))
-      onSaved()
-    },
-    onError: (e: Error) => toast.error(e.message),
-  })
 
   return (
     <section className="rounded-card border border-violet-200/80 bg-violet-50/40 p-4">
@@ -88,41 +71,13 @@ export function WorkOrderPmCommentSection({
               </Button>
             ) : null}
           </div>
-          {canEdit ? (
-            <div className="mt-3 space-y-2">
-              <Label htmlFor="pm-wo-comment">{t('shared.comment')}</Label>
-              <textarea
-                id="pm-wo-comment"
-                rows={4}
-                className="w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body-sm"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={t('pmComment.placeholder')}
-              />
-              <Button
-                type="button"
-                size="sm"
-                disabled={saveMut.isPending}
-                onClick={() => saveMut.mutate()}
-              >
-                {saveMut.isPending ? t('shared.saving') : t('pmComment.saveNote')}
-              </Button>
-            </div>
-          ) : note.trim() ? (
-            <p className="mt-3 whitespace-pre-wrap rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body-sm text-app">
-              {note}
-            </p>
-          ) : (
-            <p className="mt-2 text-xs text-app-muted">{t('pmComment.empty')}</p>
-          )}
-          {pmExecution.noteUpdatedAt ? (
-            <p className="mt-2 text-[10px] text-app-muted">
-              {t('pmComment.updatedAt', {
-                at: new Date(pmExecution.noteUpdatedAt).toLocaleString(dateLocale),
-                wkctr: pmExecution.noteWkctr ? ` · ${pmExecution.noteWkctr}` : '',
-              })}
-            </p>
-          ) : null}
+          <div className="mt-3">
+            <WorkOrderPmCommentThread
+              orderId={orderId}
+              pmExecution={pmExecution}
+              onSaved={onSaved}
+            />
+          </div>
         </div>
       </div>
     </section>

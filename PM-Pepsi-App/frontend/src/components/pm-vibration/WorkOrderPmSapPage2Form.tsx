@@ -1,10 +1,7 @@
 import type { WoPmExecution } from '@/api/schemas'
-import { Button } from '@/components/ui/button'
-import { putWorkOrderPmNote } from '@/lib/api-public'
-import { useMutation } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { WorkOrderPmCommentThread } from '@/components/scheduling/WorkOrderPmCommentThread'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import './sap-wo-print-form.css'
 
 type Props = {
@@ -23,30 +20,13 @@ export function WorkOrderPmSapPage2Form({
   onSaved,
 }: Props) {
   const { t } = useTranslation('pmVibration')
-  const enabled = Boolean(orderId) && canWrite && pmExecution?.canEdit
+  const enabled = Boolean(orderId && canWrite && pmExecution?.canEdit)
 
-  const [comments, setComments] = useState(pmExecution?.note ?? '')
   const [activityReport, setActivityReport] = useState('')
   const [subsequentNotification, setSubsequentNotification] = useState('')
   const [completedBy, setCompletedBy] = useState('')
   const [signatureDate, setSignatureDate] = useState('')
   const [equipmentOk, setEquipmentOk] = useState<'' | 'Y' | 'N'>('')
-
-  useEffect(() => {
-    setComments(pmExecution?.note ?? '')
-  }, [pmExecution?.note, orderId])
-
-  const saveMut = useMutation({
-    mutationFn: () => {
-      if (!orderId) throw new Error(t('selectWoFirst'))
-      return putWorkOrderPmNote(orderId, { note: comments })
-    },
-    onSuccess: () => {
-      toast.success(t('page2.saved'))
-      onSaved?.()
-    },
-    onError: (e: Error) => toast.error(e.message),
-  })
 
   const dotted = 'sap-wo-print__input sap-wo-print__input--left w-full'
 
@@ -67,14 +47,19 @@ export function WorkOrderPmSapPage2Form({
 
       <div className="sap-wo-print__row sap-wo-print__row--stack">
         <span>{t('page2.comments')}:</span>
-        <textarea
-          rows={4}
-          className={`${dotted} min-h-[4.5rem] resize-y`}
-          value={comments}
-          disabled={!enabled}
-          placeholder={t('page2.commentsPlaceholder')}
-          onChange={(e) => setComments(e.target.value)}
-        />
+        {orderId && pmExecution ? (
+          <WorkOrderPmCommentThread
+            orderId={orderId}
+            pmExecution={{
+              ...pmExecution,
+              canEdit: enabled,
+            }}
+            onSaved={() => onSaved?.()}
+            variant="inline"
+          />
+        ) : (
+          <p className="text-xs text-neutral-600">{t('page2.selectWoHint')}</p>
+        )}
       </div>
 
       <p className="sap-wo-print__meta text-center">{t('page2.damageCodesNote')}</p>
@@ -155,15 +140,6 @@ export function WorkOrderPmSapPage2Form({
             N
           </label>
         </div>
-      </div>
-
-      <div className="sap-wo-print__actions">
-        <Button type="button" size="sm" disabled={!enabled || saveMut.isPending} onClick={() => saveMut.mutate()}>
-          {saveMut.isPending ? t('saving') : t('page2.saveComments')}
-        </Button>
-        {!orderId ? (
-          <p className="mt-2 text-xs text-slate-600">{t('page2.selectWoHint')}</p>
-        ) : null}
       </div>
     </section>
   )

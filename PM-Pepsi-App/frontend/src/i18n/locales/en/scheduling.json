@@ -440,14 +440,18 @@
   },
   "pmComment": {
     "title": "Comments and Findings (PM)",
-    "description": "Reason when PM plan issued but not done / inspection results — separate from planning notes and close comments",
+    "description": "Reason when PM plan issued but not done / inspection results — separate from planning notes and close comments · multiple entries per WO",
+    "historyAria": "PM comment history",
+    "addLabel": "Add new comment",
+    "addComment": "Save comment",
     "exporting": "Exporting…",
     "exportExcel": "Export Excel",
     "exported": "Excel exported",
     "placeholder": "e.g. Plan on 26.05 but machine stopped — rescheduled to 29.05",
-    "saveNote": "Save PM note",
-    "saved": "PM note saved",
-    "empty": "No PM note yet",
+    "saveNote": "Save comment",
+    "saved": "PM comment saved",
+    "empty": "No PM comments yet",
+    "readOnlyEmpty": "No PM comments yet",
     "updatedAt": "Last updated {{at}}{{wkctr}}"
   },
   "taskList": {

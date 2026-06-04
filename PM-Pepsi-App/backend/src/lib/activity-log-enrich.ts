@@ -15,7 +15,8 @@ const RESOURCE_TABLE_LABELS: Record<string, string> = {
   tbconfirm_image: 'รูป Confirm',
   tbconfirm_comment: 'ความคิดเห็น',
   tbplangingwork: 'แผนงาน',
-  tbwo_pm_note: 'PM note',
+  tbwo_pm_note_entry: 'PM comment',
+  tbwo_pm_note: 'PM note (legacy)',
   tbwo_pm_reading: 'ค่าวัด PM',
   tbworkcenter_userlog: 'Login',
 }
