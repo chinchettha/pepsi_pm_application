@@ -33,6 +33,7 @@ export function registerPlanningRoutes(
     ...requireRead,
     async (req: Request, res: Response) => {
       const idwkctr = req.authUser?.idwkctr
+      const wkctr = (req.authUser?.wkctr || req.authUser?.username || '').trim()
       if (!idwkctr) {
         res.status(401).json({ error: 'UNAUTHORIZED' })
         return
@@ -47,7 +48,7 @@ export function registerPlanningRoutes(
         Math.max(1, Number(req.query.month) || now.getMonth() + 1),
       )
       try {
-        const items = await listPlanCalendarEvents(pool, idwkctr, year, month)
+        const items = await listPlanCalendarEvents(pool, idwkctr, year, month, wkctr)
         res.json(calendarEventsResponseSchema.parse({ items, year, month }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -67,13 +68,14 @@ export function registerPlanningRoutes(
     ...requireRead,
     async (req: Request, res: Response) => {
       const idwkctr = req.authUser?.idwkctr
+      const wkctr = (req.authUser?.wkctr || req.authUser?.username || '').trim()
       if (!idwkctr) {
         res.status(401).json({ error: 'UNAUTHORIZED' })
         return
       }
       const status = req.query.status === 'closed' ? 'closed' : 'open'
       try {
-        const items = await listPlanningForUser(pool, idwkctr, status)
+        const items = await listPlanningForUser(pool, idwkctr, status, wkctr)
         res.json(planningResponseSchema.parse({ items }))
       } catch (err) {
         if (isSchemaMissing(err)) {
@@ -120,10 +122,33 @@ export function registerPlanningRoutes(
         })
         res.json(planningAssignResponseSchema.parse({ ok: true }))
       } catch (err) {
+        if (err instanceof Error && err.message === 'INVALID_WKCTR') {
+          res.status(400).json({
+            error: 'INVALID_WKCTR',
+            message: 'รหัสช่างไม่พบใน tbworkcenter',
+          })
+          return
+        }
+        if (err instanceof Error && err.message === 'INVALID_WKCTR_GROUP') {
+          res.status(400).json({
+            error: 'INVALID_WKCTR_GROUP',
+            message: 'ไม่พบกลุ่มช่างหรือไม่มีสมาชิกในกลุ่ม',
+          })
+          return
+        }
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
-            message: 'Run database/migrations/007_tbplangingwork_view_planwork.sql',
+            message:
+              'Run database/migrations/007_tbplangingwork_view_planwork.sql and 038_tbplangingwork_multi_assign.sql',
+          })
+          return
+        }
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('idx_tbplangingwork') || msg.includes('ON CONFLICT')) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/038_tbplangingwork_multi_assign.sql',
           })
           return
         }

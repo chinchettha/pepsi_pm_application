@@ -296,6 +296,8 @@ export function WorkOrderDetailDialog({
       )
       await qc.invalidateQueries({ queryKey: ['work-order', 'modal-detail', orderId] })
       await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
+      await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
+      await qc.invalidateQueries({ queryKey: ['planning'] })
     },
     onError: (e: Error) => toast.error(e.message || t('woDialog.toastAssignFailed')),
   })
@@ -339,6 +341,8 @@ export function WorkOrderDetailDialog({
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['work-order', 'modal-detail', orderId] })
       await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
+      await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
+      await qc.invalidateQueries({ queryKey: ['planning'] })
     },
   })
 

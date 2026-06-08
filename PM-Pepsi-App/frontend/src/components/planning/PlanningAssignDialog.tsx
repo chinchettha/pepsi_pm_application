@@ -61,6 +61,7 @@ export function PlanningAssignDialog({ target, onClose, myCode = '' }: Props) {
       postPlanningAssign(input),
     onSuccess: async (_data, variables) => {
       await qc.invalidateQueries({ queryKey: ['planning'] })
+      await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
       await qc.invalidateQueries({ queryKey: ['work-orders'] })
       toast.success(
         variables.mode === 'G'

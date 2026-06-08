@@ -85,21 +85,34 @@ export async function listPlanningForUser(
   pool: Pool,
   idwkctr: string,
   status: 'open' | 'closed' = 'open',
+  wkctr = '',
 ): Promise<PlanningItem[]> {
   const statusSql =
     status === 'closed'
       ? `vp.syst NOT IN ('CRTD', 'REL')`
       : `vp.syst IN ('CRTD', 'REL')`
+  const techWkctr = wkctr.trim()
+  const assigneeClause = techWkctr
+    ? `AND (
+         vp.idwkctr = $1
+         OR EXISTS (
+           SELECT 1 FROM app.tbplangingwork mp2
+           WHERE mp2.idiw37 = vp.idiw37 AND mp2.wkctr = $2
+         )
+       )`
+    : `AND vp.idwkctr = $1`
+  const params: (string)[] = techWkctr ? [idwkctr, techWkctr] : [idwkctr]
   const r = await pool.query<PlanRow>(
     `SELECT vp.idiw37, vp.wkorder, vp.wktype, vp.operationshorttext, vp.functionalloc, vp.equdescrip,
             vp.bscstart, vp.actfinish, vp.syst, vp.idplanw, vp.wkctrpw, vp.pwteam, vp.idwkctr, vp.cday,
             i.work, i.untime, i.wkctr AS import_wkctr
      FROM app.view_planwork vp
      JOIN app.tbiw37n i ON i.idiw37 = vp.idiw37
-     WHERE vp.idwkctr = $1 AND ${statusSql}
+     WHERE ${statusSql}
+       ${assigneeClause}
      ORDER BY vp.bscstart DESC NULLS LAST
      LIMIT 500`,
-    [idwkctr],
+    params,
   )
   return r.rows.map(mapRow)
 }
@@ -128,10 +141,9 @@ export async function assignPlanningWork(
   )
   if (!exists.rows[0]) return false
 
-  const dayNow = Math.floor(Date.now() / 1000) // เทียบ legacy `mktime(...)`
+  const dayNow = Math.floor(Date.now() / 1000)
 
   if (body.mode === 'G') {
-    // ขยายเป็นช่างทั้งกลุ่ม — เทียบ AddPlan.php $sqlG
     const members = await pool.query<{ wkctr: string }>(
       `SELECT wkctr
        FROM app.tbworkcenter
@@ -139,7 +151,9 @@ export async function assignPlanningWork(
          AND COALESCE(wkctr, '') <> ''`,
       [code],
     )
-    if (members.rowCount === 0) return false
+    if (members.rowCount === 0) {
+      throw new Error('INVALID_WKCTR_GROUP')
+    }
 
     for (const m of members.rows) {
       await pool.query(
@@ -150,6 +164,14 @@ export async function assignPlanningWork(
       )
     }
     return true
+  }
+
+  const wc = await pool.query<{ wkctr: string }>(
+    `SELECT wkctr FROM app.tbworkcenter WHERE wkctr = $1 LIMIT 1`,
+    [code],
+  )
+  if (!wc.rows[0]) {
+    throw new Error('INVALID_WKCTR')
   }
 
   await pool.query(

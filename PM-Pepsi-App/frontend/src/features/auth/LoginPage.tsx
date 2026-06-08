@@ -77,7 +77,7 @@ export function LoginPage() {
       const data = await loginWithApi(values.username, values.password, 'workcenter')
       const name = data.user.fullnameTh?.trim() || data.user.username
       const from = (location.state as { from?: { pathname?: string } } | null)?.from
-      const target = resolvePostLoginPath(from?.pathname, 'workcenter')
+      const target = resolvePostLoginPath(from?.pathname, 'workcenter', data.user.userst)
       setPostLoginPath(target)
       showFeedback({
         kind: 'success',

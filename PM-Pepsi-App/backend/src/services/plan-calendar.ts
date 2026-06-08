@@ -106,9 +106,20 @@ export async function listPlanCalendarEvents(
   idwkctr: string,
   year: number,
   month: number,
+  wkctr = '',
 ): Promise<CalendarEvent[]> {
   const { startSec, endSec, prefix } = monthRangeSec(year, month)
   const moveColor = await getMoveOverColor(pool)
+  const techWkctr = wkctr.trim()
+  const assigneeSql = techWkctr
+    ? `(pw.idwkctr = $1 OR EXISTS (
+         SELECT 1 FROM app.tbplangingwork mp2
+         WHERE mp2.idiw37 = pw.idiw37 AND mp2.wkctr = $4
+       ))`
+    : `pw.idwkctr = $1`
+  const params: (string | number)[] = techWkctr
+    ? [idwkctr, startSec, endSec, techWkctr]
+    : [idwkctr, startSec, endSec]
 
   const r = await pool.query<PlanWorkRow>(
     `SELECT pw.idiw37, pw.wkorder, pw.wktype, pw.bscstart, pw.cday, pw.syst,
@@ -119,14 +130,14 @@ export async function listPlanCalendarEvents(
      FROM app.view_planwork pw
      LEFT JOIN app.view_countpersonelclose v ON v.idiw37 = pw.idiw37
      LEFT JOIN app.tbiw37n i ON i.idiw37 = pw.idiw37
-     WHERE pw.idwkctr = $1
+     WHERE ${assigneeSql}
        AND pw.bscstart IS NOT NULL
        AND pw.bscstart > 0
        AND COALESCE(NULLIF(pw.cday, 0), pw.bscstart) >= $2
        AND COALESCE(NULLIF(pw.cday, 0), pw.bscstart) < $3
      ORDER BY pw.bscstart DESC
      LIMIT 500`,
-    [idwkctr, startSec, endSec],
+    params,
   )
 
   const items: CalendarEvent[] = []

@@ -75,6 +75,7 @@ export function legacyHasPermission(userst: string | null | undefined, perm: str
   if (role === 'W') {
     if (
       perm === 'dashboard.read' ||
+      perm === 'planning.read' ||
       perm === 'calendar.read' ||
       perm === 'backlog.read' ||
       perm === 'work-orders.read' ||

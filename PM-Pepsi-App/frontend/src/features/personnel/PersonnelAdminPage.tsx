@@ -86,6 +86,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { isMissingEngWkctrCode, normalizeWkctrCode, resolveWorkCntr } from '@/lib/wkctr-code'
+import {
+  normalizePrimaryRolePair,
+  userroleToUserst,
+  type PrimaryUserrole,
+} from '@/lib/primary-roles'
 
 function unixToInputDate(sec: number | null | undefined): string {
   if (!sec || sec <= 0) return ''
@@ -120,8 +125,8 @@ type FormState = {
   wkctrtel: string
   wkctrmail: string
   labourcost: string
-  userst: 'A' | 'H' | 'U' | 'W'
-  userrole: PersonnelRole
+  userst: 'A' | 'U' | 'W'
+  userrole: PrimaryUserrole
   workstatus: string
   pass: string
 }
@@ -156,25 +161,11 @@ const emptyForm: FormState = {
   pass: '',
 }
 
-function useUserstOptions() {
-  const { t } = useTranslation('personnel')
-  return useMemo(
-    (): Array<{ value: FormState['userst']; label: string }> => [
-      { value: 'A', label: t('admin.userst.A') },
-      { value: 'H', label: t('admin.userst.H') },
-      { value: 'U', label: t('admin.userst.U') },
-      { value: 'W', label: t('admin.userst.W') },
-    ],
-    [t],
-  )
-}
-
 function useUserroleOptions() {
   const { t } = useTranslation('personnel')
   return useMemo(
-    (): Array<{ value: PersonnelRole; label: string }> => [
+    (): Array<{ value: PrimaryUserrole; label: string }> => [
       { value: 'admin', label: t('admin.userrole.admin') },
-      { value: 'manager', label: t('admin.userrole.manager') },
       { value: 'planner', label: t('admin.userrole.planner') },
       { value: 'technician', label: t('admin.userrole.technician') },
     ],
@@ -183,6 +174,7 @@ function useUserroleOptions() {
 }
 
 function fromItem(it: PersonnelAdminItem): FormState {
+  const rolePair = normalizePrimaryRolePair({ userst: it.userst, userrole: it.userrole })
   return {
     isEdit: true,
     hasMemberImage: Boolean(it.hasImage),
@@ -207,10 +199,8 @@ function fromItem(it: PersonnelAdminItem): FormState {
     wkctrtel: it.wkctrtel ?? '',
     wkctrmail: it.wkctrmail ?? '',
     labourcost: String(it.labourcost ?? 0),
-    userst: (it.userst === 'A' || it.userst === 'H' || it.userst === 'U' || it.userst === 'W'
-      ? it.userst
-      : 'U') as FormState['userst'],
-    userrole: it.userrole,
+    userst: rolePair.userst,
+    userrole: rolePair.userrole,
     workstatus: it.workstatus ?? '',
     pass: '',
   }
@@ -231,7 +221,6 @@ type AdminDestructiveConfirm = {
 export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPageProps) {
   const { t } = useTranslation('personnel')
   const { t: tc } = useTranslation('common')
-  const userstOptions = useUserstOptions()
   const userroleOptions = useUserroleOptions()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -281,11 +270,11 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
    * - `<code>` = match แม่นยำ เช่น `RESIGNED`
    */
   const [statusFilter, setStatusFilter] = useState<string>('active')
-  const [roleFilter, setRoleFilter] = useState<PersonnelRole | ''>('')
+  const [roleFilter, setRoleFilter] = useState<PrimaryUserrole | ''>('')
   const [photoFilter, setPhotoFilter] = useState<'all' | 'missing'>('all')
   const [codeFilter, setCodeFilter] = useState<'all' | 'missing'>('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [bulkRole, setBulkRole] = useState<PersonnelRole>('planner')
+  const [bulkRole, setBulkRole] = useState<PrimaryUserrole>('planner')
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
 
   const listQ = useQuery({
@@ -420,7 +409,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         wkctrtel: state.wkctrtel || null,
         wkctrmail: state.wkctrmail || null,
         labourcost: state.labourcost === '' ? 0 : Number(state.labourcost),
-        userst: state.userst,
+        userst: userroleToUserst(state.userrole),
         userrole: state.userrole,
         workstatus: state.workstatus || null,
         pass: state.pass || undefined,
@@ -745,7 +734,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                 <select
                   value={roleFilter}
                   onChange={(e) =>
-                    setRoleFilter((e.target.value || '') as PersonnelRole | '')
+                    setRoleFilter((e.target.value || '') as PrimaryUserrole | '')
                   }
                   className="h-9 rounded-button border border-app bg-[var(--app-surface)] px-2 text-body-sm"
                   title={t('admin.filterRoleTitle')}
@@ -769,7 +758,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
             </span>
             <select
               value={bulkRole}
-              onChange={(e) => setBulkRole(e.target.value as PersonnelRole)}
+              onChange={(e) => setBulkRole(e.target.value as PrimaryUserrole)}
               className="h-9 rounded-button border border-app bg-[var(--app-surface)] px-2 text-body-sm"
             >
               {userroleOptions.map((opt) => (
@@ -1356,35 +1345,18 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
 
               <TabsContent value="t3" className="space-y-3 pt-2">
                 <FormGrid>
-                  <Field label={t('admin.form.userst')}>
-                    <select
-                      className="flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm shadow-sm"
-                      value={form.userst}
-                      onChange={(e) =>
-                        setForm((s) => ({
-                          ...s,
-                          userst: e.target.value as FormState['userst'],
-                        }))
-                      }
-                    >
-                      {userstOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-xs text-app-muted">{t('admin.form.userstHint')}</p>
-                  </Field>
                   <Field label={t('admin.form.userrole')}>
                     <select
                       className="flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm shadow-sm"
                       value={form.userrole}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const userrole = e.target.value as PrimaryUserrole
                         setForm((s) => ({
                           ...s,
-                          userrole: e.target.value as PersonnelRole,
+                          userrole,
+                          userst: userroleToUserst(userrole),
                         }))
-                      }
+                      }}
                     >
                       {userroleOptions.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -1482,18 +1454,17 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
 
 function UserroleBadge({ role }: { role: PersonnelRole }) {
   const userroleOptions = useUserroleOptions()
-  const opt = userroleOptions.find((o) => o.value === role)
+  const normalized = normalizePrimaryRolePair({ userrole: role }).userrole
+  const opt = userroleOptions.find((o) => o.value === normalized)
   const tone =
-    role === 'admin'
+    normalized === 'admin'
       ? 'bg-rose-50 text-rose-700 ring-rose-200'
-      : role === 'manager'
-        ? 'bg-purple-50 text-purple-700 ring-purple-200'
-        : role === 'technician'
-          ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-          : 'bg-blue-50 text-blue-700 ring-blue-200'
+      : normalized === 'technician'
+        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+        : 'bg-blue-50 text-blue-700 ring-blue-200'
   return (
     <span className={`inline-flex w-fit rounded-full px-2 py-1 text-xs font-medium ring-1 ${tone}`}>
-      {opt?.label.split(' — ')[0] ?? role}
+      {opt?.label.split(' — ')[0] ?? normalized}
     </span>
   )
 }

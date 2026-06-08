@@ -6,6 +6,7 @@ import type { Pool, PoolClient } from 'pg'
 import bcrypt from 'bcryptjs'
 import { personnelIsActiveSql } from '../lib/personnel-active-sql.js'
 import { isEngWkctrCode, normalizeWkctrCode, WkctrCodeConflictError } from '../lib/wkctr-code.js'
+import { normalizePrimaryRolePair } from '../lib/primary-roles.js'
 import type {
   PersonnelAdminItem,
   PersonnelAdminUpsertBody,
@@ -313,7 +314,13 @@ export async function upsertPersonnelAdmin(
   pool: Pool,
   body: PersonnelAdminUpsertBody,
 ): Promise<{ idwkctr: string; mode: 'inserted' | 'updated' }> {
-  const normalizedBody = { ...body, wkctr: normalizeWkctrCode(body.wkctr) }
+  const rolePair = normalizePrimaryRolePair(body)
+  const normalizedBody = {
+    ...body,
+    wkctr: normalizeWkctrCode(body.wkctr),
+    userst: rolePair.userst,
+    userrole: rolePair.userrole,
+  }
   await assertWkctrCodeAvailable(pool, normalizedBody.wkctr, normalizedBody.idwkctr)
   const startwork = parseDate(normalizedBody.startwork ?? null)
   const wkctrdate = parseDate(normalizedBody.wkctrdate ?? null)

@@ -1,6 +1,7 @@
 import type { Pool } from 'pg'
 import type { AuthUser } from '../schemas/auth.js'
 import type { PersonnelUserrole } from '../schemas/personnel-admin.js'
+import { normalizePrimaryRolePair } from '../lib/primary-roles.js'
 import { generateTemporaryPassword } from '../lib/password-policy.js'
 import { getPasswordMinLength } from '../lib/security-settings.js'
 import { hashPassword } from '../lib/password.js'
@@ -113,11 +114,12 @@ export async function bulkUpdateWorkcenterUserrole(
 ): Promise<{ updated: number }> {
   const unique = [...new Set(idwkctrs.map((id) => id.trim()).filter(Boolean))]
   if (unique.length < 1) return { updated: 0 }
+  const { userst, userrole: role } = normalizePrimaryRolePair({ userrole })
   const { rowCount } = await pool.query(
     `UPDATE app.tbworkcenter
-     SET userrole = $1, updated_at = now()
-     WHERE idwkctr = ANY($2::text[])`,
-    [userrole, unique],
+     SET userrole = $1, userst = $2, updated_at = now()
+     WHERE idwkctr = ANY($3::text[])`,
+    [role, userst, unique],
   )
   return { updated: rowCount ?? 0 }
 }

@@ -80,9 +80,11 @@ export function parseThaiDate(value: string): number | null {
   return sec > 0 ? sec : null
 }
 
-function normalizeUserst(value: string): 'A' | 'H' | 'U' | 'W' {
+function normalizeUserst(value: string): 'A' | 'U' | 'W' {
   const v = value.trim().toUpperCase()
-  if (v === 'A' || v === 'H' || v === 'U' || v === 'W') return v
+  if (v === 'A') return 'A'
+  if (v === 'W') return 'W'
+  if (v === 'H') return 'U'
   return 'U'
 }
 

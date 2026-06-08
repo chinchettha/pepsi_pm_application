@@ -2,6 +2,7 @@ import {
   POST_LOGIN_PATH_WORKCENTER,
   resolvePostLoginPath,
 } from '@/features/auth/auth-paths'
+import { resolvePostLoginPathForUserst } from '@/lib/primary-roles'
 import { getStoredAuthUser, isLoggedIn, refreshAuthSession } from '@/features/auth/login-api'
 import { HttpErrorPage } from '@/features/errors/HttpErrorPage'
 import { ADMIN_READ_PERMISSIONS } from '@/lib/admin-sections'
@@ -87,7 +88,9 @@ export function NavRouteGuard() {
     if (pathAllowedForUser(location.pathname, allowedPaths)) return
 
     const fallback =
-      allowedPaths.find((p) => p === POST_LOGIN_PATH_WORKCENTER) ?? allowedPaths[0]
+      allowedPaths.find((p) => p === resolvePostLoginPathForUserst(authUser.userst)) ??
+      allowedPaths.find((p) => p === POST_LOGIN_PATH_WORKCENTER) ??
+      allowedPaths[0]
     if (!fallback || location.pathname === fallback) return
 
     navigate(fallback, { replace: true })

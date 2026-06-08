@@ -1,4 +1,4 @@
-export const MENU_ROLE_BITS = ['A', 'H', 'U', 'W'] as const
+export const MENU_ROLE_BITS = ['A', 'U', 'W'] as const
 
 export const menuSelectClass =
   'flex h-10 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body-sm text-app focus-app-ring focus-visible:outline-none'

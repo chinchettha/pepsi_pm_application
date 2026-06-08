@@ -2,6 +2,7 @@ import type { Pool } from 'pg'
 import type { AdminRole } from '../schemas/admin-roles.js'
 import { clearPermissionCache } from '../lib/has-permission.js'
 import { listPermissionsForUserst } from '../lib/has-permission.js'
+import { isVisibleRoleCode } from '../lib/primary-roles.js'
 
 export { isRbacSchemaMissing } from '../lib/has-permission.js'
 
@@ -41,7 +42,7 @@ export async function listRoles(pool: Pool): Promise<AdminRole[]> {
   const { rows } = await pool.query<RoleRow>(
     `${ROLE_SELECT} ORDER BY r.is_system DESC, r.role_code ASC`,
   )
-  return rows.map(mapRole)
+  return rows.map(mapRole).filter((r) => isVisibleRoleCode(r.roleCode))
 }
 
 export async function getRole(pool: Pool, roleCode: string): Promise<AdminRole | null> {
