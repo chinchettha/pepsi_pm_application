@@ -44,7 +44,14 @@
     "owner": "ผู้รับ",
     "actions": "จัดการ",
     "hoursUnit": "ชม.",
-    "viewInList": "ดูในรายการใบงาน"
+    "viewInList": "ดูในรายการใบงาน",
+    "ack": "รับทราบ"
+  },
+  "ack": {
+    "acknowledge": "รับทราบ",
+    "acknowledged": "รับทราบแล้ว",
+    "success": "รับทราบงานแล้ว",
+    "failed": "รับทราบไม่สำเร็จ"
   },
   "status": {
     "OPEN": "รอจ่ายงาน",
@@ -62,7 +69,7 @@
   },
   "assignDialog": {
     "title": "จ่ายงาน WO {{wo}}",
-    "description": "Manual = เลือกช่าง · Auto = ขยายทั้งกลุ่ม — บันทึก tbplangingwork",
+    "description": "Manual = เลือกหลายช่างพร้อมกัน (checkbox) หรือคลิกทีละคน · Auto = ขยายทั้งกลุ่ม — บันทึก tbplangingwork",
     "woHours": "ชม.งาน WO (IW37N):",
     "hoursUnit": "ชม.",
     "importWkctr": "wkctr จาก import:",
@@ -75,7 +82,10 @@
     "commentPlaceholder": "เช่น เร่งด่วน / เปลี่ยนทีม",
     "selectGroupError": "เลือกกลุ่มช่าง (Auto Mode)",
     "successManual": "จ่ายงาน Manual สำเร็จ",
+    "successManualCount": "จ่ายงาน Manual สำเร็จ {{count}} คน",
     "successAuto": "จ่ายงาน Auto (กลุ่ม) สำเร็จ",
+    "successAutoCount": "จ่ายงาน Auto สำเร็จ {{count}} คน",
+    "alreadyAssigned": "ช่างคนนี้ถูกจ่ายงาน WO นี้แล้ว — ไม่มีการเปลี่ยนแปลง",
     "assignFailed": "จ่ายงานไม่สำเร็จ",
     "assignAuto": "จ่าย Auto (กลุ่ม)",
     "assignSelf": "จ่ายให้ฉัน ({{code}})",

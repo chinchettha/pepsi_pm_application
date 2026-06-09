@@ -140,7 +140,7 @@ describe('admin roles API (supertest)', () => {
         roleCode: 'OPS',
         roleName: 'Operations',
         roleNameEn: 'Operations',
-        roleColor: '#004C97',
+        roleColor: '#003366',
       })
     expect(res.status).toBe(201)
     expect(res.body.roleCode).toBe('OPS')

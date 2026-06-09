@@ -58,6 +58,9 @@ type PersonnelRow = {
   imgmember_bytes: number | null
   has_image: boolean
   pass_must_change: boolean
+  telegram_chat_id: string | null
+  telegram_username: string | null
+  telegram_linked_at: Date | null
 }
 
 const SELECT_BASE = `
@@ -80,7 +83,10 @@ const SELECT_BASE = `
     wc.imgmember_mime,
     wc.imgmember_bytes,
     (octet_length(wc.imgmember_data) > 0) AS has_image,
-    COALESCE(wc.pass_must_change, false) AS pass_must_change
+    COALESCE(wc.pass_must_change, false) AS pass_must_change,
+    wc.telegram_chat_id::text AS telegram_chat_id,
+    wc.telegram_username,
+    wc.telegram_linked_at
   FROM app.tbworkcenter wc
   LEFT JOIN app.tbdepartment dept
     ON dept.iddepartment::text = wc.iddepartment::text
@@ -130,6 +136,9 @@ function mapRow(row: PersonnelRow): PersonnelAdminItem {
     imgmemberBytes: row.imgmember_bytes ?? 0,
     hasImage: Boolean(row.has_image),
     passMustChange: row.pass_must_change === true,
+    telegramChatId: row.telegram_chat_id,
+    telegramUsername: row.telegram_username,
+    telegramLinkedAt: row.telegram_linked_at?.toISOString() ?? null,
   }
 }
 

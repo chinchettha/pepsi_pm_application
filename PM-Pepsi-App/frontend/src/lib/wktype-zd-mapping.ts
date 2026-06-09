@@ -8,9 +8,9 @@ export type WktypeZdZbRow = {
 }
 
 export const WKTYPE_ZD_ZB_ROWS: readonly WktypeZdZbRow[] = [
-  { zb: 'ZB05', zd: 'ZD01' },
-  { zb: 'ZB02', zd: 'ZD02' },
   { zb: 'ZB01', zd: 'ZD05' },
+  { zb: 'ZB02', zd: 'ZD02' },
+  { zb: 'ZB05', zd: 'ZD01' },
 ] as const
 
 const BY_ZB = new Map(WKTYPE_ZD_ZB_ROWS.map((r) => [r.zb.toUpperCase(), r]))

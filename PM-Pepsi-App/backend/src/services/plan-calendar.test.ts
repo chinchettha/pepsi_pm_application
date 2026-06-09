@@ -23,7 +23,7 @@ describe('mapPlanWorkRowToEvent', () => {
         cday,
         syst: 'REL',
         operationshorttext: 'Test op',
-        wkstcolor: '#004c97',
+        wkstcolor: '#003366',
       },
       moveColor,
     )
@@ -49,7 +49,7 @@ describe('mapPlanWorkRowToEvent', () => {
       },
       moveColor,
     )
-    expect(ev?.color).toBe('#9333ea')
+    expect(ev?.color).toBe('#4DA6FF')
     expect(ev?.pmExecutionStatus).toBe('in_progress')
   })
 
@@ -65,14 +65,14 @@ describe('mapPlanWorkRowToEvent', () => {
         cday: null,
         syst: 'REL',
         operationshorttext: null,
-        wkstcolor: '#004c97',
+        wkstcolor: '#003366',
         confirm_qc_status: 'approved',
         percent_close: 80,
       },
       moveColor,
     )
     expect(ev?.pmExecutionStatus).toBe('done')
-    expect(ev?.color).toBe('#16a34a')
+    expect(ev?.color).toBe('#7AC943')
     expect(ev?.title).toMatch(/^\[เสร็จแล้ว\]/)
   })
 
@@ -95,7 +95,7 @@ describe('mapPlanWorkRowToEvent', () => {
     expect(ev?.canMovePlan).toBe(false)
     expect(ev?.syst).toBe('TECO')
     expect(ev?.pmExecutionStatus).toBe('closed')
-    expect(ev?.color).toBe('#16a34a')
+    expect(ev?.color).toBe('#7AC943')
   })
 
   it('returns null without plan date', () => {

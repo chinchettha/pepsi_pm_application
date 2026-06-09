@@ -97,6 +97,10 @@
       "label": "ประกาศ",
       "description": "Banner / maintenance"
     },
+    "telegram": {
+      "label": "Telegram & การแจ้งเตือน",
+      "description": "กลุ่มแจ้งเตือน · ทดสอบส่ง"
+    },
     "security": {
       "label": "ความปลอดภัย",
       "description": "Failed login, RBAC deny"
@@ -807,5 +811,82 @@
     "confirmLabel": "ยืนยัน",
     "cronHint": "cron แบบนาที+ชั่วโมง (เช่น 0 2 * * * = 02:00 ทุกวัน)",
     "restoreOkSeconds": "กู้คืนสำเร็จ ({{seconds}} วินาที)"
+  },
+  "telegram": {
+    "title": "Telegram & การแจ้งเตือน",
+    "description": "กลุ่มแจ้งเตือน · Bot token · ack · ผูกช่าง",
+    "hints": ["Bot token", "กลุ่มแจ้งเตือน", "chat_id", "ผูกช่าง"],
+    "addGroup": "เพิ่มกลุ่ม",
+    "editGroup": "แก้ไขกลุ่ม",
+    "created": "สร้างกลุ่มแล้ว",
+    "updated": "บันทึกกลุ่มแล้ว",
+    "deleted": "ลบกลุ่มแล้ว",
+    "saveFailed": "บันทึกไม่สำเร็จ",
+    "deleteFailed": "ลบไม่สำเร็จ",
+    "deleteTitle": "ลบกลุ่มแจ้งเตือน",
+    "deleteConfirm": "ลบกลุ่ม",
+    "testSend": "ทดสอบส่ง",
+    "testOk": "ส่งข้อความทดสอบแล้ว",
+    "testFailed": "ทดสอบส่งไม่สำเร็จ",
+    "refresh": "รีเฟรช",
+    "schemaMissingTitle": "ต้องรัน migration ก่อน",
+    "schemaMissingHint": "รัน database/migrations/099_telegram_notify.sql บนเซิร์ฟเวอร์นี้",
+    "groupsTitle": "กลุ่มแจ้งเตือน",
+    "groupsDesc": "Planner รับทราบ · แจ้ง QC · custom — ผูก wkctrgroup / ทีม PM / รายชื่อ wkctr",
+    "emptyTitle": "ยังไม่มีกลุ่ม",
+    "emptyDesc": "สร้างกลุ่มแล้วใส่ chat_id หลัง add Bot เข้ากลุ่ม Telegram",
+    "helpCardTitle": "วิธีตั้งค่าเบื้องต้น",
+    "helpSteps": "1) สร้าง Bot ที่ BotFather · ตั้ง TELEGRAM_BOT_TOKEN + TELEGRAM_WEBHOOK_SECRET บนเซิร์ฟเวอร์\n2) ลงทะเบียน webhook: POST https://api.telegram.org/bot<TOKEN>/setWebhook?url=<APP_PUBLIC_URL>/api/v1/telegram/webhook&secret_token=<SECRET>\n3) สร้างกลุ่ม Telegram · add Bot · ใส่ chat_id กลุ่มที่นี่ · ทดสอบส่ง\n4) ผูกช่าง: Admin → Users (ลิงก์เชิญ) หรือ Settings → Telegram (ช่างผูกเอง)",
+    "manageUsersLink": "จัดการผู้ใช้ / ผูกช่าง",
+    "linkStatusTitle": "สถานะผูก Telegram ช่าง",
+    "linkStatusDesc": "ผูกแล้ว {{linked}} · ยังไม่ผูก {{unlinked}} (workcenter ที่ active)",
+    "showLinkTable": "แสดงรายชื่อ",
+    "hideLinkTable": "ซ่อนรายชื่อ",
+    "enabledYes": "เปิด",
+    "enabledNo": "ปิด",
+    "summary": {
+      "bot": "Bot token",
+      "configured": "ตั้งค่าแล้ว",
+      "notConfigured": "ยังไม่ตั้ง",
+      "notifyOn": "TELEGRAM_NOTIFY_ENABLED เปิดอยู่",
+      "notifyOff": "TELEGRAM_NOTIFY_ENABLED ปิดอยู่",
+      "groups": "กลุ่ม (เปิด/ทั้งหมด)",
+      "linkedTech": "ช่างผูก Telegram"
+    },
+    "col": {
+      "code": "รหัส",
+      "name": "ชื่อ",
+      "kind": "ประเภท event",
+      "link": "ผูก master",
+      "chatId": "Chat ID",
+      "enabled": "เปิดใช้",
+      "actions": "การทำงาน"
+    },
+    "field": {
+      "code": "รหัสกลุ่ม",
+      "name": "ชื่อแสดง",
+      "notifyKind": "แจ้งเมื่อ",
+      "linkType": "กรองตาม",
+      "wkctrGroup": "กลุ่มช่าง (wkctrgroup)",
+      "pmTeam": "ทีม PM (A/B/EE/UT)",
+      "memberWkctrs": "รหัสช่าง (คั่นด้วย comma)",
+      "chatId": "Telegram chat ID",
+      "chatIdHint": "กลุ่มใช้เลขติดลบ · ได้หลัง add Bot หรือดูจาก /getUpdates",
+      "enabled": "เปิดใช้กลุ่ม",
+      "note": "หมายเหตุ"
+    },
+    "notifyKinds": {
+      "assignment_to_tech": "จ่ายงาน → DM ช่าง",
+      "ack_to_planner": "รับทราบ → กลุ่ม Planner",
+      "ack_summary": "สรุปรับทราบรายวัน",
+      "confirm_reminder": "แจ้ง QC / Confirm ค้าง",
+      "custom": "กำหนดเอง"
+    },
+    "linkTypes": {
+      "none": "ไม่กรอง (ทุก event ประเภทนี้)",
+      "wkctrgroup": "กลุ่มช่าง (wkctrgroup)",
+      "pm_team": "ทีม PM บน WO",
+      "workcenters": "รายชื่อ wkctr"
+    }
   }
 }

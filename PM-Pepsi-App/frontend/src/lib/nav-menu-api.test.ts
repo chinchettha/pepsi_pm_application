@@ -44,6 +44,7 @@ describe('supplementNavFromFallback', () => {
 
     const paths = merged.filter((e) => e.kind === 'item').map((e) => e.to)
     expect(paths).toContain('/admin/branding')
+    expect(paths).toContain('/admin/telegram')
     expect(merged.some((e) => e.kind === 'heading' && e.label === 'Administrator')).toBe(true)
   })
 })

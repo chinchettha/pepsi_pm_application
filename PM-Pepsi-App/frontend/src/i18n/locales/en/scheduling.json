@@ -85,7 +85,7 @@
     "loadFailedHint": "Check API or permission",
     "panelTitle": "Assigned work calendar",
     "panelSubtitle": "Pick a date range for hours · click an item for WO details",
-    "emptyMonth": "No jobs this month — you can still pick a range for hour summary"
+    "emptyMonth": "No assigned work this month — switch year/month to match the WO plan date (SAP data is often not the current month), or check the Planning list; you can still pick a range for hour summary"
   },
   "backlog": {
     "title": "Backlog",
@@ -189,7 +189,7 @@
   },
   "closeReady": {
     "needComment": "Add work details (comment) before closing",
-    "needImages": "Attach before and after photos before closing"
+    "needImages": "Attach after-PM photos before closing"
   },
   "wktype": {
     "mappingSource": "Customer meeting #2 (7 May 2026)",
@@ -303,6 +303,10 @@
     "noPlanMove": "No plan move yet",
     "movePlanButton": "Move plan (Move Plan)",
     "individualAssignees": "Individual assignees",
+    "ackSummary": "Ack {{acked}}/{{total}}",
+    "ackStatus": "Ack",
+    "ackDone": "Acknowledged",
+    "ackPending": "Pending",
     "noIndividualAssign": "No individual assignments yet",
     "groupAssignees": "Group assignees",
     "noGroupAssign": "No group assignments yet",

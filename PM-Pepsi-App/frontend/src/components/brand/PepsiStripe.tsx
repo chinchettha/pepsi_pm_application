@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-/** แถบสามสี Pepsi (น้ำเงิน · ขาว · แดง) — Admin + แอปหลัก */
+/** แถบ 6 สีโลโก้ลูกค้า (น้ำเงินเข้ม · ส้ม · เขียวเข้ม · เขียวอ่อน · ฟ้า · ขาว) — header hero */
 export function PepsiStripe({ className }: { className?: string }) {
   return (
     <div

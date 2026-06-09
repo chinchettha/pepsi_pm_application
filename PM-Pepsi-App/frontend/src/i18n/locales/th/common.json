@@ -139,6 +139,21 @@
       "ready": "พร้อม",
       "serverTime": "เวลาเซิร์ฟเวอร์"
     },
+    "telegram": {
+      "title": "แจ้งเตือน Telegram",
+      "hint": "ผูกรหัสช่างของคุณเพื่อรับแจ้งงานจ่ายผ่าน Bot",
+      "linked": "ผูกแล้ว",
+      "notLinked": "ยังไม่ผูก",
+      "linkedAt": "ผูกเมื่อ",
+      "createInvite": "สร้างลิงก์เชิญ",
+      "relink": "ลิงก์เชิญใหม่",
+      "unlink": "ยกเลิกผูก Telegram",
+      "inviteTitle": "เปิดใน Telegram",
+      "inviteFailed": "สร้างลิงก์เชิญไม่สำเร็จ",
+      "unlinked": "ยกเลิกผูก Telegram แล้ว",
+      "unlinkFailed": "ยกเลิกผูกไม่สำเร็จ",
+      "botNotConfigured": "ยังไม่ตั้ง Bot (TELEGRAM_BOT_TOKEN บนเซิร์ฟเวอร์)"
+    },
     "users": {
       "loadFailed": "โหลดรายชื่อผู้ใช้ไม่สำเร็จ",
       "colUsername": "ชื่อผู้ใช้",

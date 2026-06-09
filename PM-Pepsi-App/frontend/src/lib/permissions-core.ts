@@ -70,7 +70,9 @@ export function hasPermission(user: AuthUser | null | undefined, code: string): 
   if (!user) return false
   const perms = user.permissions
   if (perms && perms.length > 0) {
-    return perms.includes(code)
+    if (perms.includes(code)) return true
+    // New permissions may ship before migration grants them on the role matrix (Admin → legacy all)
+    return legacyHasPermission(user.userst, code)
   }
   return legacyHasPermission(user.userst, code)
 }

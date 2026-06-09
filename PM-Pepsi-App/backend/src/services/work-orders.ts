@@ -13,6 +13,7 @@ import type {
   workOrderSearchRowSchema,
 } from '../schemas/work-orders.js'
 import { hasPermission } from '../lib/has-permission.js'
+import { loadWorkcenterCodesForPlanningGroup } from '../lib/planning-group.js'
 import {
   loadPlanningAvailableHoursByWkctr,
   mergeWorkcenterAvailableHours,
@@ -930,8 +931,15 @@ export async function getWorkOrderModalDetail(
   )
 
   // Multi-assign — เทียบ legacy `AddPlan.php`: 1 WO มีช่างหลายคนได้
-  const assignedR = await pool.query<PlanningAssignedRow>(
+  const assignedR = await pool.query<
+    PlanningAssignedRow & {
+      ack_status?: string | null
+      ack_at?: Date | null
+      ack_channel?: string | null
+    }
+  >(
     `SELECT mp.idplanw, mp.wkctr, mp.pwcomment, mp.pwteam,
+            mp.ack_status, mp.ack_at, mp.ack_channel,
             wc.titlewkctr, wc.namewkctr, wc.surnamewkctr,
             wt.wkctrtype,
             pos.position,
@@ -963,6 +971,17 @@ export async function getWorkOrderModalDetail(
         position: r.position?.trim() ?? '',
         pwcomment: r.pwcomment?.trim() ?? '',
         pwteam,
+        ackStatus:
+          r.ack_status === 'pending' ||
+          r.ack_status === 'acknowledged' ||
+          r.ack_status === 'declined'
+            ? r.ack_status
+            : undefined,
+        ackAt: r.ack_at?.toISOString() ?? null,
+        ackChannel:
+          r.ack_channel === 'telegram' || r.ack_channel === 'web'
+            ? r.ack_channel
+            : null,
       }
     })
 
@@ -1065,20 +1084,14 @@ export async function upsertWorkOrderPlanning(
   const dayNow = Math.floor(Date.now() / 1000)
 
   if (body.mode === 'G') {
-    const members = await pool.query<{ wkctr: string }>(
-      `SELECT wkctr
-       FROM app.tbworkcenter
-       WHERE idwkctrgroup::text = $1
-         AND COALESCE(wkctr, '') <> ''`,
-      [code],
-    )
-    if (members.rowCount === 0) return false
-    for (const m of members.rows) {
+    const memberCodes = await loadWorkcenterCodesForPlanningGroup(pool, code)
+    if (memberCodes.length === 0) return false
+    for (const wkctr of memberCodes) {
       await pool.query(
         `INSERT INTO app.tbplangingwork (idiw37, wkctr, wkctrpw, pwcomment, pwteam)
          VALUES ($1, $2, $3, $4, 'G')
          ON CONFLICT (idiw37, wkctr) DO NOTHING`,
-        [row.idiw37, m.wkctr, actorWkctr, String(dayNow)],
+        [row.idiw37, wkctr, actorWkctr, String(dayNow)],
       )
     }
     return true

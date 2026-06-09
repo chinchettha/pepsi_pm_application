@@ -1,18 +1,20 @@
+import { BRAND_DEFAULTS, BRAND_LOGO } from '@/lib/brand-palette'
+
 export const COLOR_PRESETS = [
   {
     id: 'pepsi',
-    primary: '#004C97',
-    accent: '#E31837',
+    primary: BRAND_DEFAULTS.primaryColor,
+    accent: BRAND_DEFAULTS.accentColor,
   },
   {
     id: 'glass-light',
-    primary: '#007AFF',
-    accent: '#30D158',
+    primary: BRAND_LOGO.sky,
+    accent: BRAND_LOGO.greenLight,
   },
   {
     id: 'glass-dark',
-    primary: '#0A84FF',
-    accent: '#FF9F0A',
+    primary: BRAND_LOGO.sky,
+    accent: BRAND_LOGO.orange,
   },
 ] as const
 

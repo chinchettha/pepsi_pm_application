@@ -150,7 +150,7 @@
 }
 
 .sap-wo-print__input:focus {
-  outline: 1px solid #2563eb;
+  outline: 1px solid var(--brand-logo-blue-dark, #003366);
   outline-offset: 0;
 }
 

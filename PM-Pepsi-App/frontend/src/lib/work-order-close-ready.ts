@@ -1,6 +1,5 @@
 export type WorkOrderCloseReadyInput = {
   commentCount: number
-  imageBefore: number
   imageAfter: number
 }
 
@@ -10,7 +9,7 @@ export function workOrderCloseReadyMessage(input: WorkOrderCloseReadyInput): str
   if (input.commentCount < 1) {
     return i18n.t('closeReady.needComment', { ns: 'scheduling' })
   }
-  if (input.imageBefore < 1 || input.imageAfter < 1) {
+  if (input.imageAfter < 1) {
     return i18n.t('closeReady.needImages', { ns: 'scheduling' })
   }
   return null

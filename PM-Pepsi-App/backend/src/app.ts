@@ -30,6 +30,8 @@ import { registerAdminAnnouncementRoutes } from './routes/admin-announcement.js'
 import { registerAnnouncementsRoutes } from './routes/announcements.js'
 import { registerAdminSecurityRoutes } from './routes/admin-security.js'
 import { registerAdminAboutRoutes } from './routes/admin-about.js'
+import { registerAdminTelegramRoutes } from './routes/admin-telegram.js'
+import { registerTelegramRoutes } from './routes/telegram.js'
 import { registerBoardActivityRoutes } from './routes/board-activity.js'
 import { registerBoardPmReadingsRoutes } from './routes/board-pm-readings.js'
 import { registerPmReadingsRoutes } from './routes/pm-readings.js'
@@ -91,6 +93,8 @@ export function createApp(opts: {
   registerAnnouncementsRoutes(app, opts.pool, opts.sessionSecret)
   registerAdminSecurityRoutes(app, opts.pool, opts.sessionSecret)
   registerAdminAboutRoutes(app, opts.pool, opts.sessionSecret)
+  registerAdminTelegramRoutes(app, opts.pool, opts.sessionSecret)
+  registerTelegramRoutes(app, opts.pool, opts.sessionSecret)
   registerNavRoutes(app, opts.pool, opts.sessionSecret)
   registerProfileRoutes(app, opts.pool, opts.sessionSecret)
   registerMasterDataRoutes(app, opts.pool, opts.sessionSecret)

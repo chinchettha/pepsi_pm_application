@@ -100,7 +100,7 @@ export async function getMoveOverColor(pool: Pool): Promise<string> {
   const r = await pool.query<{ wkstcolor: string }>(
     `SELECT wkstcolor FROM app.tbwkstatus WHERE syst = 'MOVE OVER' LIMIT 1`,
   )
-  return r.rows[0]?.wkstcolor ?? '#f97316'
+  return r.rows[0]?.wkstcolor ?? '#F7941D'
 }
 
 export function monthRangeSec(year: number, month: number) {

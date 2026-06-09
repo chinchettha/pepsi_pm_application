@@ -68,7 +68,7 @@
     "pendingCount": "Technicians pending {{count}}",
     "closeHintSuffix": " — record on Close tab (details + before/after photos)",
     "hintNeedComment": "Please save details (comments) before closing",
-    "hintNeedImages": "Please attach before and after photos before closing",
+    "hintNeedImages": "Please attach after-PM photos before closing",
     "noTechnicians": "No assigned technicians or close records yet — open details to assign or record close",
     "colTechCode": "Technician code",
     "colName": "Name",

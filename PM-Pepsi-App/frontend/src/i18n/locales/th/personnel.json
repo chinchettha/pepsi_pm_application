@@ -251,6 +251,9 @@
       "lock": "Lock",
       "unlock": "Unlock",
       "impersonate": "Impersonate",
+      "telegramInvite": "ลิงก์เชิญ Telegram",
+      "telegramUnlink": "ยกเลิกผูก Telegram",
+      "telegramLinked": "ผูก TG แล้ว",
       "selectRow": "Select {{id}}"
     },
     "confirm": {
@@ -263,7 +266,9 @@
       "lockDesc": "User cannot sign in until unlocked",
       "impersonateTitle": "Impersonate user",
       "impersonateDesc": "Sign in as {{id}} ({{workCntr}}) — temporarily leave admin account",
-      "impersonateNative": "Impersonate {{id}} ({{workCntr}})? You will leave the admin account temporarily"
+      "impersonateNative": "Impersonate {{id}} ({{workCntr}})? You will leave the admin account temporarily",
+      "telegramUnlinkTitle": "Unlink Telegram for {{id}}",
+      "telegramUnlinkDesc": "Remove Telegram binding for {{workCntr}} — notifications will stop until re-linked"
     },
     "members": {
       "loadFailed": "Failed to load members",
@@ -410,7 +415,20 @@
       "impersonating": "Signed in as {{username}}",
       "impersonateFailed": "Impersonation failed",
       "resetFailed": "Reset failed",
-      "actionFailed": "Action failed"
+      "actionFailed": "Action failed",
+      "telegramUnlinked": "ยกเลิกผูก Telegram สำหรับ {{id}} แล้ว",
+      "telegramUnlinkFailed": "ยกเลิกผูก Telegram ไม่สำเร็จ"
     }
+  },
+  "telegram": {
+    "inviteTitle": "ลิงก์เชิญ Telegram",
+    "inviteDesc": "ส่งให้ {{wkctr}} ({{id}}) — เปิดใน Telegram แล้วกด Start",
+    "inviteLoading": "กำลังสร้างลิงก์เชิญ…",
+    "deepLink": "เปิดใน Telegram",
+    "startCommand": "หรือพิมพ์ในแชท Bot",
+    "expiresAt": "หมดอายุ: {{at}} (ใช้ครั้งเดียว)",
+    "copiedLink": "คัดลอกลิงก์แล้ว",
+    "copiedCommand": "คัดลอกคำสั่งแล้ว",
+    "botUsernameMissing": "ตั้ง TELEGRAM_BOT_USERNAME บนเซิร์ฟเวอร์เพื่อลิงก์ t.me"
   }
 }

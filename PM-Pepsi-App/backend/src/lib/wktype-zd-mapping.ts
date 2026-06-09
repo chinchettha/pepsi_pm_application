@@ -19,10 +19,10 @@ export type WktypeZdZbRow = {
 /** แมป ZB (ค่าใน DB หลัง import) → ZD (นิยามลูกค้าในประชุม) */
 export const WKTYPE_ZD_ZB_ROWS: readonly WktypeZdZbRow[] = [
   {
-    zb: 'ZB05',
-    zd: 'ZD01',
-    zdLabelTh: 'Breakdown / เครื่องหยุด',
-    iw37nLabel: 'Breakdown (IW37N)',
+    zb: 'ZB01',
+    zd: 'ZD05',
+    zdLabelTh: 'General Repair',
+    iw37nLabel: 'Corrective (IW37N)',
   },
   {
     zb: 'ZB02',
@@ -31,10 +31,10 @@ export const WKTYPE_ZD_ZB_ROWS: readonly WktypeZdZbRow[] = [
     iw37nLabel: 'PM (ไฟล์ AcZB02)',
   },
   {
-    zb: 'ZB01',
-    zd: 'ZD05',
-    zdLabelTh: 'General Repair',
-    iw37nLabel: 'Corrective (IW37N)',
+    zb: 'ZB05',
+    zd: 'ZD01',
+    zdLabelTh: 'Breakdown / เครื่องหยุด',
+    iw37nLabel: 'Breakdown (IW37N)',
   },
 ] as const
 

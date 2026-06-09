@@ -449,6 +449,9 @@ export const workOrderPlanningAssignedSchema = z.object({
   position: z.string().optional(),
   pwcomment: z.string(),
   pwteam: z.string(),
+  ackStatus: z.enum(['pending', 'acknowledged', 'declined']).optional(),
+  ackAt: z.string().nullable().optional(),
+  ackChannel: z.enum(['telegram', 'web']).nullable().optional(),
 })
 
 export const workOrderPlanningSchema = z.object({

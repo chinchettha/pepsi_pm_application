@@ -1,3 +1,5 @@
+import { BRAND_CALENDAR } from '@/lib/brand-palette'
+
 /** สถานะการทำงาน PM หลังออกแผน — ตรง backend `wo-pm-execution.ts` */
 export type PmExecutionStatus = 'in_progress' | 'done' | 'closed'
 
@@ -6,16 +8,16 @@ export const PM_EXECUTION_META: Record<
   { color: string; className: string }
 > = {
   in_progress: {
-    color: '#9333ea',
-    className: 'border-violet-300 bg-violet-100 text-violet-950 ring-violet-200',
+    color: BRAND_CALENDAR.inProgress,
+    className: 'app-status-badge app-status-badge--progress',
   },
   done: {
-    color: '#16a34a',
-    className: 'border-emerald-300 bg-emerald-100 text-emerald-950 ring-emerald-200',
+    color: BRAND_CALENDAR.completed,
+    className: 'app-status-badge app-status-badge--success',
   },
   closed: {
-    color: '#16a34a',
-    className: 'border-emerald-300 bg-emerald-100 text-emerald-950 ring-emerald-200',
+    color: BRAND_CALENDAR.completed,
+    className: 'app-status-badge app-status-badge--success',
   },
 }
 

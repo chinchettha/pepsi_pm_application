@@ -1,6 +1,6 @@
 # สรุป CSS Design Tokens (`index.css`)
 
-อัปเดต: 2026-05-22  
+อัปเดต: 2026-06-09  
 ไฟล์ต้นทาง: [`PM-Pepsi-App/frontend/src/index.css`](../../PM-Pepsi-App/frontend/src/index.css)  
 อ้างอิง: [`skill-theme.md`](../../skill-theme.md) §12 · [`skills.md`](../../skills.md) (ขาว · ส้ม · ฟ้า · เขียว)
 
@@ -8,13 +8,15 @@
 
 ## แมปบรีฟลูกค้า → Token
 
-| บรีฟลูกค้า (`skills.md`) | Token หลัก | Hex (ค่าเริ่มต้น) | ใช้ใน UI |
+| บรีฟลูกค้า (โลโก้ใหม่) | Token หลัก | Hex (ค่าเริ่มต้น) | ใช้ใน UI |
 |--------------------------|------------|------------------|---------|
-| **ขาว** | `--brand-pepsi-white`, `--app-surface`, `--admin-surface` | `#FFFFFF` | การ์ด, พื้นผิว, glass |
-| **ฟ้า** | `--brand-pepsi-blue`, `--app-accent`, `--admin-primary` | `#004C97` | ลิงก์, ปุ่มรอง, Admin primary, KPI info |
-| **ส้ม** | `--brand-pepsi-orange`, `--admin-warning` | `#FF9500` | คำเตือน, pending, KPI warning |
-| **เขียว** | `--brand-pepsi-green`, `--admin-success` | `#34C759` | สำเร็จ, health OK, KPI success |
-| **แดง (โลโก้)** | `--brand-pepsi-red`, `--app-primary`, `--admin-accent` | `#E31837` | ปุ่มหลักแอป, accent Admin, danger |
+| **ขาว** | `--brand-logo-white`, `--brand-pepsi-white` | `#FFFFFF` | การ์ด, พื้นผิว, glass, hero text |
+| **น้ำเงินเข้ม** | `--brand-logo-blue-dark`, `--brand-pepsi-blue`, `--app-accent` | `#003366` | หัวข้อ, ลิงก์, Admin primary, hero gradient |
+| **ส้ม** | `--brand-logo-orange`, `--brand-pepsi-red`, `--app-primary` | `#F7941D` | ปุ่มหลัก (CTA), accent Admin, KPI warning |
+| **เขียวเข้ม** | `--brand-logo-green-dark` | `#1E6B34` | stripe โลโก้, accent เสริม |
+| **เขียวอ่อน** | `--brand-logo-green-light`, `--brand-pepsi-green`, `--admin-success` | `#7AC943` | สำเร็จ, health OK, KPI success |
+| **ฟ้า** | `--brand-logo-sky`, `--admin-info` | `#4DA6FF` | info, gradient orb, role color เริ่มต้น |
+| **แดง (semantic)** | `--admin-danger` | `#FF3B30` | ลบ, ข้อผิดพลาด — ไม่อยู่ในโลโก้ |
 
 > **60/30/10 (Admin):** พื้น 60% = `--admin-bg` · ผิว 30% = `--admin-surface` / sidebar · เน้น 10% = `--admin-primary` / `--admin-accent`
 
@@ -22,15 +24,26 @@
 
 ## 1) `:root` — แบรนด์ + แอปทั่วไป
 
-### `--brand-pepsi-*` (คงที่ · โลโก้)
+### `--brand-logo-*` (source of truth · โลโก้ใหม่)
 
 | Variable | ค่า | หมายเหตุ |
 |----------|-----|----------|
-| `--brand-pepsi-red` | `#e31837` | แดงโลโก้ Pepsi |
-| `--brand-pepsi-blue` | `#004c97` | น้ำเงิน corporate |
-| `--brand-pepsi-white` | `#ffffff` | ขาว |
-| `--brand-pepsi-orange` | `var(--sys-orange-light)` | ส้ม (บรีฟลูกค้า) |
-| `--brand-pepsi-green` | `var(--sys-green-light)` | เขียว (บรีฟลูกค้า) |
+| `--brand-logo-blue-dark` | `#003366` | น้ำเงินเข้ม |
+| `--brand-logo-orange` | `#f7941d` | ส้ม |
+| `--brand-logo-green-dark` | `#1e6b34` | เขียวเข้ม |
+| `--brand-logo-green-light` | `#7ac943` | เขียวอ่อน |
+| `--brand-logo-sky` | `#4da6ff` | ฟ้า |
+| `--brand-logo-white` | `#ffffff` | ขาว |
+
+### `--brand-pepsi-*` (alias · compat โค้ดเก่า)
+
+| Variable | ค่า | หมายเหตุ |
+|----------|-----|----------|
+| `--brand-pepsi-blue` | `var(--brand-logo-blue-dark)` | เดิม corporate blue |
+| `--brand-pepsi-red` | `var(--brand-logo-orange)` | เดิมแดงโลโก้ → ส้มใหม่ |
+| `--brand-pepsi-white` | `var(--brand-logo-white)` | ขาว |
+| `--brand-pepsi-orange` | `var(--brand-logo-orange)` | ส้ม |
+| `--brand-pepsi-green` | `var(--brand-logo-green-light)` | เขียวอ่อน |
 
 ### `--sys-*` (macOS semantic · ส้ม/เขียว/ฟ้า/แดง UI)
 
@@ -45,9 +58,10 @@
 
 | Variable | ค่าเริ่มต้น | บทบาท |
 |----------|-------------|--------|
-| `--app-primary` | → `--brand-pepsi-red` | ปุ่มหลัก, heading, sidebar hover tint |
-| `--app-accent` | → `--brand-pepsi-blue` | ลิงก์, focus ring, เงาการ์ด |
-| `--app-primary-rgb` | `227, 24, 55` | gradient / rgba |
+| `--app-primary` | → `--brand-logo-orange` (จาก Admin `accentColor`) | ปุ่มหลัก CTA |
+| `--app-accent` | → `--brand-logo-blue-dark` (จาก Admin `primaryColor`) | หัวข้อ, ลิงก์, focus ring |
+| `--app-heading-color` | → `--brand-logo-blue-dark` | h1–h3 |
+| `--app-primary-rgb` | `247, 148, 29` | gradient / rgba (ส้ม) |
 | `--app-accent-rgb` | `0, 76, 151` | gradient / rgba |
 | `--app-bg` | `#eef2f7` | พื้นหลังหน้า (`liquid-glass-bg`) |
 | `--app-surface` | `#ffffff` | การ์ด `.app-card` |

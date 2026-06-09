@@ -81,7 +81,7 @@ export function eventFromClickArg(arg: {
     id: arg.event.id,
     date: `${y}-${m}-${d}`,
     title: arg.event.title,
-    color: arg.event.backgroundColor ?? '#004c97',
+    color: arg.event.backgroundColor ?? '#003366',
     orderId: typeof orderId === 'string' ? orderId : undefined,
     description: typeof description === 'string' ? description : undefined,
     canMovePlan: canMovePlan !== false,

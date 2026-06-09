@@ -61,7 +61,7 @@ export const createRoleBodySchema = z.object({
   roleColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
-    .default('#0A84FF'),
+    .default('#4DA6FF'),
   description: z.string().max(500).nullable().optional(),
 })
 

@@ -97,6 +97,10 @@
       "label": "Announcements",
       "description": "Banner / maintenance"
     },
+    "telegram": {
+      "label": "Telegram & notifications",
+      "description": "Notification groups · test send"
+    },
     "security": {
       "label": "Security",
       "description": "Failed login, RBAC deny"
@@ -807,6 +811,83 @@
     "confirmLabel": "Confirm",
     "cronHint": "Minute+hour cron (e.g. 0 2 * * * = 02:00 daily)",
     "restoreOkSeconds": "Restore completed ({{seconds}}s)"
+  },
+  "telegram": {
+    "title": "Telegram & notifications",
+    "description": "Notification groups · Bot token · ack · link technicians",
+    "hints": ["Bot token", "Notify groups", "chat_id", "Link technicians"],
+    "addGroup": "Add group",
+    "editGroup": "Edit group",
+    "created": "Group created",
+    "updated": "Group updated",
+    "deleted": "Group deleted",
+    "saveFailed": "Save failed",
+    "deleteFailed": "Delete failed",
+    "deleteTitle": "Delete notification group",
+    "deleteConfirm": "Delete group",
+    "testSend": "Test send",
+    "testOk": "Test message sent",
+    "testFailed": "Test send failed",
+    "refresh": "Refresh",
+    "schemaMissingTitle": "Database migration required",
+    "schemaMissingHint": "Run database/migrations/099_telegram_notify.sql on this server.",
+    "groupsTitle": "Notification groups",
+    "groupsDesc": "Planner ack · QC reminders · custom — linked by wkctrgroup / PM team / wkctr list",
+    "emptyTitle": "No groups yet",
+    "emptyDesc": "Create a group and paste the Telegram chat_id after adding the Bot to the group.",
+    "helpCardTitle": "Quick setup",
+    "helpSteps": "1) Create Bot via BotFather · set TELEGRAM_BOT_TOKEN + TELEGRAM_WEBHOOK_SECRET on server\n2) Register webhook: POST https://api.telegram.org/bot<TOKEN>/setWebhook?url=<APP_PUBLIC_URL>/api/v1/telegram/webhook&secret_token=<SECRET>\n3) Create Telegram group · add Bot as member · paste group chat_id here · Test send\n4) Link technicians: Admin → Users (invite) or Settings → Telegram (self-service)",
+    "manageUsersLink": "Manage users / link technicians",
+    "linkStatusTitle": "Technician Telegram links",
+    "linkStatusDesc": "Linked {{linked}} · not linked {{unlinked}} (active workcenters)",
+    "showLinkTable": "Show list",
+    "hideLinkTable": "Hide list",
+    "enabledYes": "On",
+    "enabledNo": "Off",
+    "summary": {
+      "bot": "Bot token",
+      "configured": "Configured",
+      "notConfigured": "Not set",
+      "notifyOn": "TELEGRAM_NOTIFY_ENABLED is on",
+      "notifyOff": "TELEGRAM_NOTIFY_ENABLED is off",
+      "groups": "Groups (enabled/total)",
+      "linkedTech": "Technicians linked"
+    },
+    "col": {
+      "code": "Code",
+      "name": "Name",
+      "kind": "Event type",
+      "link": "Master link",
+      "chatId": "Chat ID",
+      "enabled": "Enabled",
+      "actions": "Actions"
+    },
+    "field": {
+      "code": "Group code",
+      "name": "Display name",
+      "notifyKind": "Notify when",
+      "linkType": "Filter by",
+      "wkctrGroup": "Work center group",
+      "pmTeam": "PM team (A/B/EE/UT)",
+      "memberWkctrs": "Work centers (comma-separated)",
+      "chatId": "Telegram chat ID",
+      "chatIdHint": "Negative number for groups · get from Bot after /getUpdates or add Bot to group",
+      "enabled": "Group enabled",
+      "note": "Note"
+    },
+    "notifyKinds": {
+      "assignment_to_tech": "Assignment → technician DM",
+      "ack_to_planner": "Ack → planner group",
+      "ack_summary": "Daily ack summary",
+      "confirm_reminder": "QC / confirm reminder",
+      "custom": "Custom"
+    },
+    "linkTypes": {
+      "none": "No filter (all events of this kind)",
+      "wkctrgroup": "Work center group",
+      "pm_team": "PM team on WO",
+      "workcenters": "Specific work centers"
+    }
   }
 }
 

@@ -39,8 +39,8 @@ export function workOrderCloseGuardMessage(counts: WorkOrderCloseGuardCounts): s
   if (counts.commentCount < 1) {
     return 'กรุณาบันทึกรายละเอียด (ความคิดเห็น) ก่อนปิดงาน'
   }
-  if (counts.imageBefore < 1 || counts.imageAfter < 1) {
-    return 'กรุณาแนบรูปก่อนและหลังทำงานก่อนปิดงาน'
+  if (counts.imageAfter < 1) {
+    return 'กรุณาแนบรูปหลังทำ PM เสร็จก่อนปิดงาน'
   }
   return null
 }

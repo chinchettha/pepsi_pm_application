@@ -1,16 +1,15 @@
 import type { PublicSettings } from '@/api/schemas'
 import type { ThemePreference } from '@/lib/theme-preference'
+import {
+  applyBrandLogoTokens,
+  BRAND_DEFAULTS,
+  BRAND_LOGO,
+  hexToRgbTriplet,
+} from '@/lib/brand-palette'
 import { applyTypographyToDocument, typographyFromPublicSettings } from '@/lib/typography-tokens'
 
 export type ResolvedTheme = 'light' | 'dark'
 export type ServerThemeMode = 'light' | 'dark' | 'system'
-
-const DEFAULT_PRIMARY = '#004C97'
-const DEFAULT_ACCENT = '#E31837'
-const DEFAULT_SUCCESS = '#34C759'
-const DEFAULT_WARNING = '#FF9F0A'
-const DEFAULT_DANGER = '#E31837'
-const DEFAULT_INFO = '#0A84FF'
 
 export function resolveTheme(
   serverMode: ServerThemeMode | undefined,
@@ -26,35 +25,31 @@ export function resolveTheme(
   return 'light'
 }
 
-function hexToRgb(hex: string): string {
-  const h = hex.replace('#', '').trim()
-  if (h.length !== 6) return '255, 59, 48'
-  const r = parseInt(h.slice(0, 2), 16)
-  const g = parseInt(h.slice(2, 4), 16)
-  const b = parseInt(h.slice(4, 6), 16)
-  if ([r, g, b].some((n) => Number.isNaN(n))) return '255, 59, 48'
-  return `${r}, ${g}, ${b}`
-}
-
 /** Apply Pepsi / admin branding colors + light/dark surface tokens to `document.documentElement`. */
 export function applyThemeToDocument(
   settings: PublicSettings | undefined,
   resolved: ResolvedTheme,
 ): void {
   const root = document.documentElement
-  const primary = settings?.primaryColor?.trim() || DEFAULT_PRIMARY
-  const accent = settings?.accentColor?.trim() || DEFAULT_ACCENT
-  const success = settings?.successColor?.trim() || DEFAULT_SUCCESS
-  const warning = settings?.warningColor?.trim() || DEFAULT_WARNING
-  const danger = settings?.dangerColor?.trim() || DEFAULT_DANGER
-  const info = settings?.infoColor?.trim() || DEFAULT_INFO
+  const primary = settings?.primaryColor?.trim() || BRAND_DEFAULTS.primaryColor
+  const accent = settings?.accentColor?.trim() || BRAND_DEFAULTS.accentColor
+  const success = settings?.successColor?.trim() || BRAND_DEFAULTS.successColor
+  const warning = settings?.warningColor?.trim() || BRAND_DEFAULTS.warningColor
+  const danger = settings?.dangerColor?.trim() || BRAND_DEFAULTS.dangerColor
+  const info = settings?.infoColor?.trim() || BRAND_DEFAULTS.infoColor
 
-  root.style.setProperty('--app-primary', primary)
-  root.style.setProperty('--app-accent', accent)
-  root.style.setProperty('--app-primary-rgb', hexToRgb(primary))
-  root.style.setProperty('--app-accent-rgb', hexToRgb(accent))
-  root.style.setProperty('--brand-pepsi-red', accent)
-  root.style.setProperty('--brand-pepsi-blue', primary)
+  applyBrandLogoTokens(root, {
+    primaryColor: primary,
+    accentColor: accent,
+    successColor: success,
+    infoColor: info,
+  })
+
+  root.style.setProperty('--app-primary', accent)
+  root.style.setProperty('--app-accent', primary)
+  root.style.setProperty('--app-primary-rgb', hexToRgbTriplet(accent))
+  root.style.setProperty('--app-accent-rgb', hexToRgbTriplet(primary))
+  root.style.setProperty('--app-heading-color', primary)
   root.style.setProperty('--admin-success', success)
   root.style.setProperty('--admin-warning', warning)
   root.style.setProperty('--admin-danger', danger)
@@ -79,7 +74,6 @@ export function applyThemeToDocument(
   root.dataset.theme = resolved
 
   if (resolved === 'dark') {
-    // skill-theme.md §1 — cinematic dark; ข้อความ/accent สว่างพอบนพื้นมืด
     root.style.setProperty('--app-bg', '#0f172a')
     root.style.setProperty('--app-surface', '#1e293b')
     root.style.setProperty('--app-surface-muted', '#334155')
@@ -87,18 +81,16 @@ export function applyThemeToDocument(
     root.style.setProperty('--app-text-muted', '#cbd5e1')
     root.style.setProperty('--app-border', '#475569')
     root.style.setProperty('--app-sidebar', '#1e293b')
-    root.style.setProperty('--app-accent', '#60a5fa')
+    root.style.setProperty('--app-accent', BRAND_LOGO.sky)
     root.style.setProperty('--app-glass-bg', 'rgba(30, 41, 59, 0.78)')
     root.style.setProperty('--app-glass-border', 'rgba(255, 255, 255, 0.14)')
   } else {
-    // skill-theme.md §13.4 — corporate flat #EEF2F7 (ไม่ใช้ gradient หลายสี)
     root.style.setProperty('--app-bg', '#eef2f7')
     root.style.setProperty('--app-surface', '#ffffff')
     root.style.setProperty('--app-surface-muted', '#f4f4f5')
     root.style.setProperty('--app-text', '#18181b')
     root.style.setProperty('--app-text-muted', '#71717a')
     root.style.setProperty('--app-border', '#e4e4e7')
-    /* พื้น sidebar เทา corporate — ไม่ใช้สีน้ำเงินเต็มแผง */
     root.style.setProperty('--app-sidebar', '#eaeaea')
     root.style.setProperty('--app-glass-bg', 'rgba(255, 255, 255, 0.7)')
     root.style.setProperty('--app-glass-border', 'rgba(255, 255, 255, 0.18)')
@@ -112,10 +104,22 @@ export function clearThemeFromDocument(): void {
   root.classList.remove('dark')
   delete root.dataset.theme
   const keys = [
+    '--brand-logo-blue-dark',
+    '--brand-logo-orange',
+    '--brand-logo-green-dark',
+    '--brand-logo-green-light',
+    '--brand-logo-sky',
+    '--brand-logo-white',
+    '--brand-pepsi-blue',
+    '--brand-pepsi-red',
+    '--brand-pepsi-white',
+    '--brand-pepsi-orange',
+    '--brand-pepsi-green',
     '--app-primary',
     '--app-accent',
     '--app-primary-rgb',
     '--app-accent-rgb',
+    '--app-heading-color',
     '--app-bg',
     '--app-surface',
     '--app-surface-muted',

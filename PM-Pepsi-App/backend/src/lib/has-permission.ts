@@ -155,7 +155,8 @@ export async function hasPermission(
   const roleCode = normalizeRoleCode(userst)
   try {
     const permissions = await loadRolePermissions(pool, roleCode)
-    return permissions.has(perm)
+    if (permissions.has(perm)) return true
+    return legacyHasPermission(userst, perm)
   } catch (err) {
     if (!isRbacSchemaMissing(err)) throw err
     return legacyHasPermission(userst, perm)

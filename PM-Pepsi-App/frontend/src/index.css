@@ -9,30 +9,53 @@
 */
 
 :root {
-  /* macOS System Colors (skills.md) */
-  --sys-blue-light: #007aff;
-  --sys-blue-dark: #0a84ff;
-  --sys-green-light: #34c759;
-  --sys-green-dark: #30d158;
-  --sys-orange-light: #ff9500;
-  --sys-orange-dark: #ff9f0a;
+  /* โลโก้ใหม่ลูกค้า — source of truth (docs/customer-requirements/UI-DESIGN-TOKENS.md) */
+  --brand-logo-blue-dark: #003366;
+  --brand-logo-orange: #f7941d;
+  --brand-logo-green-dark: #1e6b34;
+  --brand-logo-green-light: #7ac943;
+  --brand-logo-sky: #4da6ff;
+  --brand-logo-white: #ffffff;
+
+  /* Alias เก่า → พาเลตใหม่ (compat ทั้งแอป) */
+  --brand-pepsi-blue: var(--brand-logo-blue-dark);
+  --brand-pepsi-red: var(--brand-logo-orange);
+  --brand-pepsi-white: var(--brand-logo-white);
+  --brand-pepsi-orange: var(--brand-logo-orange);
+  --brand-pepsi-green: var(--brand-logo-green-light);
+
+  /* Semantic system colors — อิงพาเลตโลโก้ */
+  --sys-blue-light: var(--brand-logo-sky);
+  --sys-blue-dark: color-mix(in srgb, var(--brand-logo-sky) 82%, #000812);
+  --sys-green-light: var(--brand-logo-green-light);
+  --sys-green-dark: var(--brand-logo-green-dark);
+  --sys-orange-light: var(--brand-logo-orange);
+  --sys-orange-dark: color-mix(in srgb, var(--brand-logo-orange) 85%, #000812);
   --sys-red-light: #ff3b30;
   --sys-red-dark: #ff453a;
   --sys-purple-light: #af52de;
   --sys-purple-dark: #bf5af2;
   --sys-yellow-light: #ffcc00;
   --sys-yellow-dark: #ffd60a;
-
-  /* Brand — skills.md: ขาว · ส้ม · ฟ้า · เขียว (+ แดงโลโก้) · สรุป: docs/customer-requirements/UI-DESIGN-TOKENS.md */
-  --brand-pepsi-red: #e31837;
-  --brand-pepsi-blue: #004c97;
-  --brand-pepsi-white: #ffffff;
-  --brand-pepsi-orange: var(--sys-orange-light);
-  --brand-pepsi-green: var(--sys-green-light);
-  --app-primary: var(--brand-pepsi-red);
-  --app-accent: var(--brand-pepsi-blue);
-  --app-primary-rgb: 227, 24, 55;
-  --app-accent-rgb: 0, 76, 151;
+  --brand-logo-stripe: linear-gradient(
+    90deg,
+    var(--brand-logo-blue-dark) 0%,
+    var(--brand-logo-blue-dark) 16.67%,
+    var(--brand-logo-orange) 16.67%,
+    var(--brand-logo-orange) 33.33%,
+    var(--brand-logo-green-dark) 33.33%,
+    var(--brand-logo-green-dark) 50%,
+    var(--brand-logo-green-light) 50%,
+    var(--brand-logo-green-light) 66.67%,
+    var(--brand-logo-sky) 66.67%,
+    var(--brand-logo-sky) 83.33%,
+    var(--brand-logo-white) 83.33%,
+    var(--brand-logo-white) 100%
+  );
+  --app-primary: var(--brand-logo-orange);
+  --app-accent: var(--brand-logo-blue-dark);
+  --app-primary-rgb: 247, 148, 29;
+  --app-accent-rgb: 0, 51, 102;
   --app-bg: #eef2f7;
   --app-surface: #ffffff;
   --app-surface-muted: #f4f4f5;
@@ -43,8 +66,8 @@
   --app-sidebar-fg: #1f2937;
   --app-sidebar-fg-muted: #6b7280;
   --app-sidebar-border: #d4d4d8;
-  --app-sidebar-hover: color-mix(in srgb, var(--app-primary) 10%, #eaeaea);
-  --app-sidebar-active: color-mix(in srgb, var(--app-primary) 16%, #eaeaea);
+  --app-sidebar-hover: color-mix(in srgb, var(--app-accent) 10%, #eaeaea);
+  --app-sidebar-active: color-mix(in srgb, var(--app-accent) 16%, #eaeaea);
   --app-glass-bg: rgba(255, 255, 255, 0.7);
   --app-glass-border: rgba(255, 255, 255, 0.18);
 
@@ -61,7 +84,7 @@
   --app-line-height-tight: 1.25;
   --app-line-height-body: 1.5;
   --app-line-height-relaxed: 1.6;
-  --app-heading-color: var(--app-primary);
+  --app-heading-color: var(--brand-logo-blue-dark);
 
   /* Radius / shadow — U0: card 12px · button 8px · dialog 16px */
   --app-radius-card: 12px;
@@ -122,6 +145,39 @@
   --spacing-24: var(--app-space-6);
   --spacing-28: var(--app-space-6);
   --spacing-32: var(--app-space-6);
+
+  /* Tailwind utility shades → พาเลตโลโก้ (blue/orange/green/red/sky/emerald/indigo) */
+  --color-blue-50: color-mix(in srgb, var(--brand-logo-sky) 10%, white);
+  --color-blue-100: color-mix(in srgb, var(--brand-logo-sky) 20%, white);
+  --color-blue-200: color-mix(in srgb, var(--brand-logo-sky) 35%, white);
+  --color-blue-700: color-mix(in srgb, var(--brand-logo-blue-dark) 88%, black);
+  --color-blue-800: var(--brand-logo-blue-dark);
+  --color-blue-900: color-mix(in srgb, var(--brand-logo-blue-dark) 92%, black);
+  --color-sky-50: color-mix(in srgb, var(--brand-logo-sky) 12%, white);
+  --color-sky-200: color-mix(in srgb, var(--brand-logo-sky) 38%, white);
+  --color-sky-600: color-mix(in srgb, var(--brand-logo-sky) 78%, var(--brand-logo-blue-dark));
+  --color-sky-900: color-mix(in srgb, var(--brand-logo-blue-dark) 85%, black);
+  --color-orange-50: color-mix(in srgb, var(--brand-logo-orange) 12%, white);
+  --color-orange-100: color-mix(in srgb, var(--brand-logo-orange) 22%, white);
+  --color-orange-200: color-mix(in srgb, var(--brand-logo-orange) 38%, white);
+  --color-orange-700: color-mix(in srgb, var(--brand-logo-orange) 82%, #3d2200);
+  --color-orange-900: color-mix(in srgb, var(--brand-logo-orange) 72%, #1a0e00);
+  --color-orange-950: color-mix(in srgb, var(--brand-logo-orange) 65%, black);
+  --color-amber-50: color-mix(in srgb, var(--brand-logo-orange) 10%, white);
+  --color-emerald-100: color-mix(in srgb, var(--brand-logo-green-light) 22%, white);
+  --color-emerald-300: color-mix(in srgb, var(--brand-logo-green-light) 48%, white);
+  --color-emerald-950: color-mix(in srgb, var(--brand-logo-green-dark) 88%, black);
+  --color-green-100: color-mix(in srgb, var(--brand-logo-green-light) 22%, white);
+  --color-indigo-50: color-mix(in srgb, var(--brand-logo-sky) 10%, white);
+  --color-indigo-200: color-mix(in srgb, var(--brand-logo-sky) 34%, white);
+  --color-red-50: color-mix(in srgb, var(--admin-danger) 10%, white);
+  --color-red-100: color-mix(in srgb, var(--admin-danger) 18%, white);
+  --color-red-200: color-mix(in srgb, var(--admin-danger) 32%, white);
+  --color-red-600: var(--admin-danger);
+  --color-red-700: color-mix(in srgb, var(--admin-danger) 88%, black);
+  --color-red-800: color-mix(in srgb, var(--admin-danger) 78%, black);
+  --color-red-900: color-mix(in srgb, var(--admin-danger) 72%, black);
+  --color-red-950: color-mix(in srgb, var(--admin-danger) 65%, black);
 }
 
 html {
@@ -142,7 +198,7 @@ html.dark {
   --app-sidebar-fg: rgba(255, 255, 255, 0.94);
   --app-sidebar-fg-muted: rgba(255, 255, 255, 0.72);
   --app-sidebar-border: rgba(255, 255, 255, 0.14);
-  --app-accent: #60a5fa;
+  --app-accent: var(--brand-logo-sky);
   --app-glass-bg: rgba(30, 41, 59, 0.78);
   --app-glass-border: rgba(255, 255, 255, 0.14);
 }
@@ -266,15 +322,15 @@ body {
 }
 
 .app-announcement--warn {
-  border-color: color-mix(in srgb, #f59e0b 45%, var(--app-border));
-  background: color-mix(in srgb, #f59e0b 14%, var(--app-surface));
-  color: color-mix(in srgb, #b45309 75%, var(--app-text));
+  border-color: color-mix(in srgb, var(--admin-warning) 45%, var(--app-border));
+  background: color-mix(in srgb, var(--admin-warning) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--admin-warning) 88%, var(--app-text));
 }
 
 .app-announcement--error {
-  border-color: color-mix(in srgb, #ef4444 45%, var(--app-border));
-  background: color-mix(in srgb, #ef4444 12%, var(--app-surface));
-  color: color-mix(in srgb, #b91c1c 80%, var(--app-text));
+  border-color: color-mix(in srgb, var(--admin-danger) 45%, var(--app-border));
+  background: color-mix(in srgb, var(--admin-danger) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--admin-danger) 82%, var(--app-text));
 }
 
 .app-announcement--maintenance {
@@ -284,11 +340,11 @@ body {
 }
 
 html.dark .app-announcement--warn {
-  color: color-mix(in srgb, #fcd34d 90%, var(--app-text));
+  color: color-mix(in srgb, var(--admin-warning) 92%, var(--app-text));
 }
 
 html.dark .app-announcement--error {
-  color: color-mix(in srgb, #fca5a5 92%, var(--app-text));
+  color: color-mix(in srgb, var(--admin-danger) 90%, var(--app-text));
 }
 
 .macos-admin .app-announcement--info,
@@ -1322,8 +1378,21 @@ html.dark .error-page__icon-wrap {
 .liquid-glass-bg {
   background-color: var(--app-bg);
   background-image:
-    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--app-accent) 12%, transparent), transparent 42%),
-    radial-gradient(circle at 85% 12%, color-mix(in srgb, var(--app-primary) 10%, transparent), transparent 40%),
+    radial-gradient(
+      circle at 12% 8%,
+      color-mix(in srgb, var(--brand-logo-sky) 14%, transparent),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 85% 12%,
+      color-mix(in srgb, var(--brand-logo-orange) 11%, transparent),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 22% 92%,
+      color-mix(in srgb, var(--brand-logo-green-light) 9%, transparent),
+      transparent 38%
+    ),
     radial-gradient(circle at 50% 110%, color-mix(in srgb, var(--app-text) 6%, transparent), transparent 55%);
 }
 
@@ -1485,7 +1554,12 @@ html.dark .text-app-muted {
 }
 
 html.dark .app-topbar-brand-title {
-  background: linear-gradient(120deg, #93c5fd 0%, #f1f5f9 55%, #e2e8f0 100%);
+  background: linear-gradient(
+    120deg,
+    var(--brand-logo-sky) 0%,
+    #f1f5f9 55%,
+    #e2e8f0 100%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1533,26 +1607,26 @@ html.dark .macos-sidebar .sidebar-nav a:hover svg.lucide {
 
 html.dark .macos-sidebar .sidebar-nav a[aria-current='page'] .nav-menu-link__icon,
 html.dark .macos-sidebar .sidebar-nav a[aria-current='page'] svg.lucide {
-  color: #93c5fd;
+  color: var(--brand-logo-sky);
 }
 
 html.dark .dashboard-kpi__cta {
-  color: #93c5fd;
+  color: var(--brand-logo-sky);
 }
 
 html.dark .dashboard-kpi--pepsi-blue .dashboard-kpi__icon {
-  color: #93c5fd;
-  background: color-mix(in srgb, #60a5fa 18%, var(--app-surface));
+  color: var(--brand-logo-sky);
+  background: color-mix(in srgb, var(--brand-logo-sky) 18%, var(--app-surface));
 }
 
 html.dark .dashboard-kpi--pepsi-red .dashboard-kpi__icon {
-  color: #fca5a5;
-  background: color-mix(in srgb, #f87171 16%, var(--app-surface));
+  color: color-mix(in srgb, var(--brand-logo-orange) 82%, white);
+  background: color-mix(in srgb, var(--brand-logo-orange) 16%, var(--app-surface));
 }
 
 html.dark .dashboard-kpi--pepsi-orange .dashboard-kpi__icon {
-  color: #fdba74;
-  background: color-mix(in srgb, #fb923c 16%, var(--app-surface));
+  color: color-mix(in srgb, var(--brand-logo-orange) 78%, white);
+  background: color-mix(in srgb, var(--brand-logo-orange) 16%, var(--app-surface));
 }
 
 html.dark .dashboard-quick {
@@ -1584,6 +1658,31 @@ html.dark .app-card:hover {
 
 .app-kpi-card[data-tone='warning'] {
   border-top: 3px solid var(--admin-warning);
+}
+
+/* สถานะ PM execution badge — พาเลตโลโก้ */
+.app-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border-width: 1px;
+  padding: 0.15rem 0.65rem;
+  font-size: var(--app-font-size-caption, 13px);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.app-status-badge--progress {
+  border-color: color-mix(in srgb, var(--brand-logo-sky) 40%, var(--app-border));
+  background: color-mix(in srgb, var(--brand-logo-sky) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--brand-logo-blue-dark) 92%, var(--app-text));
+}
+
+.app-status-badge--success {
+  border-color: color-mix(in srgb, var(--brand-logo-green-light) 42%, var(--app-border));
+  background: color-mix(in srgb, var(--brand-logo-green-light) 16%, var(--app-surface));
+  color: color-mix(in srgb, var(--brand-logo-green-dark) 90%, var(--app-text));
 }
 
 .app-kpi-card[data-tone='danger'] {
@@ -1650,17 +1749,19 @@ html.dark .app-card:hover {
   position: relative;
   overflow: hidden;
   padding: 2rem 0 0;
-  color: #f8fafc;
+  color: var(--brand-logo-white);
   background: linear-gradient(
     128deg,
-    var(--brand-pepsi-blue) 0%,
-    color-mix(in srgb, var(--brand-pepsi-blue) 72%, #001a3d) 42%,
-    color-mix(in srgb, var(--brand-pepsi-red) 38%, #1a0a12) 78%,
-    #0c1222 100%
+    var(--brand-logo-blue-dark) 0%,
+    color-mix(in srgb, var(--brand-logo-blue-dark) 50%, var(--brand-logo-sky) 50%) 24%,
+    color-mix(in srgb, var(--brand-logo-green-dark) 70%, var(--brand-logo-blue-dark) 30%) 46%,
+    color-mix(in srgb, var(--brand-logo-green-light) 35%, var(--brand-logo-green-dark) 65%) 60%,
+    color-mix(in srgb, var(--brand-logo-orange) 40%, var(--brand-logo-blue-dark) 60%) 78%,
+    color-mix(in srgb, var(--brand-logo-blue-dark) 88%, #000812) 100%
   );
   box-shadow:
-    0 1px 0 color-mix(in srgb, white 12%, transparent),
-    0 20px 48px color-mix(in srgb, var(--brand-pepsi-blue) 28%, transparent);
+    0 1px 0 color-mix(in srgb, var(--brand-logo-white) 12%, transparent),
+    0 20px 48px color-mix(in srgb, var(--brand-logo-blue-dark) 32%, transparent);
 }
 
 .dashboard-hero__pepsi-stripe {
@@ -1673,10 +1774,24 @@ html.dark .app-card:hover {
 .dashboard-hero__mesh {
   position: absolute;
   inset: 0;
-  opacity: 0.35;
+  opacity: 0.42;
   background-image:
-    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.14) 0%, transparent 42%),
-    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.08) 0%, transparent 40%),
+    radial-gradient(
+      circle at 14% 28%,
+      color-mix(in srgb, var(--brand-logo-sky) 42%, transparent) 0%,
+      transparent 46%
+    ),
+    radial-gradient(
+      circle at 82% 18%,
+      color-mix(in srgb, var(--brand-logo-orange) 34%, transparent) 0%,
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 68% 78%,
+      color-mix(in srgb, var(--brand-logo-green-light) 30%, transparent) 0%,
+      transparent 44%
+    ),
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.12) 0%, transparent 42%),
     linear-gradient(
       120deg,
       transparent 0%,
@@ -1699,7 +1814,7 @@ html.dark .app-card:hover {
   left: 8%;
   width: 280px;
   height: 280px;
-  background: color-mix(in srgb, var(--brand-pepsi-blue) 75%, white);
+  background: color-mix(in srgb, var(--brand-logo-sky) 72%, var(--brand-logo-white));
 }
 
 .dashboard-orb--b {
@@ -1707,8 +1822,8 @@ html.dark .app-card:hover {
   right: 5%;
   width: 220px;
   height: 220px;
-  background: color-mix(in srgb, var(--brand-pepsi-white) 55%, var(--brand-pepsi-blue));
-  opacity: 0.35;
+  background: color-mix(in srgb, var(--brand-logo-green-light) 58%, var(--brand-logo-white));
+  opacity: 0.38;
 }
 
 .dashboard-orb--c {
@@ -1716,7 +1831,7 @@ html.dark .app-card:hover {
   left: 42%;
   width: 200px;
   height: 200px;
-  background: color-mix(in srgb, var(--brand-pepsi-red) 65%, transparent);
+  background: color-mix(in srgb, var(--brand-logo-orange) 62%, transparent);
 }
 
 .dashboard-hero__content {
@@ -1805,14 +1920,14 @@ html.dark .app-card:hover {
 }
 
 .dashboard-hero__btn-primary {
-  background: var(--brand-pepsi-red) !important;
-  color: white !important;
+  background: var(--brand-logo-orange) !important;
+  color: var(--brand-logo-white) !important;
   border: none;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand-pepsi-red) 45%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand-logo-orange) 45%, transparent);
 }
 
 .dashboard-hero__btn-primary:hover {
-  background: color-mix(in srgb, var(--brand-pepsi-red) 88%, white) !important;
+  background: color-mix(in srgb, var(--brand-logo-orange) 88%, white) !important;
 }
 
 .dashboard-hero__btn {
@@ -1904,15 +2019,7 @@ html.dark .app-card:hover {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(
-    90deg,
-    var(--brand-pepsi-blue) 0%,
-    var(--brand-pepsi-blue) 38%,
-    var(--brand-pepsi-white) 38%,
-    var(--brand-pepsi-white) 62%,
-    var(--brand-pepsi-red) 62%,
-    var(--brand-pepsi-red) 100%
-  );
+  background: var(--brand-logo-stripe);
   border-radius: var(--app-radius-card) var(--app-radius-card) 0 0;
   opacity: 0.85;
 }
@@ -1943,8 +2050,8 @@ html.dark .app-card:hover {
 }
 
 .dashboard-kpi--pepsi-orange .dashboard-kpi__icon {
-  background: color-mix(in srgb, var(--sys-orange-light, #f59e0b) 16%, var(--app-surface));
-  color: var(--sys-orange-light, #ea580c);
+  background: color-mix(in srgb, var(--brand-logo-orange) 16%, var(--app-surface));
+  color: var(--sys-orange-light, var(--brand-logo-orange));
 }
 
 .dashboard-kpi__delta {
@@ -1957,8 +2064,8 @@ html.dark .app-card:hover {
 }
 
 .dashboard-kpi__delta--up {
-  color: #047857;
-  background: color-mix(in srgb, #10b981 14%, var(--app-surface));
+  color: var(--brand-logo-green-dark);
+  background: color-mix(in srgb, var(--brand-logo-green-light) 14%, var(--app-surface));
 }
 
 .dashboard-kpi__delta--down {
@@ -2053,19 +2160,19 @@ html.dark .dashboard-quick__shine {
 }
 
 html.dark .dashboard-quick__icon {
-  color: #93c5fd;
+  color: var(--brand-logo-sky);
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, #60a5fa 22%, var(--app-surface)),
-    color-mix(in srgb, #f87171 14%, var(--app-surface))
+    color-mix(in srgb, var(--brand-logo-sky) 22%, var(--app-surface)),
+    color-mix(in srgb, var(--brand-logo-orange) 14%, var(--app-surface))
   );
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, white 8%, transparent),
-    0 2px 8px color-mix(in srgb, #60a5fa 18%, transparent);
+    0 2px 8px color-mix(in srgb, var(--brand-logo-sky) 18%, transparent);
 }
 
 html.dark .dashboard-quick:hover .dashboard-quick__icon {
-  color: #fca5a5;
+  color: color-mix(in srgb, var(--brand-logo-orange) 82%, white);
 }
 
 .dashboard-panel {
@@ -2282,22 +2389,21 @@ html.dark .macos-topbar {
 
 /* Admin theme (skills.md 21-32): borderless + whitespace + 60/30/10 */
 
-/* Admin base colors = White / Orange / Blue / Green (skills.md) */
+/* Admin base colors = โลโก้ใหม่: ขาว · ส้ม · ฟ้า · เขียว · น้ำเงินเข้ม */
 .macos-admin {
-  --pepsi-white: #ffffff;
-  /* Pepsi corporate palette */
-  --pepsi-blue: var(--brand-pepsi-blue);
-  --pepsi-red: var(--brand-pepsi-red);
-  --pepsi-orange: var(--sys-orange-light);
-  --pepsi-green: var(--sys-green-light);
+  --pepsi-white: var(--brand-logo-white);
+  --pepsi-blue: var(--brand-logo-blue-dark);
+  --pepsi-red: var(--brand-logo-orange);
+  --pepsi-orange: var(--brand-logo-orange);
+  --pepsi-green: var(--brand-logo-green-light);
 
   /* 60/30/10: 60=background, 30=surface/sidebar, 10=accent */
-  --admin-primary: var(--pepsi-blue);
-  --admin-accent: var(--pepsi-red);
-  --admin-success: var(--pepsi-green);
-  --admin-warning: var(--pepsi-orange);
+  --admin-primary: var(--brand-logo-blue-dark);
+  --admin-accent: var(--brand-logo-orange);
+  --admin-success: var(--brand-logo-green-light);
+  --admin-warning: var(--brand-logo-orange);
   --admin-danger: var(--sys-red-light);
-  --admin-info: var(--sys-blue-light);
+  --admin-info: var(--brand-logo-sky);
   --admin-bg: #eef2f7;
   --admin-surface: #ffffff;
   --admin-surface-muted: #f8fafc;
@@ -2312,10 +2418,10 @@ html.dark .macos-topbar {
 }
 
 html.dark .macos-admin {
-  --pepsi-blue: color-mix(in srgb, var(--brand-pepsi-blue) 55%, var(--sys-blue-dark));
-  --pepsi-red: color-mix(in srgb, var(--brand-pepsi-red) 55%, var(--sys-red-dark));
+  --pepsi-blue: color-mix(in srgb, var(--brand-logo-blue-dark) 55%, var(--brand-logo-sky));
+  --pepsi-red: color-mix(in srgb, var(--brand-logo-orange) 55%, var(--sys-orange-dark));
   --pepsi-orange: var(--sys-orange-dark);
-  --pepsi-green: var(--sys-green-dark);
+  --pepsi-green: color-mix(in srgb, var(--brand-logo-green-light) 55%, var(--sys-green-dark));
   /* skill-theme.md §1 — cinematic dark, not pure black */
   --admin-bg: #0f172a;
   --admin-surface: #1c1c1e;
@@ -2523,7 +2629,7 @@ html.dark .macos-admin .app-surface :where(input, textarea, select) {
 }
 
 html.dark .macos-sidebar .sidebar-nav a[aria-current='page'] svg {
-  color: #93c5fd;
+  color: var(--brand-logo-sky);
 }
 
 .macos-sidebar .sidebar-nav .nav-menu-link__label {
@@ -2764,15 +2870,7 @@ html.dark [data-sonner-toast] {
 
 /* --- Admin theme prototype (Pepsi corporate — ไม่ใช้ rainbow glass) --- */
 .admin-pepsi-stripe {
-  background: linear-gradient(
-    90deg,
-    var(--brand-pepsi-blue) 0%,
-    var(--brand-pepsi-blue) 38%,
-    var(--brand-pepsi-white) 38%,
-    var(--brand-pepsi-white) 62%,
-    var(--brand-pepsi-red) 62%,
-    var(--brand-pepsi-red) 100%
-  );
+  background: var(--brand-logo-stripe);
 }
 
 .admin-theme-prototype {
@@ -2814,20 +2912,41 @@ html.dark [data-sonner-toast] {
   padding-bottom: var(--app-space-4);
 }
 
-.admin-page-header {
+/* Admin header = dashboard-hero gradient (เทียบ `/calendar`) — fallback ขาวถ้าไม่มี .dashboard-hero */
+.admin-page-header:not(.dashboard-hero) {
   background: var(--admin-surface) !important;
   backdrop-filter: none;
   box-shadow: 0 1px 0 var(--admin-border, #dce3ed) !important;
   border-bottom: none !important;
 }
 
-.macos-admin .admin-page-header .app-page-hero__hint {
+/* `.macos-admin :where(h1)` บังคับสีเข้ม — ทับให้ขาวบน gradient hero */
+.macos-admin .admin-page-header.dashboard-hero .dashboard-hero__title,
+.admin-layout-shell .admin-page-header.dashboard-hero .dashboard-hero__title,
+.macos-admin .admin-page-header.dashboard-hero :where(h1) {
+  color: #f8fafc;
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
+}
+
+.macos-admin .admin-page-header.dashboard-hero .dashboard-hero__eyebrow {
+  color: color-mix(in srgb, white 85%, transparent);
+}
+
+.macos-admin .admin-page-header.dashboard-hero .dashboard-hero__subtitle {
+  color: color-mix(in srgb, white 82%, transparent);
+}
+
+.macos-admin .admin-page-header:not(.dashboard-hero) .app-page-hero__hint {
   border-color: color-mix(in srgb, var(--admin-primary) 24%, var(--admin-border));
   background: color-mix(in srgb, var(--admin-primary) 8%, var(--admin-surface));
   color: var(--admin-text-muted);
 }
 
-html.dark .macos-admin .admin-page-header .app-page-hero__hint {
+html.dark .macos-admin .admin-page-header:not(.dashboard-hero) .app-page-hero__hint {
   border-color: rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.78);
@@ -2874,7 +2993,7 @@ html.dark .summary-weekly-chart-full {
 }
 
 .admin-breadcrumb__link:hover {
-  color: var(--admin-primary, #004c97);
+  color: var(--admin-primary, var(--brand-logo-blue-dark));
   text-decoration: underline;
 }
 
@@ -3011,7 +3130,7 @@ html.dark .admin-breadcrumb__link:hover {
 
 .admin-layout-shell .admin-quick-link:hover {
   border-color: color-mix(in srgb, var(--brand-pepsi-blue) 40%, var(--admin-border, #dce3ed));
-  box-shadow: 0 4px 16px rgba(0, 76, 151, 0.12);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand-logo-blue-dark) 12%, transparent);
 }
 
 .admin-layout-shell .admin-quick-link:hover::before {
@@ -3060,7 +3179,11 @@ html.dark .admin-breadcrumb__link:hover {
 .admin-density-toggle__btn--active,
 .admin-density-toggle__btn[aria-pressed='true'] {
   color: #fff;
-  background: linear-gradient(180deg, #0056a8, var(--brand-pepsi-blue));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-logo-sky) 35%, var(--brand-logo-blue-dark)),
+    var(--brand-logo-blue-dark)
+  );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 2px 8px color-mix(in srgb, var(--brand-pepsi-blue) 35%, transparent);
@@ -3081,12 +3204,16 @@ html.dark .admin-breadcrumb__link:hover {
 
 .admin-layout-shell .admin-toolbar-primary,
 .admin-layout-shell .admin-toolbar-btn[class*='bg-zinc-900'] {
-  background: linear-gradient(180deg, #0056a8, var(--brand-pepsi-blue)) !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-logo-sky) 35%, var(--brand-logo-blue-dark)),
+    var(--brand-logo-blue-dark)
+  ) !important;
   color: #fff !important;
   border: 0 !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 4px 14px rgba(0, 76, 151, 0.35) !important;
+    0 4px 14px color-mix(in srgb, var(--brand-logo-blue-dark) 35%, transparent) !important;
 }
 
 .admin-layout-shell .admin-toolbar-primary:hover {
@@ -3243,10 +3370,10 @@ html.dark .macos-admin .admin-table-sticky {
 }
 
 html.dark .pm-fullcalendar--modern {
-  --pm-cal-weekend-bg: color-mix(in srgb, #f43f5e 8%, var(--app-surface));
-  --pm-cal-sunday-bg: color-mix(in srgb, #f43f5e 11%, var(--app-surface));
-  --pm-cal-saturday-bg: color-mix(in srgb, #3b82f6 9%, var(--app-surface));
-  --pm-cal-weekend-border: color-mix(in srgb, #f43f5e 22%, var(--app-border));
+  --pm-cal-weekend-bg: color-mix(in srgb, var(--brand-logo-orange) 8%, var(--app-surface));
+  --pm-cal-sunday-bg: color-mix(in srgb, var(--brand-logo-orange) 11%, var(--app-surface));
+  --pm-cal-saturday-bg: color-mix(in srgb, var(--brand-logo-sky) 9%, var(--app-surface));
+  --pm-cal-weekend-border: color-mix(in srgb, var(--brand-logo-orange) 22%, var(--app-border));
 }
 
 html.dark .pm-fullcalendar .fc .fc-daygrid-day-number,
@@ -3331,12 +3458,12 @@ html.dark .pm-fullcalendar--modern .fc .pm-cal-day-num {
 /* ── Modern FullCalendar (pm-fullcalendar--modern) ── */
 .pm-fullcalendar--modern {
   --pm-cal-day-min-height: 7.5rem;
-  --pm-cal-weekend-bg: color-mix(in srgb, #f43f5e 6%, var(--app-surface));
-  --pm-cal-weekend-border: color-mix(in srgb, #f43f5e 18%, var(--app-border));
-  --pm-cal-sunday-bg: color-mix(in srgb, #f43f5e 9%, var(--app-surface));
-  --pm-cal-saturday-bg: color-mix(in srgb, #3b82f6 7%, var(--app-surface));
-  --pm-cal-weekend-header: color-mix(in srgb, #e11d48 70%, var(--app-text-muted));
-  --pm-cal-saturday-header: color-mix(in srgb, #2563eb 65%, var(--app-text-muted));
+  --pm-cal-weekend-bg: color-mix(in srgb, var(--brand-logo-orange) 6%, var(--app-surface));
+  --pm-cal-weekend-border: color-mix(in srgb, var(--brand-logo-orange) 18%, var(--app-border));
+  --pm-cal-sunday-bg: color-mix(in srgb, var(--brand-logo-orange) 9%, var(--app-surface));
+  --pm-cal-saturday-bg: color-mix(in srgb, var(--brand-logo-sky) 7%, var(--app-surface));
+  --pm-cal-weekend-header: color-mix(in srgb, var(--brand-logo-orange) 70%, var(--app-text-muted));
+  --pm-cal-saturday-header: color-mix(in srgb, var(--brand-logo-sky) 65%, var(--app-text-muted));
 }
 
 .pm-fullcalendar--modern .fc {
@@ -3418,12 +3545,12 @@ html.dark .pm-fullcalendar--modern .fc .pm-cal-day-num {
 
 .pm-fullcalendar--modern .fc .pm-cal-day--sunday .fc-daygrid-day-frame {
   background: var(--pm-cal-sunday-bg);
-  border-color: color-mix(in srgb, #f43f5e 22%, var(--app-border));
+  border-color: color-mix(in srgb, var(--brand-logo-orange) 22%, var(--app-border));
 }
 
 .pm-fullcalendar--modern .fc .pm-cal-day--saturday .fc-daygrid-day-frame {
   background: var(--pm-cal-saturday-bg);
-  border-color: color-mix(in srgb, #3b82f6 20%, var(--app-border));
+  border-color: color-mix(in srgb, var(--brand-logo-sky) 20%, var(--app-border));
 }
 
 .pm-fullcalendar--modern .fc .pm-cal-day--weekend.pm-cal-day--today .fc-daygrid-day-frame {
@@ -3649,7 +3776,7 @@ html.dark .pm-fullcalendar--modern .fc .pm-cal-day-num {
 
   .summary-weekly-chart-full .dashboard-hero {
     position: static !important;
-    background: #004c97 !important;
+    background: var(--brand-logo-blue-dark) !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
@@ -3694,27 +3821,27 @@ html.dark .pm-fullcalendar--modern .fc .pm-cal-day-num {
 }
 
 .pm-fullcalendar--modern .fc .pm-cal-event--phase-create {
-  box-shadow: inset 3px 0 0 #f59e0b;
+  box-shadow: inset 3px 0 0 var(--brand-logo-orange);
 }
 
 .pm-fullcalendar--modern .fc .pm-cal-event--phase-rel {
-  box-shadow: inset 3px 0 0 #3b82f6;
+  box-shadow: inset 3px 0 0 var(--brand-logo-sky);
 }
 
 .pm-fullcalendar--modern .fc .pm-cal-event--phase-confirm {
-  box-shadow: inset 3px 0 0 #10b981;
+  box-shadow: inset 3px 0 0 var(--brand-logo-green-light);
 }
 
 .pm-cal-gantt__bar.pm-cal-event--phase-create {
-  box-shadow: inset 3px 0 0 #f59e0b;
+  box-shadow: inset 3px 0 0 var(--brand-logo-orange);
 }
 
 .pm-cal-gantt__bar.pm-cal-event--phase-rel {
-  box-shadow: inset 3px 0 0 #3b82f6;
+  box-shadow: inset 3px 0 0 var(--brand-logo-sky);
 }
 
 .pm-cal-gantt__bar.pm-cal-event--phase-confirm {
-  box-shadow: inset 3px 0 0 #10b981;
+  box-shadow: inset 3px 0 0 var(--brand-logo-green-light);
 }
 
 .pm-cal-event--has-bell .fc-event-title,

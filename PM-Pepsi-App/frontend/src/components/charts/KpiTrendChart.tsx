@@ -1,3 +1,4 @@
+import { BRAND_LOGO } from '@/lib/brand-palette'
 import { cn } from '@/lib/utils'
 import type { ChartArea, ChartOptions } from 'chart.js'
 import {
@@ -27,28 +28,28 @@ type TonePalette = {
 
 const TONE: Record<KpiChartTone, TonePalette> = {
   'pepsi-blue': {
-    line: '#004c97',
-    lineSoft: 'rgba(0, 76, 151, 0.35)',
-    fillTop: 'rgba(0, 76, 151, 0.38)',
-    fillBottom: 'rgba(0, 76, 151, 0.02)',
-    point: '#004c97',
-    grid: 'rgba(0, 76, 151, 0.1)',
+    line: BRAND_LOGO.blueDark,
+    lineSoft: 'rgba(0, 51, 102, 0.35)',
+    fillTop: 'rgba(0, 51, 102, 0.38)',
+    fillBottom: 'rgba(0, 51, 102, 0.02)',
+    point: BRAND_LOGO.blueDark,
+    grid: 'rgba(0, 51, 102, 0.1)',
   },
   'pepsi-red': {
-    line: '#e31837',
-    lineSoft: 'rgba(227, 24, 55, 0.35)',
-    fillTop: 'rgba(227, 24, 55, 0.34)',
-    fillBottom: 'rgba(227, 24, 55, 0.02)',
-    point: '#e31837',
-    grid: 'rgba(227, 24, 55, 0.1)',
+    line: BRAND_LOGO.orange,
+    lineSoft: 'rgba(247, 148, 29, 0.35)',
+    fillTop: 'rgba(247, 148, 29, 0.34)',
+    fillBottom: 'rgba(247, 148, 29, 0.02)',
+    point: BRAND_LOGO.orange,
+    grid: 'rgba(247, 148, 29, 0.1)',
   },
   'pepsi-orange': {
-    line: '#ea580c',
-    lineSoft: 'rgba(234, 88, 12, 0.35)',
-    fillTop: 'rgba(234, 88, 12, 0.32)',
-    fillBottom: 'rgba(234, 88, 12, 0.02)',
-    point: '#ea580c',
-    grid: 'rgba(234, 88, 12, 0.1)',
+    line: BRAND_LOGO.orange,
+    lineSoft: 'rgba(247, 148, 29, 0.35)',
+    fillTop: 'rgba(247, 148, 29, 0.32)',
+    fillBottom: 'rgba(247, 148, 29, 0.02)',
+    point: BRAND_LOGO.orange,
+    grid: 'rgba(247, 148, 29, 0.1)',
   },
 }
 

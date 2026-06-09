@@ -41,7 +41,7 @@ function SizeSlider({
         step={1}
         value={value}
         disabled={disabled}
-        className="h-2 w-full cursor-pointer accent-[var(--app-primary,#004C97)] disabled:opacity-50"
+        className="h-2 w-full cursor-pointer accent-[var(--app-primary,#F7941D)] disabled:opacity-50"
         onChange={(e) => onChange(Number(e.target.value))}
       />
       <p className="text-xs text-app-muted">{hint}</p>

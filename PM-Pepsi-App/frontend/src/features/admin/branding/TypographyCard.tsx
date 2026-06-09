@@ -126,7 +126,7 @@ export function TypographyCard({ form, onChange, disabled }: TypographyCardProps
               type="color"
               className="h-10 w-14 shrink-0 cursor-pointer p-1"
               disabled={disabled}
-              value={form.fontHeadingColor ?? '#004c97'}
+              value={form.fontHeadingColor ?? '#003366'}
               onChange={(e) => onChange({ fontHeadingColor: e.target.value })}
             />
             <Input

@@ -58,7 +58,7 @@ export function AdminTour({
         skip: t('tour.joyride.skip'),
       }}
       options={{
-        primaryColor: 'var(--brand-pepsi-blue, #004c97)',
+        primaryColor: 'var(--brand-logo-blue-dark, #003366)',
         zIndex: 10000,
         arrowColor: 'var(--admin-tour-arrow, #ffffff)',
         backgroundColor: 'var(--admin-tour-surface, #ffffff)',

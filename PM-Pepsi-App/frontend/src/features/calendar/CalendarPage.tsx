@@ -63,7 +63,6 @@ const calendarFilterFormSchema = z.object({
   wkctr: z.array(z.string()),
   team: z.array(z.string()),
   functionalloc: z.array(z.string()),
-  priority: z.array(z.string()),
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
   wcStartDate: z.string().optional(),
@@ -84,7 +83,6 @@ function countActiveCalendarFilters(f: CalendarFilterForm): number {
     'wkctr',
     'team',
     'functionalloc',
-    'priority',
   ]
   let n = arrayFields.reduce((sum, key) => sum + (f[key]?.length ?? 0), 0)
   if (f.fromDate?.trim()) n += 1
@@ -138,7 +136,6 @@ export function CalendarPage() {
       wkctr: [],
       team: [],
       functionalloc: [],
-      priority: [],
       fromDate: '',
       toDate: '',
       wcStartDate: todayDdMmYyyy(),
@@ -157,7 +154,6 @@ export function CalendarPage() {
     wkctr: [],
     team: [],
     functionalloc: [],
-    priority: [],
     fromDate: '',
     toDate: '',
     wcStartDate: todayDdMmYyyy(),
@@ -191,7 +187,7 @@ export function CalendarPage() {
       wkctr: submittedFilters.wkctr,
       team: submittedFilters.team,
       functionalloc: submittedFilters.functionalloc,
-      priority: submittedFilters.priority,
+      priority: [],
       equipment: [],
       fromDate: submittedFilters.fromDate?.trim() ? submittedFilters.fromDate.trim() : undefined,
       toDate: submittedFilters.toDate?.trim() ? submittedFilters.toDate.trim() : undefined,
@@ -220,7 +216,6 @@ export function CalendarPage() {
       wkctr: [],
       team: [],
       functionalloc: [],
-      priority: [],
       fromDate: '',
       toDate: '',
       wcStartDate: todayDdMmYyyy(),
@@ -422,18 +417,6 @@ export function CalendarPage() {
                           <FilterMultiSelect
                             label={t('filters.labels.wktype')}
                             options={optsQ.data?.wktypes ?? []}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <Controller
-                        name="priority"
-                        control={form.control}
-                        render={({ field }) => (
-                          <FilterMultiSelect
-                            label={t('filters.labels.priority')}
-                            options={optsQ.data?.priorities ?? []}
                             value={field.value}
                             onChange={field.onChange}
                           />

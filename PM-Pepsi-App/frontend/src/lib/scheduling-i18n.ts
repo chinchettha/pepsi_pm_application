@@ -1,4 +1,5 @@
 import type { ActivityDisplayMode } from '@/components/scheduling/CalendarColorLegend'
+import { BRAND_CALENDAR, BRAND_LEGEND_TINT } from '@/lib/brand-palette'
 import type { PmExecutionStatus } from '@/lib/wo-pm-execution'
 import { PM_EXECUTION_META } from '@/lib/wo-pm-execution'
 import type { TFunction } from 'i18next'
@@ -18,17 +19,17 @@ export function activityDisplayOptions(t: TFunction<'scheduling'>): ReadonlyArra
 export function calendarColorLegendItems(t: TFunction<'scheduling'>) {
   return [
     {
-      color: '#9333ea',
+      color: BRAND_CALENDAR.inProgress,
       label: t('colors.inProgress'),
       title: t('colors.inProgressTitle'),
     },
     {
-      color: '#f97316',
+      color: BRAND_CALENDAR.moved,
       label: t('colors.moved'),
       title: t('colors.movedTitle'),
     },
     {
-      color: '#16a34a',
+      color: BRAND_CALENDAR.completed,
       label: t('colors.done'),
       title: t('colors.doneTitle'),
     },
@@ -37,8 +38,8 @@ export function calendarColorLegendItems(t: TFunction<'scheduling'>) {
 
 export function weekendLegendItems(t: TFunction<'scheduling'>) {
   return [
-    { color: '#fecdd3', label: t('colors.sunday'), title: t('colors.sundayTitle') },
-    { color: '#bfdbfe', label: t('colors.saturday'), title: t('colors.saturdayTitle') },
+    { color: BRAND_LEGEND_TINT.sunday, label: t('colors.sunday'), title: t('colors.sundayTitle') },
+    { color: BRAND_LEGEND_TINT.saturday, label: t('colors.saturday'), title: t('colors.saturdayTitle') },
   ] as const
 }
 
@@ -46,22 +47,22 @@ export function weekendLegendItems(t: TFunction<'scheduling'>) {
 export function woCalendarColorLegendItems(t: TFunction<'scheduling'>) {
   return [
     {
-      color: '#9333ea',
+      color: BRAND_CALENDAR.inProgress,
       label: t('colors.inProgress'),
       title: t('calendarLegend.inProgressTitleExt'),
     },
     {
-      color: '#dc2626',
+      color: BRAND_CALENDAR.overdue,
       label: t('calendarLegend.overdue'),
       title: t('calendarLegend.overdueTitle'),
     },
     {
-      color: '#f97316',
+      color: BRAND_CALENDAR.moved,
       label: t('colors.moved'),
       title: t('calendarLegend.movedTitleExt'),
     },
     {
-      color: '#16a34a',
+      color: BRAND_CALENDAR.completed,
       label: t('colors.done'),
       title: t('calendarLegend.doneTitleExt'),
     },

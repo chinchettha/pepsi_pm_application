@@ -16,6 +16,10 @@ export const planningItemSchema = z.object({
   workHours: z.number().positive().optional(),
   /** wkctr บนใบงานหลัง import — อ้างอิง Auto default */
   importWkctr: z.string().optional(),
+  /** สถานะรับทราบของช่างที่ล็อกอิน (tbplangingwork) */
+  ackStatus: z.enum(['pending', 'acknowledged', 'declined']).optional(),
+  ackAt: z.string().nullable().optional(),
+  ackChannel: z.enum(['telegram', 'web']).nullable().optional(),
 })
 
 export const planningResponseSchema = z.object({
@@ -31,4 +35,31 @@ export const planningAssignBodySchema = z.object({
 
 export const planningAssignResponseSchema = z.object({
   ok: z.literal(true),
+  assigned: z.array(z.string()),
+  skipped: z.array(z.string()).optional(),
+})
+
+export const planningAckResponseSchema = z.object({
+  ok: z.literal(true),
+  idiw37: z.number().int(),
+  wkctr: z.string(),
+  ackStatus: z.literal('acknowledged'),
+  ackAt: z.string(),
+  alreadyAcked: z.boolean(),
+})
+
+export const planningAckSummaryItemSchema = z.object({
+  wkctr: z.string(),
+  ackStatus: z.string(),
+  ackAt: z.string().nullable(),
+  ackChannel: z.string().nullable(),
+})
+
+export const planningAckSummaryResponseSchema = z.object({
+  idiw37: z.number().int(),
+  wkorder: z.string(),
+  total: z.number().int(),
+  acknowledged: z.number().int(),
+  pending: z.number().int(),
+  items: z.array(planningAckSummaryItemSchema),
 })

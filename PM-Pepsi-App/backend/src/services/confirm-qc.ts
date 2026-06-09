@@ -49,7 +49,7 @@ export async function applyTecoSystemStatus(pool: Pool, idiw37: number): Promise
      SET syst = 'TECO',
          wkstcolor = COALESCE(
            (SELECT w.wkstcolor FROM app.tbwkstatus w WHERE w.syst = 'TECO' LIMIT 1),
-           '#16a34a'
+           '#7AC943'
          )
      WHERE i.idiw37 = $1`,
     [idiw37],

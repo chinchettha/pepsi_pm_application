@@ -295,6 +295,9 @@ export const workOrderPlanningAssignedSchema = z.object({
   position: z.string().optional(),
   pwcomment: z.string(),
   pwteam: z.string(),
+  ackStatus: z.enum(['pending', 'acknowledged', 'declined']).optional(),
+  ackAt: z.string().nullable().optional(),
+  ackChannel: z.enum(['telegram', 'web']).nullable().optional(),
 })
 
 export const workOrderPlanningSchema = z.object({
@@ -469,6 +472,33 @@ export const planningAssignBodySchema = z.object({
 
 export const planningAssignResponseSchema = z.object({
   ok: z.literal(true),
+  assigned: z.array(z.string()),
+  skipped: z.array(z.string()).optional(),
+})
+
+export const planningAckResponseSchema = z.object({
+  ok: z.literal(true),
+  idiw37: z.number().int(),
+  wkctr: z.string(),
+  ackStatus: z.literal('acknowledged'),
+  ackAt: z.string(),
+  alreadyAcked: z.boolean(),
+})
+
+export const planningAckSummaryResponseSchema = z.object({
+  idiw37: z.number().int(),
+  wkorder: z.string(),
+  total: z.number().int(),
+  acknowledged: z.number().int(),
+  pending: z.number().int(),
+  items: z.array(
+    z.object({
+      wkctr: z.string(),
+      ackStatus: z.string(),
+      ackAt: z.string().nullable(),
+      ackChannel: z.string().nullable(),
+    }),
+  ),
 })
 
 export const movePlanReasonSchema = z.object({
@@ -1036,6 +1066,9 @@ export const planningItemSchema = z.object({
   closedDate: z.string().optional(),
   workHours: z.number().positive().optional(),
   importWkctr: z.string().optional(),
+  ackStatus: z.enum(['pending', 'acknowledged', 'declined']).optional(),
+  ackAt: z.string().nullable().optional(),
+  ackChannel: z.enum(['telegram', 'web']).nullable().optional(),
 })
 
 export const planningResponseSchema = z.object({
@@ -1519,7 +1552,34 @@ export const personnelAdminItemSchema = z.object({
   imgmemberBytes: z.number().int(),
   hasImage: z.boolean(),
   passMustChange: z.boolean().optional(),
+  telegramChatId: z.string().nullable().optional(),
+  telegramUsername: z.string().nullable().optional(),
+  telegramLinkedAt: z.string().nullable().optional(),
 })
+
+export const telegramLinkTokenResponseSchema = z.object({
+  token: z.string(),
+  deepLink: z.string(),
+  expiresAt: z.string(),
+  botUsername: z.string().nullable(),
+  wkctr: z.string(),
+  idwkctr: z.string(),
+})
+
+export type TelegramLinkTokenResponse = z.infer<typeof telegramLinkTokenResponseSchema>
+
+export const telegramLinkStatusSchema = z.object({
+  linked: z.boolean(),
+  wkctr: z.string().optional(),
+  idwkctr: z.string().optional(),
+  telegramChatId: z.string().nullable(),
+  telegramUsername: z.string().nullable(),
+  telegramLinkedAt: z.string().nullable(),
+  botConfigured: z.boolean(),
+  botUsername: z.string().nullable(),
+})
+
+export type TelegramLinkStatus = z.infer<typeof telegramLinkStatusSchema>
 
 export const adminBulkUserroleBodySchema = z.object({
   idwkctrs: z.array(z.string().min(1)).min(1).max(500),
@@ -2469,7 +2529,7 @@ export const createAdminRoleBodySchema = z.object({
   roleColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
-    .default('#0A84FF'),
+    .default('#4DA6FF'),
   description: z.string().max(500).nullable().optional(),
 })
 
@@ -3003,3 +3063,96 @@ export const patchUserPrefBodySchema = z.object({
 })
 
 export type PatchUserPrefBody = z.infer<typeof patchUserPrefBodySchema>
+
+export const telegramNotifyKindSchema = z.enum([
+  'assignment_to_tech',
+  'ack_to_planner',
+  'ack_summary',
+  'confirm_reminder',
+  'custom',
+])
+
+export type TelegramNotifyKind = z.infer<typeof telegramNotifyKindSchema>
+
+export const telegramLinkTypeSchema = z.enum(['none', 'wkctrgroup', 'pm_team', 'workcenters'])
+
+export type TelegramLinkType = z.infer<typeof telegramLinkTypeSchema>
+
+export const telegramGroupItemSchema = z.object({
+  id: z.number().int().positive(),
+  code: z.string(),
+  name: z.string(),
+  notifyKind: telegramNotifyKindSchema,
+  linkType: telegramLinkTypeSchema,
+  linkRef: z.string().nullable(),
+  telegramChatId: z.string().nullable(),
+  enabled: z.boolean(),
+  note: z.string().nullable(),
+  memberWkctrs: z.array(z.string()).optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+export type TelegramGroupItem = z.infer<typeof telegramGroupItemSchema>
+
+export const telegramGroupListResponseSchema = z.object({
+  items: z.array(telegramGroupItemSchema),
+})
+
+export const createTelegramGroupBodySchema = z.object({
+  code: z.string().trim().min(1).max(32),
+  name: z.string().trim().min(1),
+  notifyKind: telegramNotifyKindSchema,
+  linkType: telegramLinkTypeSchema.optional(),
+  linkRef: z.string().trim().max(64).nullable().optional(),
+  telegramChatId: z.union([z.string(), z.number()]).nullable().optional(),
+  enabled: z.boolean().optional(),
+  note: z.string().trim().nullable().optional(),
+  memberWkctrs: z.array(z.string().trim().min(1)).optional(),
+})
+
+export type CreateTelegramGroupBody = z.infer<typeof createTelegramGroupBodySchema>
+
+export const patchTelegramGroupBodySchema = createTelegramGroupBodySchema.partial()
+
+export type PatchTelegramGroupBody = z.infer<typeof patchTelegramGroupBodySchema>
+
+export const telegramSummaryResponseSchema = z.object({
+  botConfigured: z.boolean(),
+  notifyEnabled: z.boolean(),
+  totalGroups: z.number().int().nonnegative(),
+  enabledGroups: z.number().int().nonnegative(),
+  linkedTechnicians: z.number().int().nonnegative(),
+  activeTechnicians: z.number().int().nonnegative(),
+  wkctrGroups: z.array(
+    z.object({
+      code: z.string(),
+      description: z.string().nullable(),
+    }),
+  ),
+  pmTeams: z.array(z.string()),
+})
+
+export type TelegramSummaryResponse = z.infer<typeof telegramSummaryResponseSchema>
+
+export const telegramLinkStatusResponseSchema = z.object({
+  linked: z.number().int().nonnegative(),
+  unlinked: z.number().int().nonnegative(),
+  items: z.array(
+    z.object({
+      wkctr: z.string(),
+      displayName: z.string().nullable(),
+      telegramChatId: z.string().nullable(),
+      telegramUsername: z.string().nullable(),
+      telegramLinkedAt: z.string().nullable(),
+    }),
+  ),
+})
+
+export type TelegramLinkStatusResponse = z.infer<typeof telegramLinkStatusResponseSchema>
+
+export const telegramTestSendResponseSchema = z.object({
+  ok: z.boolean(),
+  message: z.string().optional(),
+  error: z.string().optional(),
+})

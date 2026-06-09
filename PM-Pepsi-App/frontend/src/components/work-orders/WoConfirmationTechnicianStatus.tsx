@@ -78,7 +78,6 @@ export function WoConfirmationTechnicianStatus({ orderId, onOpenDetail }: Props)
   const closeReady = d
     ? isWorkOrderCloseReady({
         commentCount,
-        imageBefore: d.confirmQc.imageBefore,
         imageAfter: d.confirmQc.imageAfter,
       })
     : false
@@ -86,7 +85,7 @@ export function WoConfirmationTechnicianStatus({ orderId, onOpenDetail }: Props)
   const closeHint = useMemo(() => {
     if (!d || closeReady) return null
     if (commentCount < 1) return t('technician.hintNeedComment')
-    if (d.confirmQc.imageBefore < 1 || d.confirmQc.imageAfter < 1) {
+    if (d.confirmQc.imageAfter < 1) {
       return t('technician.hintNeedImages')
     }
     return null

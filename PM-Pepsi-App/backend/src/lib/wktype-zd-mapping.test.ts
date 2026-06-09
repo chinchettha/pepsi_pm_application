@@ -29,7 +29,7 @@ describe('wktype-zd-mapping', () => {
 
   it('listWktypeZdFilterOptions returns ZB with ZD labels', () => {
     const opts = listWktypeZdFilterOptions()
-    expect(opts.map((o) => o.code)).toEqual(['ZB05', 'ZB02', 'ZB01'])
+    expect(opts.map((o) => o.code)).toEqual(['ZB01', 'ZB02', 'ZB05'])
     expect(opts[1].label).toContain('ZD02')
   })
 

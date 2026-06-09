@@ -35,18 +35,11 @@ export { CONFIRM_IMAGE_RECOMMENDED_PER_PHASE } from '@/lib/confirm-image-limits'
 
 const PHASE_META: {
   phase: ConfirmationImagePhase
-  titleKey: 'images.phaseBeforeTitle' | 'images.phaseAfterTitle'
-  hintKey: 'images.phaseBeforeHint' | 'images.phaseAfterHint'
-  icon: typeof Camera
-  tone: 'before' | 'after'
+  titleKey: 'images.phaseAfterTitle'
+  hintKey: 'images.phaseAfterHint'
+  icon: typeof ImagePlus
+  tone: 'after'
 }[] = [
-  {
-    phase: 'before',
-    titleKey: 'images.phaseBeforeTitle',
-    hintKey: 'images.phaseBeforeHint',
-    icon: Camera,
-    tone: 'before',
-  },
   {
     phase: 'after',
     titleKey: 'images.phaseAfterTitle',
@@ -481,9 +474,8 @@ export function ConfirmationImagesPanel({
   const grouped = useMemo(() => {
     const all = imagesQ.data ?? []
     return {
-      before: all.filter((i) => i.phase === 'before'),
       after: all.filter((i) => i.phase === 'after'),
-      legacy: all.filter((i) => i.phase !== 'before' && i.phase !== 'after'),
+      legacy: all.filter((i) => i.phase !== 'after'),
     }
   }, [imagesQ.data])
 
@@ -515,16 +507,7 @@ export function ConfirmationImagesPanel({
             </Badge>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <div className="flex min-w-[6rem] flex-1 items-center gap-2 rounded-button border border-amber-200/70 app-surface-panel--soft px-3 py-2">
-              <Camera className="size-4 shrink-0 text-amber-700" aria-hidden />
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-800/65">
-                  {t('images.before')}
-                </p>
-                <p className="text-sm font-bold tabular-nums text-amber-950">{grouped.before.length}</p>
-              </div>
-            </div>
-            <div className="flex min-w-[6rem] flex-1 items-center gap-2 rounded-button border border-emerald-200/70 app-surface-panel--soft px-3 py-2">
+            <div className="flex min-w-[8rem] flex-1 items-center gap-2 rounded-button border border-emerald-200/70 app-surface-panel--soft px-3 py-2">
               <ImagePlus className="size-4 shrink-0 text-emerald-700" aria-hidden />
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/65">
@@ -560,7 +543,7 @@ export function ConfirmationImagesPanel({
               tone={tone}
               sectionIndex={i + 1}
               idiw37={id}
-              items={grouped[phase]}
+              items={grouped.after}
               onView={setViewImageId}
               readOnly={readOnly}
             />

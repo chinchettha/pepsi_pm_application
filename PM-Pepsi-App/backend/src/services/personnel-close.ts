@@ -104,7 +104,17 @@ export async function listPersonnelCloses(pool: Pool, idiw37: number): Promise<P
   }))
 }
 
-export async function addPersonnelClose(
+function formatDdMmYyyy(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}.${mm}.${d.getFullYear()}`
+}
+
+function formatHhMm(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+async function insertPersonnelCloseRow(
   pool: Pool,
   opts: {
     idiw37: number
@@ -114,10 +124,7 @@ export async function addPersonnelClose(
     endD: string
     endT: string
   },
-): Promise<void> {
-  const { assertWorkOrderCloseReady } = await import('../lib/work-order-close-guard.js')
-  await assertWorkOrderCloseReady(pool, opts.idiw37)
-
+): Promise<number> {
   const d1 = parseDdMmYyyy(opts.startD)
   const d2 = parseDdMmYyyy(opts.endD)
   const t1 = parseHhMm(opts.startT)
@@ -144,6 +151,54 @@ export async function addPersonnelClose(
     [opts.idiw37, cstdate, cendate, opts.wkctr, wktimeclose, wktimewk],
   )
   await touchConfirmQcPending(pool, opts.idiw37)
+  return wktimewk
+}
+
+/**
+ * ปิดงานย่อผ่าน Telegram — บันทึกเวลา 08:00–ตอนนี้ (วันนี้) โดยไม่บังคับรูป/ความคิดเห็นในแชท
+ * ช่างยังต้องเติมรูป/comment บนเว็บก่อน Planner Confirm เต็มรูปแบบ
+ */
+export async function addPersonnelCloseTelegramMini(
+  pool: Pool,
+  opts: { idiw37: number; wkctr: string },
+): Promise<{ wktimewk: number; startLabel: string; endLabel: string }> {
+  const now = new Date()
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0, 0)
+  const startD = formatDdMmYyyy(dayStart)
+  const startT = formatHhMm(dayStart)
+  const endD = formatDdMmYyyy(now)
+  const endT = formatHhMm(now)
+
+  const wktimewk = await insertPersonnelCloseRow(pool, {
+    idiw37: opts.idiw37,
+    wkctr: opts.wkctr,
+    startD,
+    startT,
+    endD,
+    endT,
+  })
+
+  return {
+    wktimewk,
+    startLabel: `${startD} ${startT}`,
+    endLabel: `${endD} ${endT}`,
+  }
+}
+
+export async function addPersonnelClose(
+  pool: Pool,
+  opts: {
+    idiw37: number
+    wkctr: string
+    startD: string
+    startT: string
+    endD: string
+    endT: string
+  },
+): Promise<void> {
+  const { assertWorkOrderCloseReady } = await import('../lib/work-order-close-guard.js')
+  await assertWorkOrderCloseReady(pool, opts.idiw37)
+  await insertPersonnelCloseRow(pool, opts)
 }
 
 export async function deletePersonnelClose(pool: Pool, idwrkclose: number): Promise<void> {

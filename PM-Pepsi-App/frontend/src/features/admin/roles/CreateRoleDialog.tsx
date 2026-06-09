@@ -30,7 +30,7 @@ export function CreateRoleDialog({
   const [roleCode, setRoleCode] = useState('')
   const [roleNameTh, setRoleNameTh] = useState('')
   const [roleNameEn, setRoleNameEn] = useState('')
-  const [roleColor, setRoleColor] = useState('#0A84FF')
+  const [roleColor, setRoleColor] = useState('#4DA6FF')
   const [description, setDescription] = useState('')
 
   const createMut = useMutation({

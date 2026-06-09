@@ -58,9 +58,9 @@ function PepsiCoLogo() {
   return (
     <div className="sap-wo-print__logo">
       <svg className="sap-wo-print__logo-globe" viewBox="0 0 24 24" aria-hidden>
-        <circle cx="12" cy="12" r="10" fill="none" stroke="#003DA5" strokeWidth="1.5" />
-        <ellipse cx="12" cy="12" rx="10" ry="4" fill="none" stroke="#003DA5" strokeWidth="1" />
-        <path d="M12 2v20M2 12h20" stroke="#003DA5" strokeWidth="0.8" />
+        <circle cx="12" cy="12" r="10" fill="none" stroke="var(--brand-logo-blue-dark,#003366)" strokeWidth="1.5" />
+        <ellipse cx="12" cy="12" rx="10" ry="4" fill="none" stroke="var(--brand-logo-blue-dark,#003366)" strokeWidth="1" />
+        <path d="M12 2v20M2 12h20" stroke="var(--brand-logo-blue-dark,#003366)" strokeWidth="0.8" />
       </svg>
       <span>PEPSICO INTERNATIONAL</span>
     </div>

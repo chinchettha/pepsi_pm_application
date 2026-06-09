@@ -255,13 +255,13 @@ html.board-kiosk-root #root {
 
 .engineering-board .app-announcement--error.engineering-board__announce,
 .engineering-board .app-announcement--maintenance.engineering-board__announce {
-  background: rgba(239, 68, 68, 0.18);
-  border-color: rgba(248, 113, 113, 0.4);
+  background: color-mix(in srgb, var(--admin-danger) 18%, transparent);
+  border-color: color-mix(in srgb, var(--admin-danger) 40%, transparent);
 }
 
 .engineering-board__error {
   padding: 1rem var(--board-pad-x);
-  color: #fca5a5;
+  color: color-mix(in srgb, var(--admin-danger) 82%, white);
 }
 
 /* ── Zones (B4 layout) ── */
@@ -426,15 +426,15 @@ html.board-kiosk-root #root {
 }
 
 .engineering-board__legend-item--pm::before {
-  background: #10b981;
+  background: var(--brand-logo-green-light);
 }
 
 .engineering-board__legend-item--re::before {
-  background: #f43f5e;
+  background: var(--brand-logo-orange);
 }
 
 .engineering-board__legend-item--rca::before {
-  background: #38bdf8;
+  background: var(--brand-logo-sky);
 }
 
 .engineering-board__rca-toggle {
@@ -643,7 +643,7 @@ html.board-kiosk-root #root {
 
 .engineering-board__activity-error {
   font-size: clamp(0.8rem, 1.3vw, 0.9rem);
-  color: #fca5a5;
+  color: color-mix(in srgb, var(--admin-danger) 82%, white);
 }
 
 .engineering-board__activity-scroll {
@@ -1011,11 +1011,11 @@ html.board-kiosk-root #root {
 }
 
 .engineering-board .delta-up {
-  color: #4ade80;
+  color: var(--brand-logo-green-light);
 }
 
 .engineering-board .delta-down {
-  color: #f87171;
+  color: color-mix(in srgb, var(--admin-danger) 78%, white);
 }
 
 .engineering-board:fullscreen,

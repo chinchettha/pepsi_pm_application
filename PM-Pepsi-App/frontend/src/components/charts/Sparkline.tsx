@@ -89,21 +89,21 @@ export function Sparkline({
     tone === 'pepsi-red'
       ? 'var(--brand-pepsi-red)'
       : tone === 'pepsi-orange'
-        ? '#ea580c'
+        ? 'var(--brand-logo-orange)'
         : tone === 'pepsi-white'
           ? 'rgba(255,255,255,0.95)'
           : tone === 'neutral'
             ? 'var(--app-text-muted)'
-            : 'var(--brand-pepsi-blue)'
+            : 'var(--brand-logo-blue-dark)'
 
   const fillTop =
     tone === 'pepsi-red'
       ? 'var(--brand-pepsi-red)'
       : tone === 'pepsi-orange'
-        ? '#ea580c'
+        ? 'var(--brand-logo-orange)'
         : tone === 'pepsi-white'
           ? 'rgba(255,255,255,0.35)'
-          : 'var(--brand-pepsi-blue)'
+          : 'var(--brand-logo-blue-dark)'
 
   return (
     <svg

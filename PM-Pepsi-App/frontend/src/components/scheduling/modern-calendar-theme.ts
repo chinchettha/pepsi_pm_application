@@ -24,18 +24,18 @@ export function modernCalendarThemeStyle(
       vars?.dayCellMinHeight ?? MODERN_CALENDAR_DEFAULTS.dayCellMinHeight,
     '--pm-cal-weekend-bg':
       vars?.weekendBg ??
-      'color-mix(in srgb, #f43f5e 6%, var(--app-surface))',
+      'color-mix(in srgb, var(--brand-logo-orange) 6%, var(--app-surface))',
     '--pm-cal-weekend-border':
       vars?.weekendBorder ??
-      'color-mix(in srgb, #f43f5e 18%, var(--app-border))',
+      'color-mix(in srgb, var(--brand-logo-orange) 18%, var(--app-border))',
     '--pm-cal-sunday-bg':
       vars?.sundayBg ??
-      'color-mix(in srgb, #f43f5e 9%, var(--app-surface))',
+      'color-mix(in srgb, var(--brand-logo-orange) 9%, var(--app-surface))',
     '--pm-cal-saturday-bg':
       vars?.saturdayBg ??
-      'color-mix(in srgb, #3b82f6 7%, var(--app-surface))',
+      'color-mix(in srgb, var(--brand-logo-sky) 7%, var(--app-surface))',
     '--pm-cal-weekend-header':
       vars?.weekendHeaderColor ??
-      'color-mix(in srgb, #e11d48 70%, var(--app-text-muted))',
+      'color-mix(in srgb, var(--brand-logo-orange) 70%, var(--app-text-muted))',
   }
 }

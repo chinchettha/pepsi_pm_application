@@ -108,7 +108,7 @@ export function ConfirmQcPanel({
       <ul className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
         <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app">
           {t('qc.images')}: <strong>{data.imageCount}</strong> (
-          {t('qc.imagesDetail', { before: data.imageBefore, after: data.imageAfter })})
+          {t('qc.imagesDetail', { after: data.imageAfter })})
         </li>
         <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app">
           {t('qc.closeCount')}: <strong>{data.closeCount}</strong>

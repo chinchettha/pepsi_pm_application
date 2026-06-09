@@ -4,12 +4,24 @@ import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
 import { createRequirePermission } from '../middleware/require-permission.js'
 import { calendarEventsResponseSchema } from '../schemas/calendar.js'
 import {
+  planningAckResponseSchema,
+  planningAckSummaryResponseSchema,
   planningAssignBodySchema,
   planningAssignResponseSchema,
   planningResponseSchema,
 } from '../schemas/planning.js'
 import { listPlanCalendarEvents } from '../services/plan-calendar.js'
+import {
+  acknowledgePlanningAssignment,
+  getPlanningAckSummary,
+  getPlanningAssignmentByKey,
+  isPlanningAckSchemaMissing,
+} from '../services/planning-ack.js'
 import { assignPlanningWork, listPlanningForUser } from '../services/planning.js'
+import {
+  notifyNewPlanningAssignments,
+  notifyPlannerAssignmentAcknowledged,
+} from '../services/telegram-assignment-notify.js'
 
 function isSchemaMissing(err: unknown): boolean {
   const message = err instanceof Error ? err.message : ''
@@ -106,8 +118,8 @@ export function registerPlanningRoutes(
       }
       const actorWkctr = (user.wkctr || user.username || user.idwkctr || '').trim()
       try {
-        const ok = await assignPlanningWork(pool, parsed.data, actorWkctr)
-        if (!ok) {
+        const result = await assignPlanningWork(pool, parsed.data, actorWkctr)
+        if (!result) {
           res.status(404).json({
             error: 'NOT_FOUND',
             message: 'WO not found or not in CRTD/REL',
@@ -118,9 +130,23 @@ export function registerPlanningRoutes(
           action: 'planning.assign',
           resource: 'tbplangingwork',
           resourceId: String(parsed.data.idiw37),
-          after: sanitizeAuditPayload(parsed.data),
+          after: sanitizeAuditPayload({ ...parsed.data, ...result }),
         })
-        res.json(planningAssignResponseSchema.parse({ ok: true }))
+        if (result.assigned.length > 0) {
+          void notifyNewPlanningAssignments(
+            pool,
+            parsed.data.idiw37,
+            result.assigned,
+            actorWkctr,
+          ).catch((err) => console.error('[telegram/assign-notify]', err))
+        }
+        res.json(
+          planningAssignResponseSchema.parse({
+            ok: true,
+            assigned: result.assigned,
+            skipped: result.skipped,
+          }),
+        )
       } catch (err) {
         if (err instanceof Error && err.message === 'INVALID_WKCTR') {
           res.status(400).json({
@@ -149,6 +175,92 @@ export function registerPlanningRoutes(
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
             message: 'Run database/migrations/038_tbplangingwork_multi_assign.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.post(
+    '/api/v1/planning/orders/:idiw37/ack',
+    ...requireRead,
+    async (req: Request, res: Response) => {
+      const user = req.authUser!
+      const wkctr = (user.wkctr || user.username || '').trim()
+      const idiw37 = Number(req.params.idiw37)
+      if (!wkctr || !Number.isFinite(idiw37) || idiw37 <= 0) {
+        res.status(400).json({ error: 'VALIDATION_ERROR' })
+        return
+      }
+      try {
+        const row = await getPlanningAssignmentByKey(pool, idiw37, wkctr)
+        if (!row) {
+          res.status(404).json({ error: 'NOT_FOUND', message: 'ไม่พบงานมอบหมายให้คุณ' })
+          return
+        }
+        const ack = await acknowledgePlanningAssignment(pool, row.idplanw, 'web', {
+          expectedWkctr: wkctr,
+        })
+        if (!ack.ok) {
+          res.status(403).json({ error: 'FORBIDDEN' })
+          return
+        }
+        voidAudit(pool, req, {
+          action: 'assignment.acknowledged',
+          resource: 'tbplangingwork',
+          resourceId: String(row.idplanw),
+          after: { idiw37, wkctr, channel: 'web', alreadyAcked: ack.alreadyAcked },
+        })
+        if (!ack.alreadyAcked) {
+          void notifyPlannerAssignmentAcknowledged(
+            pool,
+            ack.idiw37,
+            ack.wkctr,
+            ack.ackAt,
+          ).catch((err) => console.error('[telegram/ack-planner]', err))
+        }
+        res.json(
+          planningAckResponseSchema.parse({
+            ok: true,
+            idiw37: ack.idiw37,
+            wkctr: ack.wkctr,
+            ackStatus: 'acknowledged',
+            ackAt: ack.ackAt,
+            alreadyAcked: ack.alreadyAcked,
+          }),
+        )
+      } catch (err) {
+        if (isPlanningAckSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_MISSING',
+            message: 'รัน migration 099_telegram_notify.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.get(
+    '/api/v1/planning/orders/:idiw37/ack-summary',
+    ...requireRead,
+    async (req: Request, res: Response) => {
+      const idiw37 = Number(req.params.idiw37)
+      if (!Number.isFinite(idiw37) || idiw37 <= 0) {
+        res.status(400).json({ error: 'VALIDATION_ERROR' })
+        return
+      }
+      try {
+        const summary = await getPlanningAckSummary(pool, idiw37)
+        res.json(planningAckSummaryResponseSchema.parse(summary))
+      } catch (err) {
+        if (isPlanningAckSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_MISSING',
+            message: 'รัน migration 099_telegram_notify.sql',
           })
           return
         }

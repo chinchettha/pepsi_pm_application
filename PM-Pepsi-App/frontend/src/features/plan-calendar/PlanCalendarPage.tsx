@@ -132,6 +132,9 @@ export function PlanCalendarPage() {
                 year={year}
                 month={month}
                 viewMode="month-week-day"
+                yearMin={2015}
+                yearMax={2035}
+                showPeriodPicker
                 events={q.data?.items ?? []}
                 className="scheduling-calendar-widget mt-3"
                 onMonthChange={(y, m) => {

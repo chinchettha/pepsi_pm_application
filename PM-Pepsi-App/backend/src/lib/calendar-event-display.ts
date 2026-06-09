@@ -23,12 +23,14 @@ import {
   type CalendarEvent,
 } from '../services/scheduling-shared.js'
 
-/** สีปฏิทิน Work scheduling — ตามลูกค้า (2026-06) */
+import { BRAND_CALENDAR } from './brand-palette.js'
+
+/** สีปฏิทิน Work scheduling — พาเลตโลโก้ใหม่ (2026-06) */
 export const CALENDAR_STATUS_COLORS = {
-  inProgress: '#9333ea',
-  moved: '#f97316',
-  completed: '#16a34a',
-  overdue: '#dc2626',
+  inProgress: BRAND_CALENDAR.inProgress,
+  moved: BRAND_CALENDAR.moved,
+  completed: BRAND_CALENDAR.completed,
+  overdue: BRAND_CALENDAR.overdue,
 } as const
 
 export type CalendarOrderRow = {

@@ -44,7 +44,14 @@
     "owner": "Assignee",
     "actions": "Actions",
     "hoursUnit": "hr",
-    "viewInList": "View in work order list"
+    "viewInList": "View in work order list",
+    "ack": "Ack"
+  },
+  "ack": {
+    "acknowledge": "Acknowledge",
+    "acknowledged": "Acknowledged",
+    "success": "Assignment acknowledged",
+    "failed": "Acknowledge failed"
   },
   "status": {
     "OPEN": "Pending assign",
@@ -62,7 +69,7 @@
   },
   "assignDialog": {
     "title": "Assign WO {{wo}}",
-    "description": "Manual = pick technician · Auto = expand whole group — saves to tbplangingwork",
+    "description": "Manual = select multiple technicians (checkboxes) or one-click each · Auto = expand whole group — saves to tbplangingwork",
     "woHours": "WO hours (IW37N):",
     "hoursUnit": "hr",
     "importWkctr": "wkctr from import:",
@@ -75,7 +82,10 @@
     "commentPlaceholder": "e.g. urgent / change team",
     "selectGroupError": "Select a technician group (Auto Mode)",
     "successManual": "Manual assignment saved",
+    "successManualCount": "Assigned {{count}} technician(s)",
     "successAuto": "Auto (group) assignment saved",
+    "successAutoCount": "Group assignment saved for {{count}} technician(s)",
+    "alreadyAssigned": "This technician is already assigned to this WO — no change",
     "assignFailed": "Assignment failed",
     "assignAuto": "Assign Auto (group)",
     "assignSelf": "Assign to me ({{code}})",

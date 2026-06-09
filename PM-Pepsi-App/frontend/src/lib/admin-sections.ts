@@ -11,6 +11,7 @@ import {
   ListTree,
   Lock,
   Megaphone,
+  MessageSquare,
   Palette,
   Settings2,
   ShieldCheck,
@@ -145,6 +146,15 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     group: 'comms',
     implemented: true,
     tourTarget: 'admin-announcements',
+  },
+  {
+    segment: 'telegram',
+    to: '/admin/telegram',
+    icon: MessageSquare,
+    permission: 'admin.telegram.read',
+    group: 'comms',
+    implemented: true,
+    tourTarget: 'admin-telegram',
   },
   {
     segment: 'security',

@@ -36,6 +36,7 @@ export const NAV_ROUTE_PERMISSION: Record<string, string> = {
   '/admin/health': 'admin.health.read',
   '/admin/backup': 'admin.backup.read',
   '/admin/announcements': 'admin.announcement.read',
+  '/admin/telegram': 'admin.telegram.read',
   '/admin/users': 'admin.users.read',
   '/admin/roles': 'admin.roles.read',
   '/admin/menu': 'admin.menu.read',

@@ -30,14 +30,14 @@ describe('§3.1 admin UI checklist', () => {
   it('uses unique tour targets for Joyride (13 pages + command hint)', () => {
     const targets = ADMIN_SECTIONS.map((s) => s.tourTarget)
     expect(new Set(targets).size).toBe(targets.length)
-    expect(ADMIN_SECTIONS.filter((s) => s.implemented).length).toBe(13)
+    expect(ADMIN_SECTIONS.filter((s) => s.implemented).length).toBe(14)
   })
 
   it('buildAdminNavEntries matches implemented sections', async () => {
     const { i18n } = await import('@/i18n')
     const { buildAdminNavEntries } = await import('./admin-nav-entries')
     const entries = buildAdminNavEntries(i18n.getFixedT('en', 'admin'))
-    expect(entries.length).toBe(13)
+    expect(entries.length).toBe(14)
     expect(entries.map((e) => e.to).sort()).toEqual(
       ADMIN_SECTIONS.filter((s) => s.implemented)
         .map((s) => s.to)

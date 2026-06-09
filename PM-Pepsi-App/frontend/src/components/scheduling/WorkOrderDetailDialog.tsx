@@ -183,29 +183,19 @@ export function WorkOrderDetailDialog({
     enabled: loadConfirmAssets,
   })
 
-  const imagePhaseCounts = useMemo(() => {
+  const imageAfterCount = useMemo(() => {
     if (imagesQ.data?.length) {
-      let before = 0
-      let after = 0
-      for (const img of imagesQ.data) {
-        if (img.phase === 'before') before += 1
-        else if (img.phase === 'after') after += 1
-      }
-      return { before, after }
+      return imagesQ.data.filter((img) => img.phase === 'after').length
     }
-    return {
-      before: d?.confirmQc?.imageBefore ?? 0,
-      after: d?.confirmQc?.imageAfter ?? 0,
-    }
-  }, [imagesQ.data, d?.confirmQc?.imageBefore, d?.confirmQc?.imageAfter])
+    return d?.confirmQc?.imageAfter ?? 0
+  }, [imagesQ.data, d?.confirmQc?.imageAfter])
 
   const closeReadyInput = useMemo(
     () => ({
       commentCount: commentsQ.data?.length ?? 0,
-      imageBefore: imagePhaseCounts.before,
-      imageAfter: imagePhaseCounts.after,
+      imageAfter: imageAfterCount,
     }),
-    [commentsQ.data?.length, imagePhaseCounts],
+    [commentsQ.data?.length, imageAfterCount],
   )
 
   const closeBlockedMessage = workOrderCloseReadyMessage(closeReadyInput)
@@ -667,9 +657,21 @@ export function WorkOrderDetailDialog({
                         <div className="space-y-4">
                           <div className="rounded-card border border-emerald-200 bg-emerald-50 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="font-medium text-emerald-900">
-                                {t('woDialog.individualAssignees')}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium text-emerald-900">
+                                  {t('woDialog.individualAssignees')}
+                                </p>
+                                {personAssignees.length > 0 ? (
+                                  <Badge variant="outline" className="text-badge">
+                                    {t('woDialog.ackSummary', {
+                                      acked: personAssignees.filter(
+                                        (a) => a.ackStatus === 'acknowledged',
+                                      ).length,
+                                      total: personAssignees.length,
+                                    })}
+                                  </Badge>
+                                ) : null}
+                              </div>
                               {modalQ.data.planning.assignees.length > 0 && planningEditable ? (
                                 <Button
                                   type="button"
@@ -695,6 +697,7 @@ export function WorkOrderDetailDialog({
                                       <th className="px-3 py-2 text-left">{t('woDialog.fullName')}</th>
                                       <th className="px-3 py-2 text-left">{t('woDialog.workGroup')}</th>
                                       <th className="px-3 py-2 text-left">{t('woDialog.position')}</th>
+                                      <th className="px-3 py-2 text-left">{t('woDialog.ackStatus')}</th>
                                       {planningEditable ? (
                                         <th className="px-3 py-2 text-center">{t('shared.action')}</th>
                                       ) : null}
@@ -707,6 +710,17 @@ export function WorkOrderDetailDialog({
                                         <td className="px-3 py-2">{a.displayName}</td>
                                         <td className="px-3 py-2">{a.wkctrtype || '—'}</td>
                                         <td className="px-3 py-2">{a.position || '—'}</td>
+                                        <td className="px-3 py-2">
+                                          {a.ackStatus === 'acknowledged' ? (
+                                            <Badge className="bg-emerald-600 text-badge">
+                                              {t('woDialog.ackDone')}
+                                            </Badge>
+                                          ) : a.ackStatus === 'pending' ? (
+                                            <Badge variant="outline">{t('woDialog.ackPending')}</Badge>
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </td>
                                         {planningEditable ? (
                                           <td className="px-3 py-2 text-center">
                                             <Button

@@ -1,3 +1,4 @@
+import { BRAND_CALENDAR } from './brand-palette.js'
 import { isPlanMovableStatus } from '../services/scheduling-shared.js'
 import { isCalendarDisplayDateOverdue } from './calendar-move-policy.js'
 
@@ -16,10 +17,14 @@ export const CALENDAR_DISPLAY_STATUS_OPTIONS: {
   label: string
   color: string
 }[] = [
-  { code: 'overdue', label: 'Overdue — เลยกำหนด', color: '#dc2626' },
-  { code: 'completed', label: 'Completed — เสร็จแล้ว', color: '#16a34a' },
-  { code: 'in_progress', label: 'In Progress — กำลังทำ', color: '#eab308' },
-  { code: 'upcoming', label: 'UpComing — ยังไม่ถึงวัน', color: '#2563eb' },
+  { code: 'overdue', label: 'Overdue — เลยกำหนด', color: BRAND_CALENDAR.overdue },
+  { code: 'completed', label: 'Completed — เสร็จแล้ว', color: BRAND_CALENDAR.completed },
+  {
+    code: 'in_progress',
+    label: 'In Progress — กำลังทำ',
+    color: BRAND_CALENDAR.inProgressFilter,
+  },
+  { code: 'upcoming', label: 'UpComing — ยังไม่ถึงวัน', color: BRAND_CALENDAR.upcoming },
 ]
 
 /** unix เริ่มวันนี้ 00:00 local */

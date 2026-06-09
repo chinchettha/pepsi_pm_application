@@ -72,6 +72,7 @@ import {
   updateWorkOrderTeam,
   updateWorkOrderTeamBatch,
 } from '../services/work-orders.js'
+import { notifyNewPlanningAssignments } from '../services/telegram-assignment-notify.js'
 import {
   createWoPmReading,
   appendWoPmNote,
@@ -727,6 +728,17 @@ export function registerWorkOrderRoutes(
           actorRole: user.userst,
           after: sanitizeAuditPayload(parsed.data) as Record<string, unknown>,
         })
+        if (result.assigned.length > 0) {
+          const idiw37 = Number(id)
+          if (Number.isFinite(idiw37) && idiw37 > 0) {
+            void notifyNewPlanningAssignments(
+              pool,
+              idiw37,
+              result.assigned,
+              actorWkctr,
+            ).catch((err) => console.error('[telegram/assign-notify]', err))
+          }
+        }
         res.json(
           workOrderPlanningBatchResponseSchema.parse({
             ok: true,
@@ -1452,7 +1464,14 @@ export function registerWorkOrderRoutes(
       if (!phase) {
         res.status(400).json({
           error: 'VALIDATION_ERROR',
-          message: 'Field "phase" is required (before | after)',
+          message: 'Field "phase" is required (after)',
+        })
+        return
+      }
+      if (phase === 'before') {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'รูปก่อนทำ PM ไม่รองรับแล้ว — อัปโหลดเฉพาะรูปหลังทำ PM (after)',
         })
         return
       }

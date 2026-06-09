@@ -9,6 +9,7 @@
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
 import { PersonnelAdminPhotoGoLiveBanner } from '@/features/admin/users/PersonnelAdminPhotoGoLiveBanner'
 import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
+import { TelegramInviteDialog } from '@/components/telegram/TelegramInviteDialog'
 import { PersonnelAvatar } from '@/components/personnel/PersonnelAvatar'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +55,7 @@ import type {
   PersonnelAdminItem,
   PersonnelImportResponse,
   PersonnelRole,
+  TelegramLinkTokenResponse,
 } from '@/api/schemas'
 import {
   deletePersonnelAdmin as apiDeletePersonnel,
@@ -66,13 +68,19 @@ import {
   upsertPersonnelAdmin,
   type PersonnelLookupOption,
 } from '@/lib/api-public'
+import {
+  createAdminTelegramLinkToken,
+  unlinkAdminTelegram,
+} from '@/lib/telegram-link-api'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   ImageIcon,
   KeyRound,
+  Link2Off,
   Lock,
   LogIn,
+  MessageSquare,
   Pencil,
   RefreshCcw,
   Trash2,
@@ -239,6 +247,10 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   const [accountTab, setAccountTab] = useState<'workcenter' | 'member'>('workcenter')
   const [adminConfirm, setAdminConfirm] = useState<AdminDestructiveConfirm | null>(null)
   const [adminConfirmLoading, setAdminConfirmLoading] = useState(false)
+  const [telegramInviteOpen, setTelegramInviteOpen] = useState(false)
+  const [telegramInviteData, setTelegramInviteData] = useState<TelegramLinkTokenResponse | null>(
+    null,
+  )
 
   useEffect(() => {
     if (!isAdmin) {
@@ -475,6 +487,30 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         s.idwkctr === idwkctr ? { ...s, hasMemberImage: false } : s,
       )
       qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
+    },
+  })
+
+  const telegramInviteMut = useMutation({
+    mutationFn: (idwkctr: string) => createAdminTelegramLinkToken(idwkctr),
+    onSuccess: (data) => {
+      setTelegramInviteData(data)
+      setTelegramInviteOpen(true)
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : tc('settings.telegram.inviteFailed'))
+    },
+  })
+
+  const telegramUnlinkMut = useMutation({
+    mutationFn: (idwkctr: string) => unlinkAdminTelegram(idwkctr),
+    onSuccess: (_d, idwkctr) => {
+      toast.success(t('admin.toast.telegramUnlinked', { id: idwkctr }))
+      qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
+    },
+    onError: (err: unknown) => {
+      toast.error(
+        err instanceof Error ? err.message : t('admin.toast.telegramUnlinkFailed'),
+      )
     },
   })
 
@@ -973,6 +1009,32 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                           }
                         })()
                       }}
+                      onTelegramInvite={
+                        showAdminActions
+                          ? () => telegramInviteMut.mutate(it.idwkctr)
+                          : undefined
+                      }
+                      onTelegramUnlink={
+                        showAdminActions && it.telegramChatId
+                          ? () => {
+                              const run = async () => {
+                                await telegramUnlinkMut.mutateAsync(it.idwkctr)
+                              }
+                              setAdminConfirm({
+                                phrase: it.idwkctr,
+                                title: t('admin.confirm.telegramUnlinkTitle', { id: it.idwkctr }),
+                                description: t('admin.confirm.telegramUnlinkDesc', {
+                                  workCntr: it.wkctr,
+                                }),
+                                run,
+                              })
+                            }
+                          : undefined
+                      }
+                      telegramInvitePending={
+                        telegramInviteMut.isPending &&
+                        telegramInviteMut.variables === it.idwkctr
+                      }
                     />
                   ))
                 )}
@@ -1072,6 +1134,13 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
           }}
         />
       ) : null}
+
+      <TelegramInviteDialog
+        open={telegramInviteOpen}
+        onOpenChange={setTelegramInviteOpen}
+        data={telegramInviteData}
+        loading={telegramInviteMut.isPending && !telegramInviteData}
+      />
 
       {bulkConfirmOpen ? (
         <ConfirmPhraseDialog
@@ -1620,6 +1689,9 @@ function PersonnelRow({
   onLock,
   onUnlock,
   onImpersonate,
+  onTelegramInvite,
+  onTelegramUnlink,
+  telegramInvitePending,
 }: {
   it: PersonnelAdminItem
   ver?: number
@@ -1642,6 +1714,9 @@ function PersonnelRow({
   onLock?: () => void
   onUnlock?: () => void
   onImpersonate?: () => void
+  onTelegramInvite?: () => void
+  onTelegramUnlink?: () => void
+  telegramInvitePending?: boolean
 }) {
   const { t } = useTranslation('personnel')
   const fullName = useMemo(() => {
@@ -1699,12 +1774,42 @@ function PersonnelRow({
         </div>
       </TableCell>
       <TableCell>
-        <WorkstatusBadge code={it.workstatus} info={workstatusInfo} />
+        <div className="flex flex-col gap-1">
+          <WorkstatusBadge code={it.workstatus} info={workstatusInfo} />
+          {it.telegramChatId ? (
+            <Badge className="w-fit bg-emerald-600 text-badge" title={it.telegramUsername ?? undefined}>
+              {t('admin.table.telegramLinked')}
+            </Badge>
+          ) : null}
+        </div>
       </TableCell>
       <TableCell className="text-right">
         <div className="flex flex-wrap justify-end gap-1">
           {showAdminActions ? (
             <>
+              {onTelegramInvite ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  title={t('admin.table.telegramInvite')}
+                  disabled={telegramInvitePending}
+                  onClick={onTelegramInvite}
+                >
+                  <MessageSquare className="size-3.5" />
+                </Button>
+              ) : null}
+              {onTelegramUnlink ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  title={t('admin.table.telegramUnlink')}
+                  onClick={onTelegramUnlink}
+                >
+                  <Link2Off className="size-3.5" />
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 size="sm"

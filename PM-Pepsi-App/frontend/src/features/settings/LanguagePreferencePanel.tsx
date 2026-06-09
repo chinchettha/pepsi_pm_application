@@ -11,7 +11,7 @@ export function LanguagePreferencePanel() {
         <h3 className="text-body-sm font-semibold text-app">{t('language.label')}</h3>
         <p className="mt-1 text-xs text-app-muted">{t('settings.languageHint')}</p>
       </div>
-      <LanguageSwitcher className="w-fit" />
+      <LanguageSwitcher variant="segmented" className="w-fit" />
     </AppCard>
   )
 }

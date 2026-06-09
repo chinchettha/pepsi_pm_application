@@ -52,17 +52,17 @@ describe('calendar-event-display', () => {
       new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 7).getTime() /
         1000,
     )
-    expect(resolveCalendarEventColor(baseRow, '#f97316', display).color).toBe('#9333ea')
+    expect(resolveCalendarEventColor(baseRow, '#F7941D', display).color).toBe('#4DA6FF')
 
     const moved = {
       ...baseRow,
       cday: Math.floor(new Date('2026-05-26').getTime() / 1000),
       mpcount: 2,
     }
-    expect(resolveCalendarEventColor(moved, '#f97316', display).color).toBe('#f97316')
+    expect(resolveCalendarEventColor(moved, '#F7941D', display).color).toBe('#F7941D')
 
     const done = { ...baseRow, confirm_qc_status: 'approved', percent_close: 100 }
-    expect(resolveCalendarEventColor(done, '#f97316', display).color).toBe('#16a34a')
+    expect(resolveCalendarEventColor(done, '#F7941D', display).color).toBe('#7AC943')
   })
 
   it('uses red for overdue movable work', () => {
@@ -70,7 +70,7 @@ describe('calendar-event-display', () => {
       new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 5).getTime() /
         1000,
     )
-    expect(resolveCalendarEventColor(baseRow, '#f97316', past).color).toBe('#dc2626')
+    expect(resolveCalendarEventColor(baseRow, '#F7941D', past).color).toBe('#FF3B30')
   })
 
   it('builds rich description for tooltip', () => {
@@ -109,11 +109,11 @@ describe('calendar-event-display', () => {
     )
     const ev = mapCalendarOrderRowToEvent(
       { ...baseRow, bscstart: futureStart, actfinish: null, cday: null },
-      '#f97316',
+      '#F7941D',
     )
     expect(ev?.title).toBe('4001558092 / 002 · ZB02 · ZD02')
     expect(ev?.activityCode).toBe('Z2')
-    expect(ev?.color).toBe('#9333ea')
+    expect(ev?.color).toBe('#4DA6FF')
     expect(ev?.hoverDetail?.workOrder).toBe('4001558092')
     expect(ev?.planStartIso).toBeTruthy()
     expect(ev?.planEndIso).toBeTruthy()

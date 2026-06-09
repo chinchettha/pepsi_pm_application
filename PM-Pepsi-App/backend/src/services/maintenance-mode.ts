@@ -53,5 +53,6 @@ export function isMaintenanceExemptPath(path: string): boolean {
   const p = path.split('?')[0] ?? path
   if (p === '/api/v1/auth/login') return true
   if (p === '/api/v1/auth/logout') return true
+  if (p === '/api/v1/telegram/webhook') return true
   return false
 }

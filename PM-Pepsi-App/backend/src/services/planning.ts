@@ -1,6 +1,7 @@
 import type { Pool } from 'pg'
 import type { z } from 'zod'
 import { resolveCalendarWorkHours } from '../lib/calendar-event-display.js'
+import { loadWorkcenterCodesForPlanningGroup } from '../lib/planning-group.js'
 import type { planningItemSchema } from '../schemas/planning.js'
 
 type PlanningItem = z.infer<typeof planningItemSchema>
@@ -102,19 +103,49 @@ export async function listPlanningForUser(
        )`
     : `AND vp.idwkctr = $1`
   const params: (string)[] = techWkctr ? [idwkctr, techWkctr] : [idwkctr]
-  const r = await pool.query<PlanRow>(
+  const ackSelect = techWkctr
+    ? `, my_mp.ack_status AS my_ack_status, my_mp.ack_at AS my_ack_at, my_mp.ack_channel AS my_ack_channel`
+    : ''
+  const ackJoin = techWkctr
+    ? `LEFT JOIN app.tbplangingwork my_mp ON my_mp.idiw37 = vp.idiw37 AND my_mp.wkctr = $2`
+    : ''
+
+  const r = await pool.query<
+    PlanRow & {
+      my_ack_status?: string | null
+      my_ack_at?: Date | null
+      my_ack_channel?: string | null
+    }
+  >(
     `SELECT vp.idiw37, vp.wkorder, vp.wktype, vp.operationshorttext, vp.functionalloc, vp.equdescrip,
             vp.bscstart, vp.actfinish, vp.syst, vp.idplanw, vp.wkctrpw, vp.pwteam, vp.idwkctr, vp.cday,
             i.work, i.untime, i.wkctr AS import_wkctr
+            ${ackSelect}
      FROM app.view_planwork vp
      JOIN app.tbiw37n i ON i.idiw37 = vp.idiw37
+     ${ackJoin}
      WHERE ${statusSql}
        ${assigneeClause}
      ORDER BY vp.bscstart DESC NULLS LAST
      LIMIT 500`,
     params,
   )
-  return r.rows.map(mapRow)
+  return r.rows.map((row) => {
+    const item = mapRow(row)
+    if (techWkctr && row.my_ack_status) {
+      const st = row.my_ack_status as 'pending' | 'acknowledged' | 'declined'
+      return {
+        ...item,
+        ackStatus: st,
+        ackAt: row.my_ack_at?.toISOString() ?? null,
+        ackChannel:
+          row.my_ack_channel === 'telegram' || row.my_ack_channel === 'web'
+            ? row.my_ack_channel
+            : null,
+      }
+    }
+    return item
+  })
 }
 
 /**
@@ -124,13 +155,18 @@ export async function listPlanningForUser(
  *   - mode='G' → expand `wkctr` (= idwkctrgroup) เป็น INSERT หลายแถวจาก `tbworkcenter.idwkctrgroup`
  *   - ON CONFLICT (idiw37, wkctr) DO NOTHING (ไม่ทับ comment เดิม)
  */
+export type PlanningAssignResult = {
+  assigned: string[]
+  skipped: string[]
+}
+
 export async function assignPlanningWork(
   pool: Pool,
   body: PlanningAssignBody,
   actorWkctr: string,
-): Promise<boolean> {
+): Promise<PlanningAssignResult | null> {
   const code = body.code.trim()
-  if (!code) return false
+  if (!code) return null
 
   const exists = await pool.query<{ idiw37: number }>(
     `SELECT idiw37
@@ -139,31 +175,31 @@ export async function assignPlanningWork(
      LIMIT 1`,
     [body.idiw37],
   )
-  if (!exists.rows[0]) return false
+  if (!exists.rows[0]) return null
 
   const dayNow = Math.floor(Date.now() / 1000)
+  const pwcomment = body.comment?.trim() || String(dayNow)
 
   if (body.mode === 'G') {
-    const members = await pool.query<{ wkctr: string }>(
-      `SELECT wkctr
-       FROM app.tbworkcenter
-       WHERE idwkctrgroup::text = $1
-         AND COALESCE(wkctr, '') <> ''`,
-      [code],
-    )
-    if (members.rowCount === 0) {
+    const memberCodes = await loadWorkcenterCodesForPlanningGroup(pool, code)
+    if (memberCodes.length === 0) {
       throw new Error('INVALID_WKCTR_GROUP')
     }
 
-    for (const m of members.rows) {
-      await pool.query(
+    const assigned: string[] = []
+    const skipped: string[] = []
+    for (const wkctr of memberCodes) {
+      const ins = await pool.query<{ wkctr: string }>(
         `INSERT INTO app.tbplangingwork (idiw37, wkctr, wkctrpw, pwcomment, pwteam)
          VALUES ($1, $2, $3, $4, 'G')
-         ON CONFLICT (idiw37, wkctr) DO NOTHING`,
-        [body.idiw37, m.wkctr, actorWkctr, String(dayNow)],
+         ON CONFLICT (idiw37, wkctr) DO NOTHING
+         RETURNING wkctr`,
+        [body.idiw37, wkctr, actorWkctr, pwcomment],
       )
+      if (ins.rowCount && ins.rowCount > 0) assigned.push(wkctr)
+      else skipped.push(wkctr)
     }
-    return true
+    return { assigned, skipped }
   }
 
   const wc = await pool.query<{ wkctr: string }>(
@@ -174,13 +210,17 @@ export async function assignPlanningWork(
     throw new Error('INVALID_WKCTR')
   }
 
-  await pool.query(
+  const ins = await pool.query<{ wkctr: string }>(
     `INSERT INTO app.tbplangingwork (idiw37, wkctr, wkctrpw, pwcomment, pwteam)
      VALUES ($1, $2, $3, $4, 'P')
-     ON CONFLICT (idiw37, wkctr) DO NOTHING`,
-    [body.idiw37, code, actorWkctr, body.comment?.trim() || String(dayNow)],
+     ON CONFLICT (idiw37, wkctr) DO NOTHING
+     RETURNING wkctr`,
+    [body.idiw37, code, actorWkctr, pwcomment],
   )
-  return true
+  if (ins.rowCount && ins.rowCount > 0) {
+    return { assigned: [code], skipped: [] }
+  }
+  return { assigned: [], skipped: [code] }
 }
 
 /**

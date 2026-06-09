@@ -1,3 +1,5 @@
+import { BRAND_CALENDAR } from './brand-palette.js'
+
 /**
  * สถานะการทำงาน PM หลังออกแผน — กำลังทำ · เสร็จแล้ว · ปิดงาน
  * แยกจาก wo-pm-phase (CRTD/REL/Confirm ตาม SAP syst)
@@ -13,17 +15,17 @@ export const PM_EXECUTION_META: Record<
   in_progress: {
     label: 'กำลังทำ',
     title: 'งานเปิด — ช่างกำลังดำเนินการ',
-    color: '#9333ea',
+    color: BRAND_CALENDAR.inProgress,
   },
   done: {
     label: 'เสร็จแล้ว',
     title: 'ปิดงานครบหรือ QC อนุมัติแล้ว — รอปิด SAP',
-    color: '#16a34a',
+    color: BRAND_CALENDAR.completed,
   },
   closed: {
     label: 'ปิดงาน',
     title: 'ปิดใน SAP แล้ว (TECO/CLSD ฯลฯ)',
-    color: '#16a34a',
+    color: BRAND_CALENDAR.completed,
   },
 }
 

@@ -29,7 +29,7 @@ describe('§3.2 admin data — Zod contracts (frontend)', () => {
       roleCode: 'H',
       roleName: 'ผู้จัดการ / หัวหน้างาน',
       roleNameEn: 'Manager',
-      roleColor: '#0A84FF',
+      roleColor: '#4DA6FF',
       isSystem: true,
       description: null,
       userCount: 0,

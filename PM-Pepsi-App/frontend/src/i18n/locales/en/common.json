@@ -139,6 +139,21 @@
       "ready": "Ready",
       "serverTime": "Server time"
     },
+    "telegram": {
+      "title": "Telegram notifications",
+      "hint": "Link your work center to receive assignment alerts via Bot",
+      "linked": "Linked",
+      "notLinked": "Not linked",
+      "linkedAt": "Linked at",
+      "createInvite": "Create invite link",
+      "relink": "New invite link",
+      "unlink": "Unlink Telegram",
+      "inviteTitle": "Open in Telegram",
+      "inviteFailed": "Could not create invite",
+      "unlinked": "Telegram unlinked",
+      "unlinkFailed": "Unlink failed",
+      "botNotConfigured": "Bot not configured (TELEGRAM_BOT_TOKEN on server)"
+    },
     "users": {
       "loadFailed": "Could not load users",
       "colUsername": "Username",

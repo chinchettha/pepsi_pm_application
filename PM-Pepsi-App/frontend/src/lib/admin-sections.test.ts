@@ -14,8 +14,8 @@ describe('adminSectionForPath', () => {
     expect(adminSectionForPath('/admin/about')?.tourTarget).toBe('admin-about')
   })
 
-  it('has 12 admin pages (console + 11 sections) all implemented', () => {
-    expect(ADMIN_SECTIONS).toHaveLength(13)
+  it('has admin pages (console + sections) all implemented', () => {
+    expect(ADMIN_SECTIONS).toHaveLength(14) // incl. telegram // console + 13 sections incl. telegram
     expect(ADMIN_SECTIONS.every((s) => s.implemented)).toBe(true)
     expect(ADMIN_SECTIONS.every((s) => s.tourTarget.startsWith('admin-'))).toBe(true)
   })

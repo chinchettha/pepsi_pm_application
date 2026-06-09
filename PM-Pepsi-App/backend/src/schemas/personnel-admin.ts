@@ -46,6 +46,9 @@ export const personnelAdminItemSchema = z.object({
   hasImage: z.boolean(),
   /** migration 053 — บังคับเปลี่ยนรหัสผ่านครั้งถัดไปหลัง reset */
   passMustChange: z.boolean().optional(),
+  telegramChatId: z.string().nullable().optional(),
+  telegramUsername: z.string().nullable().optional(),
+  telegramLinkedAt: z.string().nullable().optional(),
 })
 
 export const personnelAdminListResponseSchema = z.object({

@@ -36,6 +36,7 @@ import {
   AdminRolesPage,
   AdminSecurityPage,
   AdminSettingsPage,
+  AdminTelegramPage,
   AdminUsersPage,
 } from '@/features/admin'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -106,6 +107,7 @@ export default function App() {
             <Route path="health" element={<AdminHealthPage />} />
             <Route path="backup" element={<AdminBackupPage />} />
             <Route path="announcements" element={<AdminAnnouncementsPage />} />
+            <Route path="telegram" element={<AdminTelegramPage />} />
             <Route path="security" element={<AdminSecurityPage />} />
             <Route path="about" element={<AdminAboutPage />} />
             <Route path="users" element={<AdminUsersPage />} />

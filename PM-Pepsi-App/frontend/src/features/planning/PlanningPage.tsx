@@ -17,14 +17,15 @@ import {
 } from '@/components/ui/table'
 import type { planningItemSchema } from '@/api/schemas'
 import { getStoredAuthUser } from '@/features/auth/login-api'
-import { fetchPlanning } from '@/lib/api-public'
+import { fetchPlanning, postPlanningOrderAck } from '@/lib/api-public'
 import { formatPlanningHourValue } from '@/lib/planning-available-hours'
 import { usePermission } from '@/lib/use-permission'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { AlertCircle, ClipboardList } from 'lucide-react'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, CheckCircle2, ClipboardList, Loader2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import type { TFunction } from 'i18next'
 import type { z } from 'zod'
 
@@ -41,6 +42,7 @@ function planningStatusMap(t: TFunction<'planning'>) {
 export function PlanningPage() {
   const { t } = useTranslation('planning')
   const { t: tc } = useTranslation('common')
+  const qc = useQueryClient()
   const navigate = useNavigate()
   const statusMap = useMemo(() => planningStatusMap(t), [t])
   const authUser = getStoredAuthUser()
@@ -56,6 +58,15 @@ export function PlanningPage() {
     placeholderData: keepPreviousData,
   })
   const myCode = (authUser?.wkctr || authUser?.username || authUser?.idwkctr || '').trim()
+
+  const ackMut = useMutation({
+    mutationFn: (idiw37: number) => postPlanningOrderAck(idiw37),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['planning'] })
+      toast.success(t('ack.success'))
+    },
+    onError: (err) => toast.error((err as Error).message || t('ack.failed')),
+  })
 
   const openAssign = (row: PlanningRow) => {
     setAssignTarget({
@@ -189,6 +200,9 @@ export function PlanningPage() {
                       <TableHead>{t('table.closedDate')}</TableHead>
                     ) : null}
                     <TableHead>{t('table.status')}</TableHead>
+                    {planningStatus === 'open' ? (
+                      <TableHead>{t('table.ack')}</TableHead>
+                    ) : null}
                     <TableHead>{t('table.owner')}</TableHead>
                     <TableHead className="text-right">{t('table.actions')}</TableHead>
                   </TableRow>
@@ -227,6 +241,31 @@ export function PlanningPage() {
                         <TableCell>
                           <Badge variant={st.variant}>{st.label}</Badge>
                         </TableCell>
+                        {planningStatus === 'open' ? (
+                          <TableCell>
+                            {p.ackStatus === 'acknowledged' ? (
+                              <Badge className="bg-emerald-600 text-badge">
+                                <CheckCircle2 className="mr-1 size-3" />
+                                {t('ack.acknowledged')}
+                              </Badge>
+                            ) : p.ackStatus === 'pending' ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={ackMut.isPending}
+                                onClick={() => ackMut.mutate(Number(p.id))}
+                              >
+                                {ackMut.isPending ? (
+                                  <Loader2 className="mr-1 size-3.5 animate-spin" />
+                                ) : null}
+                                {t('ack.acknowledge')}
+                              </Button>
+                            ) : (
+                              <span className="text-caption text-app-muted">—</span>
+                            )}
+                          </TableCell>
+                        ) : null}
                         <TableCell className="text-body-sm">{p.owner || '—'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex flex-wrap justify-end gap-2">

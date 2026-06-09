@@ -1,3 +1,4 @@
+import { PlanningMultiAssign } from '@/components/scheduling/PlanningMultiAssign'
 import { PlanningQuickAssign } from '@/components/scheduling/PlanningQuickAssign'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,7 +12,11 @@ import {
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
-import { fetchWorkOrderModalDetail, postPlanningAssign } from '@/lib/api-public'
+import {
+  fetchWorkOrderModalDetail,
+  postPlanningAssign,
+  postWorkOrderPlanningBatch,
+} from '@/lib/api-public'
 import { formatPlanningHourValue } from '@/lib/planning-available-hours'
 import { planningAssignModeMeta } from '@/lib/planning-i18n'
 import type { PlanningAssignMode } from '@/lib/planning-assign-mode'
@@ -56,24 +61,50 @@ export function PlanningAssignDialog({ target, onClose, myCode = '' }: Props) {
     setComment('')
   }, [target?.idiw37])
 
+  const invalidatePlanningQueries = async (idiw37: number) => {
+    await qc.invalidateQueries({ queryKey: ['planning'] })
+    await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
+    await qc.invalidateQueries({ queryKey: ['work-orders'] })
+    await qc.invalidateQueries({ queryKey: ['work-orders', 'modal-detail', idiw37] })
+  }
+
   const assignMut = useMutation({
     mutationFn: (input: { idiw37: number; mode: PlanningAssignMode; code: string; comment?: string }) =>
       postPlanningAssign(input),
-    onSuccess: async (_data, variables) => {
-      await qc.invalidateQueries({ queryKey: ['planning'] })
-      await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
-      await qc.invalidateQueries({ queryKey: ['work-orders'] })
-      toast.success(
-        variables.mode === 'G'
-          ? t('assignDialog.successAuto')
-          : t('assignDialog.successManual'),
-      )
+    onSuccess: async (data, variables) => {
+      await invalidatePlanningQueries(variables.idiw37)
+      if (data.assigned.length === 0) {
+        toast.warning(t('assignDialog.alreadyAssigned'))
+      } else {
+        toast.success(
+          variables.mode === 'G'
+            ? t('assignDialog.successAutoCount', { count: data.assigned.length })
+            : t('assignDialog.successManual'),
+        )
+      }
       onClose()
     },
     onError: (err) => toast.error((err as Error).message || t('assignDialog.assignFailed')),
   })
 
-  const submitting = assignMut.isPending
+  const batchAssignMut = useMutation({
+    mutationFn: (input: { idiw37: number; codes: string[]; comment?: string }) =>
+      postWorkOrderPlanningBatch(String(input.idiw37), {
+        wkctrs: input.codes,
+        comment: input.comment,
+      }),
+    onSuccess: async (data, variables) => {
+      await invalidatePlanningQueries(variables.idiw37)
+      if (data.assigned.length === 0 && data.skipped.length > 0) {
+        toast.warning(t('assignDialog.alreadyAssigned'))
+      } else if (data.assigned.length > 0) {
+        toast.success(t('assignDialog.successManualCount', { count: data.assigned.length }))
+      }
+    },
+    onError: (err) => toast.error((err as Error).message || t('assignDialog.assignFailed')),
+  })
+
+  const submitting = assignMut.isPending || batchAssignMut.isPending
   const planning = modalQ.data?.planning
   const groups = planning?.groups ?? []
   const workcenters = planning?.workcenters ?? []
@@ -170,25 +201,49 @@ export function PlanningAssignDialog({ target, onClose, myCode = '' }: Props) {
             </div>
 
             {mode === 'P' ? (
-              <PlanningQuickAssign
-                workcenters={workcenters}
-                assignedCodes={assignedCodes}
-                submitting={submitting}
-                assigningCode={
-                  assignMut.isPending && assignMut.variables?.mode === 'P'
-                    ? assignMut.variables.code
-                    : null
-                }
-                onAssign={(code) => {
-                  if (!target) return
-                  assignMut.mutate({
-                    idiw37: target.idiw37,
-                    mode: 'P',
-                    code,
-                    comment: comment.trim() || undefined,
-                  })
-                }}
-              />
+              <div className="space-y-3">
+                <PlanningMultiAssign
+                  workcenters={workcenters}
+                  assignedCodes={assignedCodes}
+                  comment={comment}
+                  onCommentChange={setComment}
+                  submitting={batchAssignMut.isPending}
+                  onAssign={async (codes) => {
+                    if (!target) {
+                      return { assigned: [], skipped: [], notFound: codes }
+                    }
+                    const res = await batchAssignMut.mutateAsync({
+                      idiw37: target.idiw37,
+                      codes,
+                      comment: comment.trim() || undefined,
+                    })
+                    return {
+                      assigned: res.assigned,
+                      skipped: res.skipped,
+                      notFound: res.notFound,
+                    }
+                  }}
+                />
+                <PlanningQuickAssign
+                  workcenters={workcenters}
+                  assignedCodes={assignedCodes}
+                  submitting={assignMut.isPending}
+                  assigningCode={
+                    assignMut.isPending && assignMut.variables?.mode === 'P'
+                      ? assignMut.variables.code
+                      : null
+                  }
+                  onAssign={(code) => {
+                    if (!target) return
+                    assignMut.mutate({
+                      idiw37: target.idiw37,
+                      mode: 'P',
+                      code,
+                      comment: comment.trim() || undefined,
+                    })
+                  }}
+                />
+              </div>
             ) : (
               <div className="space-y-2 rounded-card border border-app bg-[var(--app-surface)] p-3">
                 <Label htmlFor="planning-group">{t('assignDialog.groupLabel')}</Label>

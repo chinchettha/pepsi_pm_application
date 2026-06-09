@@ -9,7 +9,7 @@ const sizeClass = {
 
 export type PepsiBrandMarkProps = {
   className?: string
-  /** ขนาดวงกลม — อ้างอิงบรีฟลูกค้าใน `skills.md` (แดงบน / แถบขาวกลาง / น้ำเงินล่าง) */
+  /** ขนาดวงกลม — พาเลตโลโก้ใหม่ (ส้มบน / แถบขาวกลาง / น้ำเงินเข้มล่าง) */
   size?: keyof typeof sizeClass
 }
 
@@ -24,9 +24,9 @@ export function PepsiBrandMark({ className, size = 'md' }: PepsiBrandMarkProps) 
       )}
       aria-hidden
     >
-      <span className="absolute inset-x-0 top-0 h-1/2 bg-[var(--brand-pepsi-red)]" />
-      <span className="absolute inset-x-0 bottom-0 h-1/2 bg-[var(--brand-pepsi-blue)]" />
-      <span className="absolute left-0 right-0 top-1/2 z-[1] h-0.5 -translate-y-1/2 bg-[var(--brand-pepsi-white)]" />
+      <span className="absolute inset-x-0 top-0 h-1/2 bg-[var(--brand-logo-orange)]" />
+      <span className="absolute inset-x-0 bottom-0 h-1/2 bg-[var(--brand-logo-blue-dark)]" />
+      <span className="absolute left-0 right-0 top-1/2 z-[1] h-0.5 -translate-y-1/2 bg-[var(--brand-logo-white)]" />
     </span>
   )
 }

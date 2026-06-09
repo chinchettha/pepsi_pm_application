@@ -45,6 +45,7 @@ import {
   personnelImportResponseSchema,
   personnelWorkstatusOptionsResponseSchema,
   personnelResponseSchema,
+  planningAckResponseSchema,
   planningAssignBodySchema,
   planningAssignResponseSchema,
   planningResponseSchema,
@@ -649,6 +650,13 @@ export async function postPlanningAssign(body: PlanningAssignInput) {
     body: JSON.stringify(payload),
   })
   return planningAssignResponseSchema.parse(json)
+}
+
+export async function postPlanningOrderAck(idiw37: number) {
+  const json = await fetchApi<unknown>(`/api/v1/planning/orders/${idiw37}/ack`, {
+    method: 'POST',
+  })
+  return planningAckResponseSchema.parse(json)
 }
 
 export async function fetchManhours() {

@@ -1,5 +1,7 @@
+import type { AuthUser } from '@/api/schemas'
 import { appNav, type NavEntry, type NavLinkEntry } from '@/components/layout/nav-config'
 import { permissionForRoute } from '@/lib/nav-route-permissions'
+import { hasPermission } from '@/lib/permissions-core'
 
 /** เทียบ `$_SESSION['UserST']` และ `menuright` แบบ `A:U:W` ใน `left_menu.php` */
 export type UserSt = 'A' | 'U' | 'W'
@@ -24,12 +26,13 @@ export function canAccessNavItem(
   rbacStrict?: boolean,
 ): boolean {
   const perm = item.permission ?? permissionForRoute(item.to)
+  const user = { userst, permissions } as AuthUser
   if (rbacStrict && permissions !== undefined) {
-    if (perm) return permissions.includes(perm)
+    if (perm) return hasPermission(user, perm)
     return canAccessByMenuright(userst, item.menuright)
   }
   if (permissions && permissions.length > 0 && perm) {
-    return permissions.includes(perm)
+    return hasPermission(user, perm)
   }
   return canAccessByMenuright(userst, item.menuright)
 }
