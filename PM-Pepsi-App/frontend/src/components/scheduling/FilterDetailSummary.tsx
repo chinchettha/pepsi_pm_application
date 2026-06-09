@@ -44,7 +44,7 @@ export function FilterDetailSummary({
   const badge = (
     <>
       {isLivePreview ? (
-        <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-900">
+        <Badge variant="outline" className="app-tone-warning-badge">
           {t('filterDetail.livePreview')}
         </Badge>
       ) : null}

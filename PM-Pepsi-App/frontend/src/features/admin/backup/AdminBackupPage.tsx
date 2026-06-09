@@ -2,6 +2,16 @@ import type { BackupHistoryItem, BackupListResponse, BackupScheduleResponse } fr
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -90,7 +100,9 @@ export function AdminBackupPage() {
   const [restoreFile, setRestoreFile] = useState<File | null>(null)
   const [restorePhrase, setRestorePhrase] = useState('')
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false)
+  const [restoreUploadOpen, setRestoreUploadOpen] = useState(false)
   const [restoreTargetId, setRestoreTargetId] = useState<number | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
   const [cachedScheduleLoaded, setCachedScheduleLoaded] = useState(false)
   const [cachedListLoaded, setCachedListLoaded] = useState(false)
   const [cachedList, setCachedList] = useState<BackupListResponse | null>(null)
@@ -173,6 +185,7 @@ export function AdminBackupPage() {
   const deleteMut = useMutation({
     mutationFn: deleteBackup,
     onSuccess: () => {
+      setDeleteTargetId(null)
       void qc.invalidateQueries({ queryKey: ['admin', 'backup'] })
       toast.success(t('backup.deleted'))
     },
@@ -185,6 +198,7 @@ export function AdminBackupPage() {
       return restoreBackupUpload(restoreFile)
     },
     onSuccess: (data) => {
+      setRestoreUploadOpen(false)
       void qc.invalidateQueries({ queryKey: ['admin', 'backup'] })
       void qc.invalidateQueries({ queryKey: ['settings', 'public'] })
       refetchPublicSettings()
@@ -344,14 +358,7 @@ export function AdminBackupPage() {
                 disabled={
                   !psqlOk || !restoreFile || !restoreReady || restoreUploadMut.isPending
                 }
-                onClick={() => {
-                  if (
-                    !window.confirm(t('backup.restoreOverwriteWarn'))
-                  ) {
-                    return
-                  }
-                  restoreUploadMut.mutate()
-                }}
+                onClick={() => setRestoreUploadOpen(true)}
               >
                 {restoreUploadMut.isPending ? (
                   <Loader2 className="mr-1 size-4 animate-spin" />
@@ -536,10 +543,7 @@ export function AdminBackupPage() {
                               variant="ghost"
                               aria-label={t('backup.deleteAria')}
                               disabled={deleteMut.isPending}
-                              onClick={() => {
-                                if (!window.confirm(t('backup.deleteConfirm'))) return
-                                deleteMut.mutate(row.id)
-                              }}
+                              onClick={() => setDeleteTargetId(row.id)}
                             >
                               <Trash2 className="size-4 text-red-600" />
                             </Button>
@@ -555,6 +559,73 @@ export function AdminBackupPage() {
             )}
           </CardContent>
         </Card>
+
+      <AlertDialog
+        open={restoreUploadOpen}
+        onOpenChange={(open) => {
+          if (!open && !restoreUploadMut.isPending) setRestoreUploadOpen(false)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('backup.restoreFromFile')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('backup.restoreOverwriteWarn')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={restoreUploadMut.isPending}>
+              {tc('actions.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={restoreUploadMut.isPending || !restoreFile || !restoreReady}
+              onClick={(e) => {
+                e.preventDefault()
+                restoreUploadMut.mutate()
+              }}
+            >
+              {restoreUploadMut.isPending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              ) : (
+                <Upload className="mr-2 size-4" aria-hidden />
+              )}
+              {t('backup.restoreFromFile')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteTargetId != null}
+        onOpenChange={(open) => {
+          if (!open && !deleteMut.isPending) setDeleteTargetId(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('backup.delete')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('backup.deleteConfirm')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMut.isPending}>{tc('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteMut.isPending || deleteTargetId == null}
+              onClick={(e) => {
+                e.preventDefault()
+                if (deleteTargetId == null) return
+                deleteMut.mutate(deleteTargetId)
+              }}
+            >
+              {deleteMut.isPending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              ) : (
+                <Trash2 className="mr-2 size-4" aria-hidden />
+              )}
+              {t('backup.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
         <DialogContent>

@@ -541,7 +541,7 @@ export function PmVibrationPage() {
         <AppCard className="space-y-3 p-4">
           {formHint ? (
             <div
-              className="rounded-card border border-amber-200/90 bg-amber-50/90 px-3 py-2 text-body-sm text-amber-950"
+              className="app-tone-warning-callout rounded-card border px-3 py-2 text-body-sm"
               role="status"
             >
               {formHint}
@@ -742,7 +742,7 @@ export function PmVibrationPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="flex items-center gap-2 font-semibold text-app">
-                <FileSpreadsheet className="size-5 text-emerald-700" aria-hidden />
+                <FileSpreadsheet className="app-tone-success-icon size-5" aria-hidden />
                 {t('importTitle')}
               </h2>
               <p className="mt-1 text-body-sm text-app-muted">{t('importHint')}</p>

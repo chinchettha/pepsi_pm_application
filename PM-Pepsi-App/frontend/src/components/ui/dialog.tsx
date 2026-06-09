@@ -1,4 +1,5 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { cva, type VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 
@@ -16,7 +17,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/50 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className,
     )}
     {...props}
@@ -24,18 +25,36 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+const dialogContentVariants = cva(
+  'macos-dialog-glass fixed left-1/2 top-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog border border-app bg-[var(--app-surface)] p-6 shadow-app-dialog duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+  {
+    variants: {
+      size: {
+        sm: 'max-w-md',
+        md: 'max-w-lg',
+        lg: 'w-[min(calc(100vw-1rem),42rem)] max-w-2xl sm:max-w-2xl',
+        full:
+          'w-[min(calc(100vw-0.5rem),64rem)] max-w-[64rem] max-h-[min(100dvh,900px)] sm:max-w-[64rem]',
+      },
+    },
+    defaultVariants: {
+      size: 'md',
+    },
+  },
+)
+
+type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> &
+  VariantProps<typeof dialogContentVariants>
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  DialogContentProps
+>(({ className, size, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      className={cn(
-          'macos-dialog-glass fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog border border-app bg-[var(--app-surface)] p-6 shadow-app-dialog duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-        className,
-      )}
+      className={cn(dialogContentVariants({ size }), className)}
       {...props}
     >
       {children}
@@ -98,6 +117,7 @@ export {
   Dialog,
   DialogClose,
   DialogContent,
+  dialogContentVariants,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -105,3 +125,5 @@ export {
   DialogTitle,
   DialogTrigger,
 }
+
+export type DialogContentSize = NonNullable<VariantProps<typeof dialogContentVariants>['size']>

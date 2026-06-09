@@ -50,32 +50,33 @@ function InfoChip({
   icon: Icon,
   label,
   value,
-  tone = 'sky',
+  tone = 'info',
 }: {
   icon: typeof Factory
   label: string
   value: string
-  tone?: 'sky' | 'amber'
+  tone?: 'info' | 'warning'
 }) {
   if (!value.trim()) return null
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-button border px-3 py-2',
-        tone === 'amber'
-          ? 'border-amber-200/70 app-surface-panel--soft'
-          : 'border-sky-200/70 app-surface-panel--soft',
+        'flex items-center gap-2 rounded-button border px-3 py-2 app-surface-panel--soft',
+        tone === 'warning' ? 'app-tone-warning-tile' : 'app-tone-info-tile',
       )}
     >
       <Icon
-        className={cn('size-4 shrink-0', tone === 'amber' ? 'text-amber-700' : 'text-sky-700')}
+        className={cn(
+          'size-4 shrink-0',
+          tone === 'warning' ? 'app-tone-warning-icon' : 'app-tone-info-icon',
+        )}
         aria-hidden
       />
       <div className="min-w-0">
         <p
           className={cn(
             'text-[10px] font-semibold uppercase tracking-wide',
-            tone === 'amber' ? 'text-amber-800/70' : 'text-sky-800/70',
+            tone === 'warning' ? 'app-tone-warning-label' : 'app-tone-info-label',
           )}
         >
           {label}
@@ -83,7 +84,7 @@ function InfoChip({
         <p
           className={cn(
             'truncate text-body-sm font-medium',
-            tone === 'amber' ? 'text-amber-950' : 'text-sky-950',
+            tone === 'warning' ? 'app-tone-warning-strong' : 'app-tone-info-strong',
           )}
         >
           {value}
@@ -155,14 +156,14 @@ export function WorkOrderMachinePanel({ machine, referenceDate }: Props) {
         <SchedulingPageSection index={0}>
           <motion.div
             layout={!reduceMotion}
-            className="overflow-hidden rounded-card border border-amber-200/90 bg-gradient-to-br from-amber-50 via-[var(--app-surface)] to-[color-mix(in_srgb,var(--app-accent)_4%,var(--app-surface))] p-4 shadow-[var(--app-shadow-card)]"
+            className="app-tone-warning-section overflow-hidden rounded-card border p-4 shadow-[var(--app-shadow-card)]"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wider text-amber-800/70">
+                <p className="app-tone-warning-label text-xs font-semibold uppercase tracking-wider">
                   {t('woMachine.productLine')}
                 </p>
-                <p className="font-mono text-2xl font-bold tracking-tight text-amber-950">
+                <p className="app-tone-warning-strong font-mono text-2xl font-bold tracking-tight">
                   {machine.productline || '—'}
                 </p>
                 {referenceDate ? (
@@ -174,12 +175,12 @@ export function WorkOrderMachinePanel({ machine, referenceDate }: Props) {
                 ) : null}
               </div>
               {machine.uptime != null ? (
-                <div className="rounded-xl border border-amber-200/80 app-surface-panel--soft px-4 py-3 text-center shadow-sm">
-                  <p className="flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-amber-800/70">
+                <div className="app-tone-warning-tile rounded-xl border app-surface-panel--soft px-4 py-3 text-center shadow-sm">
+                  <p className="app-tone-warning-label flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wide">
                     <Gauge className="size-3.5" aria-hidden />
                     Work
                   </p>
-                  <p className="mt-0.5 text-2xl font-bold tabular-nums text-amber-950">
+                  <p className="app-tone-warning-strong mt-0.5 text-2xl font-bold tabular-nums">
                     {machine.uptime}
                   </p>
                 </div>

@@ -16,6 +16,8 @@
 ## เอกสารที่ต้องอ่านก่อนงานใหญ่
 
 - [`docs/WORK-PHASES.md`](docs/WORK-PHASES.md) — แผน phase / checklist
+- [`docs/PRE-UAT-MASTER-PHASES.md`](docs/PRE-UAT-MASTER-PHASES.md) — **Master ก่อน UAT** (SAP · Deploy · handoff)
+- [`docs/customer-requirements/PRE-UAT-UI-PHASES.md`](docs/customer-requirements/PRE-UAT-UI-PHASES.md) — **U4 UI ก่อน UAT** (ทำ UI ก่อน)
 - [`docs/USER-MANUAL-TH.md`](docs/USER-MANUAL-TH.md) — คู่มือผู้ใช้ทุกหน้า
 - [`docs/customer-requirements/UI-POLISH-PHASES.md`](docs/customer-requirements/UI-POLISH-PHASES.md) — UI polish U0–U3
 - [`docs/SUPERPOWERS-PM-APP.md`](docs/SUPERPOWERS-PM-APP.md) — วิธีใช้ Superpowers กับโปรเจกต์นี้

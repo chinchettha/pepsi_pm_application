@@ -44,6 +44,7 @@ import { UserLogPage } from '@/features/user-log/UserLogPage'
 import { EngineeringBoardPage } from '@/features/board/EngineeringBoardPage'
 import { WorkOrdersPage } from '@/features/work-orders/WorkOrdersPage'
 import { PmVibrationPage } from '@/features/pm-vibration/PmVibrationPage'
+import { PortalPage } from '@/features/portal/PortalPage'
 import { UiPlaygroundPage } from '@/features/dev/UiPlaygroundPage'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
@@ -57,6 +58,7 @@ export default function App() {
       <Route path="/logout" element={<LogoutPage />} />
       <Route path="/board" element={<EngineeringBoardPage />} />
       <Route element={<RequireAuth />}>
+        <Route path="portal" element={<PortalPage />} />
         <Route path="summary-weekly/chart/full" element={<SummaryWeeklyChartFullPage />} />
         <Route element={<AppShell />}>
           <Route element={<NavRouteGuard />}>

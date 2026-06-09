@@ -16,6 +16,11 @@ import {
   type ConfirmationImagePhase,
 } from '@/lib/api-public'
 import { CONFIRM_IMAGE_RECOMMENDED_PER_PHASE } from '@/lib/confirm-image-limits'
+import {
+  listKpiStaggerCardItemMotion,
+  listKpiStaggerItemMotion,
+  listKpiStaggerRootMotion,
+} from '@/lib/list-kpi-stagger'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, useReducedMotion } from 'framer-motion'
@@ -49,28 +54,14 @@ const PHASE_META: {
   },
 ]
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 10, scale: 0.98 },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const },
-  },
-}
-
 type ConfirmationImageItem = Awaited<ReturnType<typeof fetchConfirmationImages>>[number]
 
 function phaseToneClass(tone: 'before' | 'after') {
-  return tone === 'before'
-    ? 'border-amber-200/80 bg-gradient-to-br from-amber-50/90 to-white'
-    : 'border-emerald-200/80 bg-gradient-to-br from-emerald-50/70 to-white'
+  return tone === 'before' ? 'app-tone-warning-section border' : 'app-tone-success-section border'
 }
 
 function phaseBadgeClass(tone: 'before' | 'after') {
-  return tone === 'before'
-    ? 'bg-amber-600/10 text-amber-900 border-amber-200/80'
-    : 'bg-emerald-600/10 text-emerald-900 border-emerald-200/80'
+  return tone === 'before' ? 'app-tone-warning-badge border' : 'app-tone-success-badge border'
 }
 
 function ImageThumbnail({
@@ -120,13 +111,13 @@ function ImageGalleryCard({
   idiw37,
   onView,
   readOnly,
-  index,
+  listItemCount,
 }: {
   img: ConfirmationImageItem
   idiw37: number
   onView: (idcimg: number) => void
   readOnly?: boolean
-  index: number
+  listItemCount?: number
 }) {
   const { t } = useTranslation('confirmation')
   const reduceMotion = useReducedMotion()
@@ -143,10 +134,7 @@ function ImageGalleryCard({
 
   return (
     <motion.li
-      variants={reduceMotion ? undefined : cardVariants}
-      initial={reduceMotion ? false : 'hidden'}
-      animate="show"
-      custom={index}
+      {...listKpiStaggerCardItemMotion(reduceMotion, listItemCount)}
       className="group overflow-hidden rounded-xl border border-app/70 app-surface-panel shadow-sm transition-shadow hover:shadow-md"
     >
       <button
@@ -288,6 +276,7 @@ function PhaseUploadBlock({
   readOnly,
 }: PhaseUploadBlockProps) {
   const { t } = useTranslation('confirmation')
+  const reduceMotion = useReducedMotion()
   const qc = useQueryClient()
   const [files, setFiles] = useState<File[]>([])
   const [caption, setCaption] = useState('')
@@ -376,18 +365,21 @@ function PhaseUploadBlock({
         ) : null}
 
         {items.length > 0 ? (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((img, i) => (
+          <motion.ul
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            {...listKpiStaggerRootMotion(reduceMotion, items.length)}
+          >
+            {items.map((img) => (
               <ImageGalleryCard
                 key={img.idcimg}
                 img={img}
                 idiw37={idiw37}
                 onView={onView}
                 readOnly={readOnly}
-                index={i}
+                listItemCount={items.length}
               />
             ))}
-          </ul>
+          </motion.ul>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-app/60 bg-app-subtle/50 px-4 py-8 text-center">
             <ImageIcon className="size-8 text-app-muted/50" aria-hidden />
@@ -401,19 +393,29 @@ function PhaseUploadBlock({
 
 function ImageViewerLightbox({
   viewImage,
+  images,
+  onViewImageId,
   onClose,
   enabled,
 }: {
   viewImage: ConfirmationImageItem | null
+  images: ConfirmationImageItem[]
+  onViewImageId: (id: number) => void
   onClose: () => void
   enabled: boolean
 }) {
   const { t } = useTranslation('confirmation')
+  const { t: tc } = useTranslation('common')
   const imageDataQ = useQuery({
     queryKey: ['confirmation', 'image-data', viewImage?.idcimg],
     queryFn: () => fetchConfirmationImageData(viewImage!.idcimg),
     enabled: enabled && viewImage != null,
   })
+
+  const currentIndex =
+    viewImage != null ? images.findIndex((img) => img.idcimg === viewImage.idcimg) : -1
+  const canPrevious = currentIndex > 0
+  const canNext = currentIndex >= 0 && currentIndex < images.length - 1
 
   const src = imageDataQ.data
     ? `data:${imageDataQ.data.mime};base64,${imageDataQ.data.base64}`
@@ -440,6 +442,19 @@ function ImageViewerLightbox({
       alt={title}
       loading={imageDataQ.isLoading}
       error={imageDataQ.isError ? (imageDataQ.error as Error).message : null}
+      canPrevious={canPrevious}
+      canNext={canNext}
+      positionLabel={
+        currentIndex >= 0 && images.length > 1
+          ? tc('imageLightbox.position', { current: currentIndex + 1, total: images.length })
+          : undefined
+      }
+      onPrevious={
+        canPrevious
+          ? () => onViewImageId(images[currentIndex - 1]!.idcimg)
+          : undefined
+      }
+      onNext={canNext ? () => onViewImageId(images[currentIndex + 1]!.idcimg) : undefined}
     />
   )
 }
@@ -507,15 +522,23 @@ export function ConfirmationImagesPanel({
             </Badge>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <div className="flex min-w-[8rem] flex-1 items-center gap-2 rounded-button border border-emerald-200/70 app-surface-panel--soft px-3 py-2">
-              <ImagePlus className="size-4 shrink-0 text-emerald-700" aria-hidden />
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/65">
-                  {t('images.after')}
-                </p>
-                <p className="text-sm font-bold tabular-nums text-emerald-950">{grouped.after.length}</p>
-              </div>
-            </div>
+            <motion.div
+              className="flex min-w-[8rem] flex-1 flex-wrap gap-2"
+              {...listKpiStaggerRootMotion(reduceMotion)}
+            >
+              <motion.div
+                {...listKpiStaggerItemMotion(reduceMotion)}
+                className="app-tone-success-tile flex min-w-[8rem] flex-1 items-center gap-2 rounded-button border app-surface-panel--soft px-3 py-2"
+              >
+                <ImagePlus className="app-tone-success-icon size-4 shrink-0" aria-hidden />
+                <div>
+                  <p className="app-tone-success-label text-[10px] font-semibold uppercase tracking-wide">
+                    {t('images.after')}
+                  </p>
+                  <p className="app-tone-success-strong text-sm font-bold tabular-nums">{grouped.after.length}</p>
+                </div>
+              </motion.div>
+            </motion.div>
           </div>
         </motion.div>
       </SchedulingPageSection>
@@ -562,18 +585,21 @@ export function ConfirmationImagesPanel({
                 }
                 className="border-dashed"
               >
-                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {grouped.legacy.map((img, i) => (
+                <motion.ul
+                  className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                  {...listKpiStaggerRootMotion(reduceMotion, grouped.legacy.length)}
+                >
+                  {grouped.legacy.map((img) => (
                     <ImageGalleryCard
                       key={img.idcimg}
                       img={img}
                       idiw37={id}
                       onView={setViewImageId}
                       readOnly={readOnly}
-                      index={i}
+                      listItemCount={grouped.legacy.length}
                     />
                   ))}
-                </ul>
+                </motion.ul>
               </SchedulingSection>
             </SchedulingPageSection>
           ) : null}
@@ -582,6 +608,8 @@ export function ConfirmationImagesPanel({
 
       <ImageViewerLightbox
         viewImage={viewImage}
+        images={imagesQ.data ?? []}
+        onViewImageId={setViewImageId}
         onClose={() => setViewImageId(null)}
         enabled={ready}
       />

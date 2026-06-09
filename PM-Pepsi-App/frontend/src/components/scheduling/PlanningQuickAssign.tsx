@@ -125,7 +125,7 @@ function TechnicianAssignGrid({
                 className={cn(
                   'group relative flex w-full items-start gap-3 rounded-button border p-3 text-left shadow-sm transition-[border-color,box-shadow,background-color] duration-200',
                   assigned
-                    ? 'cursor-default border-emerald-200/80 app-surface-panel--success'
+                    ? 'cursor-default app-surface-panel--success'
                     : 'border-app/70 app-surface-panel hover:border-[color-mix(in_srgb,var(--app-accent)_35%,var(--app-border))] hover:shadow-md',
                   pending && 'ring-2 ring-[color-mix(in_srgb,var(--app-accent)_25%,transparent)]',
                   disabled && !assigned && 'cursor-not-allowed opacity-60',
@@ -135,7 +135,7 @@ function TechnicianAssignGrid({
                   className={cn(
                     'flex size-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold tracking-wide transition-transform duration-200 group-hover:scale-105',
                     assigned
-                      ? 'bg-emerald-600 text-white'
+                      ? 'app-tone-success-fill'
                       : 'bg-[color-mix(in_srgb,var(--app-accent)_14%,var(--app-surface))] text-[color-mix(in_srgb,var(--app-accent)_85%,var(--app-text))]',
                   )}
                 >
@@ -174,7 +174,7 @@ function TechnicianAssignGrid({
                     aria-hidden
                   />
                 ) : (
-                  <span className="mt-0.5 shrink-0 rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                  <span className="app-tone-success-badge mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
                     {t('shared.assigned')}
                   </span>
                 )}

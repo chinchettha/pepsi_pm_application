@@ -197,7 +197,18 @@
     "close": "ปิด",
     "loading": "กำลังโหลดรูป…",
     "help": "ลากเลื่อน · ล้อเมาส์/ pinch ซูม · ดับเบิลคลิกซูม",
-    "escClose": "Esc ปิด"
+    "escClose": "Esc ปิด",
+    "keyboardNav": "Esc ปิด · ← → เปลี่ยนรูป",
+    "prevImage": "รูปก่อนหน้า",
+    "nextImage": "รูปถัดไป",
+    "position": "{{current}} / {{total}}"
+  },
+  "confirmPhrase": {
+    "confirm": "ยืนยัน",
+    "phraseLabel": "พิมพ์ {{phrase}} เพื่อยืนยัน",
+    "placeholder": "พิมพ์ตามข้อความด้านบน",
+    "mismatch": "ข้อความไม่ตรง — ต้องพิมพ์ให้ตรงทุกตัวอักษร",
+    "matched": "ตรงแล้ว — กดยืนยันได้"
   },
   "spinner": {
     "loading": "กำลังโหลด…"

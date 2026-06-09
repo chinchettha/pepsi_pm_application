@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type ConfirmPhraseDialogProps = {
   open: boolean
@@ -36,15 +37,18 @@ export function ConfirmPhraseDialog({
   description,
   phrase,
   phraseLabel,
-  confirmLabel = 'ยืนยัน',
+  confirmLabel,
   loading = false,
   onConfirm,
   tone = 'default',
 }: ConfirmPhraseDialogProps) {
+  const { t } = useTranslation('common')
   const [typed, setTyped] = useState('')
   const ready = typed === phrase
   const isDanger = tone === 'danger'
   const showMismatch = typed.length > 0 && !ready
+  const resolvedConfirmLabel = confirmLabel ?? t('confirmPhrase.confirm')
+  const resolvedPhraseLabel = phraseLabel ?? t('confirmPhrase.phraseLabel', { phrase })
 
   useEffect(() => {
     if (!open) setTyped('')
@@ -53,24 +57,21 @@ export function ConfirmPhraseDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={cn(
-          isDanger &&
-            'border-red-300 bg-red-50/40 dark:border-red-900 dark:bg-red-950/30 sm:max-w-md',
-        )}
+        size="sm"
+        className={cn(isDanger && 'confirm-phrase-dialog--danger')}
       >
-        <DialogHeader className={cn(isDanger && 'text-left')}>
+        <DialogHeader className="text-left">
           {isDanger ? (
             <div className="flex items-start gap-3">
-              <span
-                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700"
-                aria-hidden
-              >
+              <span className="confirm-phrase-dialog__icon-wrap size-10" aria-hidden>
                 <AlertTriangle className="size-5" />
               </span>
               <div className="min-w-0 space-y-1">
-                <DialogTitle className="text-red-950">{title}</DialogTitle>
+                <DialogTitle className="confirm-phrase-dialog__title">{title}</DialogTitle>
                 {description ? (
-                  <DialogDescription className="text-red-900/80">{description}</DialogDescription>
+                  <DialogDescription className="confirm-phrase-dialog__description">
+                    {description}
+                  </DialogDescription>
                 ) : null}
               </div>
             </div>
@@ -83,11 +84,19 @@ export function ConfirmPhraseDialog({
         </DialogHeader>
 
         <div className="space-y-2">
-          <Label htmlFor="confirm-phrase" className={cn(isDanger && 'text-red-950')}>
-            {phraseLabel ?? `พิมพ์ ${phrase} เพื่อยืนยัน`}
+          <Label
+            htmlFor="confirm-phrase"
+            className={cn(isDanger && 'confirm-phrase-dialog__title')}
+          >
+            {resolvedPhraseLabel}
           </Label>
           {isDanger ? (
-            <p className="rounded-button border border-red-200/70 app-surface-panel px-3 py-2 font-mono text-sm font-semibold tracking-wide text-form-error">
+            <p
+              className={cn(
+                'confirm-phrase-dialog__phrase-box rounded-button border px-3 py-2 font-mono text-sm font-semibold tracking-wide',
+              )}
+              aria-live="polite"
+            >
               {phrase}
             </p>
           ) : null}
@@ -97,10 +106,10 @@ export function ConfirmPhraseDialog({
             autoComplete="off"
             spellCheck={false}
             autoFocus
-            placeholder={isDanger ? 'พิมพ์ตามข้อความด้านบน' : undefined}
+            placeholder={isDanger ? t('confirmPhrase.placeholder') : undefined}
             className={cn(
               isDanger &&
-                'border-red-300/70 bg-[var(--app-surface)] focus-visible:ring-red-400',
+                'confirm-phrase-dialog__input--danger border-[color-mix(in_srgb,var(--sys-red-light)_32%,var(--app-border))] bg-[var(--app-surface)]',
             )}
             aria-invalid={showMismatch}
             onChange={(e) => setTyped(e.target.value)}
@@ -109,28 +118,28 @@ export function ConfirmPhraseDialog({
             }}
           />
           {showMismatch ? (
-            <p className="text-xs text-red-700" role="status">
-              ข้อความไม่ตรง — ต้องพิมพ์ให้ตรงทุกตัวอักษร
+            <p className="text-xs text-form-error" role="status">
+              {t('confirmPhrase.mismatch')}
             </p>
           ) : ready ? (
-            <p className="text-xs text-emerald-700" role="status">
-              ตรงแล้ว — กดยืนยันได้
+            <p className="confirm-phrase-dialog__matched text-xs" role="status">
+              {t('confirmPhrase.matched')}
             </p>
           ) : null}
         </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            ยกเลิก
+            {t('actions.cancel')}
           </Button>
           <Button
             type="button"
-            variant="destructive"
+            variant={isDanger ? 'destructive' : 'default'}
             disabled={!ready || loading}
             onClick={onConfirm}
           >
             {loading ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

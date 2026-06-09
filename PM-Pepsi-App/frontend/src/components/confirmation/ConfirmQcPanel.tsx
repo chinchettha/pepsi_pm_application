@@ -92,10 +92,10 @@ export function ConfirmQcPanel({
   if (!data) return null
 
   return (
-    <section className="overflow-hidden rounded-card border border-amber-200/90 bg-gradient-to-br from-amber-50 via-[var(--app-surface)] to-[color-mix(in_srgb,var(--app-accent)_3%,var(--app-surface))] p-4 shadow-[var(--app-shadow-card)]">
+    <section className="app-tone-warning-review overflow-hidden rounded-card border p-4 shadow-[var(--app-shadow-card)]">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="flex items-center gap-2 text-body-sm font-semibold text-amber-950">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+        <h4 className="app-tone-warning-strong flex items-center gap-2 text-body-sm font-semibold">
+          <span className="app-tone-warning-card-index flex size-8 items-center justify-center rounded-lg">
             ✓
           </span>
           {t('qc.adminTitle')}
@@ -106,18 +106,18 @@ export function ConfirmQcPanel({
       </div>
 
       <ul className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-        <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app">
+        <li className="app-tone-warning-review-item rounded-button border app-surface-panel--soft px-3 py-2 text-app">
           {t('qc.images')}: <strong>{data.imageCount}</strong> (
           {t('qc.imagesDetail', { after: data.imageAfter })})
         </li>
-        <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app">
+        <li className="app-tone-warning-review-item rounded-button border app-surface-panel--soft px-3 py-2 text-app">
           {t('qc.closeCount')}: <strong>{data.closeCount}</strong>
         </li>
-        <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app">
+        <li className="app-tone-warning-review-item rounded-button border app-surface-panel--soft px-3 py-2 text-app">
           {t('qc.worktimeCount')}: <strong>{data.worktimeCount}</strong>
         </li>
         {data.reviewedAt ? (
-          <li className="rounded-button border border-amber-200/60 app-surface-panel--soft px-3 py-2 text-app sm:col-span-2">
+          <li className="app-tone-warning-review-item rounded-button border app-surface-panel--soft px-3 py-2 text-app sm:col-span-2">
             {t('qc.reviewedBy')} <strong>{data.reviewedBy ?? '—'}</strong> ·{' '}
             {new Date(data.reviewedAt).toLocaleString('th-TH')}
           </li>
@@ -130,7 +130,7 @@ export function ConfirmQcPanel({
       </ul>
 
       {canReview && data.status === 'pending' && data.readyForReview ? (
-        <div className="mt-4 flex flex-col gap-3 border-t border-amber-200/80 pt-4 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="app-tone-warning-review-divider mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:flex-wrap sm:items-end">
           <Button
             type="button"
             size="sm"

@@ -316,21 +316,21 @@ export function SummaryWeeklyPage() {
                           <TableCell className="text-right tabular-nums">
                             {row.rcaWork.toFixed(1)}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums text-amber-700">
+                          <TableCell className="app-tone-warning-icon text-right tabular-nums">
                             {row.woCount}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">{row.hrHour}</TableCell>
                           <TableCell className="text-right tabular-nums">{row.otHour}</TableCell>
-                          <TableCell className="text-right tabular-nums text-amber-700">
+                          <TableCell className="app-tone-warning-icon text-right tabular-nums">
                             {row.percentPm.toFixed(2)}%
                           </TableCell>
-                          <TableCell className="text-right tabular-nums text-amber-700">
+                          <TableCell className="app-tone-warning-icon text-right tabular-nums">
                             {row.percentReactive.toFixed(2)}%
                           </TableCell>
-                          <TableCell className="text-right tabular-nums text-amber-700">
+                          <TableCell className="app-tone-warning-icon text-right tabular-nums">
                             {row.percentRca.toFixed(2)}%
                           </TableCell>
-                          <TableCell className="text-right tabular-nums font-medium text-emerald-700">
+                          <TableCell className="app-tone-success-icon text-right tabular-nums font-medium">
                             {excelTotal.toFixed(2)}%
                           </TableCell>
                           <TableCell className="text-right tabular-nums text-app-muted">

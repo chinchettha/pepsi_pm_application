@@ -108,20 +108,20 @@ function CommentCard({
       <article
         className={cn(
           'relative overflow-hidden rounded-xl border app-surface-panel shadow-sm transition-shadow hover:shadow-md',
-          isEditing ? 'border-violet-300 ring-1 ring-violet-200/80' : 'border-app/70',
+          isEditing ? 'app-tone-info-editing' : 'border-app/70',
         )}
       >
         <div
           className={cn(
             'absolute inset-y-0 left-0 w-1',
-            isEditing ? 'bg-violet-500' : 'bg-violet-300/80',
+            isEditing ? 'app-tone-info-strip-active' : 'app-tone-info-strip',
           )}
           aria-hidden
         />
         <div className="p-4 pl-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+              <span className="app-tone-info-avatar flex size-8 shrink-0 items-center justify-center rounded-full">
                 <UserRound className="size-4" aria-hidden />
               </span>
               <div className="min-w-0">
@@ -169,7 +169,7 @@ function CommentCard({
                 onChange={(e) => onEditingTextChange(e.target.value)}
                 rows={4}
                 maxLength={MAX_COMMENT_LENGTH}
-                className="resize-none bg-violet-50/30"
+                className="app-tone-info-soft resize-none"
                 autoFocus
               />
               <div className="flex items-center justify-between gap-2">
@@ -180,7 +180,6 @@ function CommentCard({
                   <Button
                     type="button"
                     size="sm"
-                    className="bg-violet-700 hover:bg-violet-800"
                     onClick={onSaveEdit}
                     disabled={!editingText.trim() || savePending}
                   >
@@ -248,37 +247,37 @@ export function WorkOrderConfirmCommentsSection({
       <SchedulingPageSection index={0}>
         <motion.div
           layout={!reduceMotion}
-          className="overflow-hidden rounded-card border border-violet-200/90 bg-gradient-to-br from-violet-50 via-[var(--app-surface)] to-[color-mix(in_srgb,var(--app-accent)_4%,var(--app-surface))] p-4 shadow-[var(--app-shadow-card)]"
+          className="app-tone-info-hero rounded-card border p-4 shadow-[var(--app-shadow-card)]"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-violet-800/70">
+              <p className="app-tone-info-eyebrow flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
                 <MessageSquareText className="size-3.5" aria-hidden />
                 {t('woComments.title')}
               </p>
               <p className="mt-0.5 text-body-sm text-app-muted">{t('woComments.subtitle')}</p>
             </div>
-            <Badge className="shrink-0 border-0 bg-violet-600/10 text-violet-900">
+            <Badge className="app-tone-info-badge shrink-0">
               {t('shared.items', { count: items.length })}
             </Badge>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <div className="flex min-w-[6rem] flex-1 items-center gap-2 rounded-button border border-violet-200/70 app-surface-panel--soft px-3 py-2">
-              <MessageSquareText className="size-4 shrink-0 text-violet-700" aria-hidden />
+            <div className="app-tone-info-tile flex min-w-[6rem] flex-1 items-center gap-2 rounded-button border app-surface-panel--soft px-3 py-2">
+              <MessageSquareText className="app-tone-info-icon size-4 shrink-0" aria-hidden />
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-800/65">
+                <p className="app-tone-info-label text-[10px] font-semibold uppercase tracking-wide">
                   {t('woComments.notes')}
                 </p>
-                <p className="text-sm font-bold tabular-nums text-violet-950">{items.length}</p>
+                <p className="app-tone-info-strong text-sm font-bold tabular-nums">{items.length}</p>
               </div>
             </div>
-            <div className="flex min-w-[6rem] flex-1 items-center gap-2 rounded-button border border-violet-200/70 app-surface-panel--soft px-3 py-2">
-              <UserRound className="size-4 shrink-0 text-violet-700" aria-hidden />
+            <div className="app-tone-info-tile flex min-w-[6rem] flex-1 items-center gap-2 rounded-button border app-surface-panel--soft px-3 py-2">
+              <UserRound className="app-tone-info-icon size-4 shrink-0" aria-hidden />
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-800/65">
+                <p className="app-tone-info-label text-[10px] font-semibold uppercase tracking-wide">
                   {t('woComments.authors')}
                 </p>
-                <p className="text-sm font-bold tabular-nums text-violet-950">{authorCount}</p>
+                <p className="app-tone-info-strong text-sm font-bold tabular-nums">{authorCount}</p>
               </div>
             </div>
           </div>
@@ -290,9 +289,9 @@ export function WorkOrderConfirmCommentsSection({
           icon={MessageSquarePlus}
           title={t('woComments.addTitle')}
           description={t('woComments.addDesc')}
-          className="border-violet-200/80 bg-gradient-to-br from-violet-50/60 to-white"
+          className="app-tone-info-section border"
         >
-          <div className="space-y-3 rounded-xl border border-violet-100/80 app-surface-panel--soft p-3">
+          <div className="app-tone-info-inner space-y-3 rounded-xl border app-surface-panel--soft p-3">
             <div className="space-y-1.5">
               <Label htmlFor="new-comment" className="text-xs font-medium">
                 {t('shared.comment')}
@@ -318,7 +317,7 @@ export function WorkOrderConfirmCommentsSection({
               type="button"
               onClick={onAdd}
               disabled={!newComment.trim() || addPending}
-              className="w-full bg-violet-700 shadow-sm hover:bg-violet-800 sm:w-auto"
+              className="w-full shadow-sm sm:w-auto"
             >
               {addPending ? (
                 <>
@@ -343,7 +342,7 @@ export function WorkOrderConfirmCommentsSection({
           description={t('woComments.savedDesc')}
           badge={
             items.length > 0 ? (
-              <Badge variant="outline" className="border-violet-200/80 text-[10px] text-violet-900">
+              <Badge variant="outline" className="app-tone-info-outline-badge text-[10px]">
                 {t('shared.items', { count: items.length })}
               </Badge>
             ) : null
@@ -360,8 +359,8 @@ export function WorkOrderConfirmCommentsSection({
               {error?.message ?? t('shared.loadingFailed')}
             </p>
           ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-violet-200/80 bg-violet-50/30 px-4 py-10 text-center">
-              <MessageSquareText className="size-9 text-violet-300" aria-hidden />
+            <div className="app-tone-info-empty flex flex-col items-center justify-center rounded-xl px-4 py-10 text-center">
+              <MessageSquareText className="app-tone-info-empty-icon size-9" aria-hidden />
               <p className="mt-2 text-sm font-medium text-app">{t('woComments.emptyTitle')}</p>
               <p className="mt-1 max-w-xs text-xs text-app-muted">{t('woComments.emptyDesc')}</p>
             </div>

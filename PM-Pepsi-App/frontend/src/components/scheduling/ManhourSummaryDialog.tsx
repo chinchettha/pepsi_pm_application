@@ -1,6 +1,7 @@
 /**
  * เทียบ `sap/modalPages/ModalMHshow.php` — เปิดเมื่อเลือกช่วงวันบนปฏิทิน backlog/calendar
  */
+import { kpiStatToneClass } from '@/components/kpi/kpi-tone'
 import {
   Dialog,
   DialogContent,
@@ -8,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -53,11 +55,9 @@ export function ManhourSummaryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="rounded-button border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-base font-semibold text-emerald-900">
-            Man Hours Date {rangeLabel}
-          </DialogTitle>
+      <DialogContent size="lg" className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="text-left">
+          <DialogTitle>Man Hours Date {rangeLabel}</DialogTitle>
           <DialogDescription className="sr-only">
             สรุป manhour จาก view_order — เทียบ ModalMHshow.php
           </DialogDescription>
@@ -79,7 +79,7 @@ export function ManhourSummaryDialog({
           </p>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-card border border-sky-200 bg-sky-50 p-3 text-body-sm text-app">
+            <div className={cn(kpiStatToneClass('info'))}>
               <p>
                 <strong>Man Hour Plan</strong> {q.data.plannedMinutes} MIN (
                 {q.data.plannedHours.toFixed(2)} H)
@@ -90,7 +90,7 @@ export function ManhourSummaryDialog({
               </p>
             </div>
 
-            <div className="rounded-card border border-amber-200 bg-amber-50 p-3 text-body-sm text-app">
+            <div className={cn(kpiStatToneClass('amber'))}>
               <div className="flex flex-wrap items-center gap-2">
                 <strong>Work Order</strong>
                 <span>{q.data.totalOrders}</span>
@@ -105,9 +105,9 @@ export function ManhourSummaryDialog({
                 <strong>completion</strong>
                 <span>{q.data.completionCount}</span>
               </div>
-              <div className="mt-2 h-5 overflow-hidden rounded bg-amber-100">
+              <div className="mt-2 h-5 overflow-hidden rounded bg-app-subtle">
                 <div
-                  className="flex h-full items-center justify-center bg-amber-500 text-badge font-medium text-white"
+                  className="flex h-full items-center justify-center bg-[var(--app-accent)] text-badge font-medium text-white"
                   style={{
                     width: `${q.data.completionPercent}%`,
                     minWidth: q.data.completionPercent > 0 ? '2rem' : 0,

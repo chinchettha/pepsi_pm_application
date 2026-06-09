@@ -1,5 +1,6 @@
 import { AnnouncementBanner } from '@/components/layout/AnnouncementBanner'
 import { AppNavShell } from '@/components/layout/AppNavShell'
+import { useShowPortalLink } from '@/lib/use-portal-modules'
 import { useAppNav } from '@/lib/use-app-nav'
 import { usePublicSettings } from '@/providers/SettingsProvider'
 import { ImpersonationBanner } from '@/components/layout/ImpersonationBanner'
@@ -65,6 +66,7 @@ export function AppShell() {
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn())
   const authUser = loggedIn ? getStoredAuthUser() : null
   const { entries: visibleNav, source: navSource } = useAppNav()
+  const showPortalLink = useShowPortalLink()
   const { settings } = usePublicSettings()
   const appTitle = settings?.appName?.trim() || 'PM Pepsi'
   const [commandOpen, setCommandOpen] = useState(false)
@@ -107,6 +109,7 @@ export function AppShell() {
         loggedIn={loggedIn}
         onOpenCommand={() => setCommandOpen(true)}
         onLogout={goLogout}
+        showPortalLink={showPortalLink}
         bannerSlot={bannerSlot}
         announcementSlot={<AnnouncementBanner />}
       >

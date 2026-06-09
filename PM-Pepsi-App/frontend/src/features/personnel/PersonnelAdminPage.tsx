@@ -12,6 +12,16 @@ import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { TelegramInviteDialog } from '@/components/telegram/TelegramInviteDialog'
 import { PersonnelAvatar } from '@/components/personnel/PersonnelAvatar'
 import { PageHeader } from '@/components/layout/PageHeader'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -77,6 +87,7 @@ import {
   AlertCircle,
   ImageIcon,
   KeyRound,
+  Loader2,
   Link2Off,
   Lock,
   LogIn,
@@ -226,6 +237,14 @@ type AdminDestructiveConfirm = {
   run: () => void | Promise<void>
 }
 
+type NativeAlertConfirm = {
+  title: string
+  description: string
+  actionLabel: string
+  destructive?: boolean
+  run: () => void | Promise<void>
+}
+
 export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPageProps) {
   const { t } = useTranslation('personnel')
   const { t: tc } = useTranslation('common')
@@ -247,6 +266,8 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   const [accountTab, setAccountTab] = useState<'workcenter' | 'member'>('workcenter')
   const [adminConfirm, setAdminConfirm] = useState<AdminDestructiveConfirm | null>(null)
   const [adminConfirmLoading, setAdminConfirmLoading] = useState(false)
+  const [nativeConfirm, setNativeConfirm] = useState<NativeAlertConfirm | null>(null)
+  const [nativeConfirmLoading, setNativeConfirmLoading] = useState(false)
   const [telegramInviteOpen, setTelegramInviteOpen] = useState(false)
   const [telegramInviteData, setTelegramInviteData] = useState<TelegramLinkTokenResponse | null>(
     null,
@@ -448,6 +469,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   const deleteMut = useMutation({
     mutationFn: (idwkctr: string) => apiDeletePersonnel(idwkctr),
     onSuccess: (_d, idwkctr) => {
+      setNativeConfirm(null)
       toast.success(t('admin.toast.deleted', { id: idwkctr }))
       qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'list'] })
     },
@@ -481,6 +503,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   const deleteImageMut = useMutation({
     mutationFn: (idwkctr: string) => deletePersonnelAdminImage(idwkctr),
     onSuccess: (_d, idwkctr) => {
+      setNativeConfirm(null)
       toast.message(t('admin.toast.imageRemoved', { id: idwkctr }))
       bumpImageVer(idwkctr)
       setForm((s) =>
@@ -725,7 +748,6 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                 type="button"
                 size="sm"
                 variant={photoFilter === 'missing' ? 'default' : 'outline'}
-                className={photoFilter === 'missing' ? 'bg-amber-600 hover:bg-amber-700' : ''}
                 onClick={() => setPhotoFilter((p) => (p === 'missing' ? 'all' : 'missing'))}
               >
                 {t('admin.filterNoPhoto')}
@@ -734,7 +756,6 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                 type="button"
                 size="sm"
                 variant={codeFilter === 'missing' ? 'default' : 'outline'}
-                className={codeFilter === 'missing' ? 'bg-violet-600 hover:bg-violet-700' : ''}
                 onClick={() => setCodeFilter((p) => (p === 'missing' ? 'all' : 'missing'))}
               >
                 {t('admin.filterNoWorkCntr')}
@@ -822,7 +843,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         ) : null}
 
         {filteredOutCount > 0 ? (
-          <div className="rounded-card border border-violet-300 bg-violet-50/80 px-4 py-3 text-body-sm text-violet-950">
+          <div className="app-tone-info rounded-card border px-4 py-3 text-body-sm">
             {t('admin.filterHiddenBanner', { count: filteredOutCount })}
           </div>
         ) : null}
@@ -911,9 +932,13 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                           })
                           return
                         }
-                        if (window.confirm(t('admin.confirm.deleteNative', { id: it.idwkctr }))) {
-                          deleteMut.mutate(it.idwkctr)
-                        }
+                        setNativeConfirm({
+                          title: t('admin.confirm.deleteTitle', { id: it.idwkctr }),
+                          description: t('admin.confirm.deleteNative', { id: it.idwkctr }),
+                          actionLabel: t('admin.table.delete'),
+                          destructive: true,
+                          run: () => deleteMut.mutate(it.idwkctr),
+                        })
                       }}
                       onResetPassword={() => {
                         const run = async () => {
@@ -931,15 +956,12 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                           })
                           return
                         }
-                        void (async () => {
-                          if (!window.confirm(t('admin.confirm.resetPasswordNative', { id: it.idwkctr })))
-                            return
-                          try {
-                            await run()
-                          } catch (e) {
-                            toast.error(e instanceof Error ? e.message : t('admin.toast.resetFailed'))
-                          }
-                        })()
+                        setNativeConfirm({
+                          title: t('admin.confirm.resetPasswordTitle'),
+                          description: t('admin.confirm.resetPasswordNative', { id: it.idwkctr }),
+                          actionLabel: t('admin.table.resetPassword'),
+                          run,
+                        })
                       }}
                       onLock={() => {
                         const run = async () => {
@@ -989,25 +1011,15 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                           })
                           return
                         }
-                        void (async () => {
-                          if (
-                            !window.confirm(
-                              t('admin.confirm.impersonateNative', {
-                                id: it.idwkctr,
-                                workCntr: it.wkctr,
-                              }),
-                            )
-                          ) {
-                            return
-                          }
-                          try {
-                            await run()
-                          } catch (e) {
-                            toast.error(
-                              e instanceof Error ? e.message : t('admin.toast.impersonateFailed'),
-                            )
-                          }
-                        })()
+                        setNativeConfirm({
+                          title: t('admin.confirm.impersonateTitle'),
+                          description: t('admin.confirm.impersonateNative', {
+                            id: it.idwkctr,
+                            workCntr: it.wkctr,
+                          }),
+                          actionLabel: t('admin.table.impersonate'),
+                          run,
+                        })
                       }}
                       onTelegramInvite={
                         showAdminActions
@@ -1087,7 +1099,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                           <div className="flex flex-wrap items-center gap-1">
                             <span>{m.status ?? '—'}</span>
                             {m.passMustChange ? (
-                              <Badge variant="outline" className="border-amber-400 text-amber-800">
+                              <Badge variant="outline" className="app-tone-warning-badge">
                                 {t('admin.table.mustChangePassword')}
                               </Badge>
                             ) : null}
@@ -1101,6 +1113,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                               onDone={() => void membersQ.refetch()}
                               onImpersonate={() => navigate('/')}
                               onRequestConfirm={setAdminConfirm}
+                              onRequestNativeConfirm={setNativeConfirm}
                             />
                           ) : null}
                         </TableCell>
@@ -1113,10 +1126,74 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
           </div>
         ) : null}
 
+      <AlertDialog
+        open={nativeConfirm != null}
+        onOpenChange={(open) => {
+          if (
+            !open &&
+            !nativeConfirmLoading &&
+            !deleteMut.isPending &&
+            !deleteImageMut.isPending
+          ) {
+            setNativeConfirm(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{nativeConfirm?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{nativeConfirm?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={
+                nativeConfirmLoading || deleteMut.isPending || deleteImageMut.isPending
+              }
+            >
+              {tc('actions.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant={nativeConfirm?.destructive ? 'destructive' : 'default'}
+              disabled={
+                !nativeConfirm ||
+                nativeConfirmLoading ||
+                deleteMut.isPending ||
+                deleteImageMut.isPending
+              }
+              onClick={(e) => {
+                e.preventDefault()
+                if (!nativeConfirm) return
+                void (async () => {
+                  setNativeConfirmLoading(true)
+                  try {
+                    await nativeConfirm.run()
+                    if (!deleteMut.isPending && !deleteImageMut.isPending) {
+                      setNativeConfirm(null)
+                    }
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error ? err.message : t('admin.toast.actionFailed'),
+                    )
+                  } finally {
+                    setNativeConfirmLoading(false)
+                  }
+                })()
+              }}
+            >
+              {nativeConfirmLoading || deleteMut.isPending || deleteImageMut.isPending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              ) : null}
+              {nativeConfirm?.actionLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {adminConfirm ? (
         <ConfirmPhraseDialog
           open
           onOpenChange={(open) => !open && setAdminConfirm(null)}
+          tone="danger"
           title={adminConfirm.title}
           description={adminConfirm.description}
           phrase={adminConfirm.phrase}
@@ -1460,11 +1537,13 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                   onPick={onPickImage}
                   uploading={imageMut.isPending}
                   onClear={() => {
-                    if (
-                      window.confirm(t('admin.photo.confirmDelete', { id: form.idwkctr }))
-                    ) {
-                      deleteImageMut.mutate(form.idwkctr)
-                    }
+                    setNativeConfirm({
+                      title: t('admin.photo.remove'),
+                      description: t('admin.photo.confirmDelete', { id: form.idwkctr }),
+                      actionLabel: t('admin.photo.remove'),
+                      destructive: true,
+                      run: () => deleteImageMut.mutate(form.idwkctr),
+                    })
                   }}
                   clearing={deleteImageMut.isPending}
                 />
@@ -1527,10 +1606,10 @@ function UserroleBadge({ role }: { role: PersonnelRole }) {
   const opt = userroleOptions.find((o) => o.value === normalized)
   const tone =
     normalized === 'admin'
-      ? 'bg-rose-50 text-rose-700 ring-rose-200'
+      ? 'app-tone-pill-danger-ring'
       : normalized === 'technician'
-        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-        : 'bg-blue-50 text-blue-700 ring-blue-200'
+        ? 'app-tone-pill-success-ring'
+        : 'app-tone-pill-info-ring'
   return (
     <span className={`inline-flex w-fit rounded-full px-2 py-1 text-xs font-medium ring-1 ${tone}`}>
       {opt?.label.split(' — ')[0] ?? normalized}
@@ -1544,12 +1623,14 @@ function MemberAdminActions({
   onDone,
   onImpersonate,
   onRequestConfirm,
+  onRequestNativeConfirm,
 }: {
   member: AdminMemberItem
   canImpersonate: boolean
   onDone: () => void
   onImpersonate: () => void
   onRequestConfirm?: (req: AdminDestructiveConfirm) => void
+  onRequestNativeConfirm?: (req: NativeAlertConfirm) => void
 }) {
   const { t } = useTranslation('personnel')
   const id = String(member.id)
@@ -1577,15 +1658,12 @@ function MemberAdminActions({
             })
             return
           }
-          void (async () => {
-            if (!window.confirm(t('admin.confirm.resetPasswordNative', { id: member.username })))
-              return
-            try {
-              await run()
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : t('admin.toast.resetFailed'))
-            }
-          })()
+          onRequestNativeConfirm?.({
+            title: t('admin.confirm.resetPasswordTitle'),
+            description: t('admin.confirm.resetPasswordNative', { id: member.username }),
+            actionLabel: t('admin.table.resetPassword'),
+            run,
+          })
         }}
       >
         <KeyRound className="size-3.5" />
@@ -1654,15 +1732,12 @@ function MemberAdminActions({
               })
               return
             }
-            void (async () => {
-              if (!window.confirm(t('admin.confirm.impersonateNative', { id: member.username })))
-                return
-              try {
-                await run()
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : t('admin.toast.impersonateFailed'))
-              }
-            })()
+            onRequestNativeConfirm?.({
+              title: t('admin.members.impersonateTitle'),
+              description: t('admin.members.impersonateDesc', { username: member.username }),
+              actionLabel: t('admin.table.impersonate'),
+              run,
+            })
           }}
         >
           <LogIn className="size-3.5" />
@@ -1752,7 +1827,7 @@ function PersonnelRow({
         <div className="flex flex-col gap-1">
           <span className="font-mono text-xs font-semibold">{workCntr || '—'}</span>
           {isMissingEngWkctrCode(it.wkctr, it) ? (
-            <Badge variant="outline" className="w-fit border-violet-400 text-violet-800">
+            <Badge variant="outline" className="app-tone-info-outline-badge w-fit">
               {t('admin.table.noWorkCntr')}
             </Badge>
           ) : null}
@@ -1767,7 +1842,7 @@ function PersonnelRow({
           <UserroleBadge role={it.userrole} />
           <span className="text-caption">{t('admin.table.userSt', { code: it.userst })}</span>
           {it.passMustChange ? (
-            <Badge variant="outline" className="w-fit border-amber-400 text-amber-800">
+            <Badge variant="outline" className="app-tone-warning-badge w-fit">
               {t('admin.table.mustChangePassword')}
             </Badge>
           ) : null}
@@ -1777,7 +1852,7 @@ function PersonnelRow({
         <div className="flex flex-col gap-1">
           <WorkstatusBadge code={it.workstatus} info={workstatusInfo} />
           {it.telegramChatId ? (
-            <Badge className="w-fit bg-emerald-600 text-badge" title={it.telegramUsername ?? undefined}>
+            <Badge className="app-tone-success-fill w-fit text-badge" title={it.telegramUsername ?? undefined}>
               {t('admin.table.telegramLinked')}
             </Badge>
           ) : null}
@@ -1968,7 +2043,7 @@ function ImagePanel({
         )}
         <div className="flex-1 space-y-2">
           {!isEdit ? (
-            <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            <div className="app-tone-warning-callout rounded border p-3 text-xs">
               {t('admin.photo.saveFirst')}
             </div>
           ) : null}

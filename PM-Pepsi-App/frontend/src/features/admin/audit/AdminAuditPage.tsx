@@ -3,6 +3,16 @@ import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -99,6 +109,7 @@ export function AdminAuditPage() {
   const [applied, setApplied] = useState<AuditFilters>(() => defaultAuditFilters())
   const [diffRow, setDiffRow] = useState<AuditLogItem | null>(null)
   const [cleanupDate, setCleanupDate] = useState('')
+  const [cleanupOpen, setCleanupOpen] = useState(false)
   const [cachedRows, setCachedRows] = useState<AuditLogItem[] | null>(null)
   const [cachedTotal, setCachedTotal] = useState<number | null>(null)
   const [cacheLoadedKey, setCacheLoadedKey] = useState<string | null>(null)
@@ -137,6 +148,7 @@ export function AdminAuditPage() {
   const cleanupMut = useMutation({
     mutationFn: (olderThan: string) => deleteAuditOlderThan(olderThan),
     onSuccess: (deleted) => {
+      setCleanupOpen(false)
       toast.success(t('audit.purgedRows', { count: deleted }))
       void listQ.refetch()
     },
@@ -404,12 +416,7 @@ export function AdminAuditPage() {
                 disabled={!cleanupDate || cleanupMut.isPending}
                 onClick={() => {
                   if (!cleanupDate) return
-                  if (
-                    !window.confirm(t('audit.cleanupConfirmFull', { date: cleanupDate }))
-                  ) {
-                    return
-                  }
-                  cleanupMut.mutate(cleanupDate)
+                  setCleanupOpen(true)
                 }}
               >
                 {cleanupMut.isPending ? (
@@ -546,6 +553,41 @@ export function AdminAuditPage() {
             )}
           </div>
         )}
+
+      <AlertDialog
+        open={cleanupOpen}
+        onOpenChange={(open) => {
+          if (!open && !cleanupMut.isPending) setCleanupOpen(false)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('audit.cleanupBtn')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cleanupDate ? t('audit.cleanupConfirmFull', { date: cleanupDate }) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cleanupMut.isPending}>{tc('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={cleanupMut.isPending || !cleanupDate}
+              onClick={(e) => {
+                e.preventDefault()
+                if (!cleanupDate) return
+                cleanupMut.mutate(cleanupDate)
+              }}
+            >
+              {cleanupMut.isPending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              ) : (
+                <Trash2 className="mr-2 size-4" aria-hidden />
+              )}
+              {t('audit.cleanupBtn')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={diffRow != null} onOpenChange={(open) => !open && setDiffRow(null)}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">

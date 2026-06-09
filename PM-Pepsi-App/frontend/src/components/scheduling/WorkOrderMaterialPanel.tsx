@@ -68,11 +68,11 @@ function MetaChip({
 }) {
   if (!value.trim()) return null
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-button border border-violet-200/70 app-surface-panel--soft px-2.5 py-1.5">
-      <Icon className="size-3.5 shrink-0 text-violet-700" aria-hidden />
+    <div className="app-tone-info-tile flex min-w-0 items-center gap-2 rounded-button border app-surface-panel--soft px-2.5 py-1.5">
+      <Icon className="app-tone-info-icon size-3.5 shrink-0" aria-hidden />
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-800/65">{label}</p>
-        <p className="truncate text-xs font-medium text-violet-950">{value}</p>
+        <p className="app-tone-info-label text-[10px] font-semibold uppercase tracking-wide">{label}</p>
+        <p className="app-tone-info-strong truncate text-xs font-medium">{value}</p>
       </div>
     </div>
   )
@@ -95,13 +95,13 @@ function MaterialItemCard({
       variants={reduceMotion ? undefined : cardVariants}
       className="group"
     >
-      <article className="overflow-hidden rounded-card border border-violet-200/75 bg-[var(--app-surface)] shadow-sm transition-all duration-200 hover:border-violet-300/90 hover:shadow-md">
+      <article className="app-tone-info-card-border app-tone-info-card-border-hover overflow-hidden rounded-card border bg-[var(--app-surface)] shadow-sm transition-all duration-200 hover:shadow-md">
         <div className="flex items-stretch">
-          <div className="w-1 shrink-0 bg-violet-500" aria-hidden />
+          <div className="app-tone-info-card-strip w-1 shrink-0" aria-hidden />
           <div className="min-w-0 flex-1 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-sm font-bold text-violet-900">
+                <span className="app-tone-info-card-index flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold">
                   {index + 1}
                 </span>
                 <div className="min-w-0">
@@ -114,11 +114,11 @@ function MaterialItemCard({
                   </p>
                 </div>
               </div>
-              <div className="rounded-xl border border-violet-200/80 bg-violet-50/80 px-3 py-2 text-right">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-800/70">
+              <div className="app-tone-info-stat-box rounded-xl border px-3 py-2 text-right">
+                <p className="app-tone-info-label text-[10px] font-semibold uppercase tracking-wide">
                   {t('woMaterial.amountLc')}
                 </p>
-                <p className="text-lg font-bold tabular-nums text-violet-950">
+                <p className="app-tone-info-strong text-lg font-bold tabular-nums">
                   {formatAmount(item.amountinlc)}
                 </p>
               </div>
@@ -163,21 +163,21 @@ export function WorkOrderMaterialPanel({ materials }: Props) {
       <SchedulingPageSection index={0}>
         <motion.div
           layout={!reduceMotion}
-          className="overflow-hidden rounded-card border border-violet-200/90 bg-gradient-to-br from-violet-50 via-[var(--app-surface)] to-[color-mix(in_srgb,var(--app-accent)_4%,var(--app-surface))] p-4 shadow-[var(--app-shadow-card)]"
+          className="app-tone-info-hero rounded-card border p-4 shadow-[var(--app-shadow-card)]"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wider text-violet-800/70">
+              <p className="app-tone-info-eyebrow text-xs font-semibold uppercase tracking-wider">
                 {t('woMaterial.heroTitle')}
               </p>
               <p className="mt-0.5 text-body-sm text-app-muted">{t('woMaterial.heroDesc')}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-600/10 px-3 py-1 text-xs font-semibold text-violet-900">
+              <span className="app-tone-info-badge inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
                 <Package className="size-3.5" aria-hidden />
                 {t('woMaterial.itemCount', { count: stats.count })}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-600/10 px-3 py-1 text-xs font-semibold text-violet-900">
+              <span className="app-tone-info-badge inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
                 <Coins className="size-3.5" aria-hidden />
                 {t('woMaterial.totalLc', { amount: formatAmount(stats.totalAmount) })}
               </span>

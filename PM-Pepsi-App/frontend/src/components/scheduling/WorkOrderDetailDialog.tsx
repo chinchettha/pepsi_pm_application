@@ -26,7 +26,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  SchedulingWoTabsList,
+  WoModalTabFade,
+  woTabTriggerClass,
+} from '@/components/scheduling/SchedulingWoTabs'
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
 import {
   deleteConfirmationClose,
   deleteConfirmationComment,
@@ -95,6 +100,22 @@ function epochToIsoDate(sec: number): string {
 function epochToTime(sec: number): string {
   const d = new Date(sec * 1000)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function WoModalTabSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn('space-y-3', className)}
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <Skeleton className="h-20 w-full rounded-card" />
+      <Skeleton className="h-32 w-full rounded-card" />
+      <Skeleton className="h-10 w-3/4 max-w-sm rounded-button" />
+      <Skeleton className="h-10 w-full rounded-button" />
+    </div>
+  )
 }
 
 export function WorkOrderDetailDialog({
@@ -369,11 +390,11 @@ export function WorkOrderDetailDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
+          size={dialogExpanded ? 'full' : 'lg'}
           className={cn(
-            'flex max-h-[min(92dvh,900px)] flex-col gap-0 overflow-hidden p-0 transition-[width,max-width] duration-200',
-            dialogExpanded
-              ? 'w-[min(100vw-0.5rem,64rem)] sm:max-w-[64rem]'
-              : 'w-[min(100vw-1rem,42rem)] sm:max-w-2xl',
+            'flex flex-col gap-0 overflow-hidden p-0 transition-[width,max-width,max-height] duration-200',
+            'max-sm:fixed max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none',
+            'sm:max-h-[min(92dvh,900px)]',
           )}
         >
           <button
@@ -412,6 +433,8 @@ export function WorkOrderDetailDialog({
                       ) : null}
                     </span>
                   )
+                ) : detailQ.isLoading ? (
+                  <Skeleton className="h-6 w-56 max-w-full" />
                 ) : (
                   t('woDialog.title')
                 )}
@@ -421,7 +444,9 @@ export function WorkOrderDetailDialog({
               </DialogDescription>
             </DialogHeader>
 
-            {d?.workflow && !assignedLayout ? (
+            {detailQ.isLoading && !d && !assignedLayout ? (
+              <Skeleton className="h-10 w-full max-w-lg rounded-card" />
+            ) : d?.workflow && !assignedLayout ? (
               <WorkOrderWorkflowSteps
                 steps={d.workflow.steps}
                 suffix={d.workflow.suffix}
@@ -430,100 +455,103 @@ export function WorkOrderDetailDialog({
             ) : null}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {showPostCloseReview && d && !assignedLayout ? (
-            <div className="mb-4 overflow-hidden rounded-card border border-emerald-200/90 bg-gradient-to-r from-emerald-50 to-teal-50/70 p-3 shadow-sm">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-800/80">
-                {t('woDialog.postCloseReview')}
-              </p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="h-auto flex-col gap-1 py-2.5 shadow-sm"
-                  onClick={() => openConfirmSubview('personnel-close')}
-                >
-                  <span className="text-lg font-bold tabular-nums">{personnelCount}</span>
-                  <span className="text-xs">{t('woDialog.personnelTime')}</span>
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="h-auto flex-col gap-1 py-2.5 shadow-sm"
-                  onClick={() => openConfirmSubview('close')}
-                >
-                  <span className="text-lg font-bold tabular-nums">{supervisorCloseCount}</span>
-                  <span className="text-xs">{t('woDialog.closeTime')}</span>
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="h-auto flex-col gap-1 py-2.5 shadow-sm"
-                  onClick={() => openConfirmSubview('images')}
-                >
-                  <span className="text-lg font-bold tabular-nums">{imageCount}</span>
-                  <span className="text-xs">{t('woDialog.closeImages')}</span>
-                </Button>
-                <Button type="button" size="sm" variant="outline" className="h-auto py-2.5 shadow-sm" asChild>
-                  <Link
-                    to="/confirmation"
-                    state={{ wkorder: d.wkorder }}
-                    onClick={() => onOpenChange(false)}
+            <div className="shrink-0 border-b border-app/60 px-4 py-3 sm:px-6">
+              <div className="app-tone-success-banner rounded-card border p-3 shadow-sm">
+                <p className="app-tone-success-label mb-2 text-xs font-semibold uppercase tracking-wide">
+                  {t('woDialog.postCloseReview')}
+                </p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-auto flex-col gap-1 py-2.5 shadow-sm"
+                    onClick={() => openConfirmSubview('personnel-close')}
                   >
-                    {t('woDialog.exportConfirmation')}
-                  </Link>
-                </Button>
+                    <span className="text-lg font-bold tabular-nums">{personnelCount}</span>
+                    <span className="text-xs">{t('woDialog.personnelTime')}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-auto flex-col gap-1 py-2.5 shadow-sm"
+                    onClick={() => openConfirmSubview('close')}
+                  >
+                    <span className="text-lg font-bold tabular-nums">{supervisorCloseCount}</span>
+                    <span className="text-xs">{t('woDialog.closeTime')}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-auto flex-col gap-1 py-2.5 shadow-sm"
+                    onClick={() => openConfirmSubview('images')}
+                  >
+                    <span className="text-lg font-bold tabular-nums">{imageCount}</span>
+                    <span className="text-xs">{t('woDialog.closeImages')}</span>
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" className="h-auto py-2.5 shadow-sm" asChild>
+                    <Link
+                      to="/confirmation"
+                      state={{ wkorder: d.wkorder }}
+                      onClick={() => onOpenChange(false)}
+                    >
+                      {t('woDialog.exportConfirmation')}
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           ) : null}
 
-          {detailQ.isLoading ? (
-            <Skeleton className="h-48 w-full" />
-          ) : detailQ.isError ? (
-            <p className="text-body-sm text-red-600">{(detailQ.error as Error).message}</p>
-          ) : d ? (
+          {detailQ.isError && !d ? (
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+              <p className="text-body-sm text-red-600">{(detailQ.error as Error).message}</p>
+            </div>
+          ) : (
             <Tabs
               key={orderId}
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as MainTab)}
-              className="w-full"
+              className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col"
             >
-              <TabsList className="app-tabs-scroll flex h-auto w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto">
+              <div className="z-10 shrink-0 border-b border-app/70 bg-[var(--app-surface)] px-4 py-2 sm:px-6">
+                <SchedulingWoTabsList activeValue={activeTab}>
                 {assignedLayout ? (
                   <>
-                    <TabsTrigger value="task-list" className="shrink-0">
+                    <TabsTrigger value="task-list" className={woTabTriggerClass}>
                       {t('woDialog.tabTask')}
                     </TabsTrigger>
-                    <TabsTrigger value="planning" className="shrink-0">
+                    <TabsTrigger value="planning" className={woTabTriggerClass}>
                       {t('woDialog.tabPlanning')}
                     </TabsTrigger>
-                    <TabsTrigger value="confirm" className="shrink-0">
+                    <TabsTrigger value="confirm" className={woTabTriggerClass}>
                       {t('woDialog.tabCloseWo')}
                     </TabsTrigger>
                   </>
                 ) : (
                   <>
-                <TabsTrigger value="work-order" className="shrink-0">
+                <TabsTrigger value="work-order" className={woTabTriggerClass}>
                   {t('woDialog.tabWorkOrder')}
                 </TabsTrigger>
-                <TabsTrigger value="task-list" className="shrink-0">
+                <TabsTrigger value="task-list" className={woTabTriggerClass}>
                   {t('woDialog.tabTaskList')}
                 </TabsTrigger>
-                <TabsTrigger value="machine" className="shrink-0">
+                <TabsTrigger value="machine" className={woTabTriggerClass}>
                   {t('woDialog.tabMachine')}
                 </TabsTrigger>
                 {canPlan ? (
-                  <TabsTrigger value="planning" className="shrink-0">
+                  <TabsTrigger value="planning" className={woTabTriggerClass}>
                     {t('woDialog.tabPlanning')}
                   </TabsTrigger>
                 ) : null}
-                <TabsTrigger value="material" className="shrink-0">
+                <TabsTrigger value="material" className={woTabTriggerClass}>
                   {t('woDialog.tabMaterial')}
                 </TabsTrigger>
-                <TabsTrigger value="confirm" className="shrink-0 gap-2">
+                <TabsTrigger value="confirm" className={cn(woTabTriggerClass, 'gap-2')}>
                   {t('woDialog.tabConfirm')}
                   {showPostCloseReview ? (
                     <Badge variant="secondary" className="h-5 px-2 text-badge">
@@ -535,77 +563,93 @@ export function WorkOrderDetailDialog({
                 </TabsTrigger>
                   </>
                 )}
-              </TabsList>
+                </SchedulingWoTabsList>
+              </div>
 
-              <TabsContent value="work-order" className="mt-4">
-                <WorkOrderSummaryPanel
-                  order={d}
-                  teamPending={teamMut.isPending}
-                  canEditTeam={canEditTeam}
-                  onTeamChange={(team) => teamMut.mutate(team)}
-                  onMovePlan={d.canMovePlan ? () => setMoveOpen(true) : undefined}
-                />
-              </TabsContent>
-
-              <TabsContent value="task-list" className="mt-4">
-                {modalQ.isLoading ? (
-                  <Skeleton className="h-48 w-full rounded-card" />
-                ) : modalQ.isError ? (
-                  <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
-                ) : modalQ.data ? (
-                  <div className="space-y-4">
-                    {orderId ? (
-                      <WorkOrderPmCommentSection
-                        orderId={orderId}
-                        wkorderLabel={d?.wkorder}
-                        pmExecution={modalQ.data.pmExecution}
-                        onSaved={() => void modalQ.refetch()}
-                      />
-                    ) : null}
-                    <WorkOrderTaskListPanel
-                      taskList={modalQ.data.taskList}
-                      orderId={orderId ?? undefined}
-                      pmExecution={modalQ.data.pmExecution}
-                      onPmSaved={() => void modalQ.refetch()}
+              <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
+              <TabsContent value="work-order" className="mt-0">
+                <WoModalTabFade>
+                  {detailQ.isLoading && !d ? (
+                    <WoModalTabSkeleton />
+                  ) : d ? (
+                    <WorkOrderSummaryPanel
+                      order={d}
+                      teamPending={teamMut.isPending}
+                      canEditTeam={canEditTeam}
+                      onTeamChange={(team) => teamMut.mutate(team)}
+                      onMovePlan={d.canMovePlan ? () => setMoveOpen(true) : undefined}
                     />
-                    {assignedLayout && typeof idiw37 === 'number' ? (
-                      <ConfirmationImagesPanel
-                        idiw37={idiw37}
-                        enabled={open && activeTab === 'task-list'}
-                        readOnly={!canConfirmWrite}
+                  ) : null}
+                </WoModalTabFade>
+              </TabsContent>
+
+              <TabsContent value="task-list" className="mt-0">
+                <WoModalTabFade>
+                  {modalQ.isLoading && !modalQ.data ? (
+                    <WoModalTabSkeleton />
+                  ) : modalQ.isError ? (
+                    <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+                  ) : modalQ.data ? (
+                    <div className="space-y-4">
+                      {orderId ? (
+                        <WorkOrderPmCommentSection
+                          orderId={orderId}
+                          wkorderLabel={d?.wkorder}
+                          pmExecution={modalQ.data.pmExecution}
+                          onSaved={() => void modalQ.refetch()}
+                        />
+                      ) : null}
+                      <WorkOrderTaskListPanel
+                        taskList={modalQ.data.taskList}
+                        orderId={orderId ?? undefined}
+                        pmExecution={modalQ.data.pmExecution}
+                        onPmSaved={() => void modalQ.refetch()}
                       />
-                    ) : null}
-                  </div>
-                ) : null}
+                      {assignedLayout && typeof idiw37 === 'number' ? (
+                        <ConfirmationImagesPanel
+                          idiw37={idiw37}
+                          enabled={open && activeTab === 'task-list'}
+                          readOnly={!canConfirmWrite}
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+                </WoModalTabFade>
               </TabsContent>
 
-              <TabsContent value="machine" className="mt-4">
-                {modalQ.isLoading ? (
-                  <Skeleton className="h-48 w-full rounded-card" />
-                ) : modalQ.isError ? (
-                  <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
-                ) : modalQ.data ? (
-                  <WorkOrderMachinePanel
-                    machine={modalQ.data.machine}
-                    referenceDate={modalQ.data.date}
-                  />
-                ) : null}
+              <TabsContent value="machine" className="mt-0">
+                <WoModalTabFade>
+                  {modalQ.isLoading && !modalQ.data ? (
+                    <WoModalTabSkeleton />
+                  ) : modalQ.isError ? (
+                    <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+                  ) : modalQ.data ? (
+                    <WorkOrderMachinePanel
+                      machine={modalQ.data.machine}
+                      referenceDate={modalQ.data.date}
+                    />
+                  ) : null}
+                </WoModalTabFade>
               </TabsContent>
 
-              <TabsContent value="planning" className="space-y-3 text-body-sm">
-                {assignedLayout && !canPlan ? (
-                  <p className="rounded-card border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-body-sm text-amber-950">
+              <TabsContent value="planning" className="mt-0 space-y-3 text-body-sm">
+                <WoModalTabFade>
+                {detailQ.isLoading && !d ? (
+                  <WoModalTabSkeleton />
+                ) : null}
+                {d && assignedLayout && !canPlan ? (
+                  <p className="app-tone-warning-callout rounded-card border px-3 py-2 text-body-sm">
                     {t('woDialog.readOnlyPlanning')}
                   </p>
                 ) : null}
-                {modalQ.data?.date ? (
+                {d && modalQ.data?.date ? (
                   <p className="rounded-card border border-teal-200/70 bg-teal-50/60 px-3 py-2 text-xs text-teal-950">
                     {t('woDialog.availableHour', { date: modalQ.data.date })}
                   </p>
                 ) : null}
-                {!canPlan && !assignedLayout ? (
+                {d && !canPlan && !assignedLayout ? (
                   <p className="text-app-muted">{t('woDialog.noPlanPermission')}</p>
-                ) : (
+                ) : d ? (
                   <>
                     <div className="rounded-card border border-app bg-[var(--app-surface)] p-3">
                       <p className="font-medium text-app">{t('woDialog.planningWork')}</p>
@@ -648,17 +692,17 @@ export function WorkOrderDetailDialog({
                       </Button>
                     ) : null}
 
-                    {modalQ.isLoading ? (
-                      <Skeleton className="h-48 w-full" />
+                    {modalQ.isLoading && !modalQ.data ? (
+                      <WoModalTabSkeleton />
                     ) : modalQ.isError ? (
                       <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
                     ) : modalQ.data ? (
                       <>
                         <div className="space-y-4">
-                          <div className="rounded-card border border-emerald-200 bg-emerald-50 p-3">
+                          <div className="app-tone-success-panel rounded-card border p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-medium text-emerald-900">
+                                <p className="app-tone-success-strong font-medium">
                                   {t('woDialog.individualAssignees')}
                                 </p>
                                 {personAssignees.length > 0 ? (
@@ -685,13 +729,13 @@ export function WorkOrderDetailDialog({
                               ) : null}
                             </div>
                             {personAssignees.length === 0 ? (
-                              <p className="mt-2 text-body-sm text-emerald-900/80">
+                              <p className="app-tone-success-label mt-2 text-body-sm">
                                 {t('woDialog.noIndividualAssign')}
                               </p>
                             ) : (
-                              <div className="mt-3 overflow-auto rounded-button border border-emerald-200/80 app-surface-panel">
+                              <div className="app-tone-success-stat mt-3 overflow-auto rounded-button border app-surface-panel">
                                 <table className="min-w-full text-body-sm">
-                                  <thead className="bg-emerald-100/80 text-emerald-950">
+                                  <thead className="app-tone-success-table-head">
                                     <tr>
                                       <th className="px-3 py-2 text-left">{t('woDialog.techCode')}</th>
                                       <th className="px-3 py-2 text-left">{t('woDialog.fullName')}</th>
@@ -712,7 +756,7 @@ export function WorkOrderDetailDialog({
                                         <td className="px-3 py-2">{a.position || '—'}</td>
                                         <td className="px-3 py-2">
                                           {a.ackStatus === 'acknowledged' ? (
-                                            <Badge className="bg-emerald-600 text-badge">
+                                            <Badge className="app-tone-success-fill text-badge">
                                               {t('woDialog.ackDone')}
                                             </Badge>
                                           ) : a.ackStatus === 'pending' ? (
@@ -853,24 +897,30 @@ export function WorkOrderDetailDialog({
                       </>
                     ) : null}
                   </>
-                )}
-              </TabsContent>
-
-              <TabsContent value="material" className="mt-4">
-                {modalQ.isLoading ? (
-                  <Skeleton className="h-48 w-full rounded-card" />
-                ) : modalQ.isError ? (
-                  <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
-                ) : modalQ.data ? (
-                  <WorkOrderMaterialPanel materials={modalQ.data.materials} />
                 ) : null}
+                </WoModalTabFade>
               </TabsContent>
 
-              <TabsContent value="confirm" className="mt-4">
-                {assignedLayout ? (
+              <TabsContent value="material" className="mt-0">
+                <WoModalTabFade>
+                  {modalQ.isLoading && !modalQ.data ? (
+                    <WoModalTabSkeleton />
+                  ) : modalQ.isError ? (
+                    <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+                  ) : modalQ.data ? (
+                    <WorkOrderMaterialPanel materials={modalQ.data.materials} />
+                  ) : null}
+                </WoModalTabFade>
+              </TabsContent>
+
+              <TabsContent value="confirm" className="mt-0">
+                <WoModalTabFade>
+                {detailQ.isLoading && !d ? (
+                  <WoModalTabSkeleton />
+                ) : !d ? null : assignedLayout ? (
                   <div className="space-y-4">
                     {!canConfirmWrite ? (
-                      <p className="rounded-card border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-body-sm text-amber-950">
+                      <p className="app-tone-warning-callout rounded-card border px-3 py-2 text-body-sm">
                         {t('woDialog.readOnlyCloseWo')}
                       </p>
                     ) : null}
@@ -1025,9 +1075,11 @@ export function WorkOrderDetailDialog({
                   }
                 />
                 )}
+                </WoModalTabFade>
               </TabsContent>
+              </div>
             </Tabs>
-          ) : null}
+          )}
           </div>
         </DialogContent>
       </Dialog>

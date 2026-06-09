@@ -926,7 +926,7 @@ function EquipmentPanel() {
             placeholder={'EQ0001,Sample Equipment,,,L,1,EA'}
           />
           {importMut.isSuccess ? (
-            <p className="text-body-sm text-emerald-700">
+            <p className="text-body-sm app-tone-success-icon">
               Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed} · Skipped {importMut.data.skipped}
             </p>
           ) : null}
@@ -1275,7 +1275,7 @@ function FunctionalPanel() {
             placeholder={'7151-PL01,Product line 01,'}
           />
           {importMut.isSuccess ? (
-            <p className="text-body-sm text-emerald-700">
+            <p className="text-body-sm app-tone-success-icon">
               Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed} · Skipped {importMut.data.skipped}
             </p>
           ) : null}
@@ -2814,7 +2814,7 @@ function TasklistPanel() {
                 data-tasklist-id={row.idtasklist}
                 className={
                   open && editing?.idtasklist === row.idtasklist
-                    ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-300'
+                    ? 'app-tone-warning-highlight-row'
                     : undefined
                 }
               >
@@ -2894,7 +2894,7 @@ function TasklistPanel() {
             <div className="text-xs text-app-muted">Or paste CSV</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'TYPE 01,ZONE 01,MACHINE-01,PLAN-01,TASK-01,LEGACY-01,M/C,PM-01,7,0,10,2,1,ACT,80,MP,0,GLS,MENT,0,PLAN'} />
-          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
           {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>
@@ -3362,7 +3362,7 @@ function LineProductPanel() {
             <div className="text-xs text-app-muted">Or paste CSV: productline,prolinedescrip</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'PL01,Product line 01'} />
-          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
           {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
@@ -3639,7 +3639,7 @@ function LineSchdulPanel() {
             <div className="text-xs text-app-muted">Or paste CSV: productline,lineday(DD.MM.YYYY),uptime,linereason</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'PL01,18.05.2026,4,Close'} />
-          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
           {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>
@@ -3894,7 +3894,7 @@ function ZonePanel() {
             <div className="text-xs text-app-muted">Or paste CSV: zone,zonedescrip,productline</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'ZONE 01,Zone description,PL01'} />
-          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
           {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
@@ -4112,7 +4112,7 @@ function MachinePanel() {
             <div className="text-xs text-app-muted">Or paste CSV: machine,zone,wkctrtype</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'MACHINE-01,ZONE 01,Type 01'} />
-          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
           {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
@@ -4384,7 +4384,7 @@ function MaterialPanel() {
             <div className="text-xs text-app-muted">Or paste CSV (same column order as legacy export)</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'4000001,,, ,18.05.2026,,Material desc,1,EA,100,THB,2610,,2026,MAT01'} />
-          {importMut.isSuccess ? <p className="text-body-sm text-emerald-700">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
+          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
           {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
@@ -4628,7 +4628,7 @@ export function MasterDataPage() {
 
       <AppPageContent className="scheduling-page pb-8">
         {!canWrite ? (
-          <AppCard pad="compact" className="mb-4 border-amber-200/80 bg-amber-50/60 text-body-sm text-amber-950">
+          <AppCard pad="compact" className="app-tone-warning-callout mb-4 border text-body-sm">
             {t('page.readOnly')} <code className="text-xs">master-data.write</code>
           </AppCard>
         ) : null}

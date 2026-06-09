@@ -66,9 +66,9 @@ function QcStatusBadge({ status }: { status: string | null }) {
   const { t } = useTranslation('personnel')
   if (!status) return null
   const map: Record<string, string> = {
-    pending: 'bg-amber-100 text-amber-900 ring-amber-200',
-    approved: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
-    rejected: 'bg-red-100 text-red-800 ring-red-200',
+    pending: 'app-tone-pill-warning-ring',
+    approved: 'app-tone-pill-success-ring',
+    rejected: 'app-tone-pill-danger-ring',
   }
   const label =
     status === 'pending'
@@ -89,11 +89,11 @@ function ProgressBar({ percent }: { percent: number }) {
   const safe = Math.max(0, Math.min(100, Math.round(percent || 0)))
   const color =
     safe >= 100
-      ? 'bg-emerald-600'
+      ? 'app-tone-success-fill'
       : safe >= 60
-        ? 'bg-blue-600'
+        ? 'app-tone-info-progress'
         : safe > 0
-          ? 'bg-amber-500'
+          ? 'app-tone-warning-fill'
           : 'bg-[var(--app-border)]'
   return (
     <div
@@ -113,9 +113,9 @@ function ProgressBar({ percent }: { percent: number }) {
 function SystBadge({ syst }: { syst: string | null }) {
   if (!syst) return <span className="text-xs text-app-muted">—</span>
   const map: Record<string, string> = {
-    CRTD: 'bg-amber-100 text-amber-800 ring-amber-200',
-    REL: 'bg-blue-100 text-blue-800 ring-blue-200',
-    TECO: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+    CRTD: 'app-tone-pill-warning-ring',
+    REL: 'app-tone-pill-info-ring',
+    TECO: 'app-tone-pill-success-ring',
     COMP: 'bg-app-muted text-app ring-app',
   }
   const cls = map[syst] ?? 'bg-app-muted text-app ring-app'
@@ -269,21 +269,21 @@ export function PersonnelConfirmPage() {
             label={t('confirm.summary.fullyClosed')}
             value={summary?.fullyClosed ?? 0}
             icon={CheckCircle2}
-            tone="emerald"
+            tone="success"
             isLoading={listQ.isLoading}
           />
           <SummaryCard
             label={t('confirm.summary.inProgress')}
             value={summary?.inProgress ?? 0}
             icon={Users}
-            tone="blue"
+            tone="info"
             isLoading={listQ.isLoading}
           />
           <SummaryCard
             label={t('confirm.summary.notStarted')}
             value={summary?.notStarted ?? 0}
             icon={CircleDashed}
-            tone="amber"
+            tone="warning"
             isLoading={listQ.isLoading}
           />
         </div>
@@ -410,7 +410,7 @@ export function PersonnelConfirmPage() {
                   items.map((it) => (
                     <TableRow
                       key={it.idiw37}
-                      className={selectedIds.has(it.idiw37) ? 'bg-emerald-50/40' : undefined}
+                      className={selectedIds.has(it.idiw37) ? 'app-tone-success-row-selected' : undefined}
                     >
                       <TableCell>
                         <input
@@ -521,14 +521,14 @@ function SummaryCard({
   label: string
   value: number
   icon: typeof Users
-  tone: 'neutral' | 'emerald' | 'blue' | 'amber'
+  tone: 'neutral' | 'success' | 'info' | 'warning'
   isLoading: boolean
 }) {
   const toneMap: Record<typeof tone, string> = {
     neutral: 'bg-app-muted text-app',
-    emerald: 'bg-emerald-100 text-emerald-700',
-    blue: 'bg-blue-100 text-blue-700',
-    amber: 'bg-amber-100 text-amber-700',
+    success: 'app-tone-pill-success',
+    info: 'app-tone-pill-info',
+    warning: 'app-tone-pill-warning',
   }
   return (
     <AppCard pad="compact">

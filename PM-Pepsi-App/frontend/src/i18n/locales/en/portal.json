@@ -1,0 +1,31 @@
+{
+  "title": "Select application",
+  "subtitle": "Choose a system you are authorized to use",
+  "welcome": "Hello, {{name}}",
+  "comingSoon": "Coming soon",
+  "noModules": {
+    "title": "No applications available",
+    "description": "Your account has no module access. Please contact an administrator.",
+    "openSettings": "Profile & settings"
+  },
+  "backToPortal": "Portal",
+  "openModule": "Open {{name}}",
+  "openCta": "Open application",
+  "modules": {
+    "pm": {
+      "title": "PM Maintenance",
+      "description": "Planning · work orders · confirmation · calendar"
+    },
+    "store": {
+      "title": "Spare Parts Store",
+      "description": "Issue parts and materials for repair and PM work"
+    },
+    "repair": {
+      "title": "Repair Request",
+      "description": "Submit and track repair requests"
+    }
+  },
+  "toast": {
+    "comingSoon": "{{name}} is under development"
+  }
+}

@@ -8,12 +8,14 @@ export function EmptyState({
   title,
   description,
   action,
+  secondaryAction,
   className,
 }: {
   icon?: LucideIcon
   title: ReactNode
   description?: ReactNode
-  action?: { label: string; onClick: () => void }
+  action?: { label: string; onClick: () => void; variant?: 'default' | 'outline' }
+  secondaryAction?: { label: string; onClick: () => void; variant?: 'default' | 'outline' }
   className?: string
 }) {
   return (
@@ -30,10 +32,29 @@ export function EmptyState({
         <p className="text-body-sm font-medium text-app">{title}</p>
         {description ? <p className="text-caption text-app-muted">{description}</p> : null}
       </div>
-      {action ? (
-        <Button type="button" variant="outline" size="sm" onClick={action.onClick}>
-          {action.label}
-        </Button>
+      {action || secondaryAction ? (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {action ? (
+            <Button
+              type="button"
+              variant={action.variant ?? 'default'}
+              size="sm"
+              onClick={action.onClick}
+            >
+              {action.label}
+            </Button>
+          ) : null}
+          {secondaryAction ? (
+            <Button
+              type="button"
+              variant={secondaryAction.variant ?? 'outline'}
+              size="sm"
+              onClick={secondaryAction.onClick}
+            >
+              {secondaryAction.label}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   )

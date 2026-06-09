@@ -52,10 +52,8 @@ export function LoginFeedbackDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
-        className={cn(
-          'login-feedback-dialog sm:max-w-md',
-          `login-feedback-dialog--${state.kind}`,
-        )}
+        size="sm"
+        className={cn('login-feedback-dialog', `login-feedback-dialog--${state.kind}`)}
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => {
           if (state.kind === 'success') e.preventDefault()

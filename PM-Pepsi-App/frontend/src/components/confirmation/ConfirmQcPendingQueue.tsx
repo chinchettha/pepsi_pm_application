@@ -3,7 +3,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetchConfirmQcPending } from '@/lib/api-public'
+import {
+  listKpiStaggerItemMotion,
+  listKpiStaggerRootMotion,
+} from '@/lib/list-kpi-stagger'
 import { useQuery } from '@tanstack/react-query'
+import { motion, useReducedMotion } from 'framer-motion'
 import { ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -21,6 +26,7 @@ export function ConfirmQcPendingQueue({
   defaultOpen = true,
 }: ConfirmQcPendingQueueProps) {
   const { t } = useTranslation('confirmation')
+  const reduceMotion = useReducedMotion()
   const pendingQ = useQuery({
     queryKey: ['confirmation', 'qc', 'pending'],
     queryFn: () => fetchConfirmQcPending(30),
@@ -61,10 +67,14 @@ export function ConfirmQcPendingQueue({
       ) : items.length === 0 ? (
         <p className="px-4 py-6 text-center text-caption text-app-muted">{t('qc.queueEmpty')}</p>
       ) : (
-        <ul className="divide-y divide-app/50">
+        <motion.ul
+          className="divide-y divide-app/50"
+          {...listKpiStaggerRootMotion(reduceMotion, items.length)}
+        >
           {items.map((row) => (
-            <li
+            <motion.li
               key={row.idiw37}
+              {...listKpiStaggerItemMotion(reduceMotion, items.length)}
               className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-teal-50/40"
             >
               <div className="min-w-0">
@@ -88,14 +98,13 @@ export function ConfirmQcPendingQueue({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="shrink-0 rounded-lg border-teal-200/80 hover:bg-teal-50"
                 onClick={() => onOpenWo(row.wkorder, row.idiw37)}
               >
-                {t('qc.openReview')}
+                {t('qc.queueOpenWo')}
               </Button>
-            </li>
+            </motion.li>
           ))}
-        </ul>
+        </motion.ul>
       )}
     </SchedulingSection>
   )

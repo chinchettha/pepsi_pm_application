@@ -24,8 +24,13 @@ import {
 import type { ConfirmationImportResponse } from '@/api/schemas'
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import { postConfirmationImport } from '@/lib/api-public'
+import {
+  listKpiStaggerItemMotion,
+  listKpiStaggerRootMotion,
+} from '@/lib/list-kpi-stagger'
 import { usePermission } from '@/lib/use-permission'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { motion, useReducedMotion } from 'framer-motion'
 import { AlertCircle, BadgeCheck, ClipboardCheck, Upload } from 'lucide-react'
 import type { ChangeEvent } from 'react'
 import { useRef, useState } from 'react'
@@ -35,6 +40,7 @@ import { toast } from 'sonner'
 
 export function ConfirmationPage() {
   const { t } = useTranslation('confirmation')
+  const reduceMotion = useReducedMotion()
   const navigate = useNavigate()
   const qc = useQueryClient()
   const authUser = getStoredAuthUser()
@@ -180,24 +186,39 @@ export function ConfirmationPage() {
               >
                 {importResult ? (
                   <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">{importResult.fileName}</Badge>
-                      <Badge variant="outline">
-                        {importResult.totalRows} {t('import.rows')}
-                      </Badge>
-                      <Badge variant="secondary">+{importResult.inserted}</Badge>
-                      <Badge variant="secondary">~{importResult.updated}</Badge>
-                      {importResult.skipped > 0 ? (
-                        <Badge variant="destructive">
-                          {t('import.skip')} {importResult.skipped}
+                    <motion.div
+                      className="flex flex-wrap gap-2"
+                      {...listKpiStaggerRootMotion(reduceMotion)}
+                    >
+                      <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
+                        <Badge variant="outline">{importResult.fileName}</Badge>
+                      </motion.div>
+                      <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
+                        <Badge variant="outline">
+                          {importResult.totalRows} {t('import.rows')}
                         </Badge>
+                      </motion.div>
+                      <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
+                        <Badge variant="secondary">+{importResult.inserted}</Badge>
+                      </motion.div>
+                      <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
+                        <Badge variant="secondary">~{importResult.updated}</Badge>
+                      </motion.div>
+                      {importResult.skipped > 0 ? (
+                        <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
+                          <Badge variant="destructive">
+                            {t('import.skip')} {importResult.skipped}
+                          </Badge>
+                        </motion.div>
                       ) : null}
                       {importResult.errors > 0 ? (
-                        <Badge variant="destructive">
-                          {t('import.err')} {importResult.errors}
-                        </Badge>
+                        <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
+                          <Badge variant="destructive">
+                            {t('import.err')} {importResult.errors}
+                          </Badge>
+                        </motion.div>
                       ) : null}
-                    </div>
+                    </motion.div>
                     <div className="app-table-shell overflow-hidden rounded-xl border border-app/60">
                       <Table embedded stickyHeader zebra>
                         <TableHeader>

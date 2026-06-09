@@ -15,17 +15,17 @@ export const WO_PM_PHASE_META: Record<
   create: {
     label: 'Create',
     title: 'Create (CRTD) — แผนใหม่จาก SAP ยังไม่ assign ช่าง',
-    className: 'border-amber-300 bg-amber-100 text-amber-950 ring-amber-200',
+    className: 'wo-pm-phase--create',
   },
   rel: {
     label: 'REL',
     title: 'REL — งานเปิด กำลังดำเนินการ',
-    className: 'border-blue-300 bg-blue-100 text-blue-950 ring-blue-200',
+    className: 'wo-pm-phase--rel',
   },
   confirm: {
     label: 'Confirm',
     title: 'Confirm — ปิดแล้ว พร้อมส่งกลับ SAP',
-    className: 'border-emerald-300 bg-emerald-100 text-emerald-950 ring-emerald-200',
+    className: 'wo-pm-phase--confirm',
   },
 }
 

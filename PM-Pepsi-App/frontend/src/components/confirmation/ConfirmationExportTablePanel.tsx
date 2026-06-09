@@ -25,7 +25,12 @@ import {
   fetchConfirmationExportXlsx,
 } from '@/lib/api-public'
 import { cn } from '@/lib/utils'
+import {
+  listKpiStaggerItemMotion,
+  listKpiStaggerRootMotion,
+} from '@/lib/list-kpi-stagger'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { motion, useReducedMotion } from 'framer-motion'
 import { AlertCircle, ChevronLeft, ChevronRight, ClipboardList, RotateCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -121,6 +126,7 @@ export function ConfirmationExportTablePanel({
 }: ConfirmationExportTablePanelProps) {
   const { t } = useTranslation('confirmation')
   const { t: tc } = useTranslation('common')
+  const reduceMotion = useReducedMotion()
   const [search, setSearch] = useState('')
   const [pageSize, setPageSize] = useState<number>(50)
   const [page, setPage] = useState(1)
@@ -200,8 +206,14 @@ export function ConfirmationExportTablePanel({
         isRefreshing={exportQ.isFetching && !exportQ.isLoading}
       >
         <div className="space-y-4">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
+          <motion.div
+            className="flex flex-wrap items-end justify-between gap-3"
+            {...listKpiStaggerRootMotion(reduceMotion)}
+          >
+            <motion.div
+              className="flex flex-wrap items-center gap-2"
+              {...listKpiStaggerItemMotion(reduceMotion)}
+            >
               {scopeBadge}
               {canExport ? (
                 <>
@@ -224,8 +236,8 @@ export function ConfirmationExportTablePanel({
                   />
                 </>
               ) : null}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           <div className="flex flex-col gap-3 rounded-xl border border-app/60 bg-app-subtle/30 p-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex flex-wrap items-center gap-2 text-xs text-app-muted">

@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/skeleton'
+import { SpinnerBlock } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import {
   fetchWorkOrderModalDetail,
@@ -20,7 +20,9 @@ import {
 import { formatPlanningHourValue } from '@/lib/planning-available-hours'
 import { planningAssignModeMeta } from '@/lib/planning-i18n'
 import type { PlanningAssignMode } from '@/lib/planning-assign-mode'
+import { cn } from '@/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -37,12 +39,32 @@ type Props = {
   target: PlanningAssignTarget | null
   onClose: () => void
   myCode?: string
+  /** Fires when at least one assignee was added — for planning list row highlight */
+  onAssignSuccess?: (idiw37: number) => void
 }
 
-export function PlanningAssignDialog({ target, onClose, myCode = '' }: Props) {
+type DialogPhase = 'form' | 'success'
+
+type SuccessResult = {
+  kind: 'assigned' | 'already'
+  message: string
+  count?: number
+}
+
+const SELECT_CLASS =
+  'flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm text-app focus-app-ring focus-visible:outline-none disabled:opacity-50'
+
+export function PlanningAssignDialog({
+  target,
+  onClose,
+  myCode = '',
+  onAssignSuccess,
+}: Props) {
   const { t } = useTranslation('planning')
   const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
+  const [phase, setPhase] = useState<DialogPhase>('form')
+  const [successResult, setSuccessResult] = useState<SuccessResult | null>(null)
   const [mode, setMode] = useState<PlanningAssignMode>('P')
   const [groupCode, setGroupCode] = useState('')
   const [comment, setComment] = useState('')
@@ -55,7 +77,13 @@ export function PlanningAssignDialog({ target, onClose, myCode = '' }: Props) {
   })
 
   useEffect(() => {
-    if (!target) return
+    if (!target) {
+      setPhase('form')
+      setSuccessResult(null)
+      return
+    }
+    setPhase('form')
+    setSuccessResult(null)
     setMode('P')
     setGroupCode('')
     setComment('')
@@ -68,21 +96,41 @@ export function PlanningAssignDialog({ target, onClose, myCode = '' }: Props) {
     await qc.invalidateQueries({ queryKey: ['work-orders', 'modal-detail', idiw37] })
   }
 
+  const showAssignSuccess = (
+    result: { assigned: string[] },
+    assignMode: PlanningAssignMode | 'batch',
+  ) => {
+    if (result.assigned.length === 0) {
+      setSuccessResult({
+        kind: 'already',
+        message: t('assignDialog.alreadyAssigned'),
+      })
+      setPhase('success')
+      return
+    }
+    const message =
+      assignMode === 'G'
+        ? t('assignDialog.successAutoCount', { count: result.assigned.length })
+        : assignMode === 'batch'
+          ? t('assignDialog.successManualCount', { count: result.assigned.length })
+          : t('assignDialog.successManual')
+    setSuccessResult({
+      kind: 'assigned',
+      message,
+      count: result.assigned.length,
+    })
+    setPhase('success')
+  }
+
   const assignMut = useMutation({
     mutationFn: (input: { idiw37: number; mode: PlanningAssignMode; code: string; comment?: string }) =>
       postPlanningAssign(input),
     onSuccess: async (data, variables) => {
       await invalidatePlanningQueries(variables.idiw37)
-      if (data.assigned.length === 0) {
-        toast.warning(t('assignDialog.alreadyAssigned'))
-      } else {
-        toast.success(
-          variables.mode === 'G'
-            ? t('assignDialog.successAutoCount', { count: data.assigned.length })
-            : t('assignDialog.successManual'),
-        )
+      showAssignSuccess(data, variables.mode)
+      if (data.assigned.length > 0) {
+        onAssignSuccess?.(variables.idiw37)
       }
-      onClose()
     },
     onError: (err) => toast.error((err as Error).message || t('assignDialog.assignFailed')),
   })
@@ -95,10 +143,9 @@ export function PlanningAssignDialog({ target, onClose, myCode = '' }: Props) {
       }),
     onSuccess: async (data, variables) => {
       await invalidatePlanningQueries(variables.idiw37)
-      if (data.assigned.length === 0 && data.skipped.length > 0) {
-        toast.warning(t('assignDialog.alreadyAssigned'))
-      } else if (data.assigned.length > 0) {
-        toast.success(t('assignDialog.successManualCount', { count: data.assigned.length }))
+      showAssignSuccess(data, 'batch')
+      if (data.assigned.length > 0) {
+        onAssignSuccess?.(variables.idiw37)
       }
     },
     onError: (err) => toast.error((err as Error).message || t('assignDialog.assignFailed')),
@@ -127,6 +174,8 @@ export function PlanningAssignDialog({ target, onClose, myCode = '' }: Props) {
     })
   }
 
+  const SuccessIcon = successResult?.kind === 'assigned' ? CheckCircle2 : AlertCircle
+
   return (
     <Dialog
       open={!!target}
@@ -134,178 +183,240 @@ export function PlanningAssignDialog({ target, onClose, myCode = '' }: Props) {
         if (!open && !submitting) onClose()
       }}
     >
-      <DialogContent className="max-h-[min(92vh,900px)] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{t('assignDialog.title', { wo: target?.wkorder })}</DialogTitle>
-          <DialogDescription>{t('assignDialog.description')}</DialogDescription>
+      <DialogContent size="lg" className="flex max-h-[min(92dvh,900px)] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-app/60 px-6 pb-4 pt-6 text-left">
+          <DialogTitle>
+            {phase === 'success'
+              ? t('assignDialog.successTitle')
+              : t('assignDialog.title', { wo: target?.wkorder })}
+          </DialogTitle>
+          <DialogDescription>
+            {phase === 'success'
+              ? successResult?.message
+              : t('assignDialog.description')}
+          </DialogDescription>
         </DialogHeader>
 
-        {modalQ.isLoading ? (
-          <Skeleton className="h-48 w-full rounded-card" />
-        ) : modalQ.isError ? (
-          <p className="text-sm text-red-600">{(modalQ.error as Error).message}</p>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid gap-2 rounded-card border border-app/60 bg-app-subtle/40 px-3 py-2 text-xs sm:grid-cols-2">
-              <p>
-                <span className="font-medium text-app">{t('assignDialog.woHours')}</span>{' '}
-                {workHours > 0
-                  ? `${formatPlanningHourValue(workHours)} ${t('assignDialog.hoursUnit')}`
-                  : '—'}
-              </p>
-              {importWkctr ? (
-                <p>
-                  <span className="font-medium text-app">{t('assignDialog.importWkctr')}</span>{' '}
-                  <span className="font-mono">{importWkctr}</span>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
+          {phase === 'success' && successResult ? (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <div
+                className={cn(
+                  'flex size-14 items-center justify-center rounded-full border',
+                  successResult.kind === 'assigned' ? 'app-tone-info' : 'border-app bg-app-subtle',
+                )}
+                aria-hidden
+              >
+                <SuccessIcon
+                  className={cn(
+                    'size-7',
+                    successResult.kind === 'assigned' ? 'text-[var(--app-accent)]' : 'text-app-muted',
+                  )}
+                  strokeWidth={2}
+                />
+              </div>
+              <p className="max-w-sm text-body font-medium text-app">{successResult.message}</p>
+              {successResult.count != null && successResult.count > 0 ? (
+                <p className="text-caption text-app-muted">
+                  {t('assignDialog.successCountHint', { count: successResult.count })}
                 </p>
               ) : null}
             </div>
+          ) : modalQ.isLoading ? (
+            <SpinnerBlock label={t('assignDialog.loading')} />
+          ) : modalQ.isError ? (
+            <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+          ) : (
+            <div className="relative space-y-4">
+              {submitting ? (
+                <div
+                  className="absolute inset-0 z-10 flex items-center justify-center rounded-card bg-[color-mix(in_srgb,var(--app-surface)_88%,transparent)] backdrop-blur-[2px]"
+                  aria-busy
+                  aria-live="polite"
+                >
+                  <SpinnerBlock label={t('assignDialog.submitting')} />
+                </div>
+              ) : null}
 
-            {modalQ.data?.date ? (
-              <p className="rounded-card border border-teal-200/70 bg-teal-50/60 px-3 py-2 text-xs text-teal-950">
-                {t('assignDialog.availableHour', { date: modalQ.data.date })}
-              </p>
-            ) : null}
-
-            <div className="grid gap-2">
-              <Label>{t('assignDialog.modeLabel')}</Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                {(['P', 'G'] as const).map((m) => {
-                  const meta = planningAssignModeMeta(t, m)
-                  return (
-                    <label
-                      key={m}
-                      className={`flex flex-1 cursor-pointer gap-2 rounded-card border px-3 py-2 text-sm ${
-                        mode === m
-                          ? 'border-teal-600 bg-teal-50/80 ring-1 ring-teal-600/30'
-                          : 'border-app/60 bg-[var(--app-surface)]'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="planning-assign-mode"
-                        value={m}
-                        checked={mode === m}
-                        onChange={() => setMode(m)}
-                        disabled={submitting}
-                        className="mt-1"
-                      />
-                      <span>
-                        <span className="block font-medium">{meta.label}</span>
-                        <span className="text-xs text-app-muted">{meta.description}</span>
-                      </span>
-                    </label>
-                  )
-                })}
+              <div className="grid gap-2 rounded-card border border-app/60 bg-app-subtle/40 px-3 py-2 text-xs sm:grid-cols-2">
+                <p>
+                  <span className="font-medium text-app">{t('assignDialog.woHours')}</span>{' '}
+                  {workHours > 0
+                    ? `${formatPlanningHourValue(workHours)} ${t('assignDialog.hoursUnit')}`
+                    : '—'}
+                </p>
+                {importWkctr ? (
+                  <p>
+                    <span className="font-medium text-app">{t('assignDialog.importWkctr')}</span>{' '}
+                    <span className="font-mono">{importWkctr}</span>
+                  </p>
+                ) : null}
               </div>
-            </div>
 
-            {mode === 'P' ? (
-              <div className="space-y-3">
-                <PlanningMultiAssign
-                  workcenters={workcenters}
-                  assignedCodes={assignedCodes}
-                  comment={comment}
-                  onCommentChange={setComment}
-                  submitting={batchAssignMut.isPending}
-                  onAssign={async (codes) => {
-                    if (!target) {
-                      return { assigned: [], skipped: [], notFound: codes }
+              {modalQ.data?.date ? (
+                <p className="app-tone-info rounded-card border px-3 py-2 text-xs">
+                  {t('assignDialog.availableHour', { date: modalQ.data.date })}
+                </p>
+              ) : null}
+
+              <div className="grid gap-2">
+                <Label>{t('assignDialog.modeLabel')}</Label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  {(['P', 'G'] as const).map((m) => {
+                    const meta = planningAssignModeMeta(t, m)
+                    const selected = mode === m
+                    return (
+                      <label
+                        key={m}
+                        className={cn(
+                          'flex flex-1 cursor-pointer gap-2 rounded-card border px-3 py-2 text-sm transition-colors',
+                          selected
+                            ? 'app-tone-info ring-1 ring-[color-mix(in_srgb,var(--app-accent)_28%,transparent)]'
+                            : 'border-app/60 bg-[var(--app-surface)] hover:bg-app-subtle/60',
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="planning-assign-mode"
+                          value={m}
+                          checked={selected}
+                          onChange={() => setMode(m)}
+                          disabled={submitting}
+                          className="mt-1"
+                        />
+                        <span>
+                          <span className="block font-medium">{meta.label}</span>
+                          <span className="text-xs text-app-muted">{meta.description}</span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {mode === 'P' ? (
+                <div className="space-y-3">
+                  <PlanningMultiAssign
+                    workcenters={workcenters}
+                    assignedCodes={assignedCodes}
+                    comment={comment}
+                    onCommentChange={setComment}
+                    submitting={batchAssignMut.isPending}
+                    onAssign={async (codes) => {
+                      if (!target) {
+                        return { assigned: [], skipped: [], notFound: codes }
+                      }
+                      const res = await batchAssignMut.mutateAsync({
+                        idiw37: target.idiw37,
+                        codes,
+                        comment: comment.trim() || undefined,
+                      })
+                      return {
+                        assigned: res.assigned,
+                        skipped: res.skipped,
+                        notFound: res.notFound,
+                      }
+                    }}
+                  />
+                  <PlanningQuickAssign
+                    workcenters={workcenters}
+                    assignedCodes={assignedCodes}
+                    submitting={assignMut.isPending}
+                    assigningCode={
+                      assignMut.isPending && assignMut.variables?.mode === 'P'
+                        ? assignMut.variables.code
+                        : null
                     }
-                    const res = await batchAssignMut.mutateAsync({
-                      idiw37: target.idiw37,
-                      codes,
-                      comment: comment.trim() || undefined,
-                    })
-                    return {
-                      assigned: res.assigned,
-                      skipped: res.skipped,
-                      notFound: res.notFound,
-                    }
-                  }}
-                />
-                <PlanningQuickAssign
-                  workcenters={workcenters}
-                  assignedCodes={assignedCodes}
-                  submitting={assignMut.isPending}
-                  assigningCode={
-                    assignMut.isPending && assignMut.variables?.mode === 'P'
-                      ? assignMut.variables.code
-                      : null
-                  }
-                  onAssign={(code) => {
+                    onAssign={(code) => {
+                      if (!target) return
+                      assignMut.mutate({
+                        idiw37: target.idiw37,
+                        mode: 'P',
+                        code,
+                        comment: comment.trim() || undefined,
+                      })
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2 rounded-card border border-app bg-[var(--app-surface)] p-3">
+                  <Label htmlFor="planning-group">{t('assignDialog.groupLabel')}</Label>
+                  <select
+                    id="planning-group"
+                    value={groupCode}
+                    onChange={(e) => setGroupCode(e.target.value)}
+                    disabled={submitting}
+                    className={SELECT_CLASS}
+                  >
+                    <option value="">{t('assignDialog.groupPlaceholder')}</option>
+                    {groups.map((g) => (
+                      <option key={g.wkctrgroup} value={g.wkctrgroup}>
+                        {g.wkctrgroup}
+                        {g.wkctrdescription ? ` — ${g.wkctrdescription}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-app-muted">{t('assignDialog.autoHint')}</p>
+                </div>
+              )}
+
+              {mode === 'G' ? (
+                <div className="grid gap-2">
+                  <Label htmlFor="planning-assign-comment">{t('assignDialog.commentLabel')}</Label>
+                  <Textarea
+                    id="planning-assign-comment"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={2}
+                    disabled={submitting}
+                    placeholder={t('assignDialog.commentPlaceholder')}
+                  />
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="shrink-0 border-t border-app/60 px-6 py-4">
+          {phase === 'success' ? (
+            <Button type="button" onClick={onClose}>
+              {t('assignDialog.successDone')}
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+                {tc('actions.cancel')}
+              </Button>
+              {mode === 'G' ? (
+                <Button type="button" onClick={onSubmitAuto} disabled={submitting || !groupCode.trim()}>
+                  {submitting ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                  ) : null}
+                  {t('assignDialog.assignAuto')}
+                </Button>
+              ) : myCode && !assignedCodes.includes(myCode) ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={submitting || !target}
+                  onClick={() => {
                     if (!target) return
                     assignMut.mutate({
                       idiw37: target.idiw37,
                       mode: 'P',
-                      code,
+                      code: myCode,
                       comment: comment.trim() || undefined,
                     })
                   }}
-                />
-              </div>
-            ) : (
-              <div className="space-y-2 rounded-card border border-app bg-[var(--app-surface)] p-3">
-                <Label htmlFor="planning-group">{t('assignDialog.groupLabel')}</Label>
-                <select
-                  id="planning-group"
-                  value={groupCode}
-                  onChange={(e) => setGroupCode(e.target.value)}
-                  disabled={submitting}
-                  className="flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm"
                 >
-                  <option value="">{t('assignDialog.groupPlaceholder')}</option>
-                  {groups.map((g) => (
-                    <option key={g.wkctrgroup} value={g.wkctrgroup}>
-                      {g.wkctrgroup}
-                      {g.wkctrdescription ? ` — ${g.wkctrdescription}` : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-app-muted">{t('assignDialog.autoHint')}</p>
-              </div>
-            )}
-
-            <div className="grid gap-2">
-              <Label htmlFor="planning-assign-comment">{t('assignDialog.commentLabel')}</Label>
-              <Textarea
-                id="planning-assign-comment"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={2}
-                disabled={submitting}
-                placeholder={t('assignDialog.commentPlaceholder')}
-              />
-            </div>
-          </div>
-        )}
-
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-            {tc('actions.cancel')}
-          </Button>
-          {mode === 'G' ? (
-            <Button type="button" onClick={onSubmitAuto} disabled={submitting || !groupCode.trim()}>
-              {t('assignDialog.assignAuto')}
-            </Button>
-          ) : myCode && !assignedCodes.includes(myCode) ? (
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={submitting || !target}
-              onClick={() => {
-                if (!target) return
-                assignMut.mutate({
-                  idiw37: target.idiw37,
-                  mode: 'P',
-                  code: myCode,
-                  comment: comment.trim() || undefined,
-                })
-              }}
-            >
-              {t('assignDialog.assignSelf', { code: myCode })}
-            </Button>
-          ) : null}
+                  {submitting ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                  ) : null}
+                  {t('assignDialog.assignSelf', { code: myCode })}
+                </Button>
+              ) : null}
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

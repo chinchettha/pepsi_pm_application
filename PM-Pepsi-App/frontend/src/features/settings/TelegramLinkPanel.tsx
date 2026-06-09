@@ -64,7 +64,7 @@ export function TelegramLinkPanel() {
           <p className="mt-1 text-xs text-app-muted">{t('settings.telegram.hint')}</p>
         </div>
         {linked ? (
-          <Badge className="bg-emerald-600">{t('settings.telegram.linked')}</Badge>
+          <Badge className="app-tone-success-fill">{t('settings.telegram.linked')}</Badge>
         ) : (
           <Badge variant="outline">{t('settings.telegram.notLinked')}</Badge>
         )}
@@ -88,7 +88,7 @@ export function TelegramLinkPanel() {
       ) : null}
 
       {!statusQ.data?.botConfigured ? (
-        <p className="mt-3 text-xs text-amber-700">{t('settings.telegram.botNotConfigured')}</p>
+        <p className="app-tone-warning-icon mt-3 text-xs">{t('settings.telegram.botNotConfigured')}</p>
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">

@@ -169,7 +169,9 @@ export function PermissionMatrix({
                 className="sticky left-0 z-10 bg-app-muted/80 py-2 font-semibold text-app"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span>{g.group}</span>
+                  <span>
+                    {t(`roles.permGroups.${g.group}`, { defaultValue: g.group })}
+                  </span>
                   {canWrite ? (
                     <div className="flex flex-wrap gap-1">
                       {data.roles.map((role) => (

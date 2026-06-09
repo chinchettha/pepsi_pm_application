@@ -2,7 +2,7 @@
 
 > **ใช้ไฟล์นี้ติ๊กงาน UI/UX** คู่กับ [`skill-theme.md`](../../skill-theme.md) (สี Pepsi · wireframe · motion) และ [`WORK-PHASES.md`](../WORK-PHASES.md)
 
-**อัปเดต:** 2026-06-02 · **UI polish U0–U3 + Dark D0–D4 ปิดแล้ว** — โฟกัสถัดไป: ฟีเจอร์จาก `MEETING-SUMMARY-REQUIREMENTS.md`
+**อัปเดต:** 2026-06-09 · **U0–U3 + Dark ปิดแล้ว** · **U4 = [`PRE-UAT-UI-PHASES.md`](PRE-UAT-UI-PHASES.md)** (ทำ UI ก่อน UAT)
 
 ---
 
@@ -26,6 +26,10 @@
 [✓] U1  App shell
 [✓] U2  หน้าตามเมนู — AppPageShell + hints ทุก route หลัก
 [✓] U3  Polish ข้ามหน้า — motion · a11y · responsive · print
+
+[ ] U4  ก่อน UAT — **→ [`PRE-UAT-UI-PHASES.md`](PRE-UAT-UI-PHASES.md)**  
+      · AlertDialog/Sheet · dialog sizes · 15× window.confirm  
+      · animation WO/planning · brand sweep ~40 ไฟล์ · ไล่ทีละหน้า
 
 [✓] D0  Dark foundation — Input/Textarea/Tabs
 [✓] D1  Dark shell — login · error · logout

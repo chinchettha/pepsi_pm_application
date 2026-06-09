@@ -1,6 +1,16 @@
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -58,6 +68,7 @@ export function AdminBrandingPage() {
   const [faviconLocalPreview, setFaviconLocalPreview] = useState<string | null>(null)
   const [loginBgLocalPreview, setLoginBgLocalPreview] = useState<string | null>(null)
   const [removeBgOnUpload, setRemoveBgOnUpload] = useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
 
   const q = useQuery({
     queryKey: ['admin', 'branding'],
@@ -114,6 +125,7 @@ export function AdminBrandingPage() {
       setLogoVersion((v) => v + 1)
       setFaviconVersion((v) => v + 1)
       setLoginBgVersion((v) => v + 1)
+      setResetOpen(false)
       invalidateBrandingCaches(qc)
       toast.success(t('branding.resetOk'))
     },
@@ -344,10 +356,7 @@ export function AdminBrandingPage() {
                 variant="outline"
                 className="admin-toolbar-btn"
                 disabled={resetMut.isPending}
-                onClick={() => {
-                  if (!window.confirm(t('branding.resetConfirm'))) return
-                  resetMut.mutate()
-                }}
+                onClick={() => setResetOpen(true)}
               >
                 <RotateCcw className="mr-2 size-4" aria-hidden />
                 {t('branding.resetStandard')}
@@ -578,6 +587,33 @@ export function AdminBrandingPage() {
             </div>
           </>
         ) : null}
+
+      <AlertDialog
+        open={resetOpen}
+        onOpenChange={(open) => {
+          if (!open && !resetMut.isPending) setResetOpen(false)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('branding.resetStandard')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('branding.resetConfirm')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetMut.isPending}>{tc('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={resetMut.isPending}
+              onClick={(e) => {
+                e.preventDefault()
+                resetMut.mutate()
+              }}
+            >
+              {t('branding.resetStandard')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminPageShell>
   )
 }

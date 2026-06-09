@@ -197,7 +197,18 @@
     "close": "Close",
     "loading": "Loading image…",
     "help": "Drag to pan · wheel/pinch to zoom · double-click to zoom",
-    "escClose": "Esc to close"
+    "escClose": "Esc to close",
+    "keyboardNav": "Esc close · ← → change image",
+    "prevImage": "Previous image",
+    "nextImage": "Next image",
+    "position": "{{current}} / {{total}}"
+  },
+  "confirmPhrase": {
+    "confirm": "Confirm",
+    "phraseLabel": "Type {{phrase}} to confirm",
+    "placeholder": "Type the phrase above exactly",
+    "mismatch": "Phrase does not match — must be exact",
+    "matched": "Matched — you can confirm"
   },
   "spinner": {
     "loading": "Loading…"

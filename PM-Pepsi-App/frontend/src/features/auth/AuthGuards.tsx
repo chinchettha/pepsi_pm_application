@@ -111,7 +111,9 @@ export function GuestOnly() {
   if (isLoggedIn()) {
     const user = getStoredAuthUser()
     const mode = user?.accountType === 'member' ? 'member' : 'workcenter'
-    return <Navigate to={resolvePostLoginPath(from?.pathname, mode)} replace />
+    return (
+      <Navigate to={resolvePostLoginPath(from?.pathname, mode, user?.userst)} replace />
+    )
   }
   return <Outlet />
 }

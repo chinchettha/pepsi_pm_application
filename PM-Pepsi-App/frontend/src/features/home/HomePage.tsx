@@ -16,10 +16,14 @@ import {
 } from '@/features/home/dashboard-config'
 import { fetchDashboardSummary } from '@/lib/api-public'
 import { readCssVar } from '@/lib/css-tokens'
+import {
+  listKpiStaggerItemMotion,
+  listKpiStaggerRootMotion,
+} from '@/lib/list-kpi-stagger'
 import { useAppNav } from '@/lib/use-app-nav'
 import { cn } from '@/lib/utils'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { motion, useReducedMotion, type Variants } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import {
   AlertCircle,
   ArrowRight,
@@ -46,15 +50,6 @@ import type { AppLocale } from '@/lib/app-locale'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  show: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.06, duration: 0.45, ease: [0.22, 1, 0.36, 1] as const },
-  }),
-}
-
 type KpiTone = 'pepsi-blue' | 'pepsi-red' | 'pepsi-orange'
 
 function KpiCard({
@@ -66,7 +61,6 @@ function KpiCard({
   tone,
   trend,
   sparkTone,
-  index,
   reducedMotion,
   last7DaysLabel,
   openModuleLabel,
@@ -79,7 +73,6 @@ function KpiCard({
   tone: KpiTone
   trend: number[]
   sparkTone: SparklineTone
-  index: number
   reducedMotion: boolean
   last7DaysLabel: string
   openModuleLabel: string
@@ -93,12 +86,7 @@ function KpiCard({
   const delta = sparklineDelta(trend)
 
   return (
-    <motion.div
-      custom={index}
-      variants={fadeUp}
-      initial={reducedMotion ? false : 'hidden'}
-      animate="show"
-    >
+    <motion.div {...listKpiStaggerItemMotion(reducedMotion)}>
       <Link
         to={to}
         className={cn('dashboard-kpi group block focus:outline-none', toneClass)}
@@ -399,18 +387,20 @@ export function HomePage() {
               action={{ label: tc('actions.retry'), onClick: () => void dash.refetch() }}
             />
           ) : kpis ? (
-            <div className="dashboard-kpi-grid">
-              {kpis.map((k, i) => (
+            <motion.div
+              className="dashboard-kpi-grid"
+              {...listKpiStaggerRootMotion(reducedMotion)}
+            >
+              {kpis.map((k) => (
                 <KpiCard
                   key={k.label}
                   {...k}
-                  index={i}
                   reducedMotion={!!reducedMotion}
                   last7DaysLabel={t('kpiSection.last7Days')}
                   openModuleLabel={t('kpiSection.openModule')}
                 />
               ))}
-            </div>
+            </motion.div>
           ) : (
             <EmptyState
               title={t('kpiSection.noData')}
@@ -439,17 +429,12 @@ export function HomePage() {
           ) : (
             <motion.div
               className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-              initial={reducedMotion ? false : 'hidden'}
-              animate="show"
-              variants={{
-                hidden: {},
-                show: { transition: { staggerChildren: 0.04 } },
-              }}
+              {...listKpiStaggerRootMotion(reducedMotion)}
             >
-              {quickLinks.map((item, i) => {
+              {quickLinks.map((item) => {
                 const Icon = item.icon
                 return (
-                  <motion.div key={item.to} custom={i + 4} variants={fadeUp}>
+                  <motion.div key={item.to} {...listKpiStaggerItemMotion(reducedMotion)}>
                     <Link to={item.to} className="dashboard-quick group block focus:outline-none">
                       <div className="dashboard-quick__shine" aria-hidden />
                       <div className="flex items-start gap-3">

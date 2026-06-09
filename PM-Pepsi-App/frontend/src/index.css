@@ -71,6 +71,14 @@
   --app-glass-bg: rgba(255, 255, 255, 0.7);
   --app-glass-border: rgba(255, 255, 255, 0.18);
 
+  /* Semantic status — แทน emerald-* / amber-* / violet-* (PRE-UAT §E) */
+  --status-success: var(--brand-logo-green-light);
+  --status-warning: var(--brand-logo-orange);
+  --status-danger: var(--sys-red-light);
+  --status-info: var(--brand-logo-blue-dark);
+  --phase-before: var(--status-warning);
+  --phase-after: var(--status-success);
+
   /* Typography — ฟอนต์เดียวทั้งแอป · scale จาก --app-font-size-base (Branding) */
   --app-font-family: "Sarabun", "Segoe UI", system-ui, sans-serif;
   --app-font-size-caption: 13px;
@@ -503,6 +511,411 @@ html.dark .macos-admin .macos-sidebar .nav-menu-group-heading {
   border-color: color-mix(in srgb, var(--admin-primary) 35%, var(--admin-border));
   background: color-mix(in srgb, var(--admin-primary) 10%, var(--admin-surface));
   color: color-mix(in srgb, var(--admin-primary) 88%, var(--admin-text));
+}
+
+/* Semantic status surfaces — success / warning / danger (PRE-UAT §E) */
+.app-tone-success {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-success) 10%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-success) 88%, var(--app-text));
+}
+
+.app-tone-warning {
+  border-color: color-mix(in srgb, var(--status-warning) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-warning) 10%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 88%, var(--app-text));
+}
+
+.app-tone-danger {
+  border-color: color-mix(in srgb, var(--status-danger) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-danger) 10%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-danger) 88%, var(--app-text));
+}
+
+.app-tone-info-soft {
+  background: color-mix(in srgb, var(--status-info) 8%, var(--app-surface));
+}
+
+.app-tone-success-soft {
+  background: color-mix(in srgb, var(--status-success) 8%, var(--app-surface));
+}
+
+.app-tone-warning-soft {
+  background: color-mix(in srgb, var(--status-warning) 8%, var(--app-surface));
+}
+
+.app-tone-info-icon {
+  color: color-mix(in srgb, var(--status-info) 75%, var(--app-text));
+}
+
+.app-tone-success-icon {
+  color: color-mix(in srgb, var(--status-success) 75%, var(--app-text));
+}
+
+.app-tone-warning-icon {
+  color: color-mix(in srgb, var(--status-warning) 75%, var(--app-text));
+}
+
+.app-tone-info-label {
+  color: color-mix(in srgb, var(--status-info) 65%, var(--app-text-muted));
+}
+
+.app-tone-success-label {
+  color: color-mix(in srgb, var(--status-success) 65%, var(--app-text-muted));
+}
+
+.app-tone-warning-label {
+  color: color-mix(in srgb, var(--status-warning) 65%, var(--app-text-muted));
+}
+
+.app-tone-info-strong {
+  color: color-mix(in srgb, var(--status-info) 92%, var(--app-text));
+}
+
+.app-tone-success-strong {
+  color: color-mix(in srgb, var(--status-success) 92%, var(--app-text));
+}
+
+.app-tone-warning-strong {
+  color: color-mix(in srgb, var(--status-warning) 92%, var(--app-text));
+}
+
+.app-tone-info-eyebrow {
+  color: color-mix(in srgb, var(--status-info) 70%, var(--app-text-muted));
+}
+
+.app-tone-info-badge {
+  border: 0;
+  background: color-mix(in srgb, var(--status-info) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-info) 90%, var(--app-text));
+}
+
+.app-tone-success-badge {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-success) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-success) 90%, var(--app-text));
+}
+
+.app-tone-warning-badge {
+  border-color: color-mix(in srgb, var(--status-warning) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-warning) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 90%, var(--app-text));
+}
+
+.app-tone-info-outline-badge {
+  border-color: color-mix(in srgb, var(--status-info) 35%, var(--app-border));
+  color: color-mix(in srgb, var(--status-info) 90%, var(--app-text));
+}
+
+.app-tone-info-tile {
+  border-color: color-mix(in srgb, var(--status-info) 35%, var(--app-border));
+}
+
+.app-tone-success-tile {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+}
+
+.app-tone-warning-tile {
+  border-color: color-mix(in srgb, var(--status-warning) 35%, var(--app-border));
+}
+
+.app-tone-info-hero {
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--status-info) 40%, var(--app-border));
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--status-info) 10%, var(--app-surface)),
+    var(--app-surface),
+    color-mix(in srgb, var(--app-accent) 4%, var(--app-surface))
+  );
+}
+
+.app-tone-info-section {
+  border-color: color-mix(in srgb, var(--status-info) 40%, var(--app-border));
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--status-info) 8%, var(--app-surface)),
+    var(--app-surface)
+  );
+}
+
+.app-tone-success-section {
+  border-color: color-mix(in srgb, var(--status-success) 40%, var(--app-border));
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--status-success) 10%, var(--app-surface)),
+    var(--app-surface)
+  );
+}
+
+.app-tone-warning-section {
+  border-color: color-mix(in srgb, var(--status-warning) 40%, var(--app-border));
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--status-warning) 10%, var(--app-surface)),
+    var(--app-surface)
+  );
+}
+
+.app-tone-info-inner {
+  border-color: color-mix(in srgb, var(--status-info) 25%, var(--app-border));
+}
+
+.app-tone-info-editing {
+  border-color: color-mix(in srgb, var(--status-info) 50%, var(--app-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-info) 28%, transparent);
+}
+
+.app-tone-info-strip {
+  background: color-mix(in srgb, var(--status-info) 45%, transparent);
+}
+
+.app-tone-info-strip-active {
+  background: var(--status-info);
+}
+
+.app-tone-info-avatar {
+  background: color-mix(in srgb, var(--status-info) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-info) 75%, var(--app-text));
+}
+
+.app-tone-info-empty {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--status-info) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-info) 8%, var(--app-surface));
+}
+
+.app-tone-info-empty-icon {
+  color: color-mix(in srgb, var(--status-info) 35%, var(--app-text-muted));
+}
+
+.app-tone-info-card-border {
+  border-color: color-mix(in srgb, var(--status-info) 35%, var(--app-border));
+}
+
+.app-tone-info-card-border-hover:hover {
+  border-color: color-mix(in srgb, var(--status-info) 50%, var(--app-border));
+}
+
+.app-tone-info-card-strip {
+  background: var(--status-info);
+}
+
+.app-tone-info-card-index {
+  background: color-mix(in srgb, var(--status-info) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-info) 90%, var(--app-text));
+}
+
+.app-tone-info-stat-box {
+  border-color: color-mix(in srgb, var(--status-info) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-info) 10%, var(--app-surface));
+}
+
+.app-tone-success-stat-box {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-success) 10%, var(--app-surface));
+}
+
+.app-tone-success-stat {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+}
+
+.app-tone-success-stat-active {
+  border-color: color-mix(in srgb, var(--status-success) 55%, var(--app-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-success) 28%, transparent);
+}
+
+.app-tone-success-banner {
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--status-success) 40%, var(--app-border));
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--status-success) 12%, var(--app-surface)),
+    color-mix(in srgb, var(--status-success) 8%, var(--app-surface))
+  );
+}
+
+.app-tone-success-panel {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-success) 10%, var(--app-surface));
+}
+
+.app-tone-success-table-head {
+  background: color-mix(in srgb, var(--status-success) 18%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-success) 92%, var(--app-text));
+}
+
+.app-tone-success-fill {
+  background: var(--status-success);
+  color: #fff;
+}
+
+.app-tone-warning-callout {
+  border-color: color-mix(in srgb, var(--status-warning) 45%, var(--app-border));
+  background: color-mix(in srgb, var(--status-warning) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 92%, var(--app-text));
+}
+
+.app-tone-warning-fill {
+  background: var(--status-warning);
+  color: #fff;
+}
+
+.app-tone-info-progress {
+  background: var(--brand-logo-sky);
+  color: #fff;
+}
+
+.app-tone-warning-banner {
+  border-bottom: 1px solid color-mix(in srgb, var(--status-warning) 55%, var(--app-border));
+  background: color-mix(in srgb, var(--status-warning) 18%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 92%, var(--app-text));
+}
+
+.app-tone-warning-banner-muted {
+  color: color-mix(in srgb, var(--status-warning) 82%, var(--app-text));
+}
+
+.app-tone-warning-banner-btn {
+  border-color: color-mix(in srgb, var(--status-warning) 55%, var(--app-border));
+  background: var(--app-surface);
+}
+
+.app-tone-warning-banner-btn:hover {
+  background: color-mix(in srgb, var(--status-warning) 12%, var(--app-surface));
+}
+
+.app-tone-pill-success {
+  background: color-mix(in srgb, var(--status-success) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-success) 88%, var(--app-text));
+}
+
+.app-tone-pill-warning {
+  background: color-mix(in srgb, var(--status-warning) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 88%, var(--app-text));
+}
+
+.app-tone-pill-info {
+  background: color-mix(in srgb, var(--brand-logo-sky) 16%, var(--app-surface));
+  color: color-mix(in srgb, var(--brand-logo-sky) 88%, var(--app-text));
+}
+
+.app-tone-pill-danger {
+  background: color-mix(in srgb, var(--status-danger) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-danger) 88%, var(--app-text));
+}
+
+.app-tone-pill-success-ring {
+  background: color-mix(in srgb, var(--status-success) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-success) 88%, var(--app-text));
+  --tw-ring-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+}
+
+.app-tone-pill-warning-ring {
+  background: color-mix(in srgb, var(--status-warning) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 88%, var(--app-text));
+  --tw-ring-color: color-mix(in srgb, var(--status-warning) 35%, var(--app-border));
+}
+
+.app-tone-pill-info-ring {
+  background: color-mix(in srgb, var(--brand-logo-sky) 16%, var(--app-surface));
+  color: color-mix(in srgb, var(--brand-logo-sky) 88%, var(--app-text));
+  --tw-ring-color: color-mix(in srgb, var(--brand-logo-sky) 35%, var(--app-border));
+}
+
+.app-tone-pill-danger-ring {
+  background: color-mix(in srgb, var(--status-danger) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-danger) 88%, var(--app-text));
+  --tw-ring-color: color-mix(in srgb, var(--status-danger) 35%, var(--app-border));
+}
+
+.app-tone-success-row-selected {
+  background: color-mix(in srgb, var(--status-success) 8%, transparent);
+}
+
+.app-tone-warning-highlight-row {
+  background: color-mix(in srgb, var(--status-warning) 10%, var(--app-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--status-warning) 35%, var(--app-border));
+}
+
+.app-tone-warning-strip-fill {
+  background: var(--status-warning);
+}
+
+.app-tone-success-strip-fill {
+  background: var(--status-success);
+}
+
+.app-tone-success-card-index {
+  background: color-mix(in srgb, var(--status-success) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-success) 88%, var(--app-text));
+}
+
+.app-tone-warning-card-index {
+  background: color-mix(in srgb, var(--status-warning) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 88%, var(--app-text));
+}
+
+.app-tone-warning-review {
+  border-color: color-mix(in srgb, var(--status-warning) 40%, var(--app-border));
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--status-warning) 10%, var(--app-surface)),
+    var(--app-surface),
+    color-mix(in srgb, var(--app-accent) 3%, var(--app-surface))
+  );
+}
+
+.app-tone-warning-review-item {
+  border-color: color-mix(in srgb, var(--status-warning) 30%, var(--app-border));
+}
+
+.app-tone-warning-review-divider {
+  border-color: color-mix(in srgb, var(--status-warning) 35%, var(--app-border));
+}
+
+.app-tone-success-row {
+  background: color-mix(in srgb, var(--status-success) 10%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-success) 90%, var(--app-text));
+}
+
+.wo-pm-phase--create {
+  border-color: color-mix(in srgb, var(--status-warning) 55%, var(--app-border));
+  background: color-mix(in srgb, var(--status-warning) 18%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 92%, var(--app-text));
+  --tw-ring-color: color-mix(in srgb, var(--status-warning) 35%, transparent);
+}
+
+.wo-pm-phase--rel {
+  border-color: color-mix(in srgb, var(--status-info) 45%, var(--brand-logo-sky));
+  background: color-mix(in srgb, var(--brand-logo-sky) 16%, var(--app-surface));
+  color: color-mix(in srgb, var(--brand-logo-sky) 88%, var(--app-text));
+  --tw-ring-color: color-mix(in srgb, var(--brand-logo-sky) 35%, transparent);
+}
+
+.wo-pm-phase--confirm {
+  border-color: color-mix(in srgb, var(--status-success) 55%, var(--app-border));
+  background: color-mix(in srgb, var(--status-success) 18%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-success) 92%, var(--app-text));
+  --tw-ring-color: color-mix(in srgb, var(--status-success) 35%, transparent);
+}
+
+.macos-admin .app-tone-success {
+  border-color: color-mix(in srgb, var(--admin-success) 35%, var(--admin-border));
+  background: color-mix(in srgb, var(--admin-success) 10%, var(--admin-surface));
+  color: color-mix(in srgb, var(--admin-success) 88%, var(--admin-text));
+}
+
+.macos-admin .app-tone-warning {
+  border-color: color-mix(in srgb, var(--admin-warning) 35%, var(--admin-border));
+  background: color-mix(in srgb, var(--admin-warning) 10%, var(--admin-surface));
+  color: color-mix(in srgb, var(--admin-warning) 88%, var(--admin-text));
+}
+
+.macos-admin .app-tone-danger {
+  border-color: color-mix(in srgb, var(--admin-danger) 35%, var(--admin-border));
+  background: color-mix(in srgb, var(--admin-danger) 10%, var(--admin-surface));
+  color: color-mix(in srgb, var(--admin-danger) 88%, var(--admin-text));
 }
 
 /* Semantic text/border/background — แทน Tailwind zinc-* ในหน้าแอป */
@@ -940,6 +1353,310 @@ html.dark .login-page__glow {
   }
 }
 
+/* Portal hub — wallpaper + glass hero + module cards */
+.portal-page {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  background-color: var(--app-bg);
+}
+
+.portal-page__glow {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.5;
+  animation: login-glow-float 16s ease-in-out infinite;
+}
+
+.portal-page__glow--accent {
+  top: 8%;
+  left: 4%;
+  width: min(44vw, 24rem);
+  height: min(44vw, 24rem);
+  background: color-mix(in srgb, var(--app-accent) 32%, transparent);
+}
+
+.portal-page__glow--primary {
+  right: 2%;
+  bottom: 6%;
+  width: min(40vw, 20rem);
+  height: min(40vw, 20rem);
+  background: color-mix(in srgb, var(--app-primary) 26%, transparent);
+  animation-delay: -6s;
+}
+
+.portal-page__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 65%, transparent);
+  background: color-mix(in srgb, var(--app-glass-bg) 78%, var(--app-surface));
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.portal-page__topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 0.75rem 1.25rem;
+}
+
+.portal-page__brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--app-text);
+  text-decoration: none;
+}
+
+.portal-page__brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--app-radius-button);
+  border: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
+  background: color-mix(in srgb, var(--app-surface) 90%, white);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.portal-page__main {
+  position: relative;
+  z-index: 10;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.portal-page__hero {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  border-radius: var(--app-radius-dialog);
+  border: 1px solid color-mix(in srgb, white 38%, var(--app-glass-border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--app-accent) 10%, transparent),
+    var(--app-shadow-dialog),
+    0 24px 48px color-mix(in srgb, var(--app-accent) 16%, transparent);
+}
+
+.portal-page__hero-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem 1.5rem 1.75rem;
+}
+
+@media (min-width: 640px) {
+  .portal-page__hero-body {
+    flex-direction: row;
+    align-items: center;
+    padding: 1.75rem 2rem 2rem;
+  }
+}
+
+.portal-page__hero-logo {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: var(--app-radius-card);
+  border: 1px solid color-mix(in srgb, var(--app-border) 70%, transparent);
+  background: color-mix(in srgb, var(--app-surface) 92%, white);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.portal-page__welcome-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: var(--app-text-caption-size);
+  font-weight: 600;
+  color: var(--app-text);
+  background: color-mix(in srgb, var(--app-accent) 14%, var(--app-surface));
+  border: 1px solid color-mix(in srgb, var(--app-accent) 28%, transparent);
+}
+
+.portal-page__role-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: var(--app-text-caption-size);
+  font-weight: 500;
+  color: var(--app-text-muted);
+  background: var(--app-subtle);
+  border: 1px solid var(--app-border);
+}
+
+.portal-page__grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .portal-page__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .portal-page__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.portal-module-card {
+  --portal-module-accent: var(--app-accent);
+  border-color: color-mix(in srgb, var(--app-border) 85%, transparent);
+  background: color-mix(in srgb, var(--app-glass-bg) 86%, var(--app-surface));
+  backdrop-filter: blur(16px) saturate(1.12);
+  -webkit-backdrop-filter: blur(16px) saturate(1.12);
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.portal-module-card--active {
+  cursor: pointer;
+}
+
+.portal-module-card--active:hover {
+  border-color: color-mix(in srgb, var(--portal-module-accent) 45%, var(--app-border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--portal-module-accent) 22%, transparent),
+    var(--app-shadow-card),
+    0 20px 40px color-mix(in srgb, var(--portal-module-accent) 18%, transparent);
+}
+
+.portal-module-card--disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.portal-module-card__accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--portal-module-accent),
+    color-mix(in srgb, var(--portal-module-accent) 55%, white)
+  );
+}
+
+.portal-module-card__shine {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(
+    125deg,
+    transparent 0%,
+    color-mix(in srgb, white 32%, transparent) 46%,
+    transparent 58%
+  );
+  transition: opacity 0.35s ease;
+}
+
+.portal-module-card--active:hover .portal-module-card__shine {
+  opacity: 0.65;
+}
+
+.portal-module-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--app-radius-button);
+  color: var(--portal-module-accent);
+  background: color-mix(in srgb, var(--portal-module-accent) 14%, var(--app-surface));
+  border: 1px solid color-mix(in srgb, var(--portal-module-accent) 24%, transparent);
+  transition: transform 0.25s ease;
+}
+
+.portal-module-card--active:hover .portal-module-card__icon {
+  transform: scale(1.06);
+}
+
+.portal-module-card__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  color: var(--portal-module-accent);
+  background: color-mix(in srgb, var(--portal-module-accent) 12%, var(--app-surface));
+  opacity: 0;
+  transform: translate(-4px, 4px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.portal-module-card--active:hover .portal-module-card__arrow {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+.portal-module-card__cta {
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.portal-module-card--active:hover .portal-module-card__cta {
+  opacity: 1;
+}
+
+html.dark .portal-page__topbar {
+  background: color-mix(in srgb, var(--app-glass-bg) 68%, var(--app-surface));
+}
+
+html.dark .portal-page__hero {
+  border-color: color-mix(in srgb, var(--app-border) 80%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--app-accent) 14%, transparent),
+    var(--app-shadow-dialog),
+    0 24px 48px color-mix(in srgb, black 40%, transparent);
+}
+
+html.dark .portal-module-card {
+  background: color-mix(in srgb, var(--app-glass-bg) 72%, var(--app-surface));
+}
+
+html.dark .portal-page__glow {
+  opacity: 0.34;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-page__glow,
+  .portal-module-card__shine {
+    animation: none;
+  }
+
+  .portal-module-card--active:hover .portal-module-card__arrow {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Login security feedback — glass dialog */
 .login-feedback-dialog {
   z-index: 100;
@@ -999,6 +1716,50 @@ html.dark .login-page__glow {
 
 .login-feedback-dialog__btn {
   box-shadow: var(--app-shadow-button);
+}
+
+/* ConfirmPhraseDialog — destructive admin confirms (backup / delete / restore) */
+.confirm-phrase-dialog--danger {
+  border-color: color-mix(in srgb, var(--sys-red-light) 38%, var(--app-border));
+  background: color-mix(in srgb, var(--sys-red-light) 7%, var(--app-surface));
+  box-shadow:
+    inset 4px 0 0 var(--sys-red-light),
+    var(--app-shadow-dialog);
+}
+
+.confirm-phrase-dialog__icon-wrap {
+  display: flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: var(--sys-red-light);
+  background: color-mix(in srgb, var(--sys-red-light) 14%, var(--app-surface));
+}
+
+.confirm-phrase-dialog__title {
+  color: color-mix(in srgb, var(--sys-red-light) 82%, var(--app-text));
+}
+
+.confirm-phrase-dialog__description {
+  color: color-mix(in srgb, var(--sys-red-light) 58%, var(--app-text-muted));
+}
+
+.confirm-phrase-dialog__phrase-box {
+  border-color: color-mix(in srgb, var(--sys-red-light) 32%, var(--app-border));
+  color: var(--sys-red-light);
+  background: color-mix(in srgb, var(--sys-red-light) 6%, var(--app-surface));
+}
+
+.confirm-phrase-dialog__input--danger:focus-visible {
+  outline-color: color-mix(in srgb, var(--sys-red-light) 80%, var(--app-text));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sys-red-light) 24%, transparent);
+}
+
+.confirm-phrase-dialog__matched {
+  color: var(--sys-green-light);
 }
 
 .login-page__card--shake {
@@ -1542,6 +2303,72 @@ html.dark .app-table-shell {
 
 .app-data-table-zebra tbody tr:hover {
   background: color-mix(in srgb, var(--app-accent) 6%, var(--app-surface));
+}
+
+/* Planning list — single-row feedback after assign (PRE-UAT U4c) */
+@keyframes planning-row-assign-highlight {
+  0% {
+    background-color: color-mix(in srgb, var(--app-accent) 24%, var(--app-surface));
+    box-shadow: inset 3px 0 0 var(--app-accent);
+  }
+  55% {
+    background-color: color-mix(in srgb, var(--app-accent) 12%, var(--app-surface));
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-accent) 70%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
+}
+
+.app-data-table-zebra tbody tr.planning-row--assign-highlight,
+tbody tr.planning-row--assign-highlight {
+  animation: planning-row-assign-highlight 1.8s ease-out forwards;
+}
+
+.planning-row--assign-highlight-static,
+.app-data-table-zebra tbody tr.planning-row--assign-highlight-static,
+tbody tr.planning-row--assign-highlight-static {
+  background-color: color-mix(in srgb, var(--app-accent) 14%, var(--app-surface));
+  box-shadow: inset 3px 0 0 var(--app-accent);
+}
+
+/* Planning — ack pending pulse once (PRE-UAT U4c) */
+@keyframes planning-ack-pending-pulse-once {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-accent) 42%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 38%, var(--app-border));
+  }
+  45% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--app-accent) 0%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 58%, var(--app-border));
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    border-color: var(--app-border);
+  }
+}
+
+.planning-ack-pending-pulse-once {
+  animation: planning-ack-pending-pulse-once 1.2s ease-out 1 forwards;
+}
+
+.planning-ack-pending-pulse-static {
+  border-color: color-mix(in srgb, var(--app-accent) 45%, var(--app-border));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planning-ack-pending-pulse-once {
+    animation: none;
+    border-color: color-mix(in srgb, var(--app-accent) 45%, var(--app-border));
+  }
+
+  .app-data-table-zebra tbody tr.planning-row--assign-highlight,
+  tbody tr.planning-row--assign-highlight {
+    animation: none;
+    background-color: color-mix(in srgb, var(--app-accent) 14%, var(--app-surface));
+    box-shadow: inset 3px 0 0 var(--app-accent);
+  }
 }
 
 html.dark .app-theme-corporate {
@@ -2786,50 +3613,85 @@ html.dark .macos-admin [data-radix-tabs-trigger][data-state='active'] {
     0 14px 34px rgba(0, 0, 0, 0.55);
 }
 
-/* Sonner toast: glass + status accent (global; matches admin palette) */
+/* Sonner — brand tokens + lucide icons (AppToaster · richColors off) */
+.app-sonner-toaster,
 [data-sonner-toaster] {
   --toast-bg: color-mix(in srgb, var(--app-surface) 96%, white);
-  --toast-border: transparent;
+  --toast-border: color-mix(in srgb, var(--app-border) 70%, transparent);
+  font-family: inherit;
 }
+html.dark .app-sonner-toaster,
 html.dark [data-sonner-toaster] {
   --toast-bg: color-mix(in srgb, var(--app-surface) 92%, #111113);
-  --toast-border: transparent;
+  --toast-border: color-mix(in srgb, var(--app-border) 55%, transparent);
 }
+
+.app-sonner-toast,
 [data-sonner-toast] {
   background: var(--toast-bg) !important;
-  border: 0 !important;
-  backdrop-filter: none;
+  border: 1px solid var(--toast-border) !important;
+  border-radius: var(--app-radius-card) !important;
+  padding: 0.875rem 1rem !important;
+  gap: 0.75rem !important;
+  backdrop-filter: blur(12px) saturate(1.08);
+  -webkit-backdrop-filter: blur(12px) saturate(1.08);
   box-shadow:
     0 12px 30px color-mix(in srgb, var(--app-text) 14%, transparent),
     0 2px 10px color-mix(in srgb, var(--app-text) 10%, transparent);
 }
+
+html.dark .app-sonner-toast,
 html.dark [data-sonner-toast] {
-  box-shadow:
-    0 18px 46px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.65);
 }
+
+[data-sonner-toast] [data-icon] {
+  margin: 0;
+  height: auto;
+  width: auto;
+}
+
 [data-sonner-toast][data-type='success'] {
+  background: color-mix(in srgb, var(--sys-green-light) 7%, var(--toast-bg)) !important;
   box-shadow:
     inset 3px 0 0 color-mix(in srgb, var(--sys-green-light) 85%, transparent),
     0 12px 30px color-mix(in srgb, var(--app-text) 14%, transparent),
     0 2px 10px color-mix(in srgb, var(--app-text) 10%, transparent);
 }
+
 [data-sonner-toast][data-type='error'] {
+  background: color-mix(in srgb, var(--sys-red-light) 6%, var(--toast-bg)) !important;
   box-shadow:
     inset 3px 0 0 color-mix(in srgb, var(--sys-red-light) 85%, transparent),
     0 12px 30px color-mix(in srgb, var(--app-text) 14%, transparent),
     0 2px 10px color-mix(in srgb, var(--app-text) 10%, transparent);
 }
+
 [data-sonner-toast][data-type='warning'] {
+  background: color-mix(in srgb, var(--sys-orange-light) 7%, var(--toast-bg)) !important;
   box-shadow:
     inset 3px 0 0 color-mix(in srgb, var(--sys-orange-light) 88%, transparent),
     0 12px 30px color-mix(in srgb, var(--app-text) 14%, transparent),
     0 2px 10px color-mix(in srgb, var(--app-text) 10%, transparent);
 }
+
 [data-sonner-toast][data-type='info'] {
+  background: color-mix(in srgb, var(--sys-blue-light) 7%, var(--toast-bg)) !important;
   box-shadow:
     inset 3px 0 0 color-mix(in srgb, var(--sys-blue-light) 88%, transparent),
     0 12px 30px color-mix(in srgb, var(--app-text) 14%, transparent),
     0 2px 10px color-mix(in srgb, var(--app-text) 10%, transparent);
+}
+
+[data-sonner-toast] [data-close-button] {
+  border-color: var(--app-border);
+  background: color-mix(in srgb, var(--app-surface) 92%, white);
+  color: var(--app-text-muted);
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: var(--app-subtle);
+  color: var(--app-text);
 }
 
 .macos-admin .admin-layout-shell .admin-page-content {
@@ -3302,8 +4164,8 @@ html.dark .admin-layout-shell .admin-card {
 }
 
 .app-surface-panel--success {
-  border-color: color-mix(in srgb, var(--sys-green-light) 35%, var(--app-border));
-  background: color-mix(in srgb, var(--sys-green-light) 12%, var(--app-surface));
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-success) 12%, var(--app-surface));
 }
 
 .app-surface-panel--soft {

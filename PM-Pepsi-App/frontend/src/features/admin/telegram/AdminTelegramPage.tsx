@@ -58,7 +58,7 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 type FormState = {
@@ -110,8 +110,10 @@ export function AdminTelegramPage() {
   const { t } = useTranslation('admin')
   const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const canRead = usePermission('admin.telegram.read')
   const canWrite = usePermission('admin.telegram.write')
+  const canSettings = usePermission('admin.settings.read')
 
   const summaryQ = useQuery({
     queryKey: ['admin', 'telegram', 'summary'],
@@ -264,13 +266,13 @@ export function AdminTelegramPage() {
     >
         {schemaMissing ? (
           <AdminPageSection index={0}>
-            <Card className="admin-card border-amber-300 bg-amber-50/80">
+            <Card className="admin-card app-tone-warning-review border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base text-amber-900">
+                <CardTitle className="app-tone-warning-strong flex items-center gap-2 text-base">
                   <AlertCircle className="h-5 w-5" />
                   {t('telegram.schemaMissingTitle')}
                 </CardTitle>
-                <CardDescription className="text-amber-900/80">
+                <CardDescription className="app-tone-warning-label">
                   {t('telegram.schemaMissingHint')}
                 </CardDescription>
               </CardHeader>
@@ -293,7 +295,7 @@ export function AdminTelegramPage() {
                 tone={summaryQ.data.botConfigured ? 'success' : 'warning'}
                 value={
                   summaryQ.data.botConfigured ? (
-                    <Badge className="bg-emerald-600">{t('telegram.summary.configured')}</Badge>
+                    <Badge className="app-tone-success-fill">{t('telegram.summary.configured')}</Badge>
                   ) : (
                     <Badge variant="outline">{t('telegram.summary.notConfigured')}</Badge>
                   )
@@ -329,6 +331,22 @@ export function AdminTelegramPage() {
               />
             </AdminKpiGrid>
           ) : null}
+          {summaryQ.data && !summaryQ.data.botConfigured ? (
+            <EmptyState
+              icon={Bot}
+              className="mt-4"
+              title={t('telegram.botEmptyTitle')}
+              description={t('telegram.botEmptyDesc')}
+              action={
+                canSettings
+                  ? {
+                      label: t('telegram.botEmptyAction'),
+                      onClick: () => navigate('/admin/settings'),
+                    }
+                  : undefined
+              }
+            />
+          ) : null}
           {summaryQ.data ? (
             <Card className="admin-card">
               <CardHeader>
@@ -354,7 +372,12 @@ export function AdminTelegramPage() {
             {groupsQ.isLoading ? (
               <Skeleton className="h-40 w-full" />
             ) : groupsQ.isError ? (
-              <p className="text-sm text-red-600">{(groupsQ.error as Error).message}</p>
+              <EmptyState
+                icon={AlertCircle}
+                title={t('telegram.groupsLoadFailed')}
+                description={(groupsQ.error as Error).message}
+                action={{ label: tc('actions.retry'), onClick: () => void groupsQ.refetch() }}
+              />
             ) : !groupsQ.data?.length ? (
               <EmptyState
                 icon={MessageSquare}
@@ -363,7 +386,10 @@ export function AdminTelegramPage() {
                 action={
                   canWrite
                     ? { label: t('telegram.addGroup'), onClick: openCreate }
-                    : undefined
+                    : {
+                        label: t('telegram.emptyReadOnlyAction'),
+                        onClick: () => navigate('/admin/users'),
+                      }
                 }
               />
             ) : (
@@ -396,7 +422,7 @@ export function AdminTelegramPage() {
                         </TableCell>
                         <TableCell>
                           {row.enabled ? (
-                            <Badge className="bg-emerald-600">{t('telegram.enabledYes')}</Badge>
+                            <Badge className="app-tone-success-fill">{t('telegram.enabledYes')}</Badge>
                           ) : (
                             <Badge variant="outline">{t('telegram.enabledNo')}</Badge>
                           )}

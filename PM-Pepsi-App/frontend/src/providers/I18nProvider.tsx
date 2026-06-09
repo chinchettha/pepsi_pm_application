@@ -62,6 +62,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
 export function useAppLocale(): I18nContextValue {
   const ctx = useContext(I18nContext)
-  if (!ctx) throw new Error('useAppLocale must be used within I18nProvider')
-  return ctx
+  if (ctx) return ctx
+  // Fallback — error boundary / edge mounts outside provider (should be rare)
+  const locale = resolveAppLocale(readStoredAppLocale())
+  return {
+    locale,
+    setLocale: (next) => {
+      writeStoredAppLocale(next)
+      void setAppLocale(next)
+    },
+  }
 }

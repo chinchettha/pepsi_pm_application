@@ -20,7 +20,7 @@ type RowFilter = 'all' | 'error' | 'skipped' | 'ok'
 function actionBadgeClass(action: Iw37nImportRow['action']): string {
   if (action === 'error') return 'border-transparent bg-red-600 text-white hover:bg-red-700'
   if (action === 'updated') return 'border-transparent bg-sky-700 text-white hover:bg-sky-800'
-  if (action === 'inserted') return 'border-transparent bg-emerald-700 text-white hover:bg-emerald-800'
+  if (action === 'inserted') return 'app-tone-success-fill border-transparent hover:opacity-90'
   return ''
 }
 
@@ -59,10 +59,10 @@ export function Iw37nImportReviewPanel({
   const canCommit = summary.inserted + summary.updated > 0
 
   return (
-    <div className="mt-4 space-y-4 rounded-card border border-amber-300/80 bg-amber-50/50 p-4">
+    <div className="app-tone-warning-review mt-4 space-y-4 rounded-card border p-4">
       <div>
-        <h4 className="text-body-sm font-semibold text-amber-950">{t('review.title')}</h4>
-        <p className="mt-1 text-xs text-amber-900/80">
+        <h4 className="app-tone-warning-strong text-body-sm font-semibold">{t('review.title')}</h4>
+        <p className="app-tone-warning-label mt-1 text-xs">
           {t('review.rowSummary', {
             fileName: summary.fileName,
             total: summary.totalRows,
@@ -97,11 +97,11 @@ export function Iw37nImportReviewPanel({
       ) : null}
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-        <Stat label={t('review.statInserted')} value={summary.inserted} tone="emerald" />
-        <Stat label={t('review.statUpdated')} value={summary.updated} tone="sky" />
-        <Stat label={t('review.statSkipped')} value={summary.skipped} tone="zinc" />
-        <Stat label={t('review.statErrors')} value={summary.errors} tone="red" />
-        <Stat label={t('review.statTotal')} value={summary.totalRows} tone="zinc" />
+        <Stat label={t('review.statInserted')} value={summary.inserted} tone="success" />
+        <Stat label={t('review.statUpdated')} value={summary.updated} tone="info" />
+        <Stat label={t('review.statSkipped')} value={summary.skipped} tone="default" />
+        <Stat label={t('review.statErrors')} value={summary.errors} tone="danger" />
+        <Stat label={t('review.statTotal')} value={summary.totalRows} tone="default" />
       </div>
 
       {summary.errorGroups.length > 0 ? (
@@ -184,7 +184,7 @@ export function Iw37nImportReviewPanel({
         </Table>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-amber-200/80 pt-3">
+      <div className="app-tone-warning-review-divider flex flex-wrap gap-2 border-t pt-3">
         <Button type="button" disabled={!canCommit || committing} onClick={onCommit}>
           {committing ? t('review.committing') : t('review.commit')}
         </Button>
@@ -196,7 +196,7 @@ export function Iw37nImportReviewPanel({
             {t('review.cannotCommitDuplicate')}
           </p>
         ) : !canCommit ? (
-          <p className="self-center text-xs text-amber-800">{t('review.cannotCommitNoRows')}</p>
+          <p className="app-tone-warning-label self-center text-xs">{t('review.cannotCommitNoRows')}</p>
         ) : null}
       </div>
     </div>
@@ -210,18 +210,18 @@ function Stat({
 }: {
   label: string
   value: number
-  tone: 'emerald' | 'sky' | 'red' | 'zinc'
+  tone: 'success' | 'info' | 'danger' | 'default'
 }) {
   const bg =
-    tone === 'emerald'
-      ? 'bg-emerald-50 text-emerald-900'
-      : tone === 'sky'
-        ? 'bg-sky-50 text-sky-900'
-        : tone === 'red'
-          ? 'bg-red-50 text-red-900'
-          : 'bg-app-muted text-app'
+    tone === 'success'
+      ? 'app-tone-success rounded-button px-3 py-2'
+      : tone === 'info'
+        ? 'app-tone-info rounded-button px-3 py-2'
+        : tone === 'danger'
+          ? 'app-tone-danger rounded-button px-3 py-2'
+          : 'bg-app-muted text-app rounded-button px-3 py-2'
   return (
-    <div className={`rounded-button px-3 py-2 ${bg}`}>
+    <div className={bg}>
       <div className="text-xs opacity-80">{label}</div>
       <div className="text-lg font-semibold tabular-nums">{value}</div>
     </div>

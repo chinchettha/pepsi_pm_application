@@ -21,6 +21,7 @@ import enBoard from '@/i18n/locales/en/board.json'
 import enPmVibration from '@/i18n/locales/en/pmVibration.json'
 import enMasterData from '@/i18n/locales/en/masterData.json'
 import enUserLog from '@/i18n/locales/en/userLog.json'
+import enPortal from '@/i18n/locales/en/portal.json'
 import thCommon from '@/i18n/locales/th/common.json'
 import thHome from '@/i18n/locales/th/home.json'
 import thNav from '@/i18n/locales/th/nav.json'
@@ -38,6 +39,7 @@ import thBoard from '@/i18n/locales/th/board.json'
 import thPmVibration from '@/i18n/locales/th/pmVibration.json'
 import thMasterData from '@/i18n/locales/th/masterData.json'
 import thUserLog from '@/i18n/locales/th/userLog.json'
+import thPortal from '@/i18n/locales/th/portal.json'
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
@@ -68,6 +70,7 @@ void i18n.use(initReactI18next).init({
     'pmVibration',
     'masterData',
     'userLog',
+    'portal',
   ],
   resources: {
     en: {
@@ -88,6 +91,7 @@ void i18n.use(initReactI18next).init({
       pmVibration: enPmVibration,
       masterData: enMasterData,
       userLog: enUserLog,
+      portal: enPortal,
     },
     th: {
       common: thCommon,
@@ -107,6 +111,7 @@ void i18n.use(initReactI18next).init({
       pmVibration: thPmVibration,
       masterData: thMasterData,
       userLog: thUserLog,
+      portal: thPortal,
     },
   },
   interpolation: { escapeValue: false },

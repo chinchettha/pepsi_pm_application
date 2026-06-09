@@ -16,6 +16,8 @@
 | [**../SETUP-NEW-MACHINE.md**](../SETUP-NEW-MACHINE.md) | **ติดตั้งเครื่องใหม่** — PostgreSQL, migration, backend, frontend, E2E |
 | [**UAT-ROUND-1-TH.md**](UAT-ROUND-1-TH.md) | **ชีต UAT รอบ 1** — checklist ภาษาไทย + กรอก requirement ต่อหน้า |
 | [**UAT-ROUND-2-TH.md**](UAT-ROUND-2-TH.md) · [**UAT-ROUND-2-TH.docx**](UAT-ROUND-2-TH.docx) | **ชีต UAT รอบ 2** — PM ฟอร์มกระดาษ · i18n · regression P0 + comment กลับทีม (Word สำหรับส่งลูกค้า) |
+| [**PRE-UAT-UI-PHASES.md**](PRE-UAT-UI-PHASES.md) | **U4 UI ก่อน UAT** — popup · animation · ไล่ทีละหน้า (ทำก่อน) |
+| [**../PRE-UAT-MASTER-PHASES.md**](../PRE-UAT-MASTER-PHASES.md) | Master checklist ก่อน UAT — SAP · Telegram · Deploy (ยังไม่ส่งลูกค้า) |
 | [**CATALOG.md**](CATALOG.md) | สารบัญไฟล์ทั้งหมด + แมปไป parity 01–15 |
 | [**LEGACY-ISSUES-CHECKLIST.md**](LEGACY-ISSUES-CHECKLIST.md) | บั๊ก/UX จาก Problem PM + screenshot ระบบเก่า (Must/Should) |
 | [**SAP-SAMPLE-PROBE.md**](SAP-SAMPLE-PROBE.md) | ผลตรวจ parser กับไฟล์ตัวอย่างลูกค้า (รัน 2026-05-21) |
@@ -24,6 +26,6 @@
 
 **อัปเดต integration:** [`../parity-pending/15-sap-csv-integration.md`](../parity-pending/15-sap-csv-integration.md) §13
 
-**แผน Phase + Checklist งาน (เรียงความสำคัญ):** [**`../WORK-PHASES.md`**](../WORK-PHASES.md) ← **ใช้ไฟล์นี้ติ๊กงาน**
+**แผน Phase + Checklist งาน (เรียงความสำคัญ):** [**`../WORK-PHASES.md`**](../WORK-PHASES.md) · **ก่อน UAT:** [**`../PRE-UAT-MASTER-PHASES.md`**](../PRE-UAT-MASTER-PHASES.md)
 
 **แผนพัฒนา:** [`../parity-pending/PLAN.md`](../parity-pending/PLAN.md) · ย้าย PHP [`../parity-pending/CHECKLIST-ORDER.md`](../parity-pending/CHECKLIST-ORDER.md)

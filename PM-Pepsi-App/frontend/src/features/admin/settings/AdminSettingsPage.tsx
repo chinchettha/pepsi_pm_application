@@ -2,6 +2,16 @@ import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -54,12 +64,12 @@ function SectionResetButton({
   section,
   label,
   disabled,
-  onReset,
+  onRequestReset,
 }: {
   section: SettingsResetSection
   label: string
   disabled?: boolean
-  onReset: (section: SettingsResetSection) => void
+  onRequestReset: (section: SettingsResetSection, label: string) => void
 }) {
   const { t } = useTranslation('admin')
   return (
@@ -69,10 +79,7 @@ function SectionResetButton({
       variant="ghost"
       className="text-app-muted"
       disabled={disabled}
-      onClick={() => {
-        if (!window.confirm(t('settings.resetSectionConfirm', { label }))) return
-        onReset(section)
-      }}
+      onClick={() => onRequestReset(section, label)}
     >
       <RotateCcw className="mr-1 size-3.5" aria-hidden />
       {t('settings.resetSectionBtn')}
@@ -137,6 +144,10 @@ export function AdminSettingsPage() {
   const [form, setForm] = useState<AdminSettings | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
   const [clearCacheOpen, setClearCacheOpen] = useState(false)
+  const [sectionResetTarget, setSectionResetTarget] = useState<{
+    section: SettingsResetSection
+    label: string
+  } | null>(null)
 
   useEffect(() => {
     if (q.data) setForm(q.data)
@@ -292,7 +303,7 @@ export function AdminSettingsPage() {
                     section="locale"
                     label={t('settings.sectionLocale')}
                     disabled={sectionResetMut.isPending}
-                    onReset={(s) => sectionResetMut.mutate(s)}
+                    onRequestReset={(s, label) => setSectionResetTarget({ section: s, label })}
                   />
                 ) : null}
               </CardHeader>
@@ -390,7 +401,7 @@ export function AdminSettingsPage() {
                     section="limits"
                     label={t('settings.sectionLimits')}
                     disabled={sectionResetMut.isPending}
-                    onReset={(s) => sectionResetMut.mutate(s)}
+                    onRequestReset={(s, label) => setSectionResetTarget({ section: s, label })}
                   />
                 ) : null}
               </CardHeader>
@@ -471,7 +482,7 @@ export function AdminSettingsPage() {
                     section="features"
                     label={t('settings.sectionFeatures')}
                     disabled={sectionResetMut.isPending}
-                    onReset={(s) => sectionResetMut.mutate(s)}
+                    onRequestReset={(s, label) => setSectionResetTarget({ section: s, label })}
                   />
                 ) : null}
               </CardHeader>
@@ -551,7 +562,7 @@ export function AdminSettingsPage() {
                     section="maintenance"
                     label={t('settings.sectionMaintenance')}
                     disabled={sectionResetMut.isPending}
-                    onReset={(s) => sectionResetMut.mutate(s)}
+                    onRequestReset={(s, label) => setSectionResetTarget({ section: s, label })}
                   />
                 ) : null}
               </CardHeader>
@@ -578,6 +589,40 @@ export function AdminSettingsPage() {
             <BoardKioskCard canWrite={canWrite} />
           </div>
         ) : null}
+
+      <AlertDialog
+        open={sectionResetTarget != null}
+        onOpenChange={(open) => {
+          if (!open && !sectionResetMut.isPending) setSectionResetTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('settings.resetSectionBtn')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {sectionResetTarget
+                ? t('settings.resetSectionConfirm', { label: sectionResetTarget.label })
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sectionResetMut.isPending}>{tc('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={sectionResetMut.isPending || !sectionResetTarget}
+              onClick={(e) => {
+                e.preventDefault()
+                if (!sectionResetTarget) return
+                sectionResetMut.mutate(sectionResetTarget.section, {
+                  onSuccess: () => setSectionResetTarget(null),
+                })
+              }}
+            >
+              {t('settings.resetSectionBtn')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ConfirmPhraseDialog
         open={resetOpen}

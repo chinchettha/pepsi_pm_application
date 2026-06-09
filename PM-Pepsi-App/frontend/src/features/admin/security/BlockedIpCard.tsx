@@ -197,6 +197,7 @@ export function BlockedIpCard({ items, canWrite }: BlockedIpCardProps) {
         <ConfirmPhraseDialog
           open
           onOpenChange={(open) => !open && setUnblockTarget(null)}
+          tone="danger"
           title={t('security.unblockTitle')}
           description={t('security.unblockDesc', { ip: unblockTarget.ip })}
           phrase={t('security.unblockPhrase')}

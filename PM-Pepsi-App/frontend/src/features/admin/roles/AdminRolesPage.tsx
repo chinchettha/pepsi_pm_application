@@ -24,6 +24,7 @@ import { CreateRoleDialog } from './CreateRoleDialog'
 import { EditRoleLabelsDialog } from './EditRoleLabelsDialog'
 import { PermissionMatrix } from './PermissionMatrix'
 import { RoleNavPreview } from './RoleNavPreview'
+import { RolePortalPreview } from './RolePortalPreview'
 import { resolveRoleDisplayLabel } from '@/lib/role-display'
 import { useAppLocale } from '@/providers/I18nProvider'
 
@@ -191,6 +192,7 @@ export function AdminRolesPage() {
       }
     >
         <RoleNavPreview />
+        <RolePortalPreview />
       <Card className="admin-card">
         <CardHeader>
           <CardTitle className="text-base">{t('roles.matrixTitle')}</CardTitle>

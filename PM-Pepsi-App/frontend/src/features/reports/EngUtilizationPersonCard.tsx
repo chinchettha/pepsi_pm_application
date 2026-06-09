@@ -120,7 +120,7 @@ export function EngUtilizationPersonCard({
       >
         <div className="flex h-full w-full">
           <div
-            className="h-full bg-emerald-500"
+            className="app-tone-success-strip-fill h-full"
             style={{ width: `${Math.min(100, person.percentPm)}%` }}
             title={t('engUtil.cardPctPmTitle', {
               pct: person.percentPm.toFixed(1),
@@ -148,7 +148,7 @@ export function EngUtilizationPersonCard({
         className={
           kiosk
             ? 'eng-util-person-card__total'
-            : 'mt-1 text-center text-body-sm font-semibold tabular-nums text-emerald-800'
+            : 'app-tone-success-strong mt-1 text-center text-body-sm font-semibold tabular-nums'
         }
       >
         {total.toFixed(1)}%
@@ -163,7 +163,7 @@ export function EngUtilizationPersonCard({
         })}
       </p>
       {!kiosk && (!person.hasImage || imgFailed) ? (
-        <Badge variant="outline" className="mt-1 border-amber-300 text-badge text-amber-800">
+        <Badge variant="outline" className="app-tone-warning-badge mt-1 text-badge">
           {t('engUtil.cardNoPhoto')}
         </Badge>
       ) : null}

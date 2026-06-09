@@ -104,19 +104,19 @@ function formatHours(h: number): string {
 
 const ROLE_BADGE_TONE: Record<string, { tone: string; icon: typeof Users }> = {
   admin: {
-    tone: 'bg-rose-100 text-rose-800 ring-rose-200',
+    tone: 'app-tone-pill-danger-ring',
     icon: ShieldCheck,
   },
   manager: {
-    tone: 'bg-purple-100 text-purple-800 ring-purple-200',
+    tone: 'app-tone-pill-info-ring',
     icon: Users,
   },
   planner: {
-    tone: 'bg-blue-100 text-blue-800 ring-blue-200',
+    tone: 'app-tone-pill-info-ring',
     icon: Layers,
   },
   technician: {
-    tone: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+    tone: 'app-tone-pill-success-ring',
     icon: Wrench,
   },
 }
@@ -440,11 +440,11 @@ function ManagerTeamSection({
       ? t('dashboard.team.titleWithCode', { code: team.groupCode })
       : t('dashboard.team.title')
   return (
-    <div className="overflow-hidden rounded-card border border-purple-200 bg-purple-50/30 shadow-sm">
-      <div className="flex items-center justify-between border-b border-purple-200 px-6 py-3">
+    <div className="app-tone-info-section overflow-hidden rounded-card border shadow-sm">
+      <div className="app-tone-info-inner flex items-center justify-between border-b px-6 py-3">
         <div className="min-w-0">
-          <div className="text-body-sm font-medium text-purple-900">{teamTitle}</div>
-          <p className="text-xs text-purple-900/70">
+          <div className="app-tone-info-strong text-body-sm font-medium">{teamTitle}</div>
+          <p className="app-tone-info-label text-xs">
             {t('dashboard.team.subtitle', {
               members: team.members.length,
               open: team.totalOpen,

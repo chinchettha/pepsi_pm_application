@@ -19,10 +19,19 @@ import type { planningItemSchema } from '@/api/schemas'
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import { fetchPlanning, postPlanningOrderAck } from '@/lib/api-public'
 import { formatPlanningHourValue } from '@/lib/planning-available-hours'
+import {
+  appCssMotionClassWhen,
+  PLANNING_ACK_PULSE_ANIMATED,
+  PLANNING_ACK_PULSE_STATIC,
+} from '@/lib/app-motion'
+import { usePlanningAckPulseOnce } from '@/lib/use-planning-ack-pulse'
+import { usePlanningRowHighlight } from '@/lib/use-planning-row-highlight'
 import { usePermission } from '@/lib/use-permission'
+import { cn } from '@/lib/utils'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useReducedMotion } from 'framer-motion'
 import { AlertCircle, CheckCircle2, ClipboardList, Loader2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -48,9 +57,12 @@ export function PlanningPage() {
   const authUser = getStoredAuthUser()
   const canRead = usePermission('planning.read')
   const canAssign = usePermission('planning.assign')
+  const canIw37n = usePermission('iw37n.read')
   const [planningStatus, setPlanningStatus] = useState<'open' | 'closed'>('open')
   const [detailId, setDetailId] = useState<string | null>(null)
   const [assignTarget, setAssignTarget] = useState<PlanningAssignTarget | null>(null)
+  const reduceMotion = useReducedMotion()
+  const { highlightRow, highlightId, rowHighlightProps } = usePlanningRowHighlight(!!reduceMotion)
   const q = useQuery({
     queryKey: ['planning', planningStatus],
     queryFn: () => fetchPlanning({ status: planningStatus }),
@@ -79,6 +91,13 @@ export function PlanningPage() {
   }
 
   const rows = q.data ?? []
+  const { isPulsing } = usePlanningAckPulseOnce(rows, q.isFetched, planningStatus)
+
+  useEffect(() => {
+    if (!highlightId) return
+    const row = document.querySelector<HTMLElement>(`[data-planning-row-id="${highlightId}"]`)
+    row?.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' })
+  }, [highlightId, reduceMotion])
 
   if (!canRead) {
     return (
@@ -175,8 +194,10 @@ export function PlanningPage() {
                 }
                 action={
                   planningStatus === 'open'
-                    ? { label: t('list.goIw37n'), onClick: () => navigate('/iw37n') }
-                    : undefined
+                    ? canIw37n
+                      ? { label: t('list.goIw37n'), onClick: () => navigate('/iw37n') }
+                      : undefined
+                    : { label: t('list.showOpenJobs'), onClick: () => setPlanningStatus('open') }
                 }
               />
             ) : (
@@ -210,8 +231,14 @@ export function PlanningPage() {
                 <TableBody>
                   {rows.map((p) => {
                     const st = statusMap[p.status] ?? { label: p.status, variant: 'outline' as const }
+                    const hl = rowHighlightProps(p.id)
                     return (
-                      <TableRow key={p.id}>
+                      <TableRow
+                        key={p.id}
+                        data-planning-row-id={hl['data-planning-row-id']}
+                        data-planning-row-highlight={hl['data-planning-row-highlight']}
+                        className={cn(hl.className)}
+                      >
                         <TableCell>
                           <Link
                             to={`/work-orders/${p.id}`}
@@ -254,6 +281,14 @@ export function PlanningPage() {
                                 size="sm"
                                 variant="outline"
                                 disabled={ackMut.isPending}
+                                className={cn(
+                                  appCssMotionClassWhen(
+                                    isPulsing(p.id),
+                                    reduceMotion,
+                                    PLANNING_ACK_PULSE_ANIMATED,
+                                    PLANNING_ACK_PULSE_STATIC,
+                                  ),
+                                )}
                                 onClick={() => ackMut.mutate(Number(p.id))}
                               >
                                 {ackMut.isPending ? (
@@ -317,6 +352,7 @@ export function PlanningPage() {
         target={assignTarget}
         onClose={() => setAssignTarget(null)}
         myCode={myCode}
+        onAssignSuccess={(idiw37) => highlightRow(idiw37)}
       />
 
       <WorkOrderDetailDialog

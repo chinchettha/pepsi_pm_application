@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useGesture } from '@use-gesture/react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Loader2, Maximize2, Minus, Plus, X, ZoomIn } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minus, Plus, X, ZoomIn } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const MIN_SCALE = 1
@@ -26,6 +26,12 @@ export type ImageLightboxProps = {
   alt?: string
   loading?: boolean
   error?: string | null
+  /** Gallery navigation — ArrowLeft / ArrowRight when provided */
+  onPrevious?: () => void
+  onNext?: () => void
+  canPrevious?: boolean
+  canNext?: boolean
+  positionLabel?: string
 }
 
 export function ImageLightbox({
@@ -37,9 +43,15 @@ export function ImageLightbox({
   alt = '',
   loading = false,
   error = null,
+  onPrevious,
+  onNext,
+  canPrevious = false,
+  canNext = false,
+  positionLabel,
 }: ImageLightboxProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('common')
   const resolvedTitle = title ?? t('imageLightbox.title')
+  const closeRef = useRef<HTMLButtonElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -47,6 +59,8 @@ export function ImageLightbox({
   const positionRef = useRef(position)
   scaleRef.current = scale
   positionRef.current = position
+
+  const showGalleryNav = Boolean(onPrevious || onNext)
 
   const resetView = useCallback(() => {
     setScale(1)
@@ -121,10 +135,25 @@ export function ImageLightbox({
     },
   )
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'ArrowLeft' && canPrevious && onPrevious) {
+        e.preventDefault()
+        onPrevious()
+        return
+      }
+      if (e.key === 'ArrowRight' && canNext && onNext) {
+        e.preventDefault()
+        onNext()
+      }
+    },
+    [canNext, canPrevious, onNext, onPrevious],
+  )
+
   const zoomPercent = Math.round(scale * 100)
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal>
       <DialogPortal>
         <DialogPrimitive.Overlay
           className={cn(
@@ -135,6 +164,11 @@ export function ImageLightbox({
         />
         <DialogPrimitive.Content
           aria-describedby={undefined}
+          onKeyDown={handleKeyDown}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault()
+            closeRef.current?.focus()
+          }}
           className={cn(
             'fixed left-1/2 top-1/2 z-[121] flex max-h-[min(96vh,900px)] w-[min(96vw,1100px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden p-0',
             'rounded-2xl border border-neutral-800/80 bg-neutral-950 text-white shadow-2xl outline-none',
@@ -150,6 +184,9 @@ export function ImageLightbox({
               </DialogTitle>
               {subtitle ? (
                 <p className="truncate text-[11px] text-white/60 sm:text-xs">{subtitle}</p>
+              ) : null}
+              {positionLabel ? (
+                <p className="mt-0.5 text-[11px] tabular-nums text-white/50">{positionLabel}</p>
               ) : null}
             </div>
 
@@ -195,6 +232,7 @@ export function ImageLightbox({
             </div>
 
             <Button
+              ref={closeRef}
               type="button"
               size="icon"
               variant="ghost"
@@ -215,6 +253,31 @@ export function ImageLightbox({
               scale > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-in',
             )}
           >
+            {showGalleryNav && canPrevious ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="absolute left-2 top-1/2 z-10 size-10 -translate-y-1/2 rounded-full border border-white/15 bg-black/40 text-white hover:bg-black/60"
+                onClick={onPrevious}
+                aria-label={t('imageLightbox.prevImage')}
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+            ) : null}
+            {showGalleryNav && canNext ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="absolute right-2 top-1/2 z-10 size-10 -translate-y-1/2 rounded-full border border-white/15 bg-black/40 text-white hover:bg-black/60"
+                onClick={onNext}
+                aria-label={t('imageLightbox.nextImage')}
+              >
+                <ChevronRight className="size-5" />
+              </Button>
+            ) : null}
+
             <AnimatePresence mode="wait">
               {loading ? (
                 <motion.div
@@ -261,7 +324,11 @@ export function ImageLightbox({
               <ZoomIn className="size-3.5 shrink-0 opacity-70" aria-hidden />
               {t('imageLightbox.help')}
             </span>
-            <span className="hidden sm:inline">{t('imageLightbox.escClose')}</span>
+            <span className="hidden text-right sm:inline">
+              {showGalleryNav && (canPrevious || canNext)
+                ? t('imageLightbox.keyboardNav')
+                : t('imageLightbox.escClose')}
+            </span>
           </div>
         </DialogPrimitive.Content>
       </DialogPortal>

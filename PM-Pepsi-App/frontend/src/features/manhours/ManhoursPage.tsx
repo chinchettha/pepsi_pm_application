@@ -368,7 +368,7 @@ export function ManhoursPage() {
                               animate="show"
                               className="group rounded-card border border-app/60 bg-[var(--app-surface)] p-2 shadow-sm transition-colors motion-safe:hover:border-app/80 motion-safe:hover:bg-[color-mix(in_srgb,var(--app-surface)_88%,var(--app-accent)_12%)]"
                             >
-                              <div className="rounded-card bg-emerald-600 px-3 py-2 text-center text-body-sm font-medium text-white shadow-sm">
+                              <div className="app-tone-success-fill rounded-card px-3 py-2 text-center text-body-sm font-medium shadow-sm">
                                 {z.wktype}
                               </div>
                               <div className="mt-1 grid grid-cols-3 gap-1 text-center text-body-sm font-semibold">
@@ -390,7 +390,7 @@ export function ManhoursPage() {
                               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-app-muted">
                                 <div className="flex h-full w-full">
                                   <div
-                                    className="h-full bg-emerald-500 transition-[width] duration-500 motion-safe:group-hover:duration-300"
+                                    className="app-tone-success-strip-fill h-full transition-[width] duration-500 motion-safe:group-hover:duration-300"
                                     style={{ width: `${Math.min(100, Math.max(0, z.percent))}%` }}
                                     title={`% ${z.percent.toFixed(2)}`}
                                   />

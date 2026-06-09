@@ -136,14 +136,14 @@ function TaskListItemCard({
           'relative overflow-hidden rounded-card border bg-[var(--app-surface)] p-4 shadow-sm transition-shadow duration-200',
           'hover:shadow-md',
           status.running
-            ? 'border-emerald-200/80 hover:border-emerald-300/90'
-            : 'border-amber-200/80 hover:border-amber-300/90',
+            ? 'app-tone-success-stat hover:shadow-md'
+            : 'app-tone-warning-tile hover:shadow-md',
         )}
       >
         <div
           className={cn(
             'absolute inset-y-0 left-0 w-1',
-            status.running ? 'bg-emerald-500' : 'bg-amber-500',
+            status.running ? 'app-tone-success-strip-fill' : 'app-tone-warning-strip-fill',
           )}
           aria-hidden
         />
@@ -152,9 +152,7 @@ function TaskListItemCard({
           <span
             className={cn(
               'flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold tabular-nums',
-              status.running
-                ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-amber-100 text-amber-900',
+              status.running ? 'app-tone-success-card-index' : 'app-tone-warning-card-index',
             )}
           >
             {index + 1}
@@ -172,9 +170,7 @@ function TaskListItemCard({
               <span
                 className={cn(
                   'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold',
-                  status.running
-                    ? 'bg-emerald-600/10 text-emerald-800'
-                    : 'bg-amber-600/10 text-amber-900',
+                  status.running ? 'app-tone-success-badge' : 'app-tone-warning-badge',
                 )}
               >
                 {status.running ? (

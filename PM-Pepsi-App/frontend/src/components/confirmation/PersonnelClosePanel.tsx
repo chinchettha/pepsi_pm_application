@@ -134,7 +134,7 @@ export function PersonnelClosePanel({
     <div className="space-y-4">
       <p className="text-body-sm font-medium text-app">{t('personnel.title')}</p>
       {closeBlockedMessage ? (
-        <p className="rounded-card border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
+        <p className="app-tone-warning-callout rounded-card border px-3 py-2 text-xs">
           {closeBlockedMessage}
         </p>
       ) : null}
@@ -185,7 +185,7 @@ export function PersonnelClosePanel({
             })}
           </p>
         ) : startT && endT ? (
-          <p className="mt-2 text-xs text-amber-700">{t('personnel.invalidDateTime')}</p>
+          <p className="app-tone-warning-icon mt-2 text-xs">{t('personnel.invalidDateTime')}</p>
         ) : null}
       </div>
 

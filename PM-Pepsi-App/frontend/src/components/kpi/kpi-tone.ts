@@ -5,9 +5,9 @@ export type KpiStatTone = 'default' | 'amber' | 'emerald' | 'rose' | 'info'
 
 const KPI_TONE_CLASS: Record<KpiStatTone, string> = {
   default: 'border-app bg-app-subtle',
-  amber: 'border-amber-200 bg-amber-50',
-  emerald: 'border-emerald-200 bg-emerald-50',
-  rose: 'border-rose-200 bg-rose-50',
+  amber: 'app-tone-warning border',
+  emerald: 'app-tone-success border',
+  rose: 'app-tone-danger border',
   info: 'app-tone-info border',
 }
 

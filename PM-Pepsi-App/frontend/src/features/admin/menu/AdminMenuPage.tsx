@@ -4,6 +4,16 @@ import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
 import type { NavLinkEntry } from '@/components/layout/nav-config'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -37,7 +47,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Download, Menu, Plus, RefreshCcw } from 'lucide-react'
+import { AlertCircle, Download, Loader2, Menu, Plus, RefreshCcw, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -119,6 +129,7 @@ export function AdminMenuPage() {
   const [editRow, setEditRow] = useState<AdminMenuRow | null>(null)
   const [previewRole, setPreviewRole] = useState(() => authUser?.userst?.trim().toUpperCase() || 'A')
   const [syncOpen, setSyncOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null)
 
   const q = useQuery({
     queryKey: MENU_KEY,
@@ -189,6 +200,7 @@ export function AdminMenuPage() {
   const deleteMut = useMutation({
     mutationFn: deleteAdminMenuItem,
     onSuccess: () => {
+      setDeleteTarget(null)
       toast.success(t('menu.deleted'))
       void qc.invalidateQueries({ queryKey: MENU_KEY })
       void qc.invalidateQueries({ queryKey: ['nav-menu'] })
@@ -330,11 +342,9 @@ export function AdminMenuPage() {
                           setEditRow(item)
                           setDialogOpen(true)
                         }}
-                        onDelete={() => {
-                          if (!window.confirm(t('menu.deleteConfirm', { title: item.menutitle })))
-                            return
-                          deleteMut.mutate(item.idmenu)
-                        }}
+                        onDelete={() =>
+                          setDeleteTarget({ id: item.idmenu, title: item.menutitle })
+                        }
                       />
                     ))}
                   </div>
@@ -365,6 +375,43 @@ export function AdminMenuPage() {
         initial={editRow}
         onSaved={invalidateAll}
       />
+
+      <AlertDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open && !deleteMut.isPending) setDeleteTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('menu.deleteMenuAria')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? t('menu.deleteConfirm', { title: deleteTarget.title })
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMut.isPending}>{tc('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteMut.isPending || !deleteTarget}
+              onClick={(e) => {
+                e.preventDefault()
+                if (!deleteTarget) return
+                deleteMut.mutate(deleteTarget.id)
+              }}
+            >
+              {deleteMut.isPending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              ) : (
+                <Trash2 className="mr-2 size-4" aria-hidden />
+              )}
+              {t('menu.deleteMenuAria')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {syncOpen ? (
         <ConfirmPhraseDialog

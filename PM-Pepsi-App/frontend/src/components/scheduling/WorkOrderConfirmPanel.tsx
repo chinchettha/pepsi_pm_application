@@ -3,7 +3,12 @@ import {
   SchedulingPageSection,
 } from '@/components/scheduling/SchedulingPageLayout'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  SchedulingWoTabsList,
+  WoModalTabFade,
+  woTabTriggerClass,
+} from '@/components/scheduling/SchedulingWoTabs'
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
@@ -37,8 +42,8 @@ type Props = {
 }
 
 function statusTone(status: ConfirmQc['status']): string {
-  if (status === 'approved') return 'bg-emerald-600/10 text-emerald-800'
-  if (status === 'pending') return 'bg-amber-600/10 text-amber-900'
+  if (status === 'approved') return 'app-tone-success-badge'
+  if (status === 'pending') return 'app-tone-warning-badge'
   if (status === 'rejected') return 'bg-red-600/10 text-red-800'
   return 'bg-app-subtle text-app-muted'
 }
@@ -64,15 +69,15 @@ function SummaryStat({
       className={cn(
         'flex min-w-[7rem] flex-1 items-center gap-2 rounded-button border px-3 py-2 text-left transition-all duration-200',
         active
-          ? 'border-emerald-300/90 app-surface-panel shadow-sm ring-1 ring-emerald-200/80'
-          : 'border-emerald-200/70 app-surface-panel--soft hover:border-emerald-300/80 hover:bg-[color-mix(in_srgb,var(--app-surface)_96%,var(--app-bg))]',
+          ? 'app-tone-success-stat-active app-surface-panel shadow-sm'
+          : 'app-tone-success-stat app-surface-panel--soft hover:bg-[color-mix(in_srgb,var(--app-surface)_96%,var(--app-bg))]',
         onClick && 'cursor-pointer',
       )}
     >
-      <Icon className="size-4 shrink-0 text-emerald-700" aria-hidden />
+      <Icon className="app-tone-success-icon size-4 shrink-0" aria-hidden />
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/65">{label}</p>
-        <p className="text-sm font-bold tabular-nums text-emerald-950">{value}</p>
+        <p className="app-tone-success-label text-[10px] font-semibold uppercase tracking-wide">{label}</p>
+        <p className="app-tone-success-strong text-sm font-bold tabular-nums">{value}</p>
       </div>
     </Comp>
   )
@@ -100,11 +105,11 @@ export function WorkOrderConfirmPanel({
       <SchedulingPageSection index={0}>
         <motion.div
           layout={!reduceMotion}
-          className="overflow-hidden rounded-card border border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-[var(--app-surface)] to-[color-mix(in_srgb,var(--app-accent)_4%,var(--app-surface))] p-4 shadow-[var(--app-shadow-card)]"
+          className="app-tone-success-section rounded-card border p-4 shadow-[var(--app-shadow-card)]"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-800/70">
+              <p className="app-tone-success-label flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
                 <ShieldCheck className="size-3.5" aria-hidden />
                 {t('woConfirm.title')}
               </p>
@@ -150,36 +155,36 @@ export function WorkOrderConfirmPanel({
       {qcPanel}
 
       <Tabs value={confirmTab} onValueChange={(v) => onConfirmTabChange(v as ConfirmSubTab)}>
-        <TabsList className="app-tabs-scroll scheduling-wo-tabs flex h-auto w-full max-w-full flex-nowrap justify-start gap-1 overflow-x-auto rounded-xl border border-app/60 bg-app-subtle/50 p-1">
-          <TabsTrigger value="personnel-close" className="shrink-0 gap-1.5 rounded-lg">
+        <SchedulingWoTabsList activeValue={confirmTab} className="app-tabs-scroll">
+          <TabsTrigger value="personnel-close" className={cn(woTabTriggerClass, 'gap-1.5')}>
             <UserCheck className="size-3.5" aria-hidden />
             {t('woConfirm.personnelTime')}{personnelCount > 0 ? ` (${personnelCount})` : ''}
           </TabsTrigger>
-          <TabsTrigger value="close" className="shrink-0 gap-1.5 rounded-lg">
+          <TabsTrigger value="close" className={cn(woTabTriggerClass, 'gap-1.5')}>
             <Clock className="size-3.5" aria-hidden />
             {t('woConfirm.close')}{supervisorCloseCount > 0 ? ` (${supervisorCloseCount})` : ''}
           </TabsTrigger>
-          <TabsTrigger value="images" className="shrink-0 gap-1.5 rounded-lg">
+          <TabsTrigger value="images" className={cn(woTabTriggerClass, 'gap-1.5')}>
             <Camera className="size-3.5" aria-hidden />
             {t('woConfirm.images')}{imageCount > 0 ? ` (${imageCount})` : ''}
           </TabsTrigger>
-          <TabsTrigger value="comments" className="shrink-0 gap-1.5 rounded-lg">
+          <TabsTrigger value="comments" className={cn(woTabTriggerClass, 'gap-1.5')}>
             <MessageSquareText className="size-3.5" aria-hidden />
             {t('woConfirm.notesTab')}
           </TabsTrigger>
-        </TabsList>
+        </SchedulingWoTabsList>
 
         <TabsContent value="personnel-close" className="mt-4 space-y-3">
-          {personnelClosePanel}
+          <WoModalTabFade>{personnelClosePanel}</WoModalTabFade>
         </TabsContent>
         <TabsContent value="close" className="mt-4 space-y-3">
-          {supervisorClosePanel}
+          <WoModalTabFade>{supervisorClosePanel}</WoModalTabFade>
         </TabsContent>
         <TabsContent value="images" className="mt-4 space-y-3">
-          {imagesPanel}
+          <WoModalTabFade>{imagesPanel}</WoModalTabFade>
         </TabsContent>
         <TabsContent value="comments" className="mt-4 space-y-3">
-          {commentsPanel}
+          <WoModalTabFade>{commentsPanel}</WoModalTabFade>
         </TabsContent>
       </Tabs>
     </div>

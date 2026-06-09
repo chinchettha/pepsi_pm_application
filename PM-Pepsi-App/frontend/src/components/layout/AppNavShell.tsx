@@ -13,7 +13,7 @@ import { publicLogoUrl } from '@/lib/settings-api'
 import { useSidebarState } from '@/lib/use-sidebar-state'
 import { cn } from '@/lib/utils'
 import { CommandPaletteShortcutBadge } from '@/components/command-palette/CommandPaletteShortcutBadge'
-import { LogIn, LogOut, Menu, Pin, PinOff, Search, X } from 'lucide-react'
+import { LogIn, LogOut, LayoutGrid, Menu, Pin, PinOff, Search, X } from 'lucide-react'
 import type { NavShellMode } from '@/api/schemas'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
@@ -39,19 +39,37 @@ export type AppNavShellProps = {
   bannerSlot?: ReactNode
   /** ประกาศจาก Admin — คอลัมน์เนื้อหาเท่านั้น ไม่ทับ sidebar */
   announcementSlot?: ReactNode
+  /** แสดงปุ่มกลับ Portal เมื่อ user มี >1 module */
+  showPortalLink?: boolean
   children: ReactNode
 }
 
 function TopBarActions({
   loggedIn,
   onOpenCommand,
+  showPortalLink = false,
 }: {
   loggedIn: boolean
   onOpenCommand: () => void
+  showPortalLink?: boolean
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'portal'])
   return (
     <div className="app-topbar-actions flex items-center gap-1.5 sm:gap-2">
+      {loggedIn && showPortalLink ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-11 gap-2 rounded-xl border-[color-mix(in_srgb,var(--app-border)_80%,transparent)] bg-[color-mix(in_srgb,var(--app-surface)_88%,white)] px-3 shadow-sm"
+          asChild
+        >
+          <NavLink to="/portal">
+            <LayoutGrid className="size-4 shrink-0" aria-hidden />
+            <span className="hidden sm:inline">{t('portal:backToPortal')}</span>
+          </NavLink>
+        </Button>
+      ) : null}
       {loggedIn ? (
         <Button
           type="button"
@@ -262,6 +280,7 @@ export function AppNavShell(props: AppNavShellProps) {
     onLogout,
     bannerSlot,
     announcementSlot,
+    showPortalLink = false,
     children,
   } = props
 
@@ -426,7 +445,11 @@ export function AppNavShell(props: AppNavShellProps) {
             </div>
           ) : null}
           <div className={cn('flex shrink-0 items-center', showHeaderNav && 'ml-auto')}>
-            <TopBarActions loggedIn={loggedIn} onOpenCommand={onOpenCommand} />
+            <TopBarActions
+              loggedIn={loggedIn}
+              onOpenCommand={onOpenCommand}
+              showPortalLink={showPortalLink}
+            />
           </div>
         </header>
         {bannerSlot ? (

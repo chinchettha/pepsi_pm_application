@@ -54,6 +54,12 @@ export function applyThemeToDocument(
   root.style.setProperty('--admin-warning', warning)
   root.style.setProperty('--admin-danger', danger)
   root.style.setProperty('--admin-info', info)
+  root.style.setProperty('--status-success', success)
+  root.style.setProperty('--status-warning', warning)
+  root.style.setProperty('--status-danger', danger)
+  root.style.setProperty('--status-info', primary)
+  root.style.setProperty('--phase-before', warning)
+  root.style.setProperty('--phase-after', success)
 
   /* Sidebar — Light: พื้นเทา #EAEAEA + ตัวอักษรเข้ม · Dark: โทน slate + ข้อความขาว */
   if (resolved === 'dark') {
@@ -138,6 +144,12 @@ export function clearThemeFromDocument(): void {
     '--admin-warning',
     '--admin-danger',
     '--admin-info',
+    '--status-success',
+    '--status-warning',
+    '--status-danger',
+    '--status-info',
+    '--phase-before',
+    '--phase-after',
   ]
   for (const key of keys) root.style.removeProperty(key)
   applyTypographyToDocument(typographyFromPublicSettings(undefined))

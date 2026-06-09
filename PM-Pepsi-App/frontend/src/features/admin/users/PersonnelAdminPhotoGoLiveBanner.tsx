@@ -75,7 +75,7 @@ export function PersonnelAdminPhotoGoLiveBanner({
           {items.slice(0, 8).map((p) => (
             <li
               key={p.idwkctr}
-              className="rounded-button border border-amber-200/70 app-surface-panel px-2 py-1"
+              className="app-tone-warning-review-item rounded-button border app-surface-panel px-2 py-1"
             >
               {p.wkctr}
               {p.displayName ? ` (${p.displayName})` : ''} ·{' '}
@@ -104,13 +104,12 @@ export function PersonnelAdminPhotoGoLiveBanner({
             <Button
               type="button"
               size="sm"
-              className="bg-amber-700 hover:bg-amber-800"
               onClick={() => setConfirmOpen(true)}
             >
               {t('photoGoLive.deactivateAll', { count: items.length })}
             </Button>
           ) : (
-            <span className="self-center text-xs text-amber-800">
+            <span className="app-tone-warning-label self-center text-xs">
               {t('photoGoLive.needWrite')}
             </span>
           )}
@@ -121,6 +120,7 @@ export function PersonnelAdminPhotoGoLiveBanner({
         <ConfirmPhraseDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
+          tone="danger"
           phrase={t('photoGoLive.confirmPhrase')}
           title={t('photoGoLive.confirmTitle')}
           description={t('photoGoLive.confirmDesc', { count: items.length })}
