@@ -2,7 +2,8 @@ import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/l
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Skeleton } from '@/components/ui/skeleton'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   Table,
   TableBody,
@@ -92,18 +93,18 @@ export function UserLogPage() {
       }
     >
       <AppPageSection index={0}>
-      {q.isLoading && !q.data ? (
-        <Skeleton className="h-64 w-full rounded-card" />
-      ) : q.isError ? (
-        <EmptyState
-          icon={AlertCircle}
+      {q.isError && !q.data ? (
+        <QueryLoadErrorState
           title={t('loadFailed')}
-          description={(q.error as Error).message}
+          error={q.error}
           action={{ label: t('actions.retry', { ns: 'common' }), onClick: () => void q.refetch() }}
         />
       ) : (
         <AppPageSectionCard icon={History} title={t('cardTitle')} description={t('cardDesc')} bodyClassName="!p-0">
-          <div className="app-table-shell overflow-x-auto">
+          <div
+            className="app-table-shell overflow-x-auto"
+            aria-busy={q.isLoading && !q.data ? true : undefined}
+          >
             <Table embedded stickyHeader zebra>
               <TableHeader>
                 <TableRow>
@@ -115,7 +116,9 @@ export function UserLogPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.length === 0 ? (
+                {q.isLoading && !q.data ? (
+                  <TableSkeletonRows rows={10} columns={5} narrowFirstColumn />
+                ) : rows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="p-0">
                       <EmptyState

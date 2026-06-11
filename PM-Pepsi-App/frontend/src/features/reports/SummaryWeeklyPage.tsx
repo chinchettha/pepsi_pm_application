@@ -257,7 +257,7 @@ export function SummaryWeeklyPage() {
               <div className="mt-4">
                 <SummaryWeeklyUtilizationChart items={chart} variant="chart2" layout="compact" />
                 <p className="mt-3 text-center text-body-sm">
-                  <Button variant="ghost" size="sm" className="h-auto px-1 text-sky-700" asChild>
+                  <Button variant="ghost" size="sm" className="h-auto px-1 text-[var(--app-accent)]" asChild>
                     <a href={fullChart2} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="mr-1 inline size-3.5" aria-hidden />
                       {t('engUtil.expandChart')}

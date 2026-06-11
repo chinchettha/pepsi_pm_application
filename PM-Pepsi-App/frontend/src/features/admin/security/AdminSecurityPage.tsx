@@ -263,7 +263,7 @@ export function AdminSecurityPage() {
               </CardTitle>
               <CardDescription>
                 {t('security.rbacDenyFromMiddleware')}{' '}
-                <Link to="/admin/audit?status=denied" className="text-sky-700 underline">
+                <Link to="/admin/audit?status=denied" className="text-[var(--app-accent)] underline">
                   {t('security.viewInAudit')}
                 </Link>
               </CardDescription>

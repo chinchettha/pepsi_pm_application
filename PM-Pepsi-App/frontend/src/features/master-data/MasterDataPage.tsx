@@ -1,7 +1,6 @@
 import { CanPermission } from '@/components/auth/CanPermission'
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageContent } from '@/components/layout/AppPageContent'
-import { SchedulingPageHeader, schedulingHeroLinkBtnClass } from '@/components/scheduling/SchedulingPageLayout'
+import { AppPageShell } from '@/components/layout/AppPageShell'
 import {
   type DepartmentItem,
   type EquipmentItem,
@@ -24,6 +23,15 @@ import {
 import { ActivityTypePanel } from '@/features/master-data/ActivityTypePanel'
 import { PmMasterProcessPanel } from '@/features/master-data/PmMasterProcessPanel'
 import {
+  MasterDataConfirmDelete,
+  MasterDataEntityDialogTitle,
+  MasterDataFormDialogFooter,
+  MasterDataImportDialogFooter,
+  MasterDataImportDialogTitle,
+  MasterDataImportResult,
+} from '@/features/master-data/master-data-dialog-i18n'
+import { mdField, mdMaxLen, mdNumber, mdRequired } from '@/features/master-data/master-data-form-i18n'
+import {
   MasterDataPanelEmpty,
   MasterDataPanelError,
   MasterDataPanelSkeleton,
@@ -31,13 +39,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -131,8 +133,8 @@ import {
   updateLineSchdul,
 } from '@/lib/master-data-api'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Database, Pencil, Plus, Trash2, Upload } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { AlertCircle, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -367,11 +369,11 @@ function DepartmentPanel() {
     const iddepartment = form.iddepartment.trim()
     const department = form.department.trim()
 
-    if (!iddepartment) next.iddepartment = 'Department Code is required.'
-    else if (iddepartment.length > 64) next.iddepartment = 'Department Code must be 64 characters or less.'
+    if (!iddepartment) next.iddepartment = mdRequired(t, 'iddepartment')
+    else if (iddepartment.length > 64) next.iddepartment = mdMaxLen(t, 'iddepartment', 64)
 
-    if (!department) next.department = 'Department is required.'
-    else if (department.length > 2000) next.department = 'Department must be 2000 characters or less.'
+    if (!department) next.department = mdRequired(t, 'department')
+    else if (department.length > 2000) next.department = mdMaxLen(t, 'department', 2000)
 
     setErrors(next)
     const first = Object.values(next).find(Boolean) ?? null
@@ -381,7 +383,7 @@ function DepartmentPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateDepartment(editing.iddepartment, { department: form.department.trim() })
       }
@@ -450,8 +452,8 @@ function DepartmentPanel() {
           <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
-                <TableHead>Department Code</TableHead>
-                <TableHead>Department</TableHead>
+                <TableHead>{mdField(t, 'iddepartment')}</TableHead>
+                <TableHead>{mdField(t, 'department')}</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
@@ -478,7 +480,7 @@ function DepartmentPanel() {
                         onClick={() => openDelete(row)}
                         aria-label={t('aria.delete')}
                       >
-                        <Trash2 className="size-4 text-red-600" />
+                        <Trash2 className="size-4 text-form-error" />
                       </Button>
                     </div>
                   </TableCell>
@@ -498,13 +500,11 @@ function DepartmentPanel() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create' ? 'Create Department' : mode === 'edit' ? 'Edit Department' : 'Delete Department'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="department" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="iddepartment">Department Code</Label>
+              <Label htmlFor="iddepartment">{mdField(t, 'iddepartment')}</Label>
               <Input
                 id="iddepartment"
                 value={form.iddepartment}
@@ -512,11 +512,11 @@ function DepartmentPanel() {
                 onChange={(e) => setForm((f) => ({ ...f, iddepartment: e.target.value }))}
               />
               {errors.iddepartment ? (
-                <p className="mt-1 text-xs text-red-600">{errors.iddepartment}</p>
+                <p className="mt-1 text-xs text-form-error">{errors.iddepartment}</p>
               ) : null}
             </div>
             <div>
-              <Label htmlFor="department">Department</Label>
+              <Label htmlFor="department">{mdField(t, 'department')}</Label>
               <Input
                 id="department"
                 value={form.department}
@@ -524,34 +524,24 @@ function DepartmentPanel() {
                 onChange={(e) => setForm((f) => ({ ...f, department: e.target.value }))}
               />
               {errors.department ? (
-                <p className="mt-1 text-xs text-red-600">{errors.department}</p>
+                <p className="mt-1 text-xs text-form-error">{errors.department}</p>
               ) : null}
             </div>
           </div>
-          {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">
-              This action cannot be undone. Delete {form.iddepartment}?
-            </p>
-          ) : null}
+          {mode === 'delete' ? <MasterDataConfirmDelete entity="department" name={form.iddepartment} /> : null}
           {errorSummary && mode !== 'delete' ? (
-            <p className="text-body-sm text-red-600">{errorSummary}</p>
+            <p className="text-body-sm text-form-error">{errorSummary}</p>
           ) : null}
           {mut.isError ? (
-            <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p>
+            <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p>
           ) : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.iddepartment.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.iddepartment.trim()}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -605,11 +595,11 @@ function EquipmentPanel() {
     const equipment = form.equipment.trim()
     const equdescrip = form.equdescrip.trim()
 
-    if (!equipment) next.equipment = 'Equipment is required.'
-    else if (equipment.length > 64) next.equipment = 'Equipment must be 64 characters or less.'
+    if (!equipment) next.equipment = mdRequired(t, 'equipment')
+    else if (equipment.length > 64) next.equipment = mdMaxLen(t, 'equipment', 64)
 
-    if (!equdescrip) next.equdescrip = 'Description is required.'
-    else if (equdescrip.length > 2000) next.equdescrip = 'Description must be 2000 characters or less.'
+    if (!equdescrip) next.equdescrip = mdRequired(t, 'equdescrip')
+    else if (equdescrip.length > 2000) next.equdescrip = mdMaxLen(t, 'equdescrip', 2000)
 
     setErrors(next)
     const first = Object.values(next).find(Boolean) ?? null
@@ -619,7 +609,7 @@ function EquipmentPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateEquipment(editing.equipment, {
           equdescrip: form.equdescrip.trim(),
@@ -653,12 +643,12 @@ function EquipmentPanel() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!importFile && !importText.trim()) {
-        throw new Error('Select a file or paste CSV text before importing.')
+        throw new Error(t('importErrors.pickFile'))
       }
 
       const rows = importFile ? await parseEquipmentFile(importFile) : parseEquipmentCsv(importText)
       if (rows.length === 0) {
-        throw new Error('No rows found. Expected columns: equipment, description, equipmentsub, functionalloc, equl, equ1, equea')
+        throw new Error(t('importErrors.noRows', { columns: t('importErrors.columns.equipment') }))
       }
       return importEquipments(rows)
     },
@@ -727,7 +717,7 @@ function EquipmentPanel() {
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
-          Import file
+          {t('actions.importFile')}
         </Button>
       </div>
 
@@ -738,10 +728,10 @@ function EquipmentPanel() {
           <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
-                <TableHead>Equipment</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Equipment Sub</TableHead>
-                <TableHead>Functional loc.</TableHead>
+                <TableHead>{mdField(t, 'equipment')}</TableHead>
+                <TableHead>{mdField(t, 'description')}</TableHead>
+                <TableHead>{mdField(t, 'equipmentsub')}</TableHead>
+                <TableHead>{mdField(t, 'functionalloc')}</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
@@ -770,7 +760,7 @@ function EquipmentPanel() {
                         onClick={() => openDelete(row)}
                         aria-label={t('aria.delete')}
                       >
-                        <Trash2 className="size-4 text-red-600" />
+                        <Trash2 className="size-4 text-form-error" />
                       </Button>
                     </div>
                   </TableCell>
@@ -790,37 +780,31 @@ function EquipmentPanel() {
       >
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create'
-                ? 'Create Equipment'
-                : mode === 'edit'
-                  ? 'Edit Equipment'
-                  : 'Delete Equipment'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="equipment" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="equipment">Equipment</Label>
+              <Label htmlFor="equipment">{mdField(t, 'equipment')}</Label>
               <Input
                 id="equipment"
                 value={form.equipment}
                 disabled={mode !== 'create'}
                 onChange={(e) => setForm((f) => ({ ...f, equipment: e.target.value }))}
               />
-              {errors.equipment ? <p className="mt-1 text-xs text-red-600">{errors.equipment}</p> : null}
+              {errors.equipment ? <p className="mt-1 text-xs text-form-error">{errors.equipment}</p> : null}
             </div>
             <div>
-              <Label htmlFor="equdescrip">Description</Label>
+              <Label htmlFor="equdescrip">{mdField(t, 'equdescrip')}</Label>
               <Input
                 id="equdescrip"
                 value={form.equdescrip}
                 disabled={mode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, equdescrip: e.target.value }))}
               />
-              {errors.equdescrip ? <p className="mt-1 text-xs text-red-600">{errors.equdescrip}</p> : null}
+              {errors.equdescrip ? <p className="mt-1 text-xs text-form-error">{errors.equdescrip}</p> : null}
             </div>
             <div>
-              <Label htmlFor="equipmentsub">Equipment Sub</Label>
+              <Label htmlFor="equipmentsub">{mdField(t, 'equipmentsub')}</Label>
               <Input
                 id="equipmentsub"
                 value={form.equipmentsub}
@@ -829,7 +813,7 @@ function EquipmentPanel() {
               />
             </div>
             <div>
-              <Label htmlFor="functionalloc">Functional loc.</Label>
+              <Label htmlFor="functionalloc">{mdField(t, 'functionalloc')}</Label>
               <Input
                 id="functionalloc"
                 value={form.functionalloc}
@@ -839,7 +823,7 @@ function EquipmentPanel() {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label htmlFor="equl">L</Label>
+                <Label htmlFor="equl">{mdField(t, 'equl')}</Label>
                 <Input
                   id="equl"
                   value={form.equl}
@@ -848,7 +832,7 @@ function EquipmentPanel() {
                 />
               </div>
               <div>
-                <Label htmlFor="equ1">1</Label>
+                <Label htmlFor="equ1">{mdField(t, 'equ1')}</Label>
                 <Input
                   id="equ1"
                   value={form.equ1}
@@ -857,7 +841,7 @@ function EquipmentPanel() {
                 />
               </div>
               <div>
-                <Label htmlFor="equea">EA/CT</Label>
+                <Label htmlFor="equea">{mdField(t, 'equea')}</Label>
                 <Input
                   id="equea"
                   value={form.equea}
@@ -867,26 +851,16 @@ function EquipmentPanel() {
               </div>
             </div>
           </div>
-          {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">
-              This action cannot be undone. Delete {form.equipment}?
-            </p>
-          ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.equipment.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {mode === 'delete' ? <MasterDataConfirmDelete entity="equipment" name={form.equipment} /> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.equipment.trim()}
+          />
         </DialogContent>
       </Dialog>
 
@@ -899,15 +873,12 @@ function EquipmentPanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Equipment (CSV/Excel)</DialogTitle>
+            <MasterDataImportDialogTitle entity="equipment" />
           </DialogHeader>
-          <p className="text-xs text-app-muted">
-            Upload file export: equipment, description, equipmentsub, functionalloc, equl, equ1, equea. For Excel files,
-            the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
-          </p>
+          <p className="text-xs text-app-muted">{t('entities.equipment.importDesc')}</p>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label htmlFor="equipment-import-file">Select file</Label>
+              <Label htmlFor="equipment-import-file">{t('import.selectFile')}</Label>
               <Input
                 id="equipment-import-file"
                 type="file"
@@ -915,9 +886,7 @@ function EquipmentPanel() {
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
               />
             </div>
-            <div className="text-xs text-app-muted">
-              Or paste CSV: equipment,equdescrip,equipmentsub,functionalloc,equl,equ1,equea
-            </div>
+            <div className="text-xs text-app-muted">{t('entities.equipment.pasteColumns')}</div>
           </div>
           <Textarea
             rows={8}
@@ -926,19 +895,19 @@ function EquipmentPanel() {
             placeholder={'EQ0001,Sample Equipment,,,L,1,EA'}
           />
           {importMut.isSuccess ? (
-            <p className="text-body-sm app-tone-success-icon">
-              Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed} · Skipped {importMut.data.skipped}
-            </p>
+            <MasterDataImportResult
+              inserted={importMut.data.inserted}
+              updated={importMut.data.updated}
+              failed={importMut.data.failed}
+              skipped={importMut.data.skipped}
+            />
           ) : null}
-          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeImport}>
-              Close
-            </Button>
-            <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>
-              Import
-            </Button>
-          </DialogFooter>
+          {importMut.isError ? <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p> : null}
+          <MasterDataImportDialogFooter
+            onClose={closeImport}
+            onImport={() => importMut.mutate()}
+            pending={importMut.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -992,14 +961,14 @@ function FunctionalPanel() {
     const functionalloc = form.functionalloc.trim()
     const funldescrip = form.funldescrip.trim()
 
-    if (!functionalloc) next.functionalloc = 'Functional loc. is required.'
-    else if (functionalloc.length > 64) next.functionalloc = 'Functional loc. must be 64 characters or less.'
+    if (!functionalloc) next.functionalloc = mdRequired(t, 'functionalloc')
+    else if (functionalloc.length > 64) next.functionalloc = mdMaxLen(t, 'functionalloc', 64)
 
-    if (!funldescrip) next.funldescrip = 'Description is required.'
-    else if (funldescrip.length > 2000) next.funldescrip = 'Description must be 2000 characters or less.'
+    if (!funldescrip) next.funldescrip = mdRequired(t, 'funldescrip')
+    else if (funldescrip.length > 2000) next.funldescrip = mdMaxLen(t, 'funldescrip', 2000)
 
     if (form.functionallocsub.trim().length > 64) {
-      next.functionallocsub = 'Functional loc. Sub must be 64 characters or less.'
+      next.functionallocsub = mdMaxLen(t, 'functionallocsub', 64)
     }
 
     setErrors(next)
@@ -1010,7 +979,7 @@ function FunctionalPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateFunctional(editing.functionalloc, {
           funldescrip: form.funldescrip.trim(),
@@ -1036,14 +1005,14 @@ function FunctionalPanel() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!importFile && !importText.trim()) {
-        throw new Error('Select a file or paste CSV text before importing.')
+        throw new Error(t('importErrors.pickFile'))
       }
 
       const rows = importFile
         ? await parseFunctionalFile(importFile)
         : parseFunctionalCsv(importText)
       if (rows.length === 0) {
-        throw new Error('No rows found. Expected columns: functionalloc, funldescrip, functionallocsub')
+        throw new Error(t('importErrors.noRows', { columns: t('importErrors.columns.functional') }))
       }
       return importFunctionals(rows)
     },
@@ -1105,7 +1074,7 @@ function FunctionalPanel() {
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
-          Import file
+          {t('actions.importFile')}
         </Button>
       </div>
 
@@ -1116,9 +1085,9 @@ function FunctionalPanel() {
           <Table embedded stickyHeader zebra>
             <TableHeader>
               <TableRow>
-                <TableHead>Functional loc.</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Functional loc. Sub</TableHead>
+                <TableHead>{mdField(t, 'functionalloc')}</TableHead>
+                <TableHead>{mdField(t, 'description')}</TableHead>
+                <TableHead>{mdField(t, 'functionallocsub')}</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
@@ -1146,7 +1115,7 @@ function FunctionalPanel() {
                         onClick={() => openDelete(row)}
                         aria-label={t('aria.delete')}
                       >
-                        <Trash2 className="size-4 text-red-600" />
+                        <Trash2 className="size-4 text-form-error" />
                       </Button>
                     </div>
                   </TableCell>
@@ -1166,17 +1135,11 @@ function FunctionalPanel() {
       >
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create'
-                ? 'Create Functional location'
-                : mode === 'edit'
-                  ? 'Edit Functional location'
-                  : 'Delete Functional location'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="functional" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="functionalloc">Functional loc.</Label>
+              <Label htmlFor="functionalloc">{mdField(t, 'functionalloc')}</Label>
               <Input
                 id="functionalloc"
                 value={form.functionalloc}
@@ -1184,11 +1147,11 @@ function FunctionalPanel() {
                 onChange={(e) => setForm((f) => ({ ...f, functionalloc: e.target.value }))}
               />
               {errors.functionalloc ? (
-                <p className="mt-1 text-xs text-red-600">{errors.functionalloc}</p>
+                <p className="mt-1 text-xs text-form-error">{errors.functionalloc}</p>
               ) : null}
             </div>
             <div>
-              <Label htmlFor="funldescrip">Description</Label>
+              <Label htmlFor="funldescrip">{mdField(t, 'funldescrip')}</Label>
               <Input
                 id="funldescrip"
                 value={form.funldescrip}
@@ -1196,11 +1159,11 @@ function FunctionalPanel() {
                 onChange={(e) => setForm((f) => ({ ...f, funldescrip: e.target.value }))}
               />
               {errors.funldescrip ? (
-                <p className="mt-1 text-xs text-red-600">{errors.funldescrip}</p>
+                <p className="mt-1 text-xs text-form-error">{errors.funldescrip}</p>
               ) : null}
             </div>
             <div>
-              <Label htmlFor="functionallocsub">Functional loc. Sub</Label>
+              <Label htmlFor="functionallocsub">{mdField(t, 'functionallocsub')}</Label>
               <Input
                 id="functionallocsub"
                 value={form.functionallocsub}
@@ -1208,34 +1171,26 @@ function FunctionalPanel() {
                 onChange={(e) => setForm((f) => ({ ...f, functionallocsub: e.target.value }))}
               />
               {errors.functionallocsub ? (
-                <p className="mt-1 text-xs text-red-600">{errors.functionallocsub}</p>
+                <p className="mt-1 text-xs text-form-error">{errors.functionallocsub}</p>
               ) : null}
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">
-              This action cannot be undone. Delete {form.functionalloc}?
-            </p>
+            <MasterDataConfirmDelete entity="functional" name={form.functionalloc} />
           ) : null}
           {errorSummary && mode !== 'delete' ? (
-            <p className="text-body-sm text-red-600">{errorSummary}</p>
+            <p className="text-body-sm text-form-error">{errorSummary}</p>
           ) : null}
           {mut.isError ? (
-            <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p>
+            <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p>
           ) : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.functionalloc.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.functionalloc.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
 
@@ -1248,15 +1203,12 @@ function FunctionalPanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Functional location (CSV/Excel)</DialogTitle>
+            <MasterDataImportDialogTitle entity="functional" />
           </DialogHeader>
-          <p className="text-xs text-app-muted">
-            Upload file export: functionalloc, funldescrip, functionallocsub. For Excel files, the first 2 rows are skipped (PHP parity).
-            Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
-          </p>
+          <p className="text-xs text-app-muted">{t('entities.functional.importDesc')}</p>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label htmlFor="functional-import-file">Select file</Label>
+              <Label htmlFor="functional-import-file">{t('import.selectFile')}</Label>
               <Input
                 id="functional-import-file"
                 type="file"
@@ -1264,9 +1216,7 @@ function FunctionalPanel() {
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
               />
             </div>
-            <div className="text-xs text-app-muted">
-              Or paste CSV: functionalloc,funldescrip,functionallocsub
-            </div>
+            <div className="text-xs text-app-muted">{t('entities.functional.pasteColumns')}</div>
           </div>
           <Textarea
             rows={8}
@@ -1275,21 +1225,17 @@ function FunctionalPanel() {
             placeholder={'7151-PL01,Product line 01,'}
           />
           {importMut.isSuccess ? (
-            <p className="text-body-sm app-tone-success-icon">
-              Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed} · Skipped {importMut.data.skipped}
-            </p>
+            <MasterDataImportResult
+              inserted={importMut.data.inserted}
+              updated={importMut.data.updated}
+              failed={importMut.data.failed}
+              skipped={importMut.data.skipped}
+            />
           ) : null}
           {importMut.isError ? (
-            <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p>
+            <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p>
           ) : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeImport}>
-              Close
-            </Button>
-            <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>
-              Import
-            </Button>
-          </DialogFooter>
+          <MasterDataImportDialogFooter onClose={closeImport} onImport={() => importMut.mutate()} pending={importMut.isPending} />
         </DialogContent>
       </Dialog>
     </div>
@@ -1333,11 +1279,11 @@ function ReasonPanel() {
     const reasoncode = form.reasoncode.trim()
     const reasonname = form.reasonname.trim()
 
-    if (!reasoncode) next.reasoncode = 'Reason code is required.'
-    else if (reasoncode.length > 64) next.reasoncode = 'Reason code must be 64 characters or less.'
+    if (!reasoncode) next.reasoncode = mdRequired(t, 'reasoncode')
+    else if (reasoncode.length > 64) next.reasoncode = mdMaxLen(t, 'reasoncode', 64)
 
-    if (!reasonname) next.reasonname = 'Description is required.'
-    else if (reasonname.length > 2000) next.reasonname = 'Description must be 2000 characters or less.'
+    if (!reasonname) next.reasonname = mdRequired(t, 'reasonname')
+    else if (reasonname.length > 2000) next.reasonname = mdMaxLen(t, 'reasonname', 2000)
 
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
@@ -1346,7 +1292,7 @@ function ReasonPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateReason(editing.reasoncode, { reasonname: form.reasonname.trim() })
       }
@@ -1407,8 +1353,8 @@ function ReasonPanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Reason Code</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead>{mdField(t, 'reasoncode')}</TableHead>
+              <TableHead>{mdField(t, 'description')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -1435,7 +1381,7 @@ function ReasonPanel() {
                       onClick={() => openDelete(row)}
                       aria-label={t('aria.delete')}
                     >
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -1454,52 +1400,42 @@ function ReasonPanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create' ? 'Create Reason' : mode === 'edit' ? 'Edit Reason' : 'Delete Reason'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="reason" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="reasoncode">Reason code</Label>
+              <Label htmlFor="reasoncode">{mdField(t, 'reasoncode')}</Label>
               <Input
                 id="reasoncode"
                 value={form.reasoncode}
                 disabled={mode !== 'create'}
                 onChange={(e) => setForm((f) => ({ ...f, reasoncode: e.target.value }))}
               />
-              {errors.reasoncode ? <p className="mt-1 text-xs text-red-600">{errors.reasoncode}</p> : null}
+              {errors.reasoncode ? <p className="mt-1 text-xs text-form-error">{errors.reasoncode}</p> : null}
             </div>
             <div>
-              <Label htmlFor="reasonname">Description</Label>
+              <Label htmlFor="reasonname">{mdField(t, 'reasonname')}</Label>
               <Input
                 id="reasonname"
                 value={form.reasonname}
                 disabled={mode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, reasonname: e.target.value }))}
               />
-              {errors.reasonname ? <p className="mt-1 text-xs text-red-600">{errors.reasonname}</p> : null}
+              {errors.reasonname ? <p className="mt-1 text-xs text-form-error">{errors.reasonname}</p> : null}
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">
-              This action cannot be undone. Delete {form.reasoncode}?
-            </p>
+            <MasterDataConfirmDelete entity="reason" name={form.reasoncode} />
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.reasoncode.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.reasoncode.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -1543,11 +1479,11 @@ function WorkTypePanel() {
     const idwkctrtype = form.idwkctrtype.trim()
     const wkctrtype = form.wkctrtype.trim()
 
-    if (!idwkctrtype) next.idwkctrtype = 'Code is required.'
-    else if (idwkctrtype.length > 64) next.idwkctrtype = 'Code must be 64 characters or less.'
+    if (!idwkctrtype) next.idwkctrtype = mdRequired(t, 'code')
+    else if (idwkctrtype.length > 64) next.idwkctrtype = mdMaxLen(t, 'code', 64)
 
-    if (!wkctrtype) next.wkctrtype = 'Description is required.'
-    else if (wkctrtype.length > 2000) next.wkctrtype = 'Description must be 2000 characters or less.'
+    if (!wkctrtype) next.wkctrtype = mdRequired(t, 'wkctrtype')
+    else if (wkctrtype.length > 2000) next.wkctrtype = mdMaxLen(t, 'wkctrtype', 2000)
 
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
@@ -1556,7 +1492,7 @@ function WorkTypePanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateWorkType(editing.idwkctrtype, { wkctrtype: form.wkctrtype.trim() })
       }
@@ -1617,8 +1553,8 @@ function WorkTypePanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Type Status Code</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead>{mdField(t, 'typeStatusCode')}</TableHead>
+              <TableHead>{mdField(t, 'description')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -1645,7 +1581,7 @@ function WorkTypePanel() {
                       onClick={() => openDelete(row)}
                       aria-label={t('aria.delete')}
                     >
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -1664,52 +1600,42 @@ function WorkTypePanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create' ? 'Create Work type' : mode === 'edit' ? 'Edit Work type' : 'Delete Work type'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="worktype" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="idwkctrtype">Code</Label>
+              <Label htmlFor="idwkctrtype">{mdField(t, 'code')}</Label>
               <Input
                 id="idwkctrtype"
                 value={form.idwkctrtype}
                 disabled={mode !== 'create'}
                 onChange={(e) => setForm((f) => ({ ...f, idwkctrtype: e.target.value }))}
               />
-              {errors.idwkctrtype ? <p className="mt-1 text-xs text-red-600">{errors.idwkctrtype}</p> : null}
+              {errors.idwkctrtype ? <p className="mt-1 text-xs text-form-error">{errors.idwkctrtype}</p> : null}
             </div>
             <div>
-              <Label htmlFor="wkctrtype">Description</Label>
+              <Label htmlFor="wkctrtype">{mdField(t, 'wkctrtype')}</Label>
               <Input
                 id="wkctrtype"
                 value={form.wkctrtype}
                 disabled={mode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, wkctrtype: e.target.value }))}
               />
-              {errors.wkctrtype ? <p className="mt-1 text-xs text-red-600">{errors.wkctrtype}</p> : null}
+              {errors.wkctrtype ? <p className="mt-1 text-xs text-form-error">{errors.wkctrtype}</p> : null}
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">
-              This action cannot be undone. Delete {form.idwkctrtype}?
-            </p>
+            <MasterDataConfirmDelete entity="worktype" name={form.idwkctrtype} />
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.idwkctrtype.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.idwkctrtype.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -1753,11 +1679,11 @@ function ZbPanel() {
     const wkzb = form.wkzb.trim()
     const zbdescrip = form.zbdescrip.trim()
 
-    if (!wkzb) next.wkzb = 'ZB Code is required.'
-    else if (wkzb.length > 32) next.wkzb = 'ZB Code must be 32 characters or less.'
+    if (!wkzb) next.wkzb = mdRequired(t, 'wkzb')
+    else if (wkzb.length > 32) next.wkzb = mdMaxLen(t, 'wkzb', 32)
 
-    if (!zbdescrip) next.zbdescrip = 'Description is required.'
-    else if (zbdescrip.length > 2000) next.zbdescrip = 'Description must be 2000 characters or less.'
+    if (!zbdescrip) next.zbdescrip = mdRequired(t, 'zbdescrip')
+    else if (zbdescrip.length > 2000) next.zbdescrip = mdMaxLen(t, 'zbdescrip', 2000)
 
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
@@ -1766,7 +1692,7 @@ function ZbPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateZb(editing.wkzb, { zbdescrip: form.zbdescrip.trim() })
       }
@@ -1826,8 +1752,8 @@ function ZbPanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>ZB Code</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead>{mdField(t, 'wkzb')}</TableHead>
+              <TableHead>{mdField(t, 'description')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -1854,7 +1780,7 @@ function ZbPanel() {
                       onClick={() => openDelete(row)}
                       aria-label={t('aria.delete')}
                     >
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -1873,52 +1799,42 @@ function ZbPanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create' ? 'Create ZB' : mode === 'edit' ? 'Edit ZB' : 'Delete ZB'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="zb" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="wkzb">ZB Code</Label>
+              <Label htmlFor="wkzb">{mdField(t, 'wkzb')}</Label>
               <Input
                 id="wkzb"
                 value={form.wkzb}
                 disabled={mode !== 'create'}
                 onChange={(e) => setForm((f) => ({ ...f, wkzb: e.target.value }))}
               />
-              {errors.wkzb ? <p className="mt-1 text-xs text-red-600">{errors.wkzb}</p> : null}
+              {errors.wkzb ? <p className="mt-1 text-xs text-form-error">{errors.wkzb}</p> : null}
             </div>
             <div>
-              <Label htmlFor="zbdescrip">Description</Label>
+              <Label htmlFor="zbdescrip">{mdField(t, 'zbdescrip')}</Label>
               <Input
                 id="zbdescrip"
                 value={form.zbdescrip}
                 disabled={mode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, zbdescrip: e.target.value }))}
               />
-              {errors.zbdescrip ? <p className="mt-1 text-xs text-red-600">{errors.zbdescrip}</p> : null}
+              {errors.zbdescrip ? <p className="mt-1 text-xs text-form-error">{errors.zbdescrip}</p> : null}
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">
-              This action cannot be undone. Delete {form.wkzb}?
-            </p>
+            <MasterDataConfirmDelete entity="zb" name={form.wkzb} />
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.wkzb.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.wkzb.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -1962,11 +1878,11 @@ function LevelPanel() {
     const idwklevel = form.idwklevel.trim()
     const wklevel = form.wklevel.trim()
 
-    if (!idwklevel) next.idwklevel = 'Level code is required.'
-    else if (idwklevel.length > 64) next.idwklevel = 'Level code must be 64 characters or less.'
+    if (!idwklevel) next.idwklevel = mdRequired(t, 'idwklevel')
+    else if (idwklevel.length > 64) next.idwklevel = mdMaxLen(t, 'idwklevel', 64)
 
-    if (!wklevel) next.wklevel = 'Description is required.'
-    else if (wklevel.length > 2000) next.wklevel = 'Description must be 2000 characters or less.'
+    if (!wklevel) next.wklevel = mdRequired(t, 'wklevel')
+    else if (wklevel.length > 2000) next.wklevel = mdMaxLen(t, 'wklevel', 2000)
 
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
@@ -1975,7 +1891,7 @@ function LevelPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateLevel(editing.idwklevel, { wklevel: form.wklevel.trim() })
       }
@@ -2036,8 +1952,8 @@ function LevelPanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Level Code</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead>{mdField(t, 'idwklevel')}</TableHead>
+              <TableHead>{mdField(t, 'description')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -2064,7 +1980,7 @@ function LevelPanel() {
                       onClick={() => openDelete(row)}
                       aria-label={t('aria.delete')}
                     >
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -2083,50 +1999,42 @@ function LevelPanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create' ? 'Create Level' : mode === 'edit' ? 'Edit Level' : 'Delete Level'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="level" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="idwklevel">Level code</Label>
+              <Label htmlFor="idwklevel">{mdField(t, 'idwklevel')}</Label>
               <Input
                 id="idwklevel"
                 value={form.idwklevel}
                 disabled={mode !== 'create'}
                 onChange={(e) => setForm((f) => ({ ...f, idwklevel: e.target.value }))}
               />
-              {errors.idwklevel ? <p className="mt-1 text-xs text-red-600">{errors.idwklevel}</p> : null}
+              {errors.idwklevel ? <p className="mt-1 text-xs text-form-error">{errors.idwklevel}</p> : null}
             </div>
             <div>
-              <Label htmlFor="wklevel">Description</Label>
+              <Label htmlFor="wklevel">{mdField(t, 'wklevel')}</Label>
               <Input
                 id="wklevel"
                 value={form.wklevel}
                 disabled={mode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, wklevel: e.target.value }))}
               />
-              {errors.wklevel ? <p className="mt-1 text-xs text-red-600">{errors.wklevel}</p> : null}
+              {errors.wklevel ? <p className="mt-1 text-xs text-form-error">{errors.wklevel}</p> : null}
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.idwklevel}?</p>
+            <MasterDataConfirmDelete entity="level" name={form.idwklevel} />
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.idwklevel.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.idwklevel.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -2170,11 +2078,11 @@ function PositionPanel() {
     const idposition = form.idposition.trim()
     const position = form.position.trim()
 
-    if (!idposition) next.idposition = 'Position code is required.'
-    else if (idposition.length > 64) next.idposition = 'Position code must be 64 characters or less.'
+    if (!idposition) next.idposition = mdRequired(t, 'idposition')
+    else if (idposition.length > 64) next.idposition = mdMaxLen(t, 'idposition', 64)
 
-    if (!position) next.position = 'Description is required.'
-    else if (position.length > 2000) next.position = 'Description must be 2000 characters or less.'
+    if (!position) next.position = mdRequired(t, 'position')
+    else if (position.length > 2000) next.position = mdMaxLen(t, 'position', 2000)
 
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
@@ -2183,7 +2091,7 @@ function PositionPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updatePosition(editing.idposition, { position: form.position.trim() })
       }
@@ -2244,8 +2152,8 @@ function PositionPanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Position Code</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead>{mdField(t, 'idposition')}</TableHead>
+              <TableHead>{mdField(t, 'description')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -2272,7 +2180,7 @@ function PositionPanel() {
                       onClick={() => openDelete(row)}
                       aria-label={t('aria.delete')}
                     >
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -2291,54 +2199,42 @@ function PositionPanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create'
-                ? 'Create Position'
-                : mode === 'edit'
-                  ? 'Edit Position'
-                  : 'Delete Position'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="position" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="idposition">Position code</Label>
+              <Label htmlFor="idposition">{mdField(t, 'idposition')}</Label>
               <Input
                 id="idposition"
                 value={form.idposition}
                 disabled={mode !== 'create'}
                 onChange={(e) => setForm((f) => ({ ...f, idposition: e.target.value }))}
               />
-              {errors.idposition ? <p className="mt-1 text-xs text-red-600">{errors.idposition}</p> : null}
+              {errors.idposition ? <p className="mt-1 text-xs text-form-error">{errors.idposition}</p> : null}
             </div>
             <div>
-              <Label htmlFor="position">Description</Label>
+              <Label htmlFor="position">{mdField(t, 'position')}</Label>
               <Input
                 id="position"
                 value={form.position}
                 disabled={mode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
               />
-              {errors.position ? <p className="mt-1 text-xs text-red-600">{errors.position}</p> : null}
+              {errors.position ? <p className="mt-1 text-xs text-form-error">{errors.position}</p> : null}
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.idposition}?</p>
+            <MasterDataConfirmDelete entity="position" name={form.idposition} />
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.idposition.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.idposition.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -2380,9 +2276,9 @@ function GroupPanel() {
     const next: Partial<Record<keyof GroupFormState, string>> = {}
     const wkctrgroup = form.wkctrgroup.trim()
     const wkctrdescription = form.wkctrdescription.trim()
-    if (!wkctrgroup) next.wkctrgroup = 'Group is required.'
-    else if (wkctrgroup.length > 64) next.wkctrgroup = 'Group must be 64 characters or less.'
-    if (wkctrdescription.length > 2000) next.wkctrdescription = 'Group description must be 2000 characters or less.'
+    if (!wkctrgroup) next.wkctrgroup = mdRequired(t, 'wkctrgroup')
+    else if (wkctrgroup.length > 64) next.wkctrgroup = mdMaxLen(t, 'wkctrgroup', 64)
+    if (wkctrdescription.length > 2000) next.wkctrdescription = mdMaxLen(t, 'wkctrdescription', 2000)
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
     return Object.keys(next).length === 0
@@ -2390,7 +2286,7 @@ function GroupPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateGroup(editing.idwkctrgroup, {
           wkctrgroup: form.wkctrgroup.trim(),
@@ -2460,8 +2356,8 @@ function GroupPanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Group</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead>{mdField(t, 'wkctrgroup')}</TableHead>
+              <TableHead>{mdField(t, 'description')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -2476,7 +2372,7 @@ function GroupPanel() {
                       <Pencil className="size-4" />
                     </Button>
                     <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -2489,31 +2385,30 @@ function GroupPanel() {
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{mode === 'create' ? 'Create Group' : mode === 'edit' ? 'Edit Group' : 'Delete Group'}</DialogTitle>
+            <MasterDataEntityDialogTitle entity="group" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="wkctrgroup">Group</Label>
+              <Label htmlFor="wkctrgroup">{mdField(t, 'wkctrgroup')}</Label>
               <Input id="wkctrgroup" value={form.wkctrgroup} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, wkctrgroup: e.target.value }))} />
-              {errors.wkctrgroup ? <p className="mt-1 text-xs text-red-600">{errors.wkctrgroup}</p> : null}
+              {errors.wkctrgroup ? <p className="mt-1 text-xs text-form-error">{errors.wkctrgroup}</p> : null}
             </div>
             <div>
-              <Label htmlFor="wkctrdescription">Group description</Label>
+              <Label htmlFor="wkctrdescription">{mdField(t, 'wkctrdescription')}</Label>
               <Input id="wkctrdescription" value={form.wkctrdescription} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, wkctrdescription: e.target.value }))} />
-              {errors.wkctrdescription ? <p className="mt-1 text-xs text-red-600">{errors.wkctrdescription}</p> : null}
+              {errors.wkctrdescription ? <p className="mt-1 text-xs text-form-error">{errors.wkctrdescription}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.wkctrgroup}?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={!form.wkctrgroup.trim() || mut.isPending} onClick={() => mut.mutate()}>
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {mode === 'delete' ? <MasterDataConfirmDelete entity="group" name={form.wkctrgroup} /> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.wkctrgroup.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -2572,30 +2467,30 @@ function TasklistPanel() {
       return true
     }
     const next: Partial<Record<keyof TasklistFormState, string>> = {}
-    if (!form.idwkctrtype.trim()) next.idwkctrtype = 'Type code is required.'
-    else if (form.idwkctrtype.trim().length > 64) next.idwkctrtype = 'Type code must be 64 characters or less.'
-    if (!form.idzone.trim()) next.idzone = 'Zone code is required.'
-    else if (form.idzone.trim().length > 64) next.idzone = 'Zone code must be 64 characters or less.'
-    if (form.idmachine.trim() && form.idmachine.trim().length > 64) next.idmachine = 'Machine list must be 64 characters or less.'
-    if (!form.mntplan.trim()) next.mntplan = 'Maintenance plan is required.'
-    if (!form.tasklist.trim()) next.tasklist = 'Task list is required.'
-    if (!form.legacy.trim()) next.legacy = 'Legacy is required.'
-    if (!form.machine.trim()) next.machine = 'M/C is required.'
-    if (!form.pmlist.trim()) next.pmlist = 'PM list is required.'
+    if (!form.idwkctrtype.trim()) next.idwkctrtype = mdRequired(t, 'idwkctrtype')
+    else if (form.idwkctrtype.trim().length > 64) next.idwkctrtype = mdMaxLen(t, 'idwkctrtype', 64)
+    if (!form.idzone.trim()) next.idzone = mdRequired(t, 'idzone')
+    else if (form.idzone.trim().length > 64) next.idzone = mdMaxLen(t, 'idzone', 64)
+    if (form.idmachine.trim() && form.idmachine.trim().length > 64) next.idmachine = mdMaxLen(t, 'idmachine', 64)
+    if (!form.mntplan.trim()) next.mntplan = mdRequired(t, 'mntplan')
+    if (!form.tasklist.trim()) next.tasklist = mdRequired(t, 'tasklist')
+    if (!form.legacy.trim()) next.legacy = mdRequired(t, 'legacy')
+    if (!form.machine.trim()) next.machine = mdRequired(t, 'machine')
+    if (!form.pmlist.trim()) next.pmlist = mdRequired(t, 'pmlist')
 
-    const nums: Array<[keyof TasklistFormState, string]> = [
-      ['pmday', 'Days must be a number.'],
-      ['machinestatus', 'Machine status must be a number.'],
-      ['pmmin', 'Min must be a number.'],
-      ['pmman', 'Man must be a number.'],
-      ['manhour', 'Man hour must be a number.'],
-      ['runhr', '%run hr must be a number.'],
-      ['bcprunhr', 'BCP Run Hr must be a number.'],
-      ['freqhour', 'Freq Hour must be a number.'],
+    const nums: Array<keyof TasklistFormState> = [
+      'pmday',
+      'machinestatus',
+      'pmmin',
+      'pmman',
+      'manhour',
+      'runhr',
+      'bcprunhr',
+      'freqhour',
     ]
-    for (const [k, msg] of nums) {
-      const s = form[k].trim()
-      if (s && !Number.isFinite(Number(s))) next[k] = msg
+    for (const k of nums) {
+      const v = form[k].trim()
+      if (v && !Number.isFinite(Number(v))) next[k] = mdNumber(t, k)
     }
 
     setErrors(next)
@@ -2605,7 +2500,7 @@ function TasklistPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       const payload = {
         idwkctrtype: form.idwkctrtype.trim(),
         idzone: form.idzone.trim(),
@@ -2660,11 +2555,11 @@ function TasklistPanel() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!importFile && !importText.trim()) {
-        throw new Error('Select a file or paste CSV text before importing.')
+        throw new Error(t('importErrors.pickFile'))
       }
       const rows = importFile ? await parseTasklistFile(importFile) : parseTasklistCsv(importText)
       if (rows.length === 0) {
-        throw new Error('No rows found. Expected columns: wkctrtype, zone, machineList, mntplan, tasklist, legacy, machine, pmlist, ...')
+        throw new Error(t('importErrors.noRows', { columns: t('importErrors.columns.tasklist') }))
       }
       return importTasklists(rows)
     },
@@ -2759,29 +2654,32 @@ function TasklistPanel() {
     scrollToIdRef.current = null
   }, [q.dataUpdatedAt, rows.length])
 
-  const formFields: Array<[keyof TasklistFormState, string, boolean]> = [
-    ['idwkctrtype', 'Type code', true],
-    ['idzone', 'Zone code', true],
-    ['idmachine', 'Machine list', false],
-    ['mntplan', 'Maintenance plan', true],
-    ['tasklist', 'Task list', true],
-    ['legacy', 'Legacy', true],
-    ['machine', 'M/C', true],
-    ['pmlist', 'PM list', true],
-    ['pmday', 'Days', false],
-    ['machinestatus', 'Machine status', false],
-    ['pmmin', 'Min', false],
-    ['pmman', 'Man', false],
-    ['manhour', 'Man hour', false],
-    ['mat', 'Act Code', false],
-    ['runhr', '%run hr', false],
-    ['mpoint', 'Measurement point', false],
-    ['bcprunhr', 'BCP Run Hr', false],
-    ['gls', 'Grease/Lube/SP', false],
-    ['ment', 'ment', false],
-    ['freqhour', 'Freq Hour', false],
-    ['plan', 'Plan', false],
-  ]
+  const formFields = useMemo(
+    (): Array<[keyof TasklistFormState, string, boolean]> => [
+      ['idwkctrtype', mdField(t, 'idwkctrtype'), true],
+      ['idzone', mdField(t, 'idzone'), true],
+      ['idmachine', mdField(t, 'idmachine'), false],
+      ['mntplan', mdField(t, 'mntplan'), true],
+      ['tasklist', mdField(t, 'tasklist'), true],
+      ['legacy', mdField(t, 'legacy'), true],
+      ['machine', mdField(t, 'machine'), true],
+      ['pmlist', mdField(t, 'pmlist'), true],
+      ['pmday', mdField(t, 'pmday'), false],
+      ['machinestatus', mdField(t, 'machinestatus'), false],
+      ['pmmin', mdField(t, 'pmmin'), false],
+      ['pmman', mdField(t, 'pmman'), false],
+      ['manhour', mdField(t, 'manhour'), false],
+      ['mat', mdField(t, 'mat'), false],
+      ['runhr', mdField(t, 'runhr'), false],
+      ['mpoint', mdField(t, 'mpoint'), false],
+      ['bcprunhr', mdField(t, 'bcprunhr'), false],
+      ['gls', mdField(t, 'gls'), false],
+      ['ment', mdField(t, 'ment'), false],
+      ['freqhour', mdField(t, 'freqhour'), false],
+      ['plan', mdField(t, 'plan'), false],
+    ],
+    [t],
+  )
 
   return (
     <div className="space-y-4">
@@ -2792,7 +2690,7 @@ function TasklistPanel() {
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
-          Import file
+          {t('actions.importFile')}
         </Button>
       </div>
 
@@ -2800,10 +2698,10 @@ function TasklistPanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Task list</TableHead>
-              <TableHead>Maintenance plan</TableHead>
-              <TableHead>PM list</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead>{mdField(t, 'tasklist')}</TableHead>
+              <TableHead>{mdField(t, 'mntplan')}</TableHead>
+              <TableHead>{mdField(t, 'pmlist')}</TableHead>
+              <TableHead>{mdField(t, 'columnType')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -2828,7 +2726,7 @@ function TasklistPanel() {
                       <Pencil className="size-4" />
                     </Button>
                     <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -2841,7 +2739,7 @@ function TasklistPanel() {
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{mode === 'create' ? 'Create Task list' : mode === 'edit' ? 'Edit Task list' : 'Delete Task list'}</DialogTitle>
+            <MasterDataEntityDialogTitle entity="tasklist" mode={mode} />
           </DialogHeader>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {formFields.map(([k, label, lockOnEdit]) => (
@@ -2853,57 +2751,42 @@ function TasklistPanel() {
                   disabled={mode === 'delete' || (mode !== 'create' && lockOnEdit)}
                   onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))}
                 />
-                {errors[k] ? <p className="mt-1 text-xs text-red-600">{errors[k]}</p> : null}
+                {errors[k] ? <p className="mt-1 text-xs text-form-error">{errors[k]}</p> : null}
               </div>
             ))}
           </div>
           {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.tasklist}?</p>
+            <MasterDataConfirmDelete entity="tasklist" name={form.tasklist} />
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.tasklist.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.tasklist.trim()}
+          />
         </DialogContent>
       </Dialog>
 
       <Dialog open={importOpen} onOpenChange={(next) => (next ? setImportOpen(true) : closeImport())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Task list (CSV/Excel)</DialogTitle>
+            <MasterDataImportDialogTitle entity="tasklist" />
           </DialogHeader>
-          <p className="text-xs text-app-muted">
-            For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
-          </p>
+          <p className="text-xs text-app-muted">{t('entities.tasklist.importDesc')}</p>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label htmlFor="tasklist-import-file">Select file</Label>
+              <Label htmlFor="tasklist-import-file">{t('import.selectFile')}</Label>
               <Input id="tasklist-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-app-muted">Or paste CSV</div>
+            <div className="text-xs text-app-muted">{t('entities.tasklist.pasteColumns')}</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'TYPE 01,ZONE 01,MACHINE-01,PLAN-01,TASK-01,LEGACY-01,M/C,PM-01,7,0,10,2,1,ACT,80,MP,0,GLS,MENT,0,PLAN'} />
-          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeImport}>
-              Close
-            </Button>
-            <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>
-              Import
-            </Button>
-          </DialogFooter>
+          {importMut.isSuccess ? <MasterDataImportResult inserted={importMut.data.inserted} updated={importMut.data.updated} failed={importMut.data.failed} /> : null}
+          {importMut.isError ? <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p> : null}
+          <MasterDataImportDialogFooter onClose={closeImport} onImport={() => importMut.mutate()} pending={importMut.isPending} />
         </DialogContent>
       </Dialog>
     </div>
@@ -2948,14 +2831,14 @@ function WorkStatusPanel() {
     const wkstreason = form.wkstreason.trim()
     const wkstcolor = form.wkstcolor.trim()
 
-    if (!syst) next.syst = 'System status is required.'
-    else if (syst.length > 32) next.syst = 'System status must be 32 characters or less.'
+    if (!syst) next.syst = mdRequired(t, 'syst')
+    else if (syst.length > 32) next.syst = mdMaxLen(t, 'syst', 32)
 
-    if (!wkstreason) next.wkstreason = 'Description is required.'
-    else if (wkstreason.length > 2000) next.wkstreason = 'Description must be 2000 characters or less.'
+    if (!wkstreason) next.wkstreason = mdRequired(t, 'wkstreason')
+    else if (wkstreason.length > 2000) next.wkstreason = mdMaxLen(t, 'wkstreason', 2000)
 
-    if (!wkstcolor) next.wkstcolor = 'Color code is required.'
-    else if (wkstcolor.length > 32) next.wkstcolor = 'Color code must be 32 characters or less.'
+    if (!wkstcolor) next.wkstcolor = mdRequired(t, 'wkstcolor')
+    else if (wkstcolor.length > 32) next.wkstcolor = mdMaxLen(t, 'wkstcolor', 32)
 
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
@@ -2964,7 +2847,7 @@ function WorkStatusPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateWorkStatus(editing.syst, {
           wkstreason: form.wkstreason.trim(),
@@ -3032,9 +2915,9 @@ function WorkStatusPanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>System Status</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Color Code</TableHead>
+              <TableHead>{mdField(t, 'syst')}</TableHead>
+              <TableHead>{mdField(t, 'description')}</TableHead>
+              <TableHead>{mdField(t, 'wkstcolor')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -3067,7 +2950,7 @@ function WorkStatusPanel() {
                       onClick={() => openDelete(row)}
                       aria-label={t('aria.delete')}
                     >
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -3086,66 +2969,52 @@ function WorkStatusPanel() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create'
-                ? 'Create Work status'
-                : mode === 'edit'
-                  ? 'Edit Work status'
-                  : 'Delete Work status'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="workstatus" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="syst">System status</Label>
+              <Label htmlFor="syst">{mdField(t, 'syst')}</Label>
               <Input
                 id="syst"
                 value={form.syst}
                 disabled={mode !== 'create'}
                 onChange={(e) => setForm((f) => ({ ...f, syst: e.target.value }))}
               />
-              {errors.syst ? <p className="mt-1 text-xs text-red-600">{errors.syst}</p> : null}
+              {errors.syst ? <p className="mt-1 text-xs text-form-error">{errors.syst}</p> : null}
             </div>
             <div>
-              <Label htmlFor="wkstreason">Description</Label>
+              <Label htmlFor="wkstreason">{mdField(t, 'wkstreason')}</Label>
               <Input
                 id="wkstreason"
                 value={form.wkstreason}
                 disabled={mode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, wkstreason: e.target.value }))}
               />
-              {errors.wkstreason ? <p className="mt-1 text-xs text-red-600">{errors.wkstreason}</p> : null}
+              {errors.wkstreason ? <p className="mt-1 text-xs text-form-error">{errors.wkstreason}</p> : null}
             </div>
             <div>
-              <Label htmlFor="wkstcolor">Color code</Label>
+              <Label htmlFor="wkstcolor">{mdField(t, 'wkstcolor')}</Label>
               <Input
                 id="wkstcolor"
                 value={form.wkstcolor}
                 disabled={mode === 'delete'}
                 onChange={(e) => setForm((f) => ({ ...f, wkstcolor: e.target.value }))}
               />
-              {errors.wkstcolor ? <p className="mt-1 text-xs text-red-600">{errors.wkstcolor}</p> : null}
+              {errors.wkstcolor ? <p className="mt-1 text-xs text-form-error">{errors.wkstcolor}</p> : null}
             </div>
           </div>
           {mode === 'delete' ? (
-            <p className="text-body-sm text-red-600">
-              This action cannot be undone. Delete {form.syst}?
-            </p>
+            <MasterDataConfirmDelete entity="workstatus" name={form.syst} />
           ) : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant={mode === 'delete' ? 'destructive' : 'default'}
-              disabled={!form.syst.trim() || mut.isPending}
-              onClick={() => mut.mutate()}
-            >
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.syst.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -3197,10 +3066,10 @@ function LineProductPanel() {
     const next: Partial<Record<keyof LineProductFormState, string>> = {}
     const productline = form.productline.trim()
     const prolinedescrip = form.prolinedescrip.trim()
-    if (!productline) next.productline = 'Product line is required.'
-    else if (productline.length > 64) next.productline = 'Product line must be 64 characters or less.'
-    if (!prolinedescrip) next.prolinedescrip = 'Description is required.'
-    else if (prolinedescrip.length > 2000) next.prolinedescrip = 'Description must be 2000 characters or less.'
+    if (!productline) next.productline = mdRequired(t, 'productline')
+    else if (productline.length > 64) next.productline = mdMaxLen(t, 'productline', 64)
+    if (!prolinedescrip) next.prolinedescrip = mdRequired(t, 'prolinedescrip')
+    else if (prolinedescrip.length > 2000) next.prolinedescrip = mdMaxLen(t, 'prolinedescrip', 2000)
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
     return Object.keys(next).length === 0
@@ -3208,7 +3077,7 @@ function LineProductPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateLineProduct(editing.productline, { prolinedescrip: form.prolinedescrip.trim() })
       }
@@ -3227,10 +3096,10 @@ function LineProductPanel() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!importFile && !importText.trim()) {
-        throw new Error('Select a file or paste CSV text before importing.')
+        throw new Error(t('importErrors.pickFile'))
       }
       const rows = importFile ? await parseLineProductFile(importFile) : parseLineProductCsv(importText)
-      if (rows.length === 0) throw new Error('No rows found. Expected columns: productline, prolinedescrip')
+      if (rows.length === 0) throw new Error(t('importErrors.noRows', { columns: t('importErrors.columns.lineproduct') }))
       return importLineProducts(rows)
     },
     onSuccess: () => {
@@ -3281,7 +3150,7 @@ function LineProductPanel() {
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
-          Import file
+          {t('actions.importFile')}
         </Button>
       </div>
 
@@ -3289,8 +3158,8 @@ function LineProductPanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Product line</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead>{mdField(t, 'productline')}</TableHead>
+              <TableHead>{mdField(t, 'description')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -3305,7 +3174,7 @@ function LineProductPanel() {
                       <Pencil className="size-4" />
                     </Button>
                     <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -3318,56 +3187,50 @@ function LineProductPanel() {
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create' ? 'Create Line product' : mode === 'edit' ? 'Edit Line product' : 'Delete Line product'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="lineproduct" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="productline">Product line</Label>
+              <Label htmlFor="productline">{mdField(t, 'productline')}</Label>
               <Input id="productline" value={form.productline} disabled={mode !== 'create'} onChange={(e) => setForm((f) => ({ ...f, productline: e.target.value }))} />
-              {errors.productline ? <p className="mt-1 text-xs text-red-600">{errors.productline}</p> : null}
+              {errors.productline ? <p className="mt-1 text-xs text-form-error">{errors.productline}</p> : null}
             </div>
             <div>
-              <Label htmlFor="prolinedescrip">Description</Label>
+              <Label htmlFor="prolinedescrip">{mdField(t, 'prolinedescrip')}</Label>
               <Input id="prolinedescrip" value={form.prolinedescrip} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, prolinedescrip: e.target.value }))} />
-              {errors.prolinedescrip ? <p className="mt-1 text-xs text-red-600">{errors.prolinedescrip}</p> : null}
+              {errors.prolinedescrip ? <p className="mt-1 text-xs text-form-error">{errors.prolinedescrip}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.productline}?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>Cancel</Button>
-            <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={!form.productline.trim() || mut.isPending} onClick={() => mut.mutate()}>
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {mode === 'delete' ? <MasterDataConfirmDelete entity="lineproduct" name={form.productline} /> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.productline.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
 
       <Dialog open={importOpen} onOpenChange={(next) => (next ? setImportOpen(true) : closeImport())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Line product (CSV/Excel)</DialogTitle>
+            <MasterDataImportDialogTitle entity="lineproduct" />
           </DialogHeader>
-          <p className="text-xs text-app-muted">
-            For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
-          </p>
+          <p className="text-xs text-app-muted">{t('entities.lineproduct.importDesc')}</p>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label htmlFor="lineproduct-import-file">Select file</Label>
+              <Label htmlFor="lineproduct-import-file">{t('import.selectFile')}</Label>
               <Input id="lineproduct-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-app-muted">Or paste CSV: productline,prolinedescrip</div>
+            <div className="text-xs text-app-muted">{t('entities.lineproduct.pasteColumns')}</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'PL01,Product line 01'} />
-          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
-            <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>Import</Button>
-          </DialogFooter>
+          {importMut.isSuccess ? <MasterDataImportResult inserted={importMut.data.inserted} updated={importMut.data.updated} failed={importMut.data.failed} /> : null}
+          {importMut.isError ? <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p> : null}
+          <MasterDataImportDialogFooter onClose={closeImport} onImport={() => importMut.mutate()} pending={importMut.isPending} />
         </DialogContent>
       </Dialog>
     </div>
@@ -3433,15 +3296,15 @@ function LineSchdulPanel() {
     const uptimeText = form.uptime.trim()
     const linereason = form.linereason.trim()
 
-    if (!idproductline) next.idproductline = 'Line is required.'
-    else if (idproductline.length > 64) next.idproductline = 'Line must be 64 characters or less.'
+    if (!idproductline) next.idproductline = mdRequired(t, 'idproductline')
+    else if (idproductline.length > 64) next.idproductline = mdMaxLen(t, 'idproductline', 64)
 
     const lineday = parseDayToEpoch(linedayText)
-    if (!linedayText) next.lineday = 'Date is required.'
-    else if (!lineday) next.lineday = 'Invalid date format. Expected DD.MM.YYYY'
+    if (!linedayText) next.lineday = mdRequired(t, 'lineday')
+    else if (!lineday) next.lineday = t('validation.invalidDate')
 
-    if (uptimeText && !Number.isFinite(Number(uptimeText))) next.uptime = 'Uptime must be a number.'
-    if (linereason.length > 2000) next.linereason = 'Reason must be 2000 characters or less.'
+    if (uptimeText && !Number.isFinite(Number(uptimeText))) next.uptime = mdNumber(t, 'uptime')
+    if (linereason.length > 2000) next.linereason = mdMaxLen(t, 'linereason', 2000)
 
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
@@ -3450,9 +3313,9 @@ function LineSchdulPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       const lineday = parseDayToEpoch(form.lineday.trim())
-      if (!lineday) throw new Error('Invalid date format. Expected DD.MM.YYYY')
+      if (!lineday) throw new Error(t('validation.invalidDate'))
       const uptime = form.uptime.trim() ? Number(form.uptime.trim()) : undefined
       const payload = {
         idproductline: form.idproductline.trim(),
@@ -3478,10 +3341,10 @@ function LineSchdulPanel() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!importFile && !importText.trim()) {
-        throw new Error('Select a file or paste CSV text before importing.')
+        throw new Error(t('importErrors.pickFile'))
       }
       const rows = importFile ? await parseLineSchdulFile(importFile) : parseLineSchdulCsv(importText)
-      if (rows.length === 0) throw new Error('No rows found. Expected columns: productline, lineday(DD.MM.YYYY), uptime, linereason')
+      if (rows.length === 0) throw new Error(t('importErrors.noRows', { columns: t('importErrors.columns.lineschdul') }))
       return importLineSchduls(rows)
     },
     onSuccess: () => {
@@ -3542,7 +3405,7 @@ function LineSchdulPanel() {
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
-          Import file
+          {t('actions.importFile')}
         </Button>
       </div>
 
@@ -3550,10 +3413,10 @@ function LineSchdulPanel() {
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Line</TableHead>
-              <TableHead>Uptime</TableHead>
-              <TableHead>Reason</TableHead>
+              <TableHead>{mdField(t, 'dateColumn')}</TableHead>
+              <TableHead>{mdField(t, 'idproductline')}</TableHead>
+              <TableHead>{mdField(t, 'uptime')}</TableHead>
+              <TableHead>{mdField(t, 'linereason')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -3570,7 +3433,7 @@ function LineSchdulPanel() {
                       <Pencil className="size-4" />
                     </Button>
                     <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -3583,72 +3446,60 @@ function LineSchdulPanel() {
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {mode === 'create' ? 'Create Line schedule' : mode === 'edit' ? 'Edit Line schedule' : 'Delete Line schedule'}
-            </DialogTitle>
+            <MasterDataEntityDialogTitle entity="lineschdul" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="idproductline">Line</Label>
+              <Label htmlFor="idproductline">{mdField(t, 'idproductline')}</Label>
               <Input id="idproductline" value={form.idproductline} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, idproductline: e.target.value }))} />
-              {errors.idproductline ? <p className="mt-1 text-xs text-red-600">{errors.idproductline}</p> : null}
+              {errors.idproductline ? <p className="mt-1 text-xs text-form-error">{errors.idproductline}</p> : null}
             </div>
             <div>
-              <Label htmlFor="lineday">Date (DD.MM.YYYY)</Label>
+              <Label htmlFor="lineday">{mdField(t, 'lineday')}</Label>
               <Input id="lineday" value={form.lineday} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, lineday: e.target.value }))} />
-              {errors.lineday ? <p className="mt-1 text-xs text-red-600">{errors.lineday}</p> : null}
+              {errors.lineday ? <p className="mt-1 text-xs text-form-error">{errors.lineday}</p> : null}
             </div>
             <div>
-              <Label htmlFor="uptime">Uptime</Label>
+              <Label htmlFor="uptime">{mdField(t, 'uptime')}</Label>
               <Input id="uptime" value={form.uptime} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, uptime: e.target.value }))} />
-              {errors.uptime ? <p className="mt-1 text-xs text-red-600">{errors.uptime}</p> : null}
+              {errors.uptime ? <p className="mt-1 text-xs text-form-error">{errors.uptime}</p> : null}
             </div>
             <div>
-              <Label htmlFor="linereason">Reason</Label>
+              <Label htmlFor="linereason">{mdField(t, 'linereason')}</Label>
               <Input id="linereason" value={form.linereason} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, linereason: e.target.value }))} />
-              {errors.linereason ? <p className="mt-1 text-xs text-red-600">{errors.linereason}</p> : null}
+              {errors.linereason ? <p className="mt-1 text-xs text-form-error">{errors.linereason}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete this line schedule?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
-              Cancel
-            </Button>
-            <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={!form.idproductline.trim() || mut.isPending} onClick={() => mut.mutate()}>
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {mode === 'delete' ? <MasterDataConfirmDelete entity="lineschdul" /> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.idproductline.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
 
       <Dialog open={importOpen} onOpenChange={(next) => (next ? setImportOpen(true) : closeImport())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Line schedule (CSV/Excel)</DialogTitle>
+            <MasterDataImportDialogTitle entity="lineschdul" />
           </DialogHeader>
-          <p className="text-xs text-app-muted">
-            For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
-          </p>
+          <p className="text-xs text-app-muted">{t('entities.lineschdul.importDesc')}</p>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label htmlFor="lineschdul-import-file">Select file</Label>
+              <Label htmlFor="lineschdul-import-file">{t('import.selectFile')}</Label>
               <Input id="lineschdul-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-app-muted">Or paste CSV: productline,lineday(DD.MM.YYYY),uptime,linereason</div>
+            <div className="text-xs text-app-muted">{t('entities.lineschdul.pasteColumns')}</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'PL01,18.05.2026,4,Close'} />
-          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeImport}>
-              Close
-            </Button>
-            <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>
-              Import
-            </Button>
-          </DialogFooter>
+          {importMut.isSuccess ? <MasterDataImportResult inserted={importMut.data.inserted} updated={importMut.data.updated} failed={importMut.data.failed} /> : null}
+          {importMut.isError ? <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p> : null}
+          <MasterDataImportDialogFooter onClose={closeImport} onImport={() => importMut.mutate()} pending={importMut.isPending} />
         </DialogContent>
       </Dialog>
     </div>
@@ -3700,12 +3551,12 @@ function ZonePanel() {
     const next: Partial<Record<keyof ZoneFormState, string>> = {}
     const idzone = form.idzone.trim()
     const zone = form.zone.trim()
-    if (!idzone) next.idzone = 'Zone code is required.'
-    else if (idzone.length > 64) next.idzone = 'Zone code must be 64 characters or less.'
-    if (!zone) next.zone = 'Zone is required.'
-    else if (zone.length > 2000) next.zone = 'Zone must be 2000 characters or less.'
-    if (form.zonedescrip.trim().length > 2000) next.zonedescrip = 'Description must be 2000 characters or less.'
-    if (form.idproductline.trim().length > 64) next.idproductline = 'Line product must be 64 characters or less.'
+    if (!idzone) next.idzone = mdRequired(t, 'idzone')
+    else if (idzone.length > 64) next.idzone = mdMaxLen(t, 'idzone', 64)
+    if (!zone) next.zone = mdRequired(t, 'zone')
+    else if (zone.length > 2000) next.zone = mdMaxLen(t, 'zone', 2000)
+    if (form.zonedescrip.trim().length > 2000) next.zonedescrip = mdMaxLen(t, 'zonedescrip', 2000)
+    if (form.idproductline.trim().length > 64) next.idproductline = mdMaxLen(t, 'lineProduct', 64)
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
     return Object.keys(next).length === 0
@@ -3713,7 +3564,7 @@ function ZonePanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateZone(editing.idzone, {
           zone: form.zone.trim(),
@@ -3741,11 +3592,11 @@ function ZonePanel() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!importFile && !importText.trim()) {
-        throw new Error('Select a file or paste CSV text before importing.')
+        throw new Error(t('importErrors.pickFile'))
       }
       const rows = importFile ? await parseZoneFile(importFile) : parseZoneCsv(importText)
       if (rows.length === 0) {
-        throw new Error('No rows found. Expected columns: zone, zonedescrip, productline')
+        throw new Error(t('importErrors.noRows', { columns: t('importErrors.columns.zone') }))
       }
       return importZones(rows)
     },
@@ -3803,17 +3654,17 @@ function ZonePanel() {
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 size-4" />
-          Import file
+          {t('actions.importFile')}
         </Button>
       </div>
       <div className="app-table-shell overflow-x-auto">
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Zone code</TableHead>
-              <TableHead>Zone</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Line product</TableHead>
+              <TableHead>{mdField(t, 'idzone')}</TableHead>
+              <TableHead>{mdField(t, 'zoneColumn')}</TableHead>
+              <TableHead>{mdField(t, 'description')}</TableHead>
+              <TableHead>{mdField(t, 'lineProduct')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -3830,7 +3681,7 @@ function ZonePanel() {
                       <Pencil className="size-4" />
                     </Button>
                     <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}>
-                      <Trash2 className="size-4 text-red-600" />
+                      <Trash2 className="size-4 text-form-error" />
                     </Button>
                   </div>
                 </TableCell>
@@ -3842,64 +3693,60 @@ function ZonePanel() {
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{mode === 'create' ? 'Create Zone' : mode === 'edit' ? 'Edit Zone' : 'Delete Zone'}</DialogTitle>
+            <MasterDataEntityDialogTitle entity="zone" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="idzone">Zone code</Label>
+              <Label htmlFor="idzone">{mdField(t, 'idzone')}</Label>
               <Input id="idzone" value={form.idzone} disabled={mode !== 'create'} onChange={(e) => setForm((f) => ({ ...f, idzone: e.target.value }))} />
-              {errors.idzone ? <p className="mt-1 text-xs text-red-600">{errors.idzone}</p> : null}
+              {errors.idzone ? <p className="mt-1 text-xs text-form-error">{errors.idzone}</p> : null}
             </div>
             <div>
-              <Label htmlFor="zone">Zone</Label>
+              <Label htmlFor="zone">{mdField(t, 'zone')}</Label>
               <Input id="zone" value={form.zone} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, zone: e.target.value }))} />
-              {errors.zone ? <p className="mt-1 text-xs text-red-600">{errors.zone}</p> : null}
+              {errors.zone ? <p className="mt-1 text-xs text-form-error">{errors.zone}</p> : null}
             </div>
             <div>
-              <Label htmlFor="zonedescrip">Description</Label>
+              <Label htmlFor="zonedescrip">{mdField(t, 'zonedescrip')}</Label>
               <Input id="zonedescrip" value={form.zonedescrip} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, zonedescrip: e.target.value }))} />
-              {errors.zonedescrip ? <p className="mt-1 text-xs text-red-600">{errors.zonedescrip}</p> : null}
+              {errors.zonedescrip ? <p className="mt-1 text-xs text-form-error">{errors.zonedescrip}</p> : null}
             </div>
             <div>
-              <Label htmlFor="idproductline">Line product</Label>
+              <Label htmlFor="idproductline">{mdField(t, 'lineProduct')}</Label>
               <Input id="idproductline" value={form.idproductline} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, idproductline: e.target.value }))} />
-              {errors.idproductline ? <p className="mt-1 text-xs text-red-600">{errors.idproductline}</p> : null}
+              {errors.idproductline ? <p className="mt-1 text-xs text-form-error">{errors.idproductline}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.idzone}?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>Cancel</Button>
-            <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={!form.idzone.trim() || mut.isPending} onClick={() => mut.mutate()}>
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {mode === 'delete' ? <MasterDataConfirmDelete entity="zone" name={form.idzone} /> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.idzone.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
 
       <Dialog open={importOpen} onOpenChange={(next) => (next ? setImportOpen(true) : closeImport())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Zone (CSV/Excel)</DialogTitle>
+            <MasterDataImportDialogTitle entity="zone" />
           </DialogHeader>
-          <p className="text-xs text-app-muted">
-            For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
-          </p>
+          <p className="text-xs text-app-muted">{t('entities.zone.importDesc')}</p>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label htmlFor="zone-import-file">Select file</Label>
+              <Label htmlFor="zone-import-file">{t('import.selectFile')}</Label>
               <Input id="zone-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-app-muted">Or paste CSV: zone,zonedescrip,productline</div>
+            <div className="text-xs text-app-muted">{t('entities.zone.pasteColumns')}</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'ZONE 01,Zone description,PL01'} />
-          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
-            <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>Import</Button>
-          </DialogFooter>
+          {importMut.isSuccess ? <MasterDataImportResult inserted={importMut.data.inserted} updated={importMut.data.updated} failed={importMut.data.failed} /> : null}
+          {importMut.isError ? <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p> : null}
+          <MasterDataImportDialogFooter onClose={closeImport} onImport={() => importMut.mutate()} pending={importMut.isPending} />
         </DialogContent>
       </Dialog>
     </div>
@@ -3950,10 +3797,10 @@ function MachinePanel() {
     }
     const next: Partial<Record<keyof MachineFormState, string>> = {}
     const machine = form.machine.trim()
-    if (!machine) next.machine = 'Machine is required.'
-    else if (machine.length > 64) next.machine = 'Machine must be 64 characters or less.'
-    if (form.idzone.trim().length > 64) next.idzone = 'Zone code must be 64 characters or less.'
-    if (form.idwkctrtype.trim().length > 64) next.idwkctrtype = 'Type code must be 64 characters or less.'
+    if (!machine) next.machine = mdRequired(t, 'machineName')
+    else if (machine.length > 64) next.machine = mdMaxLen(t, 'machineName', 64)
+    if (form.idzone.trim().length > 64) next.idzone = mdMaxLen(t, 'idzone', 64)
+    if (form.idwkctrtype.trim().length > 64) next.idwkctrtype = mdMaxLen(t, 'idwkctrtype', 64)
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
     return Object.keys(next).length === 0
@@ -3961,7 +3808,7 @@ function MachinePanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       if (mode === 'edit' && editing) {
         return updateMachine(editing.machine, {
           idzone: form.idzone.trim() || undefined,
@@ -3987,10 +3834,10 @@ function MachinePanel() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!importFile && !importText.trim()) {
-        throw new Error('Select a file or paste CSV text before importing.')
+        throw new Error(t('importErrors.pickFile'))
       }
       const rows = importFile ? await parseMachineFile(importFile) : parseMachineCsv(importText)
-      if (rows.length === 0) throw new Error('No rows found. Expected columns: machine, zone, wkctrtype')
+      if (rows.length === 0) throw new Error(t('importErrors.noRows', { columns: t('importErrors.columns.machine') }))
       return importMachines(rows)
     },
     onSuccess: () => {
@@ -4031,16 +3878,17 @@ function MachinePanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" onClick={openCreate}><Plus className="mr-1 size-4" />Create</Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-1 size-4" />Import file</Button>
+        <Button type="button" size="sm" onClick={openCreate}><Plus className="mr-1 size-4" />{t('actions.add')}</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-1 size-4" />
+          {t('actions.importFile')}</Button>
       </div>
       <div className="app-table-shell overflow-x-auto">
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Machine</TableHead>
-              <TableHead>Zone</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead>{mdField(t, 'machineColumn')}</TableHead>
+              <TableHead>{mdField(t, 'zoneColumn')}</TableHead>
+              <TableHead>{mdField(t, 'columnType')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -4053,7 +3901,7 @@ function MachinePanel() {
                 <TableCell>
                   <div className="flex gap-1">
                     <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label={t('aria.edit')}><Pencil className="size-4" /></Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}><Trash2 className="size-4 text-red-600" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}><Trash2 className="size-4 text-form-error" /></Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -4065,59 +3913,55 @@ function MachinePanel() {
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{mode === 'create' ? 'Create Machine' : mode === 'edit' ? 'Edit Machine' : 'Delete Machine'}</DialogTitle>
+            <MasterDataEntityDialogTitle entity="machine" mode={mode} />
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="machine">Machine</Label>
+              <Label htmlFor="machine">{mdField(t, 'machineName')}</Label>
               <Input id="machine" value={form.machine} disabled={mode !== 'create'} onChange={(e) => setForm((f) => ({ ...f, machine: e.target.value }))} />
-              {errors.machine ? <p className="mt-1 text-xs text-red-600">{errors.machine}</p> : null}
+              {errors.machine ? <p className="mt-1 text-xs text-form-error">{errors.machine}</p> : null}
             </div>
             <div>
-              <Label htmlFor="idzone">Zone code</Label>
+              <Label htmlFor="idzone">{mdField(t, 'idzone')}</Label>
               <Input id="idzone" value={form.idzone} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, idzone: e.target.value }))} />
-              {errors.idzone ? <p className="mt-1 text-xs text-red-600">{errors.idzone}</p> : null}
+              {errors.idzone ? <p className="mt-1 text-xs text-form-error">{errors.idzone}</p> : null}
             </div>
             <div>
-              <Label htmlFor="idwkctrtype">Type code</Label>
+              <Label htmlFor="idwkctrtype">{mdField(t, 'idwkctrtype')}</Label>
               <Input id="idwkctrtype" value={form.idwkctrtype} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, idwkctrtype: e.target.value }))} />
-              {errors.idwkctrtype ? <p className="mt-1 text-xs text-red-600">{errors.idwkctrtype}</p> : null}
+              {errors.idwkctrtype ? <p className="mt-1 text-xs text-form-error">{errors.idwkctrtype}</p> : null}
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete {form.machine}?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>Cancel</Button>
-            <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={!form.machine.trim() || mut.isPending} onClick={() => mut.mutate()}>
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {mode === 'delete' ? <MasterDataConfirmDelete entity="machine" name={form.machine} /> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={!form.machine.trim() || mut.isPending}
+          />
         </DialogContent>
       </Dialog>
 
       <Dialog open={importOpen} onOpenChange={(next) => (next ? setImportOpen(true) : closeImport())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Machine (CSV/Excel)</DialogTitle>
+            <MasterDataImportDialogTitle entity="machine" />
           </DialogHeader>
-          <p className="text-xs text-app-muted">
-            For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
-          </p>
+          <p className="text-xs text-app-muted">{t('entities.machine.importDesc')}</p>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label htmlFor="machine-import-file">Select file</Label>
+              <Label htmlFor="machine-import-file">{t('import.selectFile')}</Label>
               <Input id="machine-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-app-muted">Or paste CSV: machine,zone,wkctrtype</div>
+            <div className="text-xs text-app-muted">{t('entities.machine.pasteColumns')}</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'MACHINE-01,ZONE 01,Type 01'} />
-          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
-            <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>Import</Button>
-          </DialogFooter>
+          {importMut.isSuccess ? <MasterDataImportResult inserted={importMut.data.inserted} updated={importMut.data.updated} failed={importMut.data.failed} /> : null}
+          {importMut.isError ? <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p> : null}
+          <MasterDataImportDialogFooter onClose={closeImport} onImport={() => importMut.mutate()} pending={importMut.isPending} />
         </DialogContent>
       </Dialog>
     </div>
@@ -4167,13 +4011,13 @@ function MaterialPanel() {
       return true
     }
     const next: Partial<Record<keyof MaterialFormState, string>> = {}
-    if (!form.wkorder.trim()) next.wkorder = 'Order is required.'
+    if (!form.wkorder.trim()) next.wkorder = mdRequired(t, 'wkorder')
     const pstngIso = parseDdMmYyyyToIso(form.pstngdate)
-    if (!pstngIso) next.pstngdate = 'Posting date is required (DD.MM.YYYY).'
-    if (!form.materialdesc.trim()) next.materialdesc = 'Material description is required.'
+    if (!pstngIso) next.pstngdate = t('validation.postingDateRequired')
+    if (!form.materialdesc.trim()) next.materialdesc = mdRequired(t, 'materialdesc')
     const amount = Number(form.amountinlc)
-    if (!Number.isFinite(amount)) next.amountinlc = 'Amount in LC must be a number.'
-    if (!form.mvt.trim()) next.mvt = 'MvT is required.'
+    if (!Number.isFinite(amount)) next.amountinlc = mdNumber(t, 'amountinlc')
+    if (!form.mvt.trim()) next.mvt = mdRequired(t, 'mvt')
     setErrors(next)
     setErrorSummary(Object.values(next).find(Boolean) ?? null)
     return Object.keys(next).length === 0
@@ -4181,7 +4025,7 @@ function MaterialPanel() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (!validate()) throw new Error('Please fix validation errors and try again.')
+      if (!validate()) throw new Error(t('validation.fixErrors'))
       const pstngdate = parseDdMmYyyyToIso(form.pstngdate) as string
       const body = {
         wkorder: form.wkorder.trim(),
@@ -4211,11 +4055,11 @@ function MaterialPanel() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!importFile && !importText.trim()) {
-        throw new Error('Select a file or paste CSV text before importing.')
+        throw new Error(t('importErrors.pickFile'))
       }
       const rows = importFile ? await parseMaterialFile(importFile) : parseMaterialCsv(importText)
       if (rows.length === 0) {
-        throw new Error('No rows found. Required columns: wkorder, pstngdate, materialdesc, amountinlc, mvt')
+        throw new Error(t('importErrors.noRowsRequired', { columns: t('importErrors.columns.material') }))
       }
       return importMaterials(rows)
     },
@@ -4277,18 +4121,19 @@ function MaterialPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" onClick={openCreate}><Plus className="mr-1 size-4" />Create</Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-1 size-4" />Import file</Button>
+        <Button type="button" size="sm" onClick={openCreate}><Plus className="mr-1 size-4" />{t('actions.add')}</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-1 size-4" />
+          {t('actions.importFile')}</Button>
       </div>
       <div className="app-table-shell overflow-x-auto">
         <Table embedded stickyHeader zebra>
           <TableHeader>
             <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Posting Date</TableHead>
-              <TableHead>Material Description</TableHead>
+              <TableHead>{mdField(t, 'wkorder')}</TableHead>
+              <TableHead>{mdField(t, 'postingDateColumn')}</TableHead>
+              <TableHead>{mdField(t, 'materialDescColumn')}</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead>MvT</TableHead>
+              <TableHead>{mdField(t, 'mvt')}</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
@@ -4303,7 +4148,7 @@ function MaterialPanel() {
                 <TableCell>
                   <div className="flex gap-1">
                     <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)} aria-label={t('aria.edit')}><Pencil className="size-4" /></Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}><Trash2 className="size-4 text-red-600" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => openDelete(row)} aria-label={t('aria.delete')}><Trash2 className="size-4 text-form-error" /></Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -4315,81 +4160,77 @@ function MaterialPanel() {
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{mode === 'create' ? 'Create Material' : mode === 'edit' ? 'Edit Material' : 'Delete Material'}</DialogTitle>
+            <MasterDataEntityDialogTitle entity="material" mode={mode} />
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <Label htmlFor="wkorder">Order</Label>
+              <Label htmlFor="wkorder">{mdField(t, 'wkorder')}</Label>
               <Input id="wkorder" value={form.wkorder} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, wkorder: e.target.value }))} />
-              {errors.wkorder ? <p className="mt-1 text-xs text-red-600">{errors.wkorder}</p> : null}
+              {errors.wkorder ? <p className="mt-1 text-xs text-form-error">{errors.wkorder}</p> : null}
             </div>
             <div>
-              <Label htmlFor="pstngdate">Posting date (DD.MM.YYYY)</Label>
+              <Label htmlFor="pstngdate">{mdField(t, 'pstngdate')}</Label>
               <Input id="pstngdate" value={form.pstngdate} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, pstngdate: e.target.value }))} />
-              {errors.pstngdate ? <p className="mt-1 text-xs text-red-600">{errors.pstngdate}</p> : null}
+              {errors.pstngdate ? <p className="mt-1 text-xs text-form-error">{errors.pstngdate}</p> : null}
             </div>
             <div>
-              <Label htmlFor="mvt">MvT</Label>
+              <Label htmlFor="mvt">{mdField(t, 'mvt')}</Label>
               <Input id="mvt" value={form.mvt} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, mvt: e.target.value }))} />
-              {errors.mvt ? <p className="mt-1 text-xs text-red-600">{errors.mvt}</p> : null}
+              {errors.mvt ? <p className="mt-1 text-xs text-form-error">{errors.mvt}</p> : null}
             </div>
             <div className="col-span-2">
-              <Label htmlFor="materialdesc">Material description</Label>
+              <Label htmlFor="materialdesc">{mdField(t, 'materialdesc')}</Label>
               <Input id="materialdesc" value={form.materialdesc} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, materialdesc: e.target.value }))} />
-              {errors.materialdesc ? <p className="mt-1 text-xs text-red-600">{errors.materialdesc}</p> : null}
+              {errors.materialdesc ? <p className="mt-1 text-xs text-form-error">{errors.materialdesc}</p> : null}
             </div>
             <div>
-              <Label htmlFor="amountinlc">Amount in LC</Label>
+              <Label htmlFor="amountinlc">{mdField(t, 'amountinlc')}</Label>
               <Input id="amountinlc" value={form.amountinlc} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, amountinlc: e.target.value }))} />
-              {errors.amountinlc ? <p className="mt-1 text-xs text-red-600">{errors.amountinlc}</p> : null}
+              {errors.amountinlc ? <p className="mt-1 text-xs text-form-error">{errors.amountinlc}</p> : null}
             </div>
             <div>
-              <Label htmlFor="crcy">Currency</Label>
+              <Label htmlFor="crcy">{mdField(t, 'crcy')}</Label>
               <Input id="crcy" value={form.crcy} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, crcy: e.target.value }))} />
             </div>
             <div>
-              <Label htmlFor="matquantity">Quantity</Label>
+              <Label htmlFor="matquantity">{mdField(t, 'matquantity')}</Label>
               <Input id="matquantity" value={form.matquantity} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, matquantity: e.target.value }))} />
             </div>
             <div>
-              <Label htmlFor="material">Material</Label>
+              <Label htmlFor="material">{mdField(t, 'material')}</Label>
               <Input id="material" value={form.material} disabled={mode === 'delete'} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} />
             </div>
           </div>
-          {mode === 'delete' ? <p className="text-body-sm text-red-600">This action cannot be undone. Delete material row?</p> : null}
-          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-red-600">{errorSummary}</p> : null}
-          {mut.isError ? <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>Cancel</Button>
-            <Button type="button" variant={mode === 'delete' ? 'destructive' : 'default'} disabled={mut.isPending} onClick={() => mut.mutate()}>
-              {mode === 'create' ? 'Create' : mode === 'edit' ? 'Update' : 'Delete'}
-            </Button>
-          </DialogFooter>
+          {mode === 'delete' ? <MasterDataConfirmDelete entity="material" /> : null}
+          {errorSummary && mode !== 'delete' ? <p className="text-body-sm text-form-error">{errorSummary}</p> : null}
+          {mut.isError ? <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p> : null}
+          <MasterDataFormDialogFooter
+            mode={mode}
+            onCancel={close}
+            onSubmit={() => mut.mutate()}
+            pending={mut.isPending}
+            disabled={mut.isPending}
+          />
         </DialogContent>
       </Dialog>
 
       <Dialog open={importOpen} onOpenChange={(next) => (next ? setImportOpen(true) : closeImport())}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Material (CSV/Excel)</DialogTitle>
+            <MasterDataImportDialogTitle entity="material" />
           </DialogHeader>
-          <p className="text-xs text-app-muted">
-            For Excel files, the first 2 rows are skipped (PHP parity). Dates are stored as date in PostgreSQL. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb
-          </p>
+          <p className="text-xs text-app-muted">{t('entities.material.importDesc')}</p>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label htmlFor="material-import-file">Select file</Label>
+              <Label htmlFor="material-import-file">{t('import.selectFile')}</Label>
               <Input id="material-import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,.xlsb" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="text-xs text-app-muted">Or paste CSV (same column order as legacy export)</div>
+            <div className="text-xs text-app-muted">{t('entities.material.pasteColumns')}</div>
           </div>
           <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'4000001,,, ,18.05.2026,,Material desc,1,EA,100,THB,2610,,2026,MAT01'} />
-          {importMut.isSuccess ? <p className="text-body-sm app-tone-success-icon">Inserted {importMut.data.inserted} · Updated {importMut.data.updated} · Failed {importMut.data.failed}</p> : null}
-          {importMut.isError ? <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeImport}>Close</Button>
-            <Button type="button" disabled={importMut.isPending} onClick={() => importMut.mutate()}>Import</Button>
-          </DialogFooter>
+          {importMut.isSuccess ? <MasterDataImportResult inserted={importMut.data.inserted} updated={importMut.data.updated} failed={importMut.data.failed} /> : null}
+          {importMut.isError ? <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p> : null}
+          <MasterDataImportDialogFooter onClose={closeImport} onImport={() => importMut.mutate()} pending={importMut.isPending} />
         </DialogContent>
       </Dialog>
     </div>
@@ -4567,27 +4408,26 @@ export function MasterDataPage() {
     setTab((prev) => (prev === entityFromUrl ? prev : entityFromUrl))
   }, [entityFromUrl])
 
+  const pageHints = t('page.hints', { returnObjects: true }) as string[]
+
   if (!canRead) {
     return (
-      <>
-        <SchedulingPageHeader
-          title={t('page.title')}
-          icon={Database}
-          hints={t('page.hints', { returnObjects: true }) as string[]}
+      <AppPageShell
+        title={t('page.title')}
+        description={t('page.description')}
+        hints={pageHints}
+      >
+        <EmptyState
+          icon={AlertCircle}
+          title={t('page.noAccess')}
+          description={
+            <>
+              {t('page.noAccessDesc')}{' '}
+              <code className="text-xs">master-data.read</code>
+            </>
+          }
         />
-        <AppPageContent>
-          <EmptyState
-            icon={AlertCircle}
-            title={t('page.noAccess')}
-            description={
-              <>
-                {t('page.noAccessDesc')}{' '}
-                <code className="text-xs">master-data.read</code>
-              </>
-            }
-          />
-        </AppPageContent>
-      </>
+      </AppPageShell>
     )
   }
 
@@ -4595,73 +4435,65 @@ export function MasterDataPage() {
     (tabsLocalized.find((row) => row.id === tab) ?? tabsLocalized[0])?.id ?? 'activitytype'
 
   return (
-    <>
-      <SchedulingPageHeader
-        title={t('page.title')}
-        icon={Database}
-        hints={t('page.hints', { returnObjects: true }) as string[]}
-      >
-        <Badge variant="secondary" className="text-xs tabular-nums">
-          {t('page.tabCount', { count: tabsLocalized.length })}
-        </Badge>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={schedulingHeroLinkBtnClass}
-          asChild
-        >
-          <Link to="/admin/master">{t('page.masterHub')}</Link>
-        </Button>
-        <CanPermission permission="iw37n.read">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={schedulingHeroLinkBtnClass}
-            asChild
-          >
-            <Link to="/iw37n">IW37N</Link>
+    <AppPageShell
+      title={t('page.title')}
+      description={t('page.description')}
+      hints={pageHints}
+      headerActions={
+        <>
+          <Badge variant="secondary" className="text-xs tabular-nums">
+            {t('page.tabCount', { count: tabsLocalized.length })}
+          </Badge>
+          <Button type="button" variant="outline" size="sm" asChild>
+            <Link to="/admin/master">{t('page.masterHub')}</Link>
           </Button>
-        </CanPermission>
-      </SchedulingPageHeader>
-
-      <AppPageContent className="scheduling-page pb-8">
-        {!canWrite ? (
-          <AppCard pad="compact" className="app-tone-warning-callout mb-4 border text-body-sm">
-            {t('page.readOnly')} <code className="text-xs">master-data.write</code>
-          </AppCard>
-        ) : null}
-        <Tabs
-          value={currentTab}
-          onValueChange={(v) => {
-            setTab(v)
-            setSearchParams(
-              (prev) => {
-                const next = new URLSearchParams(prev)
-                next.set('entity', v)
-                return next
-              },
-              { replace: true },
-            )
-          }}
-        >
-          <TabsList className="mb-4 flex h-auto max-w-full flex-wrap justify-start gap-1 bg-[var(--app-surface)] p-1">
-            {tabsLocalized.map((row) => (
-              <TabsTrigger key={row.id} value={row.id} className="text-xs sm:text-body-sm">
-                {row.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <CanPermission permission="iw37n.read">
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link to="/iw37n">IW37N</Link>
+            </Button>
+          </CanPermission>
+        </>
+      }
+      stack={false}
+    >
+      {!canWrite ? (
+        <AppCard pad="compact" className="app-tone-warning-callout mb-4 border text-body-sm">
+          {t('page.readOnly')} <code className="text-xs">master-data.write</code>
+        </AppCard>
+      ) : null}
+      <Tabs
+        value={currentTab}
+        onValueChange={(v) => {
+          setTab(v)
+          setSearchParams(
+            (prev) => {
+              const next = new URLSearchParams(prev)
+              next.set('entity', v)
+              return next
+            },
+            { replace: true },
+          )
+        }}
+      >
+        <TabsList className="mb-4 flex h-auto max-w-full flex-wrap justify-start gap-1 rounded-lg border border-app/60 bg-app-subtle/40 p-1 shadow-sm">
           {tabsLocalized.map((row) => (
-            <TabsContent key={row.id} value={row.id}>
-              <AppCard pad="default">
-                <MasterTable entity={row.id} />
-              </AppCard>
-            </TabsContent>
+            <TabsTrigger
+              key={row.id}
+              value={row.id}
+              className="text-xs data-[state=active]:shadow-sm sm:text-body-sm"
+            >
+              {row.label}
+            </TabsTrigger>
           ))}
-        </Tabs>
-      </AppPageContent>
-    </>
+        </TabsList>
+        {tabsLocalized.map((row) => (
+          <TabsContent key={row.id} value={row.id}>
+            <AppCard pad="default">
+              <MasterTable entity={row.id} />
+            </AppCard>
+          </TabsContent>
+        ))}
+      </Tabs>
+    </AppPageShell>
   )
 }

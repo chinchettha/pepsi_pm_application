@@ -26,13 +26,14 @@ import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDi
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   fetchCalendarFilterOptions,
   postCalendarEvents,
   postCalendarFilterDetail,
 } from '@/lib/api-public'
-import { PLAN_NOT_MOVABLE_MESSAGE } from '@/lib/plan-movable'
+import { usePermission } from '@/lib/use-permission'
 import type { ScheduleCalendarEvent } from '@/lib/schedule-calendar'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -103,6 +104,7 @@ export function CalendarPage() {
   const { t } = useTranslation('scheduling')
   const { t: tc } = useTranslation('common')
   const { locale } = useAppLocale()
+  const canRead = usePermission('calendar.read')
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -166,6 +168,7 @@ export function CalendarPage() {
   const optsQ = useQuery({
     queryKey: ['calendar', 'filter-options', 'activity-z1z2z5', 'maint-act-zb02', 'team-ab-ee-ut', 'syst-teco'],
     queryFn: fetchCalendarFilterOptions,
+    enabled: canRead,
     staleTime: 300_000,
   })
 
@@ -197,12 +200,14 @@ export function CalendarPage() {
   const q = useQuery({
     queryKey: ['calendar', 'events', year, month, filtersKey],
     queryFn: () => postCalendarEvents(calendarSearchBody),
+    enabled: canRead,
     placeholderData: keepPreviousData,
   })
 
   const filterDetailQ = useQuery({
     queryKey: ['calendar', 'filter-detail', year, month, filtersKey],
     queryFn: () => postCalendarFilterDetail(calendarSearchBody),
+    enabled: canRead,
     placeholderData: keepPreviousData,
   })
 
@@ -266,7 +271,7 @@ export function CalendarPage() {
 
   const openMove = (event: ScheduleCalendarEvent, date: string) => {
     if (event.canMovePlan === false) {
-      toast.error(PLAN_NOT_MOVABLE_MESSAGE)
+      toast.error(t('calendar.planNotMovable'))
       return
     }
     setMoveTarget({
@@ -288,6 +293,24 @@ export function CalendarPage() {
     () => calendarFilterCollapsedHint(submittedFilters, t),
     [submittedFilters, t],
   )
+
+  if (!canRead) {
+    return (
+      <SchedulingPageHeader title={t('calendar.title')} icon={CalendarRange}>
+        <AppPageContent>
+          <EmptyState
+            icon={AlertCircle}
+            title={t('calendar.noAccess')}
+            description={
+              <>
+                {t('calendar.noAccessHint')} <code className="text-xs">calendar.read</code>
+              </>
+            }
+          />
+        </AppPageContent>
+      </SchedulingPageHeader>
+    )
+  }
 
   return (
     <>
@@ -498,12 +521,13 @@ export function CalendarPage() {
             <SchedulingViewControls
               activityDisplay={activityDisplay}
               onActivityDisplayChange={setActivityDisplay}
+              legendMode="work"
               collapsible
               defaultOpen={false}
             />
           </SchedulingPageSection>
 
-          <SchedulingPageSection index={3}>
+          <SchedulingPageSection index={2}>
             <FilterDetailSummary
               title={t('calendar.filterSummaryTitle')}
               data={filterDetailQ.data}
@@ -516,16 +540,16 @@ export function CalendarPage() {
             />
           </SchedulingPageSection>
 
-          <SchedulingPageSection index={4}>
+          <SchedulingPageSection index={3}>
             {q.isLoading && !q.data ? (
               <Skeleton
                 className="h-[32rem] w-full rounded-card"
                 aria-label={t('calendar.loading')}
               />
             ) : q.isError ? (
-              <EmptyState
-                icon={AlertCircle}
+              <QueryLoadErrorState
                 title={t('calendar.loadFailed')}
+                error={q.error}
                 description={
                   <>
                     {t('calendar.loadFailedHint')}{' '}
@@ -549,8 +573,6 @@ export function CalendarPage() {
                   yearMin={2015}
                   yearMax={2030}
                   events={q.data?.items ?? []}
-                  dayHourTotals={q.data?.dayHourTotals}
-                  dayOrderCounts={q.data?.dayOrderCounts}
                   className="scheduling-calendar-widget"
                   onMonthChange={(y, m) => {
                     setYear(y)

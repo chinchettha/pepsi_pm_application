@@ -36,14 +36,14 @@ export function WorkOrderWorkflowSteps({
             className={cn(
               'flex items-center gap-2 rounded-button border px-2 py-2 text-xs',
               s.done
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                ? 'app-tone-success-workflow border'
                 : 'border-app bg-app-subtle text-app-muted',
             )}
           >
             <span
               className={cn(
                 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-mono text-badge font-semibold',
-                s.done ? 'bg-emerald-600 text-white' : 'bg-app-muted text-app',
+                s.done ? 'app-tone-success-fill' : 'bg-app-muted text-app',
               )}
             >
               {s.step}

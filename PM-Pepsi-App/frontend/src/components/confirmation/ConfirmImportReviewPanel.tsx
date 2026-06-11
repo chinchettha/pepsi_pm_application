@@ -1,5 +1,5 @@
 import type { ConfirmationImportPreviewResponse } from '@/api/schemas'
-import { Badge } from '@/components/ui/badge'
+import { ImportReviewActionBadge } from '@/components/integration/ImportReviewActionBadge'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -19,13 +19,6 @@ type ConfirmImportReviewPanelProps = {
   onCommit: () => void
   onCancel: () => void
   committing?: boolean
-}
-
-function actionBadgeClass(action: ConfirmationImportPreviewResponse['rows'][number]['action']): string {
-  if (action === 'error') return 'border-transparent bg-red-600 text-white hover:bg-red-700'
-  if (action === 'updated') return 'border-transparent bg-sky-700 text-white hover:bg-sky-800'
-  if (action === 'inserted') return 'border-transparent bg-emerald-700 text-white hover:bg-emerald-800'
-  return ''
 }
 
 export function ConfirmImportReviewPanel({
@@ -55,10 +48,10 @@ export function ConfirmImportReviewPanel({
   }
 
   return (
-    <div className="mt-4 space-y-4 rounded-card border border-amber-300/80 bg-amber-50/50 p-4">
+    <div className="app-tone-warning-review mt-4 space-y-4 rounded-card border p-4">
       <div>
-        <h4 className="text-body-sm font-semibold text-amber-950">{t('importReview.title')}</h4>
-        <p className="mt-1 text-xs text-amber-900/80">
+        <h4 className="app-tone-warning-strong text-body-sm font-semibold">{t('importReview.title')}</h4>
+        <p className="app-tone-warning-label mt-1 text-xs">
           {t('importReview.summaryMeta', {
             fileName: preview.fileName,
             layout: preview.layout,
@@ -66,7 +59,7 @@ export function ConfirmImportReviewPanel({
             matchWoInDb: preview.matchWoInDb,
           })}
         </p>
-        <p className="mt-1 text-xs text-amber-900/80">
+        <p className="app-tone-warning-label mt-1 text-xs">
           {t('importReview.summaryCounts', {
             inserted: preview.inserted,
             updated: preview.updated,
@@ -79,10 +72,10 @@ export function ConfirmImportReviewPanel({
       {preview.matchWoInDb === 0 && preview.parseOk > 0 ? (
         <div
           role="alert"
-          className="rounded-button border border-red-400 bg-red-50 px-3 py-2 text-body-sm text-red-950"
+          className="app-tone-danger-callout rounded-button border px-3 py-2 text-body-sm"
         >
           <p className="font-medium">{t('importReview.noOrderMatchTitle')}</p>
-          <p className="mt-1 text-xs text-red-800/90">{t('importReview.noOrderMatchDesc')}</p>
+          <p className="mt-1 text-xs opacity-90">{t('importReview.noOrderMatchDesc')}</p>
         </div>
       ) : null}
 
@@ -120,9 +113,7 @@ export function ConfirmImportReviewPanel({
                 <TableCell className="font-mono text-xs">{r.confirmation}</TableCell>
                 <TableCell className="font-mono text-xs">{r.wkctr}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={actionBadgeClass(r.action)}>
-                    {r.action}
-                  </Badge>
+                  <ImportReviewActionBadge action={r.action} />
                 </TableCell>
                 <TableCell className="max-w-[240px] truncate text-xs">{r.message}</TableCell>
               </TableRow>

@@ -29,6 +29,8 @@
     "activityOnCalendar": "Calendar activity",
     "activitySummary": "Activity: {{label}}",
     "colorGroup": "Calendar colors",
+    "teamStripeGroup": "PM team stripe",
+    "teamStripeHint": "Right edge stripe on event — Team A / B (matches KPI summary)",
     "weekendGroup": "Weekends",
     "pmPhaseGroup": "Create / REL / Confirm"
   },
@@ -67,7 +69,8 @@
     "loadFailedHint": "Check API connection or permission",
     "panelTitle": "Work calendar",
     "panelSubtitle": "{{month}} · Day view = Order Frame · drag dates for hour summary",
-    "filterSummaryTitle": "Filter summary"
+    "filterSummaryTitle": "Filter summary",
+    "moreJobs": "+{{count}} jobs"
   },
   "planCalendar": {
     "title": "Plan calendar",
@@ -109,6 +112,8 @@
     "panelSubtitle": "Only technicians with backlog jobs · Note = work center code (count)",
     "noMovePermission": "No permission to move plan — requires calendar.write",
     "planNotMovable": "Green plan (TECO/closed) cannot be moved — CRTD/REL only",
+    "noAccess": "No access",
+    "noAccessHint": "Requires permission calendar.read",
     "wcSummary": {
       "title": "Technicians with backlog",
       "description": "Work centers with CRTD/REL orders in the selected month",
@@ -192,6 +197,11 @@
     "needImages": "Attach after-PM photos before closing"
   },
   "wktype": {
+    "filterNote": {
+      "summary": "SAP work type (ZD) per customer meeting — IW37N files use ZB codes",
+      "item": "{{zd}} {{zdLabel}} ← filter {{zb}} ({{iw37nLabel}})",
+      "docHint": "Reference: docs/customer-requirements/WKTYPE-ZD-ZB-MAPPING.md"
+    },
     "mappingSource": "Customer meeting #2 (7 May 2026)",
     "zd": {
       "ZB05": "Breakdown / machine stop",
@@ -276,6 +286,8 @@
     "workMin": "Work (Min)"
   },
   "woDialog": {
+    "loadFailed": "Could not load work order",
+    "tabLoadFailed": "Could not load tab data",
     "title": "Work order details",
     "titleWithWkorder": "Work order {{wkorder}}",
     "postCloseReview": "Job closed — review history",
@@ -319,7 +331,7 @@
     "planningGroup": "Planning GROUP",
     "add": "Add",
     "readOnlyCloseWo": "View only — no permission to edit Close WO (requires confirmation.write)",
-    "closeBlockedDefault": "Save details and attach before/after photos before closing",
+    "closeBlockedDefault": "Save details and attach after-PM photos before closing",
     "toastCloseSaved": "Close record saved",
     "toastCloseFailed": "Could not save close record",
     "toastAssignGroupOk": "Group assignment successful",
@@ -375,6 +387,8 @@
     "savedTitle": "Saved notes",
     "savedDesc": "Newest first — edit or delete",
     "deleteAria": "Delete note",
+    "deleteTitle": "Delete note?",
+    "deleteDescription": "Remove this confirmation note.",
     "emptyTitle": "No notes yet",
     "emptyDesc": "Use the form above to add confirmation details"
   },
@@ -391,7 +405,9 @@
     "invalidRange": "Check date/time — end must be after start",
     "submit": "Save close record",
     "emptyHistory": "No close history yet",
-    "total": "Total {{time}} {{unit}}"
+    "total": "Total {{time}} {{unit}}",
+    "deleteTitle": "Delete close record?",
+    "deleteDescription": "Remove this supervisor close record."
   },
   "planning": {
     "multiTitle": "Multi-assign",
@@ -440,6 +456,8 @@
     "saveThisReading": "Record this reading",
     "warningPlaceholder": "Warning line",
     "alarmPlaceholder": "Alarm line",
+    "warningLabel": "Warning (mm/s)",
+    "alarmLabel": "Alarm (mm/s)",
     "saveReading": "Save measurement"
   },
   "pmComment": {

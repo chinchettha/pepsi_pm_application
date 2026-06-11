@@ -10,6 +10,7 @@ import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDi
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { postBacklogEvents, postBacklogFilterDetail } from '@/lib/api-public'
 import type { ScheduleCalendarEvent } from '@/lib/schedule-calendar'
@@ -190,9 +191,9 @@ export function BacklogPage() {
               aria-label={t('backlog.loading')}
             />
           ) : eventsQ.isError ? (
-            <EmptyState
-              icon={AlertCircle}
+            <QueryLoadErrorState
               title={t('backlog.loadFailed')}
+              error={eventsQ.error}
               description={
                 <>
                   {t('backlog.loadFailedHint')}{' '}

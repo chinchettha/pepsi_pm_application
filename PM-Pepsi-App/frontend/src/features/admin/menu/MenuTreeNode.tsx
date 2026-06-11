@@ -79,7 +79,7 @@ export function MenuTreeNode({ item, canWrite, onEdit, onDelete }: MenuTreeNodeP
             type="button"
             size="icon"
             variant="ghost"
-            className="size-8 text-red-700"
+            className="size-8 text-form-error"
             aria-label={t('menu.deleteMenuAria')}
             onClick={onDelete}
           >

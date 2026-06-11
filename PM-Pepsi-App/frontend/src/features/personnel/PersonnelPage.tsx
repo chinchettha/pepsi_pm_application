@@ -76,7 +76,7 @@ function StatCard({
         </div>
       </div>
       {to ? (
-        <div className="mt-3 text-xs font-medium text-blue-700">{openModuleLabel}</div>
+        <div className="mt-3 text-xs font-medium text-[var(--app-accent)]">{openModuleLabel}</div>
       ) : null}
     </AppCard>
   )
@@ -97,9 +97,9 @@ function formatMinutes(min: number, t: TFunction<'personnel'>): string {
   return t('dashboard.time.hoursMinutes', { h, m })
 }
 
-function formatHours(h: number): string {
-  if (!Number.isFinite(h) || h <= 0) return '0 hr'
-  return `${h.toFixed(2)} hr`
+function formatHours(h: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
+  if (!Number.isFinite(h) || h <= 0) return t('dashboard.time.hrZero')
+  return t('dashboard.time.hrValue', { h: h.toFixed(2) })
 }
 
 const ROLE_BADGE_TONE: Record<string, { tone: string; icon: typeof Users }> = {
@@ -256,7 +256,7 @@ export function PersonnelPage() {
                 label={t('dashboard.stats.totalHours')}
                 value={
                   q.data.worktime?.total
-                    ? formatHours(q.data.worktime.total)
+                    ? formatHours(q.data.worktime.total, t)
                     : '—'
                 }
                 hint={t('dashboard.stats.totalHoursHint')}
@@ -355,13 +355,13 @@ function UnassignedWorkOrdersSection({
 }) {
   const { t } = useTranslation('personnel')
   return (
-    <div className="overflow-hidden rounded-card border border-blue-200 bg-blue-50/30 shadow-sm">
-      <div className="flex items-center justify-between border-b border-blue-200 px-6 py-3">
+    <div className="app-tone-info-callout overflow-hidden rounded-card border shadow-sm">
+      <div className="flex items-center justify-between border-b border-app/50 px-6 py-3">
         <div>
-          <div className="text-body-sm font-medium text-blue-900">
+          <div className="text-body-sm font-medium text-app">
             {t('dashboard.unassigned.title')}
           </div>
-          <p className="text-xs text-blue-900/70">{t('dashboard.unassigned.subtitle')}</p>
+          <p className="text-xs text-app-muted">{t('dashboard.unassigned.subtitle')}</p>
         </div>
         <Button asChild size="sm">
           <Link to="/planning">{t('dashboard.unassigned.goAssign', { total })}</Link>
@@ -395,7 +395,7 @@ function UnassignedWorkOrdersSection({
             items.map((it) => (
               <TableRow key={it.idiw37}>
                 <TableCell className="tabular-nums">
-                  <Link to={`/work-orders/${it.idiw37}`} className="text-blue-700 hover:underline">
+                  <Link to={`/work-orders/${it.idiw37}`} className="text-[var(--app-accent)] hover:underline">
                     {it.wkorder}
                   </Link>
                 </TableCell>
@@ -638,7 +638,7 @@ function RecentPlanning({
                 <TableCell className="tabular-nums">
                   <Link
                     to={`/work-orders/${it.idiw37}`}
-                    className="text-blue-700 hover:underline"
+                    className="text-[var(--app-accent)] hover:underline"
                   >
                     {it.wkorder}
                   </Link>
@@ -722,7 +722,7 @@ function RecentConfirmation({
                 <TableCell className="tabular-nums">
                   <Link
                     to={`/work-orders/${it.idiw37}`}
-                    className="text-blue-700 hover:underline"
+                    className="text-[var(--app-accent)] hover:underline"
                   >
                     {it.wkorder || `#${it.idiw37}`}
                   </Link>

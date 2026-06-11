@@ -8,6 +8,7 @@ import {
 } from '@/components/layout/AppPageHero'
 import { Button } from '@/components/ui/button'
 import { collapseHintSummary } from '@/lib/collapse-hint'
+import { APP_INTERACTIVE_MOTION, APP_INTERACTIVE_MOTION_SUBTLE } from '@/lib/app-motion'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion'
 import { ChevronDown, RotateCcw, Search } from 'lucide-react'
@@ -254,7 +255,7 @@ export function SchedulingFilterActions({
     <>
       <Button
         type="submit"
-        className="gap-2 shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]"
+        className={cn('gap-2 shadow-md', APP_INTERACTIVE_MOTION)}
       >
         <Search className="size-4" aria-hidden />
         {searchLabel}
@@ -370,7 +371,10 @@ export function SchedulingLegendSwatch({
 }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full border border-app/50 bg-[var(--app-surface)] px-2 py-0.5 shadow-sm transition-transform hover:scale-[1.03]"
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border border-app/50 bg-[var(--app-surface)] px-2 py-0.5 shadow-sm',
+        APP_INTERACTIVE_MOTION_SUBTLE,
+      )}
       title={title}
     >
       <span

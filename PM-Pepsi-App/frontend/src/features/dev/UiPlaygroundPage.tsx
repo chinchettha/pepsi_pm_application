@@ -1,5 +1,7 @@
 import { AppCard, AppTableShell } from '@/components/layout/AppCard'
 import { AppPageShell } from '@/components/layout/AppPageShell'
+import { ModulePortalCard } from '@/components/portal/ModulePortalCard'
+import type { PortalModule } from '@/lib/portal-api'
 import { KpiStatCard } from '@/components/kpi/KpiStatCard'
 import { KpiStatGrid } from '@/components/kpi/KpiStatGrid'
 import { WoPmPhaseLegend } from '@/components/scheduling/WoPmPhaseBadge'
@@ -47,14 +49,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { APP_INTERACTIVE_MOTION } from '@/lib/app-motion'
 import {
   toastDeleted,
   toastError,
   toastInfo,
+  toastMessage,
   toastSaved,
   toastSuccess,
   toastWarning,
 } from '@/lib/app-toast'
+import { cn } from '@/lib/utils'
+import { SidebarPlaygroundStates } from '@/features/dev/SidebarPlaygroundStates'
 import { Inbox } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
@@ -67,6 +73,48 @@ const DIALOG_SIZE_HINT: Record<DialogContentSize, string> = {
   full: '64rem max — WO modal ขยาย',
 }
 
+const PORTAL_CARD_DEMOS: PortalModule[] = [
+  {
+    code: 'pm',
+    nameTh: 'PM Maintenance',
+    nameEn: 'PM Maintenance',
+    descriptionTh: 'แผนงาน · ใบงาน · Confirm',
+    descriptionEn: 'Planning · work orders · confirmation',
+    iconKey: 'wrench',
+    accentToken: null,
+    external: false,
+    entryUrl: '/plan-calendar',
+    ready: true,
+    handoff: '',
+  },
+  {
+    code: 'store',
+    nameTh: 'สโตร์อะไหล่',
+    nameEn: 'Spare Parts Store',
+    descriptionTh: 'เบิกอะไหล่และวัสดุสำหรับช่าง',
+    descriptionEn: 'Issue parts for repair and PM',
+    iconKey: 'package',
+    accentToken: null,
+    external: true,
+    entryUrl: '',
+    ready: false,
+    handoff: '',
+  },
+  {
+    code: 'repair',
+    nameTh: 'แจ้งซ่อม',
+    nameEn: 'Repair Request',
+    descriptionTh: 'แจ้งซ่อมและติดตามงานซ่อม',
+    descriptionEn: 'Submit and track repair requests',
+    iconKey: 'bell',
+    accentToken: null,
+    external: true,
+    entryUrl: '',
+    ready: false,
+    handoff: '',
+  },
+]
+
 /** ตัวอย่าง component U0 — มีเฉพาะ `import.meta.env.DEV` ที่ `/dev/ui` */
 export function UiPlaygroundPage() {
   const [dialogSize, setDialogSize] = useState<DialogContentSize | null>(null)
@@ -77,6 +125,20 @@ export function UiPlaygroundPage() {
       description="ตัวอย่าง component มาตรฐาน — ใช้เป็นต้นแบบหน้าใหม่ (ไม่ขึ้น production menu)"
       contentClassName="space-y-8"
     >
+      <section className="space-y-4" aria-labelledby="ui-playground-sidebar">
+        <div>
+          <h2 id="ui-playground-sidebar" className="text-heading-section">
+            Sidebar states (U4g.0)
+          </h2>
+          <p className="mt-1 text-caption text-app-muted">
+            Expanded · collapsed rail · admin · drawer — toggle light/dark with ThemeToggle in topbar
+          </p>
+        </div>
+        <AppCard pad="compact">
+          <SidebarPlaygroundStates />
+        </AppCard>
+      </section>
+
       <section className="space-y-4" aria-labelledby="ui-playground-overlays">
         <div>
           <h2 id="ui-playground-overlays" className="text-heading-section">
@@ -279,6 +341,50 @@ export function UiPlaygroundPage() {
         </AppCard>
       </section>
 
+      <section className="space-y-4" aria-labelledby="ui-playground-motion">
+        <div>
+          <h2 id="ui-playground-motion" className="text-heading-section">
+            Motion & feedback (U4c)
+          </h2>
+          <p className="mt-1 text-caption text-app-muted">
+            Toast slide + brand icon · primary hover/active · `motion-safe` / `prefers-reduced-motion`
+          </p>
+        </div>
+        <AppCard pad="compact" className="space-y-6">
+          <UiPlaygroundBlock
+            title="Toast slide"
+            hint="คลิกหลายครั้งเพื่อดู slide-in จากขวา · icon pop · ปิดด้วย reduced-motion ใน OS settings"
+          >
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => toastSuccess('Saved')}>
+                success
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => toastMessage('Neutral message', 'Optional detail')}
+              >
+                message
+              </Button>
+            </div>
+          </UiPlaygroundBlock>
+          <UiPlaygroundBlock
+            title="Primary micro-interaction"
+            hint="`Button` default + `APP_INTERACTIVE_MOTION` — hover lift · active press"
+          >
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm">
+                Primary
+              </Button>
+              <Button type="button" size="sm" className={cn('shadow-md', APP_INTERACTIVE_MOTION)}>
+                CTA + motion token
+              </Button>
+            </div>
+          </UiPlaygroundBlock>
+        </AppCard>
+      </section>
+
       <section className="space-y-3">
         <h2 className="text-heading-section">KPI แถว</h2>
         <KpiStatGrid>
@@ -352,6 +458,23 @@ export function UiPlaygroundPage() {
             </TableBody>
           </Table>
         </AppTableShell>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-heading-section">Portal module cards (U4f)</h2>
+        <p className="text-caption text-app-muted">
+          การ์ด glass บน `/portal` — PM พร้อมใช้ · store/repair แสดง badge เร็วๆ นี้
+        </p>
+        <div className="portal-page__grid max-w-5xl">
+          {PORTAL_CARD_DEMOS.map((mod, index) => (
+            <ModulePortalCard
+              key={mod.code}
+              module={mod}
+              motionIndex={index}
+              onOpen={() => toastInfo(mod.ready ? `เปิด ${mod.code}` : `${mod.code} — coming soon`)}
+            />
+          ))}
+        </div>
       </section>
 
       <section className="space-y-3">

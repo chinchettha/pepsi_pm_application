@@ -7,8 +7,9 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/skeleton'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   Table,
   TableBody,
@@ -31,7 +32,7 @@ import {
 } from '@/lib/list-kpi-stagger'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { motion, useReducedMotion } from 'framer-motion'
-import { AlertCircle, ChevronLeft, ChevronRight, ClipboardList, RotateCcw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ClipboardList, RotateCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -74,7 +75,7 @@ function rowMatchesSearch(row: ConfirmationExportRow, q: string): boolean {
 function ExportTableHeaderRow() {
   const { t } = useTranslation('confirmation')
   return (
-    <TableRow className="border-0 bg-[color-mix(in_srgb,var(--app-accent)_88%,#0f172a)] hover:bg-[color-mix(in_srgb,var(--app-accent)_88%,#0f172a)]">
+    <TableRow className="border-0 bg-[color-mix(in_srgb,var(--app-accent)_88%,var(--app-text))] hover:bg-[color-mix(in_srgb,var(--app-accent)_88%,var(--app-text))]">
       {EXPORT_COLUMN_KEYS.map((col) => (
         <TableHead
           key={col.key}
@@ -94,7 +95,7 @@ function ExportTableDataRow({ row, index }: { row: ConfirmationExportRow; index:
   return (
     <TableRow
       className={cn(
-        'border-app/40 transition-colors hover:bg-teal-50/50',
+        'border-app/40 transition-colors hover:bg-[color-mix(in_srgb,var(--status-info)_8%,var(--app-surface))]',
         index % 2 === 1 ? 'bg-app-subtle/25' : undefined,
       )}
     >
@@ -276,14 +277,24 @@ export function ConfirmationExportTablePanel({
           </div>
 
           {exportQ.isLoading && !exportQ.data ? (
-            <Skeleton className="h-64 w-full rounded-card" aria-label={t('export.loadingTable')} />
+            <div
+              className="overflow-x-auto rounded-xl border border-app/70 shadow-sm"
+              aria-busy="true"
+              aria-label={t('export.loadingTable')}
+            >
+              <Table embedded stickyHeader className="min-w-[56rem]">
+                <TableHeader>
+                  <ExportTableHeaderRow />
+                </TableHeader>
+                <TableBody>
+                  <TableSkeletonRows rows={10} columns={EXPORT_COLUMN_KEYS.length} />
+                </TableBody>
+              </Table>
+            </div>
           ) : exportQ.isError ? (
-            <EmptyState
-              icon={AlertCircle}
+            <QueryLoadErrorState
               title={t('export.loadFailed')}
-              description={
-                exportQ.error instanceof Error ? exportQ.error.message : undefined
-              }
+              error={exportQ.error}
               action={{ label: tc('actions.retry'), onClick: () => void exportQ.refetch() }}
             />
           ) : items.length === 0 ? (

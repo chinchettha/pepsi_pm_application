@@ -210,7 +210,9 @@ html.dark .admin-tour-tooltip__eyebrow {
 }
 
 /* Joyride floater + spotlight */
+/* U4g.8 — spotlight above sidebar (z-30); tour targets content column */
 .react-joyride__spotlight {
+  z-index: 10001;
   border-radius: var(--app-radius-card, 12px) !important;
   box-shadow: 0 0 0 9999px var(--admin-tour-overlay) !important;
 }

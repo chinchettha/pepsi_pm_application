@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   SchedulingWoTabsList,
@@ -240,6 +241,24 @@ export function WorkOrderDetailDialog({
       personnelCount,
       supervisorCloseCount,
       imageCount,
+    ],
+  )
+
+  const confirmTabPending = useMemo(
+    () =>
+      typeof idiw37 === 'number' &&
+      Number.isFinite(idiw37) &&
+      ((closesQ.isLoading && !closesQ.data) ||
+        (personnelQ.isLoading && !personnelQ.data) ||
+        (commentsQ.isLoading && !commentsQ.data)),
+    [
+      idiw37,
+      closesQ.isLoading,
+      closesQ.data,
+      personnelQ.isLoading,
+      personnelQ.data,
+      commentsQ.isLoading,
+      commentsQ.data,
     ],
   )
 
@@ -509,7 +528,14 @@ export function WorkOrderDetailDialog({
 
           {detailQ.isError && !d ? (
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-              <p className="text-body-sm text-red-600">{(detailQ.error as Error).message}</p>
+              <QueryLoadErrorState
+                title={t('woDialog.loadFailed')}
+                error={detailQ.error}
+                action={{
+                  label: t('common:actions.retry'),
+                  onClick: () => void detailQ.refetch(),
+                }}
+              />
             </div>
           ) : (
             <Tabs
@@ -588,7 +614,11 @@ export function WorkOrderDetailDialog({
                   {modalQ.isLoading && !modalQ.data ? (
                     <WoModalTabSkeleton />
                   ) : modalQ.isError ? (
-                    <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+                    <QueryLoadErrorState
+                      title={t('woDialog.tabLoadFailed')}
+                      error={modalQ.error}
+                      action={{ label: t('common:actions.retry'), onClick: () => void modalQ.refetch() }}
+                    />
                   ) : modalQ.data ? (
                     <div className="space-y-4">
                       {orderId ? (
@@ -622,7 +652,11 @@ export function WorkOrderDetailDialog({
                   {modalQ.isLoading && !modalQ.data ? (
                     <WoModalTabSkeleton />
                   ) : modalQ.isError ? (
-                    <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+                    <QueryLoadErrorState
+                      title={t('woDialog.tabLoadFailed')}
+                      error={modalQ.error}
+                      action={{ label: t('common:actions.retry'), onClick: () => void modalQ.refetch() }}
+                    />
                   ) : modalQ.data ? (
                     <WorkOrderMachinePanel
                       machine={modalQ.data.machine}
@@ -643,7 +677,7 @@ export function WorkOrderDetailDialog({
                   </p>
                 ) : null}
                 {d && modalQ.data?.date ? (
-                  <p className="rounded-card border border-teal-200/70 bg-teal-50/60 px-3 py-2 text-xs text-teal-950">
+                  <p className="app-tone-info-callout rounded-card border px-3 py-2 text-xs">
                     {t('woDialog.availableHour', { date: modalQ.data.date })}
                   </p>
                 ) : null}
@@ -670,8 +704,8 @@ export function WorkOrderDetailDialog({
                     </div>
 
                     {d.movePlan ? (
-                      <div className="rounded-card border border-orange-200 bg-orange-50/80 p-3">
-                        <p className="font-medium text-orange-900">{t('woDialog.planMoved')}</p>
+                      <div className="app-tone-warning-callout rounded-card border p-3">
+                        <p className="app-tone-warning-strong font-medium">{t('woDialog.planMoved')}</p>
                         <p>{t('woDialog.movedDate', { date: d.movePlan.movedDate })}</p>
                         <p>{t('woDialog.moveCount', { count: d.movePlan.moveCount })}</p>
                         <p>
@@ -695,7 +729,14 @@ export function WorkOrderDetailDialog({
                     {modalQ.isLoading && !modalQ.data ? (
                       <WoModalTabSkeleton />
                     ) : modalQ.isError ? (
-                      <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+                      <QueryLoadErrorState
+                        title={t('woDialog.tabLoadFailed')}
+                        error={modalQ.error}
+                        action={{
+                          label: t('common:actions.retry'),
+                          onClick: () => void modalQ.refetch(),
+                        }}
+                      />
                     ) : modalQ.data ? (
                       <>
                         <div className="space-y-4">
@@ -760,7 +801,9 @@ export function WorkOrderDetailDialog({
                                               {t('woDialog.ackDone')}
                                             </Badge>
                                           ) : a.ackStatus === 'pending' ? (
-                                            <Badge variant="outline">{t('woDialog.ackPending')}</Badge>
+                                            <Badge variant="outline" className="app-tone-warning-badge text-badge">
+                                              {t('woDialog.ackPending')}
+                                            </Badge>
                                           ) : (
                                             '—'
                                           )}
@@ -906,7 +949,11 @@ export function WorkOrderDetailDialog({
                   {modalQ.isLoading && !modalQ.data ? (
                     <WoModalTabSkeleton />
                   ) : modalQ.isError ? (
-                    <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+                    <QueryLoadErrorState
+                      title={t('woDialog.tabLoadFailed')}
+                      error={modalQ.error}
+                      action={{ label: t('common:actions.retry'), onClick: () => void modalQ.refetch() }}
+                    />
                   ) : modalQ.data ? (
                     <WorkOrderMaterialPanel materials={modalQ.data.materials} />
                   ) : null}
@@ -917,7 +964,9 @@ export function WorkOrderDetailDialog({
                 <WoModalTabFade>
                 {detailQ.isLoading && !d ? (
                   <WoModalTabSkeleton />
-                ) : !d ? null : assignedLayout ? (
+                ) : !d ? null : confirmTabPending ? (
+                  <WoModalTabSkeleton />
+                ) : assignedLayout ? (
                   <div className="space-y-4">
                     {!canConfirmWrite ? (
                       <p className="app-tone-warning-callout rounded-card border px-3 py-2 text-body-sm">

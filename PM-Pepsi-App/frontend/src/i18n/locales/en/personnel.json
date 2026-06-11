@@ -111,6 +111,8 @@
       "name": "Name"
     },
     "time": {
+      "hrZero": "0 hr",
+      "hrValue": "{{h}} hr",
       "zeroMin": "0 min",
       "minutes": "{{m}} min",
       "hours": "{{h}} hr",
@@ -175,7 +177,15 @@
       "confirm": "Confirm",
       "selectRow": "Select {{workOrder}}"
     },
-    "massSelectMax": "Maximum {{max}} items can be selected"
+    "massSelectMax": "Maximum {{max}} items can be selected",
+    "massSummary": {
+      "selected": "{{count}} work order(s) selected for mass confirm",
+      "avgClose": "Avg close {{percent}}%",
+      "fullyClosed": "{{count}} fully closed",
+      "withConfirm": "{{count}} with confirm record",
+      "planRange": "Plan dates {{range}}",
+      "hint": "Set technician code and start/end date-time below, then Save"
+    }
   },
   "photoGoLive": {
     "title": "Go-live Eng Utilization: {{count}} technicians with hours but no photo",

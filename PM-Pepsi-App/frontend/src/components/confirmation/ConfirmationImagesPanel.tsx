@@ -4,6 +4,7 @@ import {
 } from '@/components/scheduling/SchedulingPageLayout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ConfirmDeleteAlertDialog } from '@/components/ui/confirm-delete-alert-dialog'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -122,9 +123,11 @@ function ImageGalleryCard({
   const { t } = useTranslation('confirmation')
   const reduceMotion = useReducedMotion()
   const qc = useQueryClient()
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const delMut = useMutation({
     mutationFn: () => deleteConfirmationImage(img.idcimg),
     onSuccess: async () => {
+      setDeleteOpen(false)
       await qc.invalidateQueries({ queryKey: ['confirmation', 'images', idiw37] })
       await qc.invalidateQueries({ queryKey: ['confirmation-images', idiw37] })
     },
@@ -173,9 +176,9 @@ function ImageGalleryCard({
               type="button"
               size="sm"
               variant="outline"
-              className="h-7 px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="app-tone-danger-btn-ghost h-7 px-2"
               disabled={delMut.isPending}
-              onClick={() => delMut.mutate()}
+              onClick={() => setDeleteOpen(true)}
               aria-label={t('images.deletePhotoAria')}
             >
               {delMut.isPending ? (
@@ -187,6 +190,14 @@ function ImageGalleryCard({
           ) : null}
         </div>
       </div>
+      <ConfirmDeleteAlertDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={t('images.deletePhotoTitle')}
+        description={t('images.deletePhotoDescription')}
+        loading={delMut.isPending}
+        onConfirm={() => delMut.mutate()}
+      />
     </motion.li>
   )
 }
@@ -222,24 +233,24 @@ function UploadDropZone({
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          'flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors',
-          'border-teal-200/80 bg-teal-50/40 hover:border-teal-300 hover:bg-teal-50/70',
+          'app-tone-success-soft flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors',
+          'hover:border-[color-mix(in_srgb,var(--status-success)_45%,var(--app-border))]',
           disabled && 'cursor-not-allowed opacity-60',
         )}
       >
-        <span className="flex size-10 items-center justify-center rounded-full app-surface-panel text-teal-700 shadow-sm ring-1 ring-teal-200/80 dark:text-teal-300">
+        <span className="app-tone-success-card-index flex size-10 items-center justify-center rounded-full shadow-sm ring-1 ring-[color-mix(in_srgb,var(--status-success)_28%,var(--app-border))]">
           <Upload className="size-5" aria-hidden />
         </span>
         <span className="text-sm font-medium text-app">{t('images.pickFromDevice')}</span>
         <span className="max-w-sm text-xs text-app-muted">{t('images.fileTypesHint')}</span>
       </button>
       {files.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5 rounded-lg border border-teal-100 bg-teal-50/50 p-2">
+        <div className="app-tone-success-soft flex flex-wrap gap-1.5 rounded-lg border border-app p-2">
           {files.map((f) => (
             <Badge
               key={`${f.name}-${f.size}`}
               variant="outline"
-              className="max-w-full truncate border-teal-200/80 app-surface-panel text-[11px] font-normal dark:text-teal-200"
+              className="app-tone-success-badge max-w-full truncate text-[11px] font-normal"
             >
               {f.name}
             </Badge>
@@ -316,7 +327,7 @@ function PhaseUploadBlock({
         </p>
 
         {!readOnly ? (
-          <div className="mb-4 space-y-3 rounded-xl border border-teal-100/80 app-surface-panel--soft p-3">
+          <div className="app-tone-success-soft mb-4 space-y-3 rounded-xl border border-app app-surface-panel--soft p-3">
             <div className="space-y-1.5">
               <Label htmlFor={`img-caption-${phase}`} className="text-xs font-medium">
                 {t('images.captionLabel')}
@@ -340,10 +351,10 @@ function PhaseUploadBlock({
               }}
               disabled={uploadMut.isPending}
             />
-            {uploadError ? <p className="text-xs text-red-600">{uploadError}</p> : null}
+            {uploadError ? <p className="app-tone-danger-text text-xs">{uploadError}</p> : null}
             <Button
               type="button"
-              className="w-full bg-teal-700 hover:bg-teal-800 sm:w-auto"
+              className="app-tone-success-fill w-full sm:w-auto"
               disabled={!files.length || uploadMut.isPending}
               onClick={() => uploadMut.mutate()}
             >
@@ -507,20 +518,23 @@ export function ConfirmationImagesPanel({
       <SchedulingPageSection index={0}>
         <motion.div
           layout={!reduceMotion}
-          className="overflow-hidden rounded-card border border-sky-200/90 bg-gradient-to-br from-sky-50 via-[var(--app-surface)] to-[color-mix(in_srgb,var(--app-accent)_4%,var(--app-surface))] p-4 shadow-[var(--app-shadow-card)]"
+          className="app-tone-success-section overflow-hidden rounded-card border p-4 shadow-[var(--app-shadow-card)]"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-800/70">
+              <p className="app-tone-success-label flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
                 <Camera className="size-3.5" aria-hidden />
                 {t('images.panelTitle')}
               </p>
               <p className="mt-0.5 text-body-sm text-app-muted">{t('images.panelDesc')}</p>
             </div>
-            <Badge className="shrink-0 border-0 bg-sky-600/10 text-sky-900">
+            <Badge variant="outline" className="app-tone-success-badge shrink-0">
               {t('images.totalPhotos', { count: totalCount })}
             </Badge>
           </div>
+          <p className="app-tone-success-panel mt-3 rounded-button border px-3 py-2 text-xs">
+            {t('images.afterOnlyPolicy')}
+          </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <motion.div
               className="flex min-w-[8rem] flex-1 flex-wrap gap-2"
@@ -538,6 +552,22 @@ export function ConfirmationImagesPanel({
                   <p className="app-tone-success-strong text-sm font-bold tabular-nums">{grouped.after.length}</p>
                 </div>
               </motion.div>
+              {grouped.legacy.length > 0 ? (
+                <motion.div
+                  {...listKpiStaggerItemMotion(reduceMotion)}
+                  className="app-tone-warning-tile flex min-w-[8rem] flex-1 items-center gap-2 rounded-button border app-surface-panel--soft px-3 py-2"
+                >
+                  <ImageIcon className="app-tone-warning-icon size-4 shrink-0" aria-hidden />
+                  <div>
+                    <p className="app-tone-warning-label text-[10px] font-semibold uppercase tracking-wide">
+                      {t('images.legacy')}
+                    </p>
+                    <p className="app-tone-warning-strong text-sm font-bold tabular-nums">
+                      {grouped.legacy.length}
+                    </p>
+                  </div>
+                </motion.div>
+              ) : null}
             </motion.div>
           </div>
         </motion.div>
@@ -551,7 +581,7 @@ export function ConfirmationImagesPanel({
       ) : null}
 
       {imagesQ.isError ? (
-        <p className="text-body-sm text-red-600">{(imagesQ.error as Error).message}</p>
+        <p className="app-tone-danger-text text-body-sm">{(imagesQ.error as Error).message}</p>
       ) : null}
 
       {imagesQ.isSuccess ? (
@@ -579,11 +609,11 @@ export function ConfirmationImagesPanel({
                 title={t('images.legacyTitle')}
                 description={t('images.legacyDesc')}
                 badge={
-                  <Badge variant="outline" className="text-[10px]">
-                    {t('images.photoCount', { count: grouped.legacy.length })}
+                  <Badge variant="outline" className="app-tone-warning-badge text-[10px]">
+                    {t('images.legacyReadOnlyBadge')}
                   </Badge>
                 }
-                className="border-dashed"
+                className="app-tone-warning-section border border-dashed"
               >
                 <motion.ul
                   className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
@@ -595,7 +625,7 @@ export function ConfirmationImagesPanel({
                       img={img}
                       idiw37={id}
                       onView={setViewImageId}
-                      readOnly={readOnly}
+                      readOnly
                       listItemCount={grouped.legacy.length}
                     />
                   ))}

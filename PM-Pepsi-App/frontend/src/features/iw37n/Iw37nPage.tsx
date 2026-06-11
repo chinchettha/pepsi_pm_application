@@ -1,16 +1,19 @@
 import type { Iw37nImportPreviewResponse } from '@/api/schemas'
 import { CanPermission } from '@/components/auth/CanPermission'
+import { ImportReviewActionBadge } from '@/components/integration/ImportReviewActionBadge'
 import { Iw37nImportReviewPanel } from '@/components/iw37n/Iw37nImportReviewPanel'
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
 import { AppCard } from '@/components/layout/AppCard'
 import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   Table,
   TableBody,
@@ -568,7 +571,7 @@ export function Iw37nPage() {
                   {integrationQ.data?.watchEnabled === false ? ` ${t('iw37nPage.folderWatchOff')}` : ''}
                 </p>
                 {integrationQ.isError ? (
-                  <p className="mt-2 text-xs text-amber-700">
+                  <p className="app-tone-warning-label mt-2 text-xs">
                     {t('iw37nPage.folderNotReady')}{' '}
                     <code className="text-code">075_integration_job.sql</code>
                   </p>
@@ -701,18 +704,7 @@ export function Iw37nPage() {
                         <TableRow key={r.rowNo}>
                           <TableCell className="text-center tabular-nums">{r.rowNo}</TableCell>
                           <TableCell className="whitespace-nowrap">
-                            <Badge
-                              variant={r.action === 'skipped' ? 'secondary' : 'default'}
-                              className={[
-                                'text-xs',
-                                r.action === 'error' ? 'border-transparent bg-red-600 text-white hover:bg-red-700' : '',
-                                r.action === 'updated' ? 'border-transparent bg-sky-700 text-white hover:bg-sky-800' : '',
-                              ]
-                                .join(' ')
-                                .trim()}
-                            >
-                              {r.action}
-                            </Badge>
+                            <ImportReviewActionBadge action={r.action} />
                           </TableCell>
                           <TableCell className="font-mono text-xs">
                             {r.wkorder} / {r.opac}
@@ -776,16 +768,29 @@ export function Iw37nPage() {
           </div>
 
           {itemsQ.isLoading && !itemsQ.data ? (
-            <div className="mt-4 space-y-2">
-              <Skeleton className="h-10 w-full rounded-card" />
-              <Skeleton className="h-10 w-full rounded-card" />
-              <Skeleton className="h-10 w-full rounded-card" />
+            <div className="mt-4 app-table-shell overflow-x-auto" aria-busy="true">
+              <Table embedded stickyHeader zebra>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-20 text-right">{t('iw37nPage.table.id')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.order')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.opAc')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.mntPlan')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.type')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.bscStart')}</TableHead>
+                    <TableHead className="text-right" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableSkeletonRows rows={8} columns={7} narrowFirstColumn />
+                </TableBody>
+              </Table>
             </div>
           ) : itemsQ.isError ? (
-            <EmptyState
+            <QueryLoadErrorState
               className="mt-4"
-              icon={AlertCircle}
               title={t('iw37nPage.itemsLoadFailed')}
+              error={itemsQ.error}
               description={t('iw37nPage.itemsLoadFailedDesc')}
               action={{ label: t('iw37n.retry'), onClick: () => void itemsQ.refetch() }}
             />
@@ -867,7 +872,7 @@ export function Iw37nPage() {
             </DialogHeader>
 
             {editError ? (
-              <div className="rounded-card border border-red-200 bg-red-50 px-3 py-2 text-body-sm text-red-700">
+              <div className="app-tone-danger-callout rounded-card border px-3 py-2 text-body-sm">
                 {editError}
               </div>
             ) : null}
@@ -989,12 +994,28 @@ export function Iw37nPage() {
         <AppCard pad="default">
           <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.batchHistoryTitle')}</h3>
           {batches.isLoading && !batches.data ? (
-            <Skeleton className="mt-4 h-40 w-full rounded-card" />
+            <div className="mt-4 app-table-shell overflow-x-auto" aria-busy="true">
+              <Table embedded stickyHeader zebra>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('iw37nPage.table.file')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.date')}</TableHead>
+                    <TableHead className="text-right">{t('iw37nPage.table.rows')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.sha256')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.status')}</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableSkeletonRows rows={6} columns={6} />
+                </TableBody>
+              </Table>
+            </div>
           ) : batches.isError ? (
-            <EmptyState
+            <QueryLoadErrorState
               className="mt-4"
-              icon={AlertCircle}
               title={t('iw37nPage.batchHistoryLoadFailed')}
+              error={batches.error}
               description={t('iw37n.historyLoadFailedDesc')}
               action={{ label: t('iw37n.retry'), onClick: () => void batches.refetch() }}
             />
@@ -1130,13 +1151,26 @@ export function Iw37nPage() {
             ) : null}
             <div className="min-h-0 flex-1 overflow-y-auto">
               {batchViewRowsQ.isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-10 w-full rounded-card" />
-                  <Skeleton className="h-10 w-full rounded-card" />
-                  <Skeleton className="h-10 w-full rounded-card" />
+                <div className="app-table-shell overflow-x-auto" aria-busy="true">
+                  <Table embedded stickyHeader zebra>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16 text-center">{t('iw37nPage.table.rowNo')}</TableHead>
+                        <TableHead>{t('iw37nPage.table.result')}</TableHead>
+                        <TableHead>{t('iw37nPage.table.woOp')}</TableHead>
+                        <TableHead>{t('iw37nPage.table.mntplan')}</TableHead>
+                        <TableHead>{t('iw37nPage.table.mat')}</TableHead>
+                        <TableHead>{t('iw37nPage.table.status')}</TableHead>
+                        <TableHead>{t('iw37nPage.table.message')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableSkeletonRows rows={8} columns={7} narrowFirstColumn />
+                    </TableBody>
+                  </Table>
                 </div>
               ) : batchViewRowsQ.isError ? (
-                <p className="text-body-sm text-red-600">{t('iw37nPage.batchViewLoadFailed')}</p>
+                <p className="text-body-sm text-form-error">{t('iw37nPage.batchViewLoadFailed')}</p>
               ) : batchViewRowsQ.data ? (
                 <div className="space-y-2">
                   <p className="text-xs text-app-muted">
@@ -1172,22 +1206,7 @@ export function Iw37nPage() {
                             <TableRow key={`${r.rowNo}-${r.createdAt}`}>
                               <TableCell className="text-center tabular-nums">{r.rowNo}</TableCell>
                               <TableCell className="whitespace-nowrap">
-                                <Badge
-                                  variant={r.action === 'skipped' ? 'secondary' : 'default'}
-                                  className={[
-                                    'text-xs',
-                                    r.action === 'error'
-                                      ? 'border-transparent bg-red-600 text-white hover:bg-red-700'
-                                      : '',
-                                    r.action === 'updated'
-                                      ? 'border-transparent bg-sky-700 text-white hover:bg-sky-800'
-                                      : '',
-                                  ]
-                                    .join(' ')
-                                    .trim()}
-                                >
-                                  {r.action}
-                                </Badge>
+                                <ImportReviewActionBadge action={r.action} />
                               </TableCell>
                               <TableCell className="font-mono text-xs">
                                 {r.wkorder} / {r.opac}

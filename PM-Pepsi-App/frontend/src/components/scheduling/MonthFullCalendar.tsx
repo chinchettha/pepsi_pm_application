@@ -10,7 +10,6 @@ import { calendarEventHoverDetailSchema, type CalendarEventHoverDetail } from '@
 import { CalendarDayGantt } from '@/components/scheduling/CalendarDayGantt'
 import { CalendarEventHoverCard } from '@/components/scheduling/CalendarEventHoverCard'
 import { mountCalendarTecoBell } from '@/lib/calendar-event-bell'
-import { formatCalendarDayCellSummary } from '@/lib/calendar-day-hours'
 
 import {
   eventFromClickArg,
@@ -18,7 +17,6 @@ import {
   type ScheduleCalendarEvent,
 } from '@/lib/schedule-calendar'
 import { pmPhaseCalendarClass } from '@/lib/wo-pm-phase'
-import { PLAN_NOT_MOVABLE_MESSAGE } from '@/lib/plan-movable'
 import { useI18nFormat } from '@/lib/use-i18n-format'
 import { cn } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
@@ -94,10 +92,6 @@ type MonthFullCalendarProps = {
   dayWkctrNotes?: ReadonlyMap<string, readonly string[]> | Record<string, readonly string[]>
   /** สี/ธีมวันหยุด — ส่งผ่าน CSS variables */
   theme?: ModernCalendarThemeVars
-  /** รวมชั่วโมงต่อวัน (จาก API) */
-  dayHourTotals?: Record<string, number>
-  /** จำนวน WO ต่อวัน (จาก API) */
-  dayOrderCounts?: Record<string, number>
 }
 
 function parseIsoDate(iso: string): Date | null {
@@ -140,18 +134,16 @@ export function MonthFullCalendar({
   dayCellMinHeight,
   dayWkctrNotes,
   theme,
-  dayHourTotals,
-  dayOrderCounts,
 }: MonthFullCalendarProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('scheduling')
   const { fullCalendar: fcLocale } = useI18nFormat()
   const calRef = useRef<FullCalendar>(null)
   const buttonText = useMemo(
     () => ({
-      today: t('calendar.today'),
-      month: t('calendar.month'),
-      week: t('calendar.week'),
-      day: t('calendar.day'),
+      today: t('toolbar.today'),
+      month: t('toolbar.month'),
+      week: t('toolbar.week'),
+      day: t('toolbar.day'),
     }),
     [t],
   )
@@ -328,7 +320,7 @@ export function MonthFullCalendar({
     const mapped = eventFromClickArg(arg)
     if (!mapped || !arg.event.start) return
     if (mapped.canMovePlan === false) {
-      toast.error(PLAN_NOT_MOVABLE_MESSAGE)
+      toast.error(t('calendar.planNotMovable'))
       return
     }
     const d = arg.event.start
@@ -476,17 +468,8 @@ export function MonthFullCalendar({
             const d = String(arg.date.getDate()).padStart(2, '0')
             const iso = `${y}-${m}-${d}`
             const notes = notesForDate(iso)
-            const cellSummary = formatCalendarDayCellSummary(
-              dayOrderCounts?.[iso] ?? 0,
-              dayHourTotals?.[iso] ?? 0,
-            )
             return (
               <div className="pm-cal-day-head flex w-full flex-col gap-0.5">
-                {cellSummary ? (
-                  <span className="pm-cal-day-hours truncate text-[9px] font-semibold leading-tight text-app-muted">
-                    {cellSummary}
-                  </span>
-                ) : null}
                 <span
                   className={cn(
                     'pm-cal-day-num',
@@ -520,6 +503,12 @@ export function MonthFullCalendar({
             const classes = ['pm-cal-event']
             if (arg.event.extendedProps.canMovePlan === false) {
               classes.push('pm-cal-event--locked')
+            }
+            const surface = arg.event.extendedProps.surfaceClasses
+            if (Array.isArray(surface)) {
+              for (const c of surface) {
+                if (typeof c === 'string') classes.push(c)
+              }
             }
             const phaseClass = pmPhaseCalendarClass(
               arg.event.extendedProps.pmPhase as ScheduleCalendarEvent['pmPhase'],

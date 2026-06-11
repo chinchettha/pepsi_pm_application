@@ -92,7 +92,7 @@ export function AdminMasterHubPage() {
         </CardHeader>
         <CardContent>
           {anyError && !anyLoading ? (
-            <p className="mb-3 text-body-sm text-amber-800">
+            <p className="app-tone-warning-label mb-3 text-body-sm">
               {t('master.partialLoadWarning')}
             </p>
           ) : null}
@@ -127,7 +127,7 @@ export function AdminMasterHubPage() {
                         {q?.isLoading && !q.data ? (
                           <Skeleton className="ml-auto h-5 w-12" />
                         ) : q?.isError ? (
-                          <span className="text-xs text-red-600" title={t('master.metaLoadFailed')}>
+                          <span className="text-xs text-form-error" title={t('master.metaLoadFailed')}>
                             —
                           </span>
                         ) : (
@@ -175,11 +175,11 @@ export function AdminMasterHubPage() {
           ) : null}
           <p className="mt-3 text-xs text-app-muted">
             {t('master.footerHint')}{' '}
-            <Link to="/master-data" className="text-sky-700 underline">
+            <Link to="/master-data" className="text-[var(--app-accent)] underline">
               {t('master.goMasterData')}
             </Link>
             {' · '}
-            <Link to="/admin" className="text-sky-700 underline">
+            <Link to="/admin" className="text-[var(--app-accent)] underline">
               {t('master.adminConsole')}
             </Link>
           </p>

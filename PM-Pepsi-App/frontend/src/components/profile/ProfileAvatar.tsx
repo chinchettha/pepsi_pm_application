@@ -1,6 +1,6 @@
-import { personnelImageUrl } from '@/lib/api-public'
+import { AuthenticatedImage } from '@/components/ui/authenticated-image'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 const sizeClass = {
   sm: 'size-7',
@@ -56,8 +56,15 @@ export function ProfileAvatar({
   variant = 'default',
 }: ProfileAvatarProps) {
   const [imgFailed, setImgFailed] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
   const initial = displayName.trim().charAt(0).toUpperCase() || '?'
   const showPhoto = Boolean(idwkctr && (hasImage || imgMember) && !imgFailed)
+  const imagePath = useMemo(() => {
+    if (!idwkctr) return ''
+    const ver = imgMember ?? (hasImage ? 1 : undefined)
+    const v = ver != null ? `?v=${encodeURIComponent(String(ver))}` : ''
+    return `/api/v1/personnel/${encodeURIComponent(idwkctr)}/image${v}`
+  }, [hasImage, idwkctr, imgMember])
   const ringed = variant === 'topbar' || variant === 'popover'
 
   const photoClass = cn(
@@ -70,15 +77,26 @@ export function ProfileAvatar({
   )
 
   const inner =
-    showPhoto && idwkctr ? (
-      <img
-        src={personnelImageUrl(idwkctr, imgMember ?? (hasImage ? 1 : undefined))}
-        alt={displayName.trim() || idwkctr}
-        loading="lazy"
-        decoding="async"
-        className={photoClass}
-        onError={() => setImgFailed(true)}
-      />
+    showPhoto && imagePath && !imgFailed ? (
+      <>
+        {!imgLoaded ? (
+          <InitialAvatar
+            initial={initial}
+            size={size}
+            className={cn(
+              ringed && 'border-2 border-[var(--app-surface)] shadow-sm',
+              className,
+            )}
+          />
+        ) : null}
+        <AuthenticatedImage
+          path={imagePath}
+          alt={displayName.trim() || idwkctr!}
+          className={photoClass}
+          onLoad={() => setImgLoaded(true)}
+          onUnavailable={() => setImgFailed(true)}
+        />
+      </>
     ) : (
       <InitialAvatar
         initial={initial}

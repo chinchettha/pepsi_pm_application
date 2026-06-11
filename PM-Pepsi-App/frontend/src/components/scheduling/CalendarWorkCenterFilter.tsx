@@ -84,14 +84,14 @@ export function CalendarWorkCenterFilter({
       : t('workCenterFilter.expandHint')
 
   return (
-    <div className="col-span-full overflow-hidden rounded-xl border border-teal-200/70 bg-gradient-to-br from-teal-50/50 via-[var(--app-surface)] to-white shadow-sm">
+    <div className="app-tone-info-section-gradient col-span-full overflow-hidden rounded-xl border shadow-sm">
       <button
         type="button"
-        className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-teal-50/40 sm:p-4"
+        className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--status-info)_8%,var(--app-surface))] sm:p-4"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-600/10 text-teal-800">
+        <span className="app-tone-info-card-index flex size-8 shrink-0 items-center justify-center rounded-lg">
           <Building2 className="size-4" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
@@ -99,13 +99,13 @@ export function CalendarWorkCenterFilter({
           <p className="truncate text-[11px] text-app-muted">{summary}</p>
         </div>
         {selectedWkctr.length > 0 ? (
-          <span className="hidden shrink-0 rounded-full bg-teal-700 px-2.5 py-0.5 text-[11px] font-semibold text-white sm:inline">
+          <span className="app-tone-info-progress hidden shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold sm:inline">
             {selectedWkctr.length}
           </span>
         ) : null}
         <ChevronDown
           className={cn(
-            'size-5 shrink-0 text-teal-800/70 transition-transform duration-200',
+            'app-tone-info-icon size-5 shrink-0 transition-transform duration-200',
             open && 'rotate-180',
           )}
           aria-hidden
@@ -122,7 +122,7 @@ export function CalendarWorkCenterFilter({
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="space-y-3 border-t border-teal-100/80 px-3 pb-3 pt-3 sm:px-4 sm:pb-4">
+            <div className="app-tone-info-inner space-y-3 border-t px-3 pb-3 pt-3 sm:px-4 sm:pb-4">
               <p className="text-[11px] text-app-muted">{t('workCenterFilter.description')}</p>
 
               <div className="grid gap-3 lg:grid-cols-2">
@@ -182,9 +182,9 @@ export function CalendarWorkCenterFilter({
                         onClick={() => toggleWkctr(wc.wkctr)}
                         className={cn(
                           'rounded-md border px-2 py-2 text-left text-xs transition-all',
-                          'bg-teal-600 text-white border-teal-700 hover:bg-teal-700 hover:shadow-md',
+                          'app-tone-info-progress border-transparent hover:opacity-90 hover:shadow-md',
                           isSelected &&
-                            'ring-2 ring-white ring-offset-2 ring-offset-teal-600 shadow-md',
+                            'shadow-md ring-2 ring-[var(--app-surface)] ring-offset-2 ring-offset-[color-mix(in_srgb,var(--status-info)_70%,var(--app-bg))]',
                         )}
                       >
                         <span className="block font-semibold tabular-nums">{wc.wkctr}</span>

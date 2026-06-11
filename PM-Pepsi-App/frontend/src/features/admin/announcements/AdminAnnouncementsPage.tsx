@@ -77,9 +77,9 @@ function fromLocalInput(value: string): string | undefined {
 
 function levelBadge(level: AnnouncementItem['level']) {
   const map: Record<AnnouncementItem['level'], string> = {
-    info: 'bg-sky-700',
-    warn: 'bg-amber-600',
-    error: 'bg-red-700',
+    info: 'app-tone-info-progress',
+    warn: 'app-tone-warning-fill',
+    error: 'border-transparent bg-destructive text-destructive-foreground',
     maintenance: 'bg-[var(--admin-primary)] text-white',
   }
   return <Badge className={map[level]}>{level}</Badge>
@@ -329,7 +329,7 @@ export function AdminAnnouncementsPage() {
                       </TableCell>
                       <TableCell>
                         {row.active ? (
-                          <Badge className="bg-emerald-700">{t('announcements.activeBadge')}</Badge>
+                          <Badge className="app-tone-success-fill">{t('announcements.activeBadge')}</Badge>
                         ) : (
                           <Badge variant="outline">{t('announcements.inactiveBadge')}</Badge>
                         )}
@@ -354,7 +354,7 @@ export function AdminAnnouncementsPage() {
                               disabled={deleteMut.isPending}
                               onClick={() => setDeleteTarget(row)}
                             >
-                              <Trash2 className="size-4 text-red-600" />
+                              <Trash2 className="size-4 text-form-error" />
                             </Button>
                           </div>
                         ) : null}

@@ -44,7 +44,7 @@ type Props = {
 function statusTone(status: ConfirmQc['status']): string {
   if (status === 'approved') return 'app-tone-success-badge'
   if (status === 'pending') return 'app-tone-warning-badge'
-  if (status === 'rejected') return 'bg-red-600/10 text-red-800'
+  if (status === 'rejected') return 'app-tone-danger-badge'
   return 'bg-app-subtle text-app-muted'
 }
 

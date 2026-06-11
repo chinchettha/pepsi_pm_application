@@ -12,7 +12,15 @@
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test api-smoke.spec.ts app-smoke.spec.ts confirmation-export-api.spec.ts",
     "test:e2e:ui": "playwright test --ui",
-    "audit:ui": "node scripts/audit-hardcode-mock.mjs"
+    "audit:ui": "node scripts/audit-hardcode-mock.mjs",
+    "test:qa": "vitest run src/lib/nav-active.test.ts src/lib/nav-shell-layout.test.ts src/components/layout/nav-config.test.ts src/lib/admin-ui-checklist.test.ts",
+    "test:e2e:console": "playwright test e2e/u4e-console-pages.spec.ts",
+    "test:e2e:all-routes": "playwright test e2e/u4e-all-routes-console.spec.ts",
+    "test:e2e:viewport": "playwright test e2e/u4e-viewport-pages.spec.ts",
+    "test:e2e:locale": "playwright test e2e/u4e-locale-shell.spec.ts",
+    "test:e2e:portal": "playwright test e2e/u4f-portal.spec.ts",
+    "test:e2e:admin-smoke": "playwright test e2e/admin-hub-smoke.spec.ts",
+    "test:e2e:screenshots": "playwright test e2e/uat-screenshots.spec.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

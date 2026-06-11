@@ -38,7 +38,7 @@ export function BoardEngUtilizationStackedChart({
       {loading ? (
         <p className="text-body-sm opacity-60">{t('util.loadingChart')}</p>
       ) : error ? (
-        <p className="text-body-sm text-red-300">{error.message}</p>
+        <p className="text-body-sm text-form-error">{error.message}</p>
       ) : (
         <div className="engineering-board__chart-zone">
           <EngUtilizationChart

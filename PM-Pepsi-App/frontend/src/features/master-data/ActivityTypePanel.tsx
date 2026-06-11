@@ -253,7 +253,7 @@ export function ActivityTypePanel() {
                         }}
                         aria-label={t('aria.delete')}
                       >
-                        <Trash2 className="size-4 text-red-600" />
+                        <Trash2 className="size-4 text-form-error" />
                       </Button>
                     </div>
                   </TableCell>
@@ -291,7 +291,7 @@ export function ActivityTypePanel() {
                 onChange={(e) => setForm((f) => ({ ...f, mat: e.target.value }))}
               />
               {formErrors.mat ? (
-                <p className="mt-1 text-xs text-red-600">{formErrors.mat}</p>
+                <p className="mt-1 text-xs text-form-error">{formErrors.mat}</p>
               ) : null}
             </div>
             <div>
@@ -303,7 +303,7 @@ export function ActivityTypePanel() {
                 onChange={(e) => setForm((f) => ({ ...f, matdescrip: e.target.value }))}
               />
               {formErrors.matdescrip ? (
-                <p className="mt-1 text-xs text-red-600">{formErrors.matdescrip}</p>
+                <p className="mt-1 text-xs text-form-error">{formErrors.matdescrip}</p>
               ) : null}
             </div>
             <div>
@@ -315,20 +315,20 @@ export function ActivityTypePanel() {
                 onChange={(e) => setForm((f) => ({ ...f, matcheck: e.target.value }))}
               />
               {formErrors.matcheck ? (
-                <p className="mt-1 text-xs text-red-600">{formErrors.matcheck}</p>
+                <p className="mt-1 text-xs text-form-error">{formErrors.matcheck}</p>
               ) : null}
             </div>
           </div>
           {formMode === 'delete' ? (
-            <p className="text-body-sm text-red-600">
+            <p className="text-body-sm text-form-error">
               {t('activityType.confirmDelete', { mat: form.mat })}
             </p>
           ) : null}
           {formErrorSummary && formMode !== 'delete' ? (
-            <p className="text-body-sm text-red-600">{formErrorSummary}</p>
+            <p className="text-body-sm text-form-error">{formErrorSummary}</p>
           ) : null}
           {formMut.isError ? (
-            <p className="text-body-sm text-red-600">{(formMut.error as Error).message}</p>
+            <p className="text-body-sm text-form-error">{(formMut.error as Error).message}</p>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeFormDialog}>
@@ -379,7 +379,7 @@ export function ActivityTypePanel() {
             placeholder={'PM01,Preventive Maintenance,Y\nCM01,Corrective Maintenance,Y'}
           />
           {importMut.isSuccess ? (
-            <p className="text-body-sm text-emerald-700">
+            <p className="app-tone-success-strong text-body-sm">
               {t('activityType.importResult', {
                 inserted: importMut.data.inserted,
                 updated: importMut.data.updated,
@@ -388,7 +388,7 @@ export function ActivityTypePanel() {
             </p>
           ) : null}
           {importMut.isError ? (
-            <p className="text-body-sm text-red-600">{(importMut.error as Error).message}</p>
+            <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeImportDialog}>

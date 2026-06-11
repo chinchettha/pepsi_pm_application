@@ -3,6 +3,7 @@ import {
   SchedulingSection,
 } from '@/components/scheduling/SchedulingPageLayout'
 import { Button } from '@/components/ui/button'
+import { ConfirmDeleteAlertDialog } from '@/components/ui/confirm-delete-alert-dialog'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,7 +20,7 @@ import {
   Timer,
   Trash2,
 } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type SupervisorCloseItem = {
@@ -117,15 +118,15 @@ function TimePhaseFields({
       className={cn(
         'flex-1 rounded-xl border p-4 shadow-sm',
         tone === 'start'
-          ? 'border-teal-200/80 bg-gradient-to-br from-teal-50/90 to-white'
-          : 'border-emerald-200/80 bg-gradient-to-br from-emerald-50/70 to-white',
+          ? 'app-tone-info-phase border'
+          : 'app-tone-success-panel-gradient border',
       )}
     >
       <p className="mb-3 flex items-center gap-2">
         <span
           className={cn(
             'flex size-7 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-sm',
-            tone === 'start' ? 'bg-teal-600' : 'bg-emerald-600',
+            tone === 'start' ? 'app-tone-info-progress' : 'app-tone-success-fill',
           )}
         >
           {step}
@@ -165,18 +166,18 @@ function TimelineConnector() {
   return (
     <>
       <div className="flex flex-col items-center gap-1 py-1 lg:hidden" aria-hidden>
-        <div className="h-4 w-px bg-teal-200" />
-        <span className="flex size-8 items-center justify-center rounded-full border border-teal-200/70 app-surface-panel text-teal-700 shadow-sm dark:text-teal-300">
+        <div className="app-tone-info-connector h-4 w-px" />
+        <span className="app-tone-info-icon flex size-8 items-center justify-center rounded-full border border-app app-surface-panel shadow-sm">
           <ArrowRight className="size-4 rotate-90" />
         </span>
-        <div className="h-4 w-px bg-teal-200" />
+        <div className="app-tone-info-connector h-4 w-px" />
       </div>
       <div className="hidden shrink-0 items-center gap-1 self-center px-1 lg:flex" aria-hidden>
-        <div className="h-px w-6 bg-teal-200" />
-        <span className="flex size-8 items-center justify-center rounded-full border border-teal-200/70 app-surface-panel text-teal-700 shadow-sm dark:text-teal-300">
+        <div className="app-tone-info-connector h-px w-6" />
+        <span className="app-tone-info-icon flex size-8 items-center justify-center rounded-full border border-app app-surface-panel shadow-sm">
           <ArrowRight className="size-4" />
         </span>
-        <div className="h-px w-6 bg-teal-200" />
+        <div className="app-tone-info-connector h-px w-6" />
       </div>
     </>
   )
@@ -224,13 +225,13 @@ function CloseTimelineForm({
       {closeWkctr.trim() ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-app-muted">{t('woSupervisorClose.workCenter')}</span>
-          <span className="rounded-full bg-teal-600/10 px-3 py-1 font-mono text-xs font-semibold text-teal-900">
+          <span className="app-tone-info-chip rounded-full px-3 py-1 font-mono text-xs font-semibold">
             {closeWkctr.trim()}
           </span>
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-teal-200/70 bg-[color-mix(in_srgb,var(--app-accent)_3%,var(--app-surface))] p-3 shadow-sm sm:p-4">
+      <div className="app-tone-info-inner overflow-hidden rounded-2xl border bg-[color-mix(in_srgb,var(--app-accent)_3%,var(--app-surface))] p-3 shadow-sm sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-2">
           <TimePhaseFields
             step={1}
@@ -264,10 +265,10 @@ function CloseTimelineForm({
               initial={reduceMotion ? false : { opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-3 rounded-xl border border-teal-100 bg-teal-50/70 px-4 py-3"
+              className="app-tone-info-callout mt-3 rounded-xl border px-4 py-3"
             >
-              <p className="flex flex-wrap items-center gap-2 text-body-sm text-teal-950">
-                <Timer className="size-4 shrink-0 text-teal-700" aria-hidden />
+              <p className="flex flex-wrap items-center gap-2 text-body-sm">
+                <Timer className="app-tone-info-icon size-4 shrink-0" aria-hidden />
                 {t('woSupervisorClose.duration')}
                 <strong className="font-semibold">{formatPersonnelCloseDuration(previewMin)}</strong>
               </p>
@@ -291,7 +292,7 @@ function CloseTimelineForm({
         size="lg"
         className={cn(
           'h-11 w-full shadow-sm sm:w-auto sm:min-w-[12rem]',
-          'bg-teal-700 hover:bg-teal-800',
+          'app-tone-success-fill',
         )}
         onClick={onSubmit}
         disabled={submitDisabled || submitPending}
@@ -334,6 +335,7 @@ export function WorkOrderSupervisorCloseSection({
   const { t } = useTranslation('scheduling')
   const { t: tc } = useTranslation(['scheduling', 'common'])
   const reduceMotion = useReducedMotion()
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
   const previewMin = useMemo(
     () => previewMinutes(startDate, startTime, endDate, endTime),
@@ -351,23 +353,23 @@ export function WorkOrderSupervisorCloseSection({
       <SchedulingPageSection index={0}>
         <motion.div
           layout={!reduceMotion}
-          className="overflow-hidden rounded-card border border-teal-200/90 bg-gradient-to-br from-teal-50 via-[var(--app-surface)] to-[color-mix(in_srgb,var(--app-accent)_4%,var(--app-surface))] p-4 shadow-[var(--app-shadow-card)]"
+          className="app-tone-info-section-gradient overflow-hidden rounded-card border p-4 shadow-[var(--app-shadow-card)]"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-800/70">
+              <p className="app-tone-info-eyebrow flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
                 <CheckCircle2 className="size-3.5" aria-hidden />
                 {t('woSupervisorClose.title')}
               </p>
               <p className="mt-0.5 text-body-sm text-app-muted">{t('woSupervisorClose.subtitle')}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-600/10 px-3 py-1 text-xs font-semibold text-teal-900">
+              <span className="app-tone-info-chip inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
                 <Clock className="size-3.5" aria-hidden />
                 {t('shared.items', { count: stats.count })}
               </span>
               {stats.count > 0 ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-600/10 px-3 py-1 text-xs font-semibold text-teal-900">
+                <span className="app-tone-info-chip inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
                   <Timer className="size-3.5" aria-hidden />
                   {t('woSupervisorClose.total', { time: stats.totalTime, unit: stats.unit })}
                 </span>
@@ -448,12 +450,12 @@ export function WorkOrderSupervisorCloseSection({
                     variants={reduceMotion ? undefined : cardVariants}
                     className="group"
                   >
-                    <article className="overflow-hidden rounded-card border border-teal-200/75 bg-[var(--app-surface)] shadow-sm transition-all duration-200 hover:shadow-md">
+                    <article className="overflow-hidden rounded-card border border-app bg-[var(--app-surface)] shadow-sm transition-all duration-200 hover:shadow-md">
                       <div className="flex items-stretch">
-                        <div className="w-1 shrink-0 bg-teal-500" aria-hidden />
+                        <div className="app-tone-info-strip-active w-1 shrink-0" aria-hidden />
                         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3 p-4">
                           <div className="flex min-w-0 items-start gap-3">
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-sm font-bold text-teal-900">
+                            <span className="app-tone-info-card-index flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold">
                               {idx + 1}
                             </span>
                             <div className="min-w-0">
@@ -471,7 +473,7 @@ export function WorkOrderSupervisorCloseSection({
                             </div>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
-                            <span className="rounded-full bg-teal-600/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-teal-900">
+                            <span className="app-tone-info-chip rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums">
                               {c.timewk} {c.unitc}
                             </span>
                             {!readOnly ? (
@@ -479,7 +481,7 @@ export function WorkOrderSupervisorCloseSection({
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                onClick={() => onDelete(c.idclose)}
+                                onClick={() => setDeleteTarget(c.idclose)}
                                 disabled={deletePending}
                               >
                                 <Trash2 className="size-3.5" aria-hidden />
@@ -497,6 +499,20 @@ export function WorkOrderSupervisorCloseSection({
           )}
         </SchedulingSection>
       </SchedulingPageSection>
+
+      <ConfirmDeleteAlertDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={t('woSupervisorClose.deleteTitle')}
+        description={t('woSupervisorClose.deleteDescription')}
+        loading={deletePending}
+        onConfirm={() => {
+          if (deleteTarget != null) {
+            onDelete(deleteTarget)
+            setDeleteTarget(null)
+          }
+        }}
+      />
     </div>
   )
 }

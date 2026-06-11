@@ -3,6 +3,7 @@ import {
   activityDisplayOptions,
   calendarColorLegendItems,
   weekendLegendItems,
+  woCalendarColorLegendItems,
 } from '@/lib/scheduling-i18n'
 import { WoPmPhaseLegend } from '@/components/scheduling/WoPmPhaseBadge'
 import {
@@ -22,6 +23,8 @@ type SchedulingViewControlsProps = {
   onActivityDisplayChange: (mode: ActivityDisplayMode) => void
   collapsible?: boolean
   defaultOpen?: boolean
+  /** work = WO calendar (/calendar) — overdue + TECO per CALENDAR-DISPLAY */
+  legendMode?: 'plan' | 'work'
 }
 
 /** ตัวเลือกการแสดงกิจกรรม + legend รวมในหนึ่ง section */
@@ -30,10 +33,14 @@ export function SchedulingViewControls({
   onActivityDisplayChange,
   collapsible = false,
   defaultOpen = true,
+  legendMode = 'plan',
 }: SchedulingViewControlsProps) {
   const { t } = useTranslation('scheduling')
   const activityOptions = useMemo(() => activityDisplayOptions(t), [t])
-  const colorItems = useMemo(() => calendarColorLegendItems(t), [t])
+  const colorItems = useMemo(
+    () => (legendMode === 'work' ? woCalendarColorLegendItems(t) : calendarColorLegendItems(t)),
+    [legendMode, t],
+  )
   const weekendItems = useMemo(() => weekendLegendItems(t), [t])
   const activityLabel =
     activityOptions.find((o) => o.value === activityDisplay)?.label ?? activityDisplay
@@ -62,6 +69,15 @@ export function SchedulingViewControls({
 
       <SchedulingLegendRow>
         <SchedulingLegendGroup label={t('view.colorGroup')}>
+          {legendMode === 'work' ? (
+            <span
+              className="inline-flex items-center gap-1 text-xs text-app"
+              title={t('calendarLegend.tecoWarningTitle')}
+            >
+              <span aria-hidden>🔔</span>
+              <span>{t('calendarLegend.tecoWarning')}</span>
+            </span>
+          ) : null}
           {colorItems.map((item) => (
             <SchedulingLegendSwatch
               key={item.label}
@@ -71,6 +87,20 @@ export function SchedulingViewControls({
             />
           ))}
         </SchedulingLegendGroup>
+        {legendMode === 'work' ? (
+          <SchedulingLegendGroup label={t('view.teamStripeGroup')}>
+            <SchedulingLegendSwatch
+              color="var(--cal-team-a)"
+              label={t('filterDetail.teamA')}
+              title={t('view.teamStripeHint')}
+            />
+            <SchedulingLegendSwatch
+              color="var(--cal-team-b)"
+              label={t('filterDetail.teamB')}
+              title={t('view.teamStripeHint')}
+            />
+          </SchedulingLegendGroup>
+        ) : null}
         <SchedulingLegendGroup label={t('view.pmPhaseGroup')}>
           {(['create', 'rel', 'confirm'] as const).map((p) => (
             <WoPmPhaseBadge key={p} phase={p} />

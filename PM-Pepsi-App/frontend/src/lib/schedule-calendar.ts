@@ -1,5 +1,6 @@
 import type { EventInput } from '@fullcalendar/core'
 import type { CalendarEventHoverDetail } from '@/api/schemas'
+import { calendarEventSurfaceClasses } from '@/lib/calendar-event-classes'
 
 export type ScheduleCalendarEvent = {
   id: string
@@ -23,6 +24,8 @@ export type ScheduleCalendarEvent = {
   planEndIso?: string
   moveReasonRequired?: boolean
   tecoBellAlert?: boolean
+  displayStatus?: 'in_progress' | 'overdue' | 'moved' | 'completed'
+  team?: 'A' | 'B' | 'EE' | 'UT'
 }
 
 export function toFullCalendarEvents(items: ScheduleCalendarEvent[]): EventInput[] {
@@ -51,6 +54,9 @@ export function toFullCalendarEvents(items: ScheduleCalendarEvent[]): EventInput
         planEndIso: e.planEndIso,
         moveReasonRequired: e.moveReasonRequired,
         tecoBellAlert: e.tecoBellAlert,
+        displayStatus: e.displayStatus,
+        team: e.team,
+        surfaceClasses: calendarEventSurfaceClasses(e),
       },
     }
   })
@@ -101,5 +107,16 @@ export function eventFromClickArg(arg: {
           ? false
           : undefined,
     tecoBellAlert: props.tecoBellAlert === true ? true : undefined,
+    displayStatus:
+      props.displayStatus === 'in_progress' ||
+      props.displayStatus === 'overdue' ||
+      props.displayStatus === 'moved' ||
+      props.displayStatus === 'completed'
+        ? props.displayStatus
+        : undefined,
+    team:
+      props.team === 'A' || props.team === 'B' || props.team === 'EE' || props.team === 'UT'
+        ? props.team
+        : undefined,
   }
 }

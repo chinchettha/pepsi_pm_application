@@ -99,7 +99,7 @@ function RoleHeaderCell({
             type="button"
             size="icon"
             variant="outline"
-            className="size-7 text-red-700 hover:text-red-800"
+            className="app-tone-danger-btn-ghost size-7"
             aria-label={t('roles.deleteRoleAria')}
             onClick={onDelete}
           >

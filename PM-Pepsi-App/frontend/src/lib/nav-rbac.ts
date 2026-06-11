@@ -2,6 +2,7 @@ import type { AuthUser } from '@/api/schemas'
 import { appNav, type NavEntry, type NavLinkEntry } from '@/components/layout/nav-config'
 import { permissionForRoute } from '@/lib/nav-route-permissions'
 import { hasPermission } from '@/lib/permissions-core'
+import { getRbacPreviewSnapshot } from '@/lib/rbac-preview'
 
 /** เทียบ `$_SESSION['UserST']` และ `menuright` แบบ `A:U:W` ใน `left_menu.php` */
 export type UserSt = 'A' | 'U' | 'W'
@@ -28,7 +29,12 @@ export function canAccessNavItem(
   const perm = item.permission ?? permissionForRoute(item.to)
   const user = { userst, permissions } as AuthUser
   if (rbacStrict && permissions !== undefined) {
-    if (perm) return hasPermission(user, perm)
+    if (perm) {
+      const preview = getRbacPreviewSnapshot()
+      const effective = preview?.permissions ?? permissions
+      if (effective.length > 0) return effective.includes(perm)
+      return hasPermission(user, perm)
+    }
     return canAccessByMenuright(userst, item.menuright)
   }
   if (permissions && permissions.length > 0 && perm) {

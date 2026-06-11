@@ -232,7 +232,7 @@ export function PlanningMultiAssign({
                             className={cn(
                               'mt-0.5 block text-[10px] font-medium',
                               w.availableHours != null && w.availableHours <= 0
-                                ? 'text-red-700'
+                                ? 'app-tone-danger-text'
                                 : 'text-indigo-900/75',
                             )}
                           >
@@ -243,7 +243,7 @@ export function PlanningMultiAssign({
                     </span>
                   </label>
                   {already ? (
-                    <span className="rounded bg-emerald-100 px-2 py-1 text-badge font-medium text-emerald-800">
+                    <span className="app-tone-success-badge rounded px-2 py-1 text-badge font-medium">
                       {t('shared.assigned')}
                     </span>
                   ) : null}
@@ -289,14 +289,14 @@ export function PlanningMultiAssign({
             </p>
           ) : null}
           {lastResult.notFound.length > 0 ? (
-            <p className="mt-1 text-red-700">
+            <p className="app-tone-danger-text mt-1">
               {t('planning.notFoundList', { list: lastResult.notFound.join(', ') })}
             </p>
           ) : null}
         </div>
       ) : null}
       {errorMsg ? (
-        <p className="mt-2 text-xs text-red-700">{errorMsg}</p>
+        <p className="app-tone-danger-text mt-2 text-xs">{errorMsg}</p>
       ) : null}
     </div>
   )

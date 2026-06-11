@@ -241,17 +241,17 @@ export function WorkOrderSummaryPanel({
 
       {order.movePlan ? (
         <SchedulingPageSection index={5}>
-          <div className="rounded-card border border-orange-200/90 bg-gradient-to-r from-orange-50 to-amber-50/80 p-4 shadow-sm">
+          <div className="app-tone-warning-move-plan rounded-card border p-4 shadow-sm">
             <div className="flex items-start gap-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
+              <span className="app-tone-warning-move-plan__icon flex size-9 shrink-0 items-center justify-center rounded-xl">
                 <ClipboardList className="size-4" aria-hidden />
               </span>
               <div className="min-w-0 space-y-1">
-                <p className="font-semibold text-orange-950">{t('woSummary.planMoved')}</p>
-                <p className="text-body-sm text-orange-900/85">
+                <p className="app-tone-warning-strong font-semibold">{t('woSummary.planMoved')}</p>
+                <p className="app-tone-warning-label text-body-sm">
                   {order.movePlan.movedDate} · {t('shared.times', { count: order.movePlan.moveCount })}
                 </p>
-                <p className="text-xs text-orange-900/70">
+                <p className="app-tone-warning-label text-xs">
                   {order.movePlan.reasonCode} — {order.movePlan.reasonName} · WC {order.movePlan.movedByWkctr}
                 </p>
               </div>

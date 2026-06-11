@@ -414,7 +414,7 @@ export async function listCalendarEventsFiltered(
 
   const sql = `
     SELECT o.idiw37, o.wkorder, o.wktype, o.bscstart, o.actfinish, o.cday, o.syst,
-           o.work, o.untime,
+           o.work, o.untime, o.team,
            o.operationshorttext, o.wkstcolor, o.equipment, o.equdescrip,
            o.functionalloc, o.funcdescrip, o.wkctr, o.opac,
            ti.mat, ti.ostdescription, ti.confirm_qc_status,

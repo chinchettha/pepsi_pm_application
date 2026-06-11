@@ -9,8 +9,8 @@ import {
 } from '@/components/ui/table'
 
 function deltaClass(n: number): string {
-  if (n > 0) return 'text-emerald-700'
-  if (n < 0) return 'text-red-600'
+  if (n > 0) return 'app-tone-success-strong'
+  if (n < 0) return 'app-tone-danger-text'
   return 'text-app-muted'
 }
 

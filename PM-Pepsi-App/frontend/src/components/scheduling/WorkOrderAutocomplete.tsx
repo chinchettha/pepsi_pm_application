@@ -68,7 +68,7 @@ export function WorkOrderAutocomplete({
           {suggestionsQ.isLoading ? (
             <li className="px-3 py-2 text-app-muted">กำลังค้น…</li>
           ) : suggestionsQ.isError ? (
-            <li className="px-3 py-2 text-red-600">{(suggestionsQ.error as Error).message}</li>
+            <li className="px-3 py-2 text-form-error">{(suggestionsQ.error as Error).message}</li>
           ) : (suggestionsQ.data?.length ?? 0) === 0 ? (
             <li className="px-3 py-2 text-app-muted">ไม่พบ</li>
           ) : (

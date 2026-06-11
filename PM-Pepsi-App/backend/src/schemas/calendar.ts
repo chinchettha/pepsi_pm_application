@@ -50,6 +50,12 @@ export const calendarEventSchema = z.object({
   moveReasonRequired: z.boolean().optional(),
   /** TECO ใน SAP แต่ยังไม่ปิดงานในโปรแกรม */
   tecoBellAlert: z.boolean().optional(),
+  /** สีสถานะบนปฏิทิน — in_progress | overdue | moved | completed */
+  displayStatus: z
+    .enum(['in_progress', 'overdue', 'moved', 'completed'])
+    .optional(),
+  /** PM Plan team A / B / EE / UT */
+  team: z.enum(['A', 'B', 'EE', 'UT']).optional(),
 })
 
 export const calendarEventsResponseSchema = z.object({

@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatPlanningAvailableLine, type PlanningWorkcenterHours } from '@/lib/planning-available-hours'
+import { APP_GROUP_HOVER_MOTION } from '@/lib/app-motion'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Check, ChevronDown, Expand, Loader2, Maximize2, Minimize2, Search, UserPlus, X } from 'lucide-react'
@@ -133,7 +134,8 @@ function TechnicianAssignGrid({
               >
                 <span
                   className={cn(
-                    'flex size-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold tracking-wide transition-transform duration-200 group-hover:scale-105',
+                    'flex size-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold tracking-wide',
+                    APP_GROUP_HOVER_MOTION,
                     assigned
                       ? 'app-tone-success-fill'
                       : 'bg-[color-mix(in_srgb,var(--app-accent)_14%,var(--app-surface))] text-[color-mix(in_srgb,var(--app-accent)_85%,var(--app-text))]',
@@ -158,8 +160,8 @@ function TechnicianAssignGrid({
                         className={cn(
                           'mt-1 block text-[10px] font-medium leading-tight',
                           w.availableHours != null && w.availableHours <= 0
-                            ? 'text-red-700'
-                            : 'text-teal-800/90',
+                            ? 'app-tone-danger-text'
+                            : 'app-tone-info-strong',
                         )}
                       >
                         {availLine}

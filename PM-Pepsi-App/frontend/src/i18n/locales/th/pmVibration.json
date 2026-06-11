@@ -105,7 +105,8 @@
     "completed": "Completed",
     "completedBy": "Completed by",
     "saveCurrentReadings": "บันทึกค่ากระแส 3 เฟส",
-    "taskLineSuffix": "ตรวจเช็คกระแสไฟฟ้าทั้ง 3 เฟส"
+    "taskLineSuffix": "ตรวจเช็คกระแสไฟฟ้าทั้ง 3 เฟส",
+    "noPermitsFound": "No Permits Found"
   },
   "statusTitle": "สถานะการใช้งาน",
   "statusIntro": "ตรวจว่าพร้อมกรอกและบันทึกหรือไม่ — ไม่ซ่อนฟอร์ม",
@@ -142,7 +143,9 @@
     "noTaskHint": "ยังไม่มี task — เลือก WO ที่มีรายการวัด",
     "saveTable": "บันทึกตาราง → อัปเดตกราฟ",
     "loadSaved": "โหลดจากที่บันทึกแล้ว",
-    "selectWoHint": "เลือก WO ก่อนบันทึก"
+    "selectWoHint": "เลือก WO ก่อนบันทึก",
+    "unitCurrent": "A",
+    "unitVibration": "mm/s RMS"
   },
   "perTaskHint": "ใต้ตาราง — กรอกทีละ task แล้วดูกราฟแนวโน้มทันที"
 }

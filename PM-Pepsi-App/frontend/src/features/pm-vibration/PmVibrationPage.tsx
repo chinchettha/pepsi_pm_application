@@ -112,7 +112,7 @@ const EMPTY_WO_HEADER = {
   techId: '',
   sysCond: '-',
   description: '',
-  permitStatus: 'No Permits Found',
+  permitStatus: '',
   headerShortText: '',
   objectList: '',
   operationNumber: '',
@@ -406,7 +406,11 @@ export function PmVibrationPage() {
 
   const importErrors = batchMut.data?.errors ?? []
   const manualSaveEnabled = Boolean(orderId) && canWrite
-  const woHeader = modalQ.data?.woHeader ?? EMPTY_WO_HEADER
+  const woHeader = {
+    ...(modalQ.data?.woHeader ?? EMPTY_WO_HEADER),
+    permitStatus:
+      (modalQ.data?.woHeader?.permitStatus ?? '').trim() || t('paperForm.noPermitsFound'),
+  }
   const formHint = !orderId
     ? t('selectWoToEnable')
     : !canWrite
@@ -726,7 +730,7 @@ export function PmVibrationPage() {
             {batchMut.isPending ? t('saving') : t('saveBatch')}
           </Button>
           {importErrors.length > 0 ? (
-            <ul className="rounded-card border border-red-200 bg-red-50/80 p-3 text-xs text-red-900">
+            <ul className="app-tone-danger-callout rounded-card border p-3 text-xs">
               {importErrors.map((err) => (
                 <li key={`${err.rowNo}-${err.message}`}>
                   {t('rowError', { rowNo: err.rowNo, message: err.message })}
@@ -791,7 +795,7 @@ export function PmVibrationPage() {
 
       {orderId && !modalQ.isLoading && modalQ.isError ? (
         <AppPageSection index={8}>
-          <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+          <p className="text-body-sm text-form-error">{(modalQ.error as Error).message}</p>
         </AppPageSection>
       ) : null}
 
@@ -800,7 +804,7 @@ export function PmVibrationPage() {
           <AppCard className="space-y-4 p-4">
             <div>
               <h2 className="flex items-center gap-2 font-semibold text-app">
-                <LineChart className="size-5 text-sky-700" aria-hidden />
+                <LineChart className="size-5 text-[var(--app-accent)]" aria-hidden />
                 {t('perTaskTitle')}
               </h2>
               <p className="mt-1 text-body-sm text-app-muted">{t('perTaskHint')}</p>

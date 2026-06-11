@@ -11,6 +11,7 @@
     "start": "node dist/index.js",
     "integration:watch": "tsx scripts/integration-watch.ts",
     "integration:drop-test": "tsx scripts/integration-drop-test.ts",
+    "stress:api": "tsx scripts/stress-api.ts",
     "uat:phase2": "tsx scripts/phase2-uat.ts",
     "uat:phase2-zb02all": "tsx scripts/phase2-uat-zb02all.ts",
     "uat:reset-iw37n": "tsx scripts/uat-reset-iw37n.ts",

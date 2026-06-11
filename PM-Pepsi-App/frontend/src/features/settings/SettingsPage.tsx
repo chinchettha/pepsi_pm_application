@@ -20,7 +20,9 @@ import { fetchUsers } from '@/lib/api-public'
 import { appLocaleToBcp47 } from '@/lib/app-locale'
 import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { AlertCircle, RefreshCcw, Settings } from 'lucide-react'
+import { LanguagePreferencePanel } from '@/features/settings/LanguagePreferencePanel'
+import { TelegramLinkPanel } from '@/features/settings/TelegramLinkPanel'
+import { AlertCircle, Globe, MessageCircle, RefreshCcw, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 export function SettingsPage() {
@@ -64,24 +66,45 @@ export function SettingsPage() {
     <AppPageShell
       title={t('settings.title')}
       description={t('settings.description')}
-      hints={[t('settings.tabs.profile'), t('settings.hintApiHealth'), t('settings.tabs.users')]}
+      hints={[
+        t('settings.tabs.profile'),
+        t('settings.tabs.language'),
+        t('settings.tabs.telegram'),
+        t('settings.hintApiHealth'),
+      ]}
       contentClassName="mx-auto max-w-4xl"
     >
       <AppPageSection index={0}>
       <AppPageSectionCard
         icon={Settings}
         title={t('settings.title')}
-        description={`${t('settings.tabs.profile')} · ${t('settings.tabs.connection')} · ${t('settings.tabs.users')}`}
+        description={`${t('settings.tabs.profile')} · ${t('settings.tabs.language')} · ${t('settings.tabs.telegram')} · ${t('settings.tabs.connection')}`}
       >
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList>
+        <TabsList className="flex h-auto flex-wrap gap-1">
           <TabsTrigger value="profile">{t('settings.tabs.profile')}</TabsTrigger>
+          <TabsTrigger value="language" className="gap-1.5">
+            <Globe className="size-3.5" aria-hidden />
+            {t('settings.tabs.language')}
+          </TabsTrigger>
+          <TabsTrigger value="telegram" className="gap-1.5">
+            <MessageCircle className="size-3.5" aria-hidden />
+            {t('settings.tabs.telegram')}
+          </TabsTrigger>
           <TabsTrigger value="connection">{t('settings.tabs.connection')}</TabsTrigger>
           <TabsTrigger value="users">{t('settings.tabs.users')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="mt-4">
           <ProfilePanel />
+        </TabsContent>
+
+        <TabsContent value="language" className="mt-4">
+          <LanguagePreferencePanel />
+        </TabsContent>
+
+        <TabsContent value="telegram" className="mt-4">
+          <TelegramLinkPanel />
         </TabsContent>
 
         <TabsContent value="connection" className="mt-4 space-y-4">
@@ -139,7 +162,7 @@ export function SettingsPage() {
                 <div>
                   <dt className="text-xs text-app-muted">{t('settings.connection.status')}</dt>
                   <dd>
-                    <Badge className="bg-emerald-700">{t('settings.connection.ready')}</Badge>
+                    <Badge className="app-tone-success-fill">{t('settings.connection.ready')}</Badge>
                   </dd>
                 </div>
                 <div>

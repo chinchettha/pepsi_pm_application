@@ -199,7 +199,7 @@ CREATE TABLE app.tbl_telegram_notify_group (
 - [ ] **G2** — Integration test: webhook callback รับทราบ
 - [ ] **G3** — E2E smoke: Admin สร้างกลุ่ม → ทดสอบส่ง
 - [ ] **G4** — อัปเดต [`USER-MANUAL-TH.md`](../USER-MANUAL-TH.md) § Admin Telegram
-- [ ] **G5** — อัปเดต [`UAT-ROUND-2-TH.md`](UAT-ROUND-2-TH.md) § Telegram
+- [x] **G5** — อัปเดต [`UAT-ROUND-3-TH.md`](UAT-ROUND-3-TH.md) §F Telegram
 - [ ] **G6** — คู่มือลูกค้า 1 หน้า: วิธีตั้งกลุ่ม TG
 
 ---

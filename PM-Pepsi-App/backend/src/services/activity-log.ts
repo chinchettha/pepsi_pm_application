@@ -183,7 +183,7 @@ export async function listActivityLog(
       LIMIT 2000`
 
     const userSql = `
-      SELECT
+      SELECT DISTINCT ON (u.id)
         u.id::text,
         u.username,
         u.user_ip,
@@ -199,7 +199,7 @@ export async function listActivityLog(
       FROM app.tbworkcenter_userlog u
       LEFT JOIN app.tbworkcenter wc2 ON wc2.idwkctr = u.user_id OR wc2.wkctr = u.username
       WHERE ${userWhere.join(' AND ')}
-      ORDER BY u.created_at DESC
+      ORDER BY u.id, u.created_at DESC
       LIMIT 500`
 
     const [auditRes, userRes] = await Promise.all([

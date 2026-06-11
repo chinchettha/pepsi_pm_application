@@ -142,7 +142,19 @@
       "status": "สถานะ",
       "started": "เริ่ม",
       "files": "ไฟล์ / batch"
+    },
+    "status": {
+      "success": "สำเร็จ",
+      "failed": "ล้มเหลว",
+      "running": "กำลังทำงาน",
+      "pending": "รอดำเนินการ"
     }
+  },
+  "importAction": {
+    "error": "ผิดพลาด",
+    "updated": "อัปเดต",
+    "inserted": "เพิ่ม",
+    "skipped": "ข้าม"
   },
   "guide": {
     "title": "สัญญาไฟล์ CSV (SAP ↔ PM)",

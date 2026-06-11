@@ -50,7 +50,7 @@ export function RoleNavPreview() {
         ))}
       </div>
       {adminPaths.length === 0 ? (
-        <p className="mt-2 text-xs text-emerald-800">{t('roles.navPreviewNoAdmin')}</p>
+        <p className="app-tone-success-strong mt-2 text-xs">{t('roles.navPreviewNoAdmin')}</p>
       ) : null}
     </div>
   )

@@ -10,7 +10,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-[var(--app-text)] text-[var(--app-surface)] hover:bg-[color-mix(in_srgb,var(--app-text)_90%,white)] active:bg-[color-mix(in_srgb,var(--app-text)_94%,black)]',
+          'bg-[var(--app-text)] text-[var(--app-surface)] hover:bg-[color-mix(in_srgb,var(--app-text)_90%,white)] active:bg-[color-mix(in_srgb,var(--app-text)_94%,black)] motion-safe:hover:scale-[1.02]',
         outline:
           'border border-app bg-[var(--app-surface)] text-app shadow-app-button hover:bg-app-subtle active:bg-app-muted',
         secondary:

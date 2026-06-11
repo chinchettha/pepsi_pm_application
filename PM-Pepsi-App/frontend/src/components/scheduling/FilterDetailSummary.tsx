@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { z } from 'zod'
 import type { workOrderFilterDetailResponseSchema } from '@/api/schemas'
+import { APP_INTERACTIVE_MOTION_SUBTLE } from '@/lib/app-motion'
 import { BarChart3, Filter } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -84,7 +85,7 @@ export function FilterDetailSummary({
           <Skeleton className="h-20 w-full rounded-card" />
         </div>
       ) : isError ? (
-        <p className="text-body-sm text-red-600">
+        <p className="text-body-sm text-form-error">
           {(error as Error)?.message ?? t('filterDetail.loadFailed')}
         </p>
       ) : data ? (
@@ -94,7 +95,7 @@ export function FilterDetailSummary({
               tone="amber"
               label={t('filterDetail.workOrderLabel')}
               value={data.totalOrders}
-              className="transition-transform duration-200 hover:scale-[1.01]"
+              className={APP_INTERACTIVE_MOTION_SUBTLE}
               footer={
                 <>
                   <p className="text-app-muted">
@@ -120,7 +121,7 @@ export function FilterDetailSummary({
               tone="emerald"
               label={t('filterDetail.teamA')}
               value={data.teamA.count}
-              className="transition-transform duration-200 hover:scale-[1.02]"
+              className={APP_INTERACTIVE_MOTION_SUBTLE}
               footer={
                 <>
                   <p className="text-app-muted">{t('shared.workMin')}</p>
@@ -132,7 +133,7 @@ export function FilterDetailSummary({
               tone="rose"
               label={t('filterDetail.teamB')}
               value={data.teamB.count}
-              className="transition-transform duration-200 hover:scale-[1.02]"
+              className={APP_INTERACTIVE_MOTION_SUBTLE}
               footer={
                 <>
                   <p className="text-app-muted">{t('shared.workMin')}</p>
@@ -144,7 +145,7 @@ export function FilterDetailSummary({
               tone="info"
               label={t('filterDetail.teamEE')}
               value={data.teamEE.count}
-              className="transition-transform duration-200 hover:scale-[1.02]"
+              className={APP_INTERACTIVE_MOTION_SUBTLE}
               footer={
                 <>
                   <p className="text-app-muted">{t('shared.workMin')}</p>
@@ -156,7 +157,7 @@ export function FilterDetailSummary({
               tone="amber"
               label={t('filterDetail.teamUT')}
               value={data.teamUT.count}
-              className="transition-transform duration-200 hover:scale-[1.02]"
+              className={APP_INTERACTIVE_MOTION_SUBTLE}
               footer={
                 <>
                   <p className="text-app-muted">{t('shared.workMin')}</p>

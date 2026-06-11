@@ -94,11 +94,11 @@ function SummaryChip({
 }) {
   if (!value.trim()) return null
   return (
-    <div className="flex items-center gap-2 rounded-button border border-sky-200/70 app-surface-panel--soft px-3 py-2">
-      <Icon className="size-4 shrink-0 text-sky-700" aria-hidden />
+    <div className="flex items-center gap-2 rounded-button border border-app/60 app-tone-info-inner px-3 py-2">
+      <Icon className="size-4 shrink-0 app-tone-info-icon" aria-hidden />
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-800/70">{label}</p>
-        <p className="truncate text-body-sm font-medium text-sky-950">{value}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide app-tone-info-eyebrow">{label}</p>
+        <p className="truncate text-body-sm font-medium text-app">{value}</p>
       </div>
     </div>
   )
@@ -269,14 +269,14 @@ export function WorkOrderTaskListPanel({
         <SchedulingPageSection index={0}>
           <motion.div
             layout={!reduceMotion}
-            className="overflow-hidden rounded-card border border-sky-200/90 bg-gradient-to-br from-sky-50 via-[var(--app-surface)] to-[color-mix(in_srgb,var(--app-accent)_5%,var(--app-surface))] p-4 shadow-[var(--app-shadow-card)]"
+            className="app-tone-info-section-gradient overflow-hidden rounded-card border p-4 shadow-[var(--app-shadow-card)]"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wider text-sky-800/70">
+                <p className="text-xs font-semibold uppercase tracking-wider app-tone-info-eyebrow">
                   {t('taskList.headerTitle')}
                 </p>
-                <p className="font-mono text-2xl font-bold tracking-tight text-sky-950">
+                <p className="font-mono text-2xl font-bold tracking-tight text-app">
                   {summary.tasklist}
                 </p>
                 {mntplan ? (
@@ -286,7 +286,7 @@ export function WorkOrderTaskListPanel({
                   </p>
                 ) : null}
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-600/10 px-3 py-1 text-xs font-semibold text-sky-900">
+              <span className="app-tone-info-badge inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
                 <ClipboardCheck className="size-3.5" aria-hidden />
                 {t('shared.items', { count: stats.total })}
               </span>

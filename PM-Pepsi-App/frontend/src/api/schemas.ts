@@ -589,6 +589,8 @@ export const calendarEventItemSchema = z.object({
   planEndIso: z.string().optional(),
   moveReasonRequired: z.boolean().optional(),
   tecoBellAlert: z.boolean().optional(),
+  displayStatus: z.enum(['in_progress', 'overdue', 'moved', 'completed']).optional(),
+  team: z.enum(['A', 'B', 'EE', 'UT']).optional(),
 })
 
 export const calendarEventsResponseSchema = z.object({

@@ -53,7 +53,7 @@ export function ConfirmQcPendingQueue({
       }
       badge={
         items.length > 0 ? (
-          <Badge variant="secondary" className="tabular-nums">
+          <Badge variant="outline" className="app-tone-warning-badge tabular-nums">
             {items.length}
           </Badge>
         ) : undefined
@@ -75,7 +75,7 @@ export function ConfirmQcPendingQueue({
             <motion.li
               key={row.idiw37}
               {...listKpiStaggerItemMotion(reduceMotion, items.length)}
-              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-teal-50/40"
+              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[color-mix(in_srgb,var(--status-info)_8%,var(--app-surface))]"
             >
               <div className="min-w-0">
                 <span className="font-medium tabular-nums text-app">{row.wkorder}</span>

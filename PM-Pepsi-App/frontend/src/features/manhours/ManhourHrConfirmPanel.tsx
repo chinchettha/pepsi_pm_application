@@ -281,7 +281,7 @@ export function ManhourHrConfirmPanel({ enabled }: Props) {
                             <TableCell className="text-right font-medium tabular-nums">
                               {row.totalManhours.toFixed(1)}
                             </TableCell>
-                            <TableCell className="text-right font-medium tabular-nums text-emerald-700">
+                            <TableCell className="text-right font-medium tabular-nums app-tone-success-strong">
                               {row.confirmHours.toFixed(1)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
@@ -321,7 +321,7 @@ export function ManhourHrConfirmPanel({ enabled }: Props) {
                               q.data.totals.ot3
                             ).toFixed(1)}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums text-emerald-700">
+                          <TableCell className="text-right tabular-nums app-tone-success-strong">
                             {q.data.totals.confirmHours.toFixed(1)}
                           </TableCell>
                           <TableCell />

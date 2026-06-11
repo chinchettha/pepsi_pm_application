@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { backlogFilterDetailResponseSchema } from '@/api/schemas'
+import { APP_INTERACTIVE_MOTION_SUBTLE } from '@/lib/app-motion'
 import { useI18nFormat } from '@/lib/use-i18n-format'
 import { Users } from 'lucide-react'
 import { useMemo } from 'react'
@@ -98,7 +99,7 @@ export function BacklogWorkcenterSummary({
                   tone="info"
                   label={wc.code}
                   value={wc.count}
-                  className="transition-transform duration-200 hover:scale-[1.02]"
+                  className={APP_INTERACTIVE_MOTION_SUBTLE}
                   footer={
                     <>
                       <p className="truncate text-app-muted" title={wc.label}>

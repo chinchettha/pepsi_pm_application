@@ -22,7 +22,7 @@ function MaintenanceBanner({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-body-sm text-amber-950"
+      className="app-announcement--warn border-b px-4 py-2 text-center text-body-sm"
     >
       {message.trim() || t('shell.maintenance')}
     </div>

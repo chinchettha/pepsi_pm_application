@@ -1,6 +1,8 @@
 import type { AuthUser } from '@/api/schemas'
-import { PepsiBrandMark } from '@/components/brand/PepsiBrandMark'
 import { PepsiStripe } from '@/components/brand/PepsiStripe'
+import { SidebarBrandZone } from '@/components/layout/SidebarBrandZone'
+import { SidebarFooter } from '@/components/layout/SidebarFooter'
+import { SidebarMobileDrawer } from '@/components/layout/SidebarMobileDrawer'
 import { AppFooter } from '@/components/layout/AppFooter'
 import { AppTopbarBrand } from '@/components/layout/AppTopbarBrand'
 import { AppNavbarUser } from '@/components/layout/AppNavbarUser'
@@ -9,21 +11,23 @@ import { NavMenuList } from '@/components/layout/NavMenuList'
 import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { Button } from '@/components/ui/button'
-import { publicLogoUrl } from '@/lib/settings-api'
+import { resolveNavShellLayout } from '@/lib/nav-shell-layout'
+import {
+  readSidebarDensity,
+  readSidebarWidth,
+  sidebarWidthClasses,
+  subscribeSidebarPrefs,
+} from '@/lib/sidebar-prefs'
 import { useSidebarState } from '@/lib/use-sidebar-state'
 import { cn } from '@/lib/utils'
+import { useReducedMotion } from 'framer-motion'
 import { CommandPaletteShortcutBadge } from '@/components/command-palette/CommandPaletteShortcutBadge'
-import { LogIn, LogOut, LayoutGrid, Menu, Pin, PinOff, Search, X } from 'lucide-react'
+import { LayoutGrid, Menu, Search } from 'lucide-react'
 import type { NavShellMode } from '@/api/schemas'
 import type { ReactNode } from 'react'
-import { useEffect } from 'react'
-import { resolveRoleDisplayLabel } from '@/lib/role-display'
-import { useAppLocale } from '@/providers/I18nProvider'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-
-const SIDEBAR_WIDE = 'w-60'
-const SIDEBAR_NARROW = 'w-14'
 
 export type AppNavShellProps = {
   appTitle: string
@@ -114,6 +118,7 @@ function SidebarPanel({
   onLogin,
   onNavigate,
   showPin,
+  showPortalLink = false,
 }: {
   appTitle: string
   hasLogo: boolean
@@ -128,41 +133,21 @@ function SidebarPanel({
   onLogin: () => void
   onNavigate?: () => void
   showPin?: boolean
+  showPortalLink?: boolean
 }) {
-  const { t } = useTranslation()
-  const { locale } = useAppLocale()
   const collapsed = !expanded
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col">
-      <PepsiStripe />
-      <div
-        className={cn(
-          'app-sidebar-brand border-[var(--app-sidebar-border)]',
-          expanded ? 'app-sidebar-brand--expanded' : 'app-sidebar-brand--collapsed',
-        )}
-      >
-        {hasLogo ? (
-          <img
-            src={publicLogoUrl()}
-            alt=""
-            className="app-brand-logo-nav shrink-0 rounded-button object-contain"
-          />
-        ) : (
-          <PepsiBrandMark size={expanded ? 'xl' : 'lg'} />
-        )}
-        <span
-          className={cn(
-            'app-sidebar-brand__title min-w-0 overflow-hidden truncate text-[var(--app-sidebar-fg)] whitespace-nowrap transition-[opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-            collapsed ? 'max-w-0 opacity-0' : 'max-w-[12rem] opacity-100',
-          )}
-          aria-hidden={collapsed}
-        >
-          {appTitle}
-        </span>
-      </div>
+      <PepsiStripe variant="sidebar" />
+      <SidebarBrandZone
+        appTitle={appTitle}
+        hasLogo={hasLogo}
+        expanded={expanded}
+        showPortalLink={showPortalLink}
+      />
 
-      <div className="min-h-0 flex-1 overflow-y-auto py-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden py-2">
         <NavMenuList
           entries={visibleNav}
           variant="sidebar"
@@ -176,92 +161,18 @@ function SidebarPanel({
         ) : null}
       </div>
 
-      <div className="shrink-0 space-y-2 border-t border-[var(--app-sidebar-border)] p-2">
-        {showPin ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={cn(
-              'w-full text-[var(--app-sidebar-fg-muted)] hover:bg-[var(--app-sidebar-hover)] hover:text-[var(--app-sidebar-fg)]',
-              collapsed ? 'justify-center px-0' : 'justify-start gap-2',
-            )}
-            onClick={onTogglePin}
-            title={pinned ? t('nav.unpinMenuTitle') : t('nav.pinMenuTitle')}
-            aria-pressed={pinned}
-          >
-            {pinned ? (
-              <PinOff className="size-4 shrink-0" aria-hidden />
-            ) : (
-              <Pin className="size-4 shrink-0" aria-hidden />
-            )}
-            <span
-              className={cn(
-                'overflow-hidden whitespace-nowrap transition-[opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-                collapsed ? 'max-w-0 opacity-0' : 'max-w-[10rem] opacity-100',
-              )}
-              aria-hidden={collapsed}
-            >
-              {pinned ? t('nav.unpinMenu') : t('nav.pinMenu')}
-            </span>
-          </Button>
-        ) : null}
-
-        {authUser && expanded ? (
-          <p className="truncate px-1 text-xs text-[var(--app-sidebar-fg)]">
-            {authUser.fullnameTh?.trim() || authUser.username}
-            <span className="block text-sidebar-muted">
-              {resolveRoleDisplayLabel(authUser, locale)}
-            </span>
-          </p>
-        ) : null}
-
-        {loggedIn ? (
-          <Button
-            type="button"
-            variant="outline"
-            title={t('actions.logout')}
-            className={cn(
-              'border-[var(--app-sidebar-border)] bg-[var(--app-sidebar-hover)] text-[var(--app-sidebar-fg)] hover:bg-[var(--app-sidebar-active)]',
-              collapsed ? 'w-full justify-center px-0' : 'w-full justify-start gap-2',
-            )}
-            onClick={onLogout}
-          >
-            <LogOut className="size-4 shrink-0" aria-hidden />
-            <span
-              className={cn(
-                'overflow-hidden whitespace-nowrap transition-[opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-                collapsed ? 'max-w-0 opacity-0' : 'max-w-[8rem] opacity-100',
-              )}
-              aria-hidden={collapsed}
-            >
-              {t('actions.logout')}
-            </span>
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            title={t('actions.login')}
-            className={cn(
-              'border-[var(--app-sidebar-border)] bg-[var(--app-sidebar-hover)] text-[var(--app-sidebar-fg)] hover:bg-[var(--app-sidebar-active)]',
-              collapsed ? 'w-full justify-center px-0' : 'w-full justify-start gap-2',
-            )}
-            onClick={onLogin}
-          >
-            <LogIn className="size-4 shrink-0" aria-hidden />
-            <span
-              className={cn(
-                'overflow-hidden whitespace-nowrap transition-[opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-                collapsed ? 'max-w-0 opacity-0' : 'max-w-[8rem] opacity-100',
-              )}
-              aria-hidden={collapsed}
-            >
-              {t('actions.login')}
-            </span>
-          </Button>
-        )}
-      </div>
+      <SidebarFooter
+        authUser={authUser}
+        loggedIn={loggedIn}
+        expanded={expanded}
+        pinned={pinned}
+        showPin={showPin}
+        showPortalLink={showPortalLink}
+        onTogglePin={onTogglePin}
+        onLogout={onLogout}
+        onLogin={onLogin}
+        onNavigate={onNavigate}
+      />
     </div>
   )
 }
@@ -289,6 +200,18 @@ export function AppNavShell(props: AppNavShellProps) {
   const isAdmin = location.pathname.startsWith('/admin')
   const navigate = useNavigate()
   const onLogin = () => navigate('/login')
+  const reduceMotion = useReducedMotion() ?? false
+  const sidebarDensity = useSyncExternalStore(
+    subscribeSidebarPrefs,
+    readSidebarDensity,
+    () => 'comfortable' as const,
+  )
+  const sidebarWidth = useSyncExternalStore(
+    subscribeSidebarPrefs,
+    readSidebarWidth,
+    () => 'narrow' as const,
+  )
+  const widthClasses = sidebarWidthClasses(sidebarWidth)
   const {
     pinned,
     togglePinned,
@@ -296,32 +219,28 @@ export function AppNavShell(props: AppNavShellProps) {
     desktopExpanded,
     mobileOpen,
     setMobileOpen,
-  } = useSidebarState()
+  } = useSidebarState({ reduceMotion })
 
-  /** sidebar + hamburger บน desktop ยังมีแถบซ้าย (ปักหมุดได้) — hamburger บนมือถือใช้ drawer */
-  const showDesktopSidebar = navShellMode === 'sidebar' || navShellMode === 'hamburger'
-  const showHeaderNav = navShellMode === 'navbar'
-  const mobileDrawerOnly = navShellMode === 'hamburger' || navShellMode === 'sidebar'
+  const { showDesktopSidebar, showHeaderNav, mobileDrawerOnly } =
+    resolveNavShellLayout(navShellMode)
 
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const closeMobile = () => setMobileOpen(false)
+  const drawerResponsiveHide = showDesktopSidebar ? 'lg:hidden' : showHeaderNav ? 'md:hidden' : undefined
 
   useEffect(() => {
     setMobileOpen(false)
   }, [location.pathname, setMobileOpen])
 
   useEffect(() => {
-    if (!mobileOpen) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileOpen(false)
+    if (!showDesktopSidebar) return
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const onChange = () => {
+      if (mq.matches) setMobileOpen(false)
     }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = prev
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [mobileOpen, setMobileOpen])
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [showDesktopSidebar, setMobileOpen])
 
   const panelProps = {
     appTitle,
@@ -333,44 +252,8 @@ export function AppNavShell(props: AppNavShellProps) {
     onLogout,
     onLogin,
     onTogglePin: togglePinned,
+    showPortalLink,
   }
-
-  const drawerOverlay = mobileOpen ? (
-    <button
-      type="button"
-      className={cn(
-        'fixed inset-0 z-40 bg-black/50 animate-in fade-in duration-200',
-        mobileDrawerOnly ? 'lg:hidden' : 'block',
-      )}
-      aria-label={t('actions.closeMenu')}
-      onClick={closeMobile}
-    />
-  ) : null
-
-  const drawerAside = (
-    <aside
-      className={cn(
-        'app-sidebar macos-sidebar app-sidebar--drawer fixed inset-y-0 left-0 z-50 flex w-[min(100vw-2rem,18rem)] flex-col overscroll-contain shadow-xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-        showDesktopSidebar && 'lg:hidden',
-        mobileOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none',
-      )}
-      aria-label={t('nav.mainMenu')}
-    >
-      <div className="flex h-12 shrink-0 items-center justify-end border-b border-[var(--app-sidebar-border)] px-2">
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="text-[var(--app-sidebar-fg)] hover:bg-[var(--app-sidebar-hover)]"
-          onClick={closeMobile}
-          aria-label={t('actions.closeMenu')}
-        >
-          <X className="size-5" />
-        </Button>
-      </div>
-      <SidebarPanel {...panelProps} expanded pinned={false} onNavigate={closeMobile} />
-    </aside>
-  )
 
   return (
     <div
@@ -385,13 +268,16 @@ export function AppNavShell(props: AppNavShellProps) {
       {showDesktopSidebar ? (
         <aside
           className={cn(
-            'app-sidebar macos-sidebar relative z-30 hidden h-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-[var(--app-sidebar-border)] transition-[width,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:flex',
-            desktopExpanded ? SIDEBAR_WIDE : SIDEBAR_NARROW,
+            'app-sidebar macos-sidebar relative z-30 hidden h-full min-h-0 shrink-0 flex-col overflow-hidden lg:flex',
+            desktopExpanded ? widthClasses.expanded : widthClasses.collapsed,
             !desktopExpanded && 'app-sidebar--collapsed',
-            !pinned && !desktopExpanded && 'shadow-lg',
           )}
           aria-label={t('nav.mainMenu')}
           data-collapsed={desktopExpanded ? 'false' : 'true'}
+          data-pinned={pinned ? 'true' : 'false'}
+          data-sidebar-density={sidebarDensity}
+          data-sidebar-width={sidebarWidth}
+          data-reduced-motion={reduceMotion ? 'true' : 'false'}
           onMouseEnter={() => !pinned && setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
@@ -404,8 +290,18 @@ export function AppNavShell(props: AppNavShellProps) {
         </aside>
       ) : null}
 
-      {drawerOverlay}
-      {drawerAside}
+      {(mobileDrawerOnly || showHeaderNav) ? (
+        <SidebarMobileDrawer
+          open={mobileOpen}
+          onOpenChange={setMobileOpen}
+          menuTriggerRef={menuTriggerRef}
+          responsiveHideClass={drawerResponsiveHide}
+          drawerWidthClass={widthClasses.drawer}
+          sidebarDensity={sidebarDensity}
+        >
+          <SidebarPanel {...panelProps} expanded pinned={false} onNavigate={closeMobile} />
+        </SidebarMobileDrawer>
+      ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header
@@ -415,6 +311,7 @@ export function AppNavShell(props: AppNavShellProps) {
         >
           {(mobileDrawerOnly || showHeaderNav) ? (
             <Button
+              ref={menuTriggerRef}
               type="button"
               variant="ghost"
               size="icon"
@@ -426,6 +323,7 @@ export function AppNavShell(props: AppNavShellProps) {
               onClick={() => setMobileOpen(true)}
               aria-label={t('actions.openMenu')}
               aria-expanded={mobileOpen}
+              aria-controls="sidebar-mobile-drawer"
             >
               <Menu className="size-5" />
             </Button>

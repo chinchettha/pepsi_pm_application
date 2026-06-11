@@ -3,6 +3,7 @@ import { CalendarEventHoverCard } from '@/components/scheduling/CalendarEventHov
 import type { ScheduleCalendarEvent } from '@/lib/schedule-calendar'
 import { cn } from '@/lib/utils'
 import { pmPhaseCalendarClass } from '@/lib/wo-pm-phase'
+import { calendarEventSurfaceClasses } from '@/lib/calendar-event-classes'
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -128,13 +129,12 @@ export function CalendarDayGantt({
                       'pm-cal-gantt__bar absolute mx-0.5 truncate rounded-md px-1.5 py-0.5 text-left text-[10px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90 sm:text-xs',
                       ev.canMovePlan === false && 'pm-cal-event--locked',
                       pmPhaseCalendarClass(ev.pmPhase),
+                      ...calendarEventSurfaceClasses(ev),
                     )}
                     style={{
                       ...layout,
                       top: `${1.25 + idx * 2.75}rem`,
                       height: '2.25rem',
-                      backgroundColor: ev.color,
-                      borderColor: ev.color,
                     }}
                     onClick={() => onEventClick?.(ev)}
                     onMouseEnter={

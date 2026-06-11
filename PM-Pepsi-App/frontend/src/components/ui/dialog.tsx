@@ -3,6 +3,8 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 
+import { focusInitialInDialog } from '@/lib/dialog-focus'
+import { useDialogContentRef } from '@/lib/use-dialog-content-ref'
 import { cn } from '@/lib/utils'
 
 const Dialog = DialogPrimitive.Root
@@ -49,22 +51,36 @@ type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, size, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(dialogContentVariants({ size }), className)}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-[var(--app-surface)] transition-opacity hover:opacity-100 focus:outline-none focus-app-ring disabled:pointer-events-none">
-        <X className="size-4" />
-        <span className="sr-only">ปิด</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-))
+>(({ className, size, children, onOpenAutoFocus, ...props }, ref) => {
+  const { innerRef, setRef } = useDialogContentRef(ref)
+
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={setRef}
+        tabIndex={-1}
+        className={cn(dialogContentVariants({ size }), 'outline-none', className)}
+        onOpenAutoFocus={(e) => {
+          onOpenAutoFocus?.(e)
+          if (e.defaultPrevented) return
+          e.preventDefault()
+          focusInitialInDialog(innerRef.current)
+        }}
+        {...props}
+      >
+        {children}
+        <DialogPrimitive.Close
+          data-dialog-close
+          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-[var(--app-surface)] transition-opacity hover:opacity-100 focus:outline-none focus-app-ring disabled:pointer-events-none"
+        >
+          <X className="size-4" />
+          <span className="sr-only">ปิด</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  )
+})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({

@@ -34,3 +34,8 @@ export function toastSaved() {
 export function toastDeleted() {
   toast.success(i18n.t('toast.deleted', { ns: 'common' }), toastOpts())
 }
+
+/** Neutral message — uses default sonner styling + AppToaster icons */
+export function toastMessage(message: string, description?: string) {
+  toast(message, toastOpts(description))
+}

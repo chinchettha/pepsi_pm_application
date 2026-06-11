@@ -13,6 +13,22 @@ export const WKTYPE_ZD_ZB_ROWS: readonly WktypeZdZbRow[] = [
   { zb: 'ZB05', zd: 'ZD01' },
 ] as const
 
+const WKTYPE_FILTER_ORDER = WKTYPE_ZD_ZB_ROWS.map((r) => r.zb)
+
+/** Keep ZB01 → ZB02 → ZB05 first — matches customer filter / CALENDAR-DISPLAY */
+export function sortWktypeFilterOptions<T extends { code: string }>(options: readonly T[]): T[] {
+  return [...options].sort((a, b) => {
+    const ac = a.code.trim().toUpperCase()
+    const bc = b.code.trim().toUpperCase()
+    const ai = WKTYPE_FILTER_ORDER.indexOf(ac)
+    const bi = WKTYPE_FILTER_ORDER.indexOf(bc)
+    if (ai >= 0 && bi >= 0) return ai - bi
+    if (ai >= 0) return -1
+    if (bi >= 0) return 1
+    return ac.localeCompare(bc)
+  })
+}
+
 const BY_ZB = new Map(WKTYPE_ZD_ZB_ROWS.map((r) => [r.zb.toUpperCase(), r]))
 
 function wktypeZdLabel(zb: string): string {

@@ -29,6 +29,8 @@
     "activityOnCalendar": "กิจกรรมบนปฏิทิน",
     "activitySummary": "กิจกรรม: {{label}}",
     "colorGroup": "สีปฏิทิน",
+    "teamStripeGroup": "แถบทีม PM",
+    "teamStripeHint": "แถบขอบขวาบน event — ทีม A / B (ตรง KPI สรุป)",
     "weekendGroup": "วันหยุด",
     "pmPhaseGroup": "Create / REL / Confirm"
   },
@@ -67,7 +69,8 @@
     "loadFailedHint": "ตรวจการเชื่อมต่อ API หรือสิทธิ์",
     "panelTitle": "ปฏิทินงาน",
     "panelSubtitle": "{{month}} · มุมมอง \"วัน\" = Order Frame · ลากช่วงวันเพื่อสรุปชั่วโมง",
-    "filterSummaryTitle": "สรุปตามตัวกรอง"
+    "filterSummaryTitle": "สรุปตามตัวกรอง",
+    "moreJobs": "+{{count}} งาน"
   },
   "planCalendar": {
     "title": "ปฏิทินจ่ายงาน",
@@ -109,6 +112,8 @@
     "panelSubtitle": "เฉพาะใบงานของช่างที่มีงานค้าง · Note = รหัสศูนย์งาน (จำนวนใบ)",
     "noMovePermission": "ไม่มีสิทธิ์ย้ายแผน — ต้องมี calendar.write",
     "planNotMovable": "แผนสีเขียว (TECO/ปิดแล้ว) ย้ายแผนไม่ได้ — เฉพาะสถานะ CRTD/REL",
+    "noAccess": "ไม่มีสิทธิ์เข้าถึง",
+    "noAccessHint": "ต้องมีสิทธิ์ calendar.read",
     "wcSummary": {
       "title": "ช่างที่มีงานค้าง",
       "description": "เฉพาะศูนย์งานที่มีใบงาน CRTD/REL ในเดือนที่เลือก",
@@ -192,6 +197,11 @@
     "needImages": "กรุณาแนบรูปหลังทำ PM เสร็จก่อนปิดงาน"
   },
   "wktype": {
+    "filterNote": {
+      "summary": "ประเภทงาน SAP (ZD) ตามประชุมลูกค้า — ในไฟล์ IW37N ใช้รหัส ZB",
+      "item": "{{zd}} {{zdLabel}} ← กรอง {{zb}} ({{iw37nLabel}})",
+      "docHint": "อ้างอิง: docs/customer-requirements/WKTYPE-ZD-ZB-MAPPING.md"
+    },
     "mappingSource": "ประชุมลูกค้า ครั้งที่ 2 (7 พ.ค. 2569)",
     "zd": {
       "ZB05": "Breakdown / เครื่องหยุด",
@@ -276,6 +286,8 @@
     "workMin": "Work (Min)"
   },
   "woDialog": {
+    "loadFailed": "โหลดใบงานไม่สำเร็จ",
+    "tabLoadFailed": "โหลดข้อมูลแท็บไม่สำเร็จ",
     "title": "รายละเอียดใบงาน",
     "titleWithWkorder": "ใบงาน {{wkorder}}",
     "postCloseReview": "งานปิดแล้ว — ตรวจสอบย้อนหลัง",
@@ -319,7 +331,7 @@
     "planningGroup": "Planning GROUP",
     "add": "Add",
     "readOnlyCloseWo": "ดูอย่างเดียว — ไม่มีสิทธิ์แก้ไข Close WO (ต้องมี confirmation.write)",
-    "closeBlockedDefault": "กรุณาบันทึกรายละเอียดและแนบรูปก่อน/หลังก่อนปิดงาน",
+    "closeBlockedDefault": "กรุณาบันทึกรายละเอียดและแนบรูปหลังทำ PM เสร็จก่อนปิดงาน",
     "toastCloseSaved": "บันทึกการปิดงานแล้ว",
     "toastCloseFailed": "บันทึกปิดงานไม่สำเร็จ",
     "toastAssignGroupOk": "จ่ายงานแบบกลุ่มสำเร็จ",
@@ -375,6 +387,8 @@
     "savedTitle": "หมายเหตุที่บันทึกแล้ว",
     "savedDesc": "เรียงจากล่าสุด — แก้ไขหรือลบได้",
     "deleteAria": "ลบหมายเหตุ",
+    "deleteTitle": "ลบหมายเหตุนี้?",
+    "deleteDescription": "ลบหมายเหตุยืนยันงานรายการนี้",
     "emptyTitle": "ยังไม่มีหมายเหตุ",
     "emptyDesc": "ใช้ฟอร์มด้านบนเพื่อบันทึกข้อมูลเพิ่มเติมเกี่ยวกับการรับรองงาน"
   },
@@ -391,7 +405,9 @@
     "invalidRange": "ตรวจวันที่/เวลา — เวลาสิ้นสุดต้องหลังเวลาเริ่ม",
     "submit": "บันทึกการปิดงาน",
     "emptyHistory": "ยังไม่มีประวัติการปิดงาน",
-    "total": "รวม {{time}} {{unit}}"
+    "total": "รวม {{time}} {{unit}}",
+    "deleteTitle": "ลบรายการปิดงานนี้?",
+    "deleteDescription": "ลบรายการปิดงานของหัวหน้างานรายการนี้"
   },
   "planning": {
     "multiTitle": "จ่ายงานหลายคน (Multi-assign)",
@@ -440,6 +456,8 @@
     "saveThisReading": "บันทึกค่าวัดครั้งนี้",
     "warningPlaceholder": "เส้นเตือน",
     "alarmPlaceholder": "เส้นอันตราย",
+    "warningLabel": "Warning (mm/s)",
+    "alarmLabel": "Alarm (mm/s)",
     "saveReading": "บันทึกค่าวัด"
   },
   "pmComment": {

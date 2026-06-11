@@ -51,6 +51,7 @@
   "ack": {
     "acknowledge": "Acknowledge",
     "acknowledged": "Acknowledged",
+    "pending": "Pending ack",
     "success": "Assignment acknowledged",
     "failed": "Acknowledge failed"
   },
@@ -65,6 +66,7 @@
     "assign": "Assign",
     "assignTitleNew": "Assign to tbplangingwork",
     "assignTitleUpdate": "Plan exists — click to update (upsert)",
+    "assignNoPermission": "Requires permission planning.assign",
     "closeTabOpen": "Open Confirm tab to record close",
     "closeTabClosed": "Open Confirm tab to view close history"
   },
@@ -88,6 +90,7 @@
     "successAutoCount": "Group assignment saved for {{count}} technician(s)",
     "alreadyAssigned": "This technician is already assigned to this WO — no change",
     "loading": "Loading work order data…",
+    "loadFailed": "Could not load work order for assignment",
     "submitting": "Saving assignment…",
     "successTitle": "Assignment complete",
     "successDone": "Done",

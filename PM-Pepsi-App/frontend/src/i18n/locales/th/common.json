@@ -20,6 +20,10 @@
     "showFilters": "แสดงตัวกรอง",
     "hideFilters": "ย่อตัวกรอง"
   },
+  "confirmDelete": {
+    "confirm": "ลบ",
+    "cannotUndo": "ไม่สามารถย้อนกลับได้"
+  },
   "nav": {
     "pinMenu": "ปักหมุดเมนู",
     "unpinMenu": "ยกเลิกปักหมุด",
@@ -103,6 +107,9 @@
     "saved": "บันทึกแล้ว",
     "deleted": "ลบแล้ว"
   },
+  "errors": {
+    "loadFailed": "โหลดข้อมูลไม่สำเร็จ"
+  },
   "settings": {
     "title": "ตั้งค่า",
     "description": "โปรไฟล์ผู้ใช้ · ตรวจการเชื่อมต่อ API · รายชื่อผู้ใช้ระบบ",
@@ -110,6 +117,8 @@
     "noAccessDesc": "ต้องมีสิทธิ์ admin.settings.read",
     "tabs": {
       "profile": "โปรไฟล์",
+      "language": "ภาษา",
+      "telegram": "Telegram",
       "connection": "การเชื่อมต่อ",
       "users": "ผู้ใช้ระบบ"
     },
@@ -126,6 +135,19 @@
     "signInForProfile": "เข้าสู่ระบบเพื่อดูโปรไฟล์",
     "loadProfileFailed": "โหลดโปรไฟล์ไม่สำเร็จ",
     "languageHint": "มีผลเฉพาะเบราว์เซอร์นี้ — ผู้ใช้ใหม่เริ่มที่ภาษาอังกฤษ",
+    "sidebar": {
+      "title": "เลย์เอาต์แถบเมนู",
+      "hint": "บันทึกเฉพาะเบราว์เซอร์นี้ · ปักหมุด/ยกเลิกปักหมุดที่ footer ของ sidebar",
+      "densityLabel": "ความหนาแน่นเมนู",
+      "densityHint": "กระชับ = ระยะห่างน้อยลง · บนมือถือยังแตะได้อย่างน้อย 44px",
+      "densityComfortable": "สบาย",
+      "densityCompact": "กระชับ",
+      "widthLabel": "ความกว้างตอนขยาย",
+      "widthHint": "ตอนยุบยังเป็น rail ไอคอน (w-14)",
+      "widthNarrow": "มาตรฐาน (240px)",
+      "widthWide": "กว้าง (256px)",
+      "pinHint": "ปักหมุดเมนูค้างขยาย: ใช้ปุ่ม pin ที่ footer ของ sidebar"
+    },
     "hintApiHealth": "สุขภาพ API",
     "connection": {
       "apiAddress": "ที่อยู่ API",

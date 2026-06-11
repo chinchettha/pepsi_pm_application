@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge'
+import { ConfirmQcStatusBadge } from '@/components/confirmation/ConfirmQcStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,21 +10,13 @@ import {
   postConfirmQcReject,
 } from '@/lib/api-public'
 import { usePermission } from '@/lib/use-permission'
+import { useAppLocale } from '@/providers/I18nProvider'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { z } from 'zod'
 
 type ConfirmQc = z.infer<typeof workOrderConfirmQcSchema>
-
-function statusVariant(
-  status: ConfirmQc['status'],
-): 'default' | 'secondary' | 'destructive' | 'outline' {
-  if (status === 'approved') return 'default'
-  if (status === 'pending') return 'secondary'
-  if (status === 'rejected') return 'destructive'
-  return 'outline'
-}
 
 export type ConfirmQcPanelProps = {
   idiw37: number | null
@@ -43,6 +35,7 @@ export function ConfirmQcPanel({
   onQcChange,
 }: ConfirmQcPanelProps) {
   const { t } = useTranslation('confirmation')
+  const { locale } = useAppLocale()
   const qc = useQueryClient()
   const canReview = usePermission('confirmation.import')
   const [rejectNote, setRejectNote] = useState('')
@@ -100,9 +93,7 @@ export function ConfirmQcPanel({
           </span>
           {t('qc.adminTitle')}
         </h4>
-        <Badge variant={statusVariant(data.status)} role="status">
-          {data.statusLabel}
-        </Badge>
+        <ConfirmQcStatusBadge status={data.status} label={data.statusLabel} />
       </div>
 
       <ul className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
@@ -119,11 +110,11 @@ export function ConfirmQcPanel({
         {data.reviewedAt ? (
           <li className="app-tone-warning-review-item rounded-button border app-surface-panel--soft px-3 py-2 text-app sm:col-span-2">
             {t('qc.reviewedBy')} <strong>{data.reviewedBy ?? '—'}</strong> ·{' '}
-            {new Date(data.reviewedAt).toLocaleString('th-TH')}
+            {new Date(data.reviewedAt).toLocaleString(locale)}
           </li>
         ) : null}
         {data.note ? (
-          <li className="rounded-button border border-red-200/80 bg-red-50/80 px-3 py-2 text-red-800 sm:col-span-2">
+          <li className="app-tone-danger-callout rounded-button border px-3 py-2 sm:col-span-2">
             {t('qc.note')}: {data.note}
           </li>
         ) : null}
@@ -134,6 +125,7 @@ export function ConfirmQcPanel({
           <Button
             type="button"
             size="sm"
+            className="app-tone-success-fill gap-1.5 border-0 shadow-sm"
             disabled={approveMut.isPending || rejectMut.isPending}
             onClick={() => approveMut.mutate()}
           >
@@ -165,7 +157,7 @@ export function ConfirmQcPanel({
       ) : null}
 
       {(approveMut.error || rejectMut.error) && (
-        <p className="text-body-sm text-red-600">
+        <p className="app-tone-danger-text text-body-sm">
           {(approveMut.error ?? rejectMut.error)?.message}
         </p>
       )}

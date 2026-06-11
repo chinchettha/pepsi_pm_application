@@ -2,6 +2,7 @@
   "page": {
     "title": "Export Confirmation",
     "hintExportSap": "Export SAP",
+    "hintMassConfirm": "Mass ≤44",
     "hintImportConfirm": "Import Confirm",
     "hintQcQueue": "QC queue",
     "hintCsv": "CSV",
@@ -26,7 +27,13 @@
     "colStart": "Start",
     "colFinish": "Finish",
     "colMessage": "Message",
-    "noRows": "No data rows"
+    "noRows": "No data rows",
+    "action": {
+      "inserted": "Inserted",
+      "updated": "Updated",
+      "skipped": "Skipped",
+      "error": "Error"
+    }
   },
   "importReview": {
     "title": "Summary before Confirm IN import",
@@ -125,10 +132,15 @@
     "noExportableRows": "No rows ready for export (Admin QC approval required first)",
     "downloadSuccess": "Downloaded CONFIRM_OUT ({{count}} rows)",
     "toastQcApproved": "QC approved {{count}} items",
-    "partialCloseFailed": "{{count}} items failed to close — export above covers succeeded items only"
+    "partialCloseFailed": "{{count}} items failed to close — export above covers succeeded items only",
+    "summaryFailed": "Could not load batch summary"
   },
   "massConfirm": {
     "title": "Mass Confirm",
+    "sapLimitHint": "SAP allows up to {{max}} work orders per batch. Select CRTD/REL orders, set work center and times, then close in one step.",
+    "startLegend": "Start",
+    "endLegend": "End",
+    "tableSelectedHint": "{{count}} / {{max}} selected — rows at the limit are disabled",
     "collapsedWithResults": "Click arrow to expand · {{count}} WO CRTD/REL",
     "collapsedSearch": "Click arrow to search WO in bulk",
     "searchTitle": "Search WO",
@@ -170,16 +182,18 @@
   "images": {
     "selectWoFirst": "Select a Work Order before uploading photos",
     "panelTitle": "Close-out photos",
-    "panelDesc": "Upload photos after PM completion — multiple files per upload",
+    "panelDesc": "Upload after-PM photos only — multiple files per batch",
+    "afterOnlyPolicy": "Upload after-PM photos only. Legacy pre-PM photos are view-only (no new before uploads).",
     "totalPhotos": "{{count}} photos total",
     "before": "Before",
-    "after": "After",
+    "after": "After PM",
+    "legacy": "Legacy (view only)",
     "phaseBeforeTitle": "Before work (Before)",
     "phaseBeforeHint": "Condition before repair / before work",
     "phaseAfterTitle": "After PM completion (After)",
     "phaseAfterHint": "Photos after PM is finished — upload this phase only",
     "photoCount": "{{count}} photos",
-    "recommendedPerPhase": "Recommend about {{count}} photos per side (no hard limit)",
+    "recommendedPerPhase": "Recommend about {{count}} after-PM photos (no hard limit)",
     "captionLabel": "Caption (applies to selected batch)",
     "captionPlaceholder": "e.g. leak point, after part replacement",
     "pickFromDevice": "Choose photos from device",
@@ -189,9 +203,12 @@
     "upload": "Upload",
     "view": "View",
     "deletePhotoAria": "Delete photo",
+    "deletePhotoTitle": "Delete photo?",
+    "deletePhotoDescription": "Remove this close-out photo from the work order.",
     "noPhotosInPhase": "No photos in this category yet",
     "legacyTitle": "Legacy / pre-PM photos (read-only)",
-    "legacyDesc": "Photos uploaded before phase split",
+    "legacyDesc": "Photos uploaded before phase split — view only, cannot upload or delete",
+    "legacyReadOnlyBadge": "Read-only",
     "lightboxFallbackTitle": "View close-out photo"
   },
   "personnel": {
@@ -218,6 +235,8 @@
     "openWoBeforeTable": "Open work order first",
     "noRecords": "No technician time recorded yet",
     "confirmClose": "Confirm close-out",
-    "deleteAria": "Delete"
+    "deleteAria": "Delete",
+    "deleteTitle": "Delete technician time?",
+    "deleteDescription": "Remove this close-out time record."
   }
 }

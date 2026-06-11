@@ -13,6 +13,11 @@
 | [**PM-MEASUREMENTS-3PHASE-CURRENT.md**](PM-MEASUREMENTS-3PHASE-CURRENT.md) | **PM ค่าวัด** — กระแส R/S/T vs Vibration X/Y/Z · Excel template |
 | [**PM-MANUAL-ENTRY-WORK-ORDER-FORM.md**](PM-MANUAL-ENTRY-WORK-ORDER-FORM.md) | **Manual entry ตามฟอร์ม WO กระดาษ** — ฟิลด์ §header · 3 เฟส · กราห · Comments หน้า 2 |
 | [**../USER-MANUAL-TH.md**](../USER-MANUAL-TH.md) | **คู่มือการใช้งานภาษาไทย** — ครบทุกหน้า/route |
+| [**UAT-ROUND-3-TH.md**](UAT-ROUND-3-TH.md) | **ชีต UAT รอบ 3 (go-live)** — ส่งลูกค้ากรอก |
+| [**INSTALL-DEPLOY-RUNBOOK-TH.docx**](INSTALL-DEPLOY-RUNBOOK-TH.docx) | **ติดตั้ง · Deploy · Runbook** (IT onsite) |
+| [**SECURITY-DETAILED-TH.docx**](SECURITY-DETAILED-TH.docx) | **ความปลอดภัยระบบ** (Security & Cybersecurity) |
+| [**E2E-TEST-DETAILED-TH.docx**](E2E-TEST-DETAILED-TH.docx) | **E2E / System Test** (Playwright) |
+| [**TEST-CASE-SCENARIO-DETAILED-TH.docx**](TEST-CASE-SCENARIO-DETAILED-TH.docx) | **Test Case Scenario** (Manual/UAT) |
 | [**../SETUP-NEW-MACHINE.md**](../SETUP-NEW-MACHINE.md) | **ติดตั้งเครื่องใหม่** — PostgreSQL, migration, backend, frontend, E2E |
 | [**UAT-ROUND-1-TH.md**](UAT-ROUND-1-TH.md) | **ชีต UAT รอบ 1** — checklist ภาษาไทย + กรอก requirement ต่อหน้า |
 | [**UAT-ROUND-2-TH.md**](UAT-ROUND-2-TH.md) · [**UAT-ROUND-2-TH.docx**](UAT-ROUND-2-TH.docx) | **ชีต UAT รอบ 2** — PM ฟอร์มกระดาษ · i18n · regression P0 + comment กลับทีม (Word สำหรับส่งลูกค้า) |

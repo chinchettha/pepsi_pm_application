@@ -12,10 +12,11 @@ import { permissionForRoute } from '@/lib/nav-route-permissions'
 import { useAppNav } from '@/lib/use-app-nav'
 import { hasPermission } from '@/lib/permissions'
 import { useAnyPermission, useAuthUser } from '@/lib/use-permission'
+import { useShowPortalLink } from '@/lib/use-portal-modules'
 import { cn } from '@/lib/utils'
 import { Command } from 'cmdk'
 import type { LucideIcon } from 'lucide-react'
-import { Search } from 'lucide-react'
+import { LayoutGrid, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -71,9 +72,11 @@ export function AppCommandPalette({
   onOpenChange: (open: boolean) => void
 }) {
   const { t: tAdmin } = useTranslation('admin')
+  const { t: tPortal } = useTranslation('portal')
   const { t } = useTranslation()
   const navigate = useNavigate()
   const authUser = useAuthUser()
+  const showPortalLink = useShowPortalLink()
   const { entries } = useAppNav()
   const canAdmin = useAnyPermission(
     ADMIN_SECTIONS.filter((s) => s.implemented).map((s) => s.permission),
@@ -106,6 +109,20 @@ export function AppCommandPalette({
       }))
   }, [authUser, tAdmin])
 
+  const portalItems = useMemo((): PaletteItem[] => {
+    if (!showPortalLink) return []
+    return [
+      {
+        id: 'portal-hub',
+        label: tPortal('backToPortal'),
+        hint: tPortal('commandPaletteHint'),
+        group: tPortal('commandPaletteGroup'),
+        to: '/portal',
+        icon: LayoutGrid,
+      },
+    ]
+  }, [showPortalLink, tPortal])
+
   const navItems = useMemo(() => {
     const items = flattenNavItems(entries)
     const mainGroup = t('commandPalette.mainNavGroup')
@@ -130,10 +147,14 @@ export function AppCommandPalette({
       list.push(item)
       byGroup.set(item.group, list)
     }
+    portalItems.forEach(push)
     navItems.forEach(push)
     if (canAdmin) adminItems.forEach(push)
 
-    const order: string[] = [...navGroupOrder(entries)]
+    const order: string[] = [
+      ...portalItems.map((i) => i.group),
+      ...navGroupOrder(entries),
+    ]
     const adminGroupLabels = [
       ...new Set(adminItems.map((i) => i.group).filter((g) => !order.includes(g))),
     ]
@@ -142,7 +163,7 @@ export function AppCommandPalette({
     return keys
       .filter((g) => (byGroup.get(g)?.length ?? 0) > 0)
       .map((name) => ({ name, items: byGroup.get(name)! }))
-  }, [adminItems, canAccess, canAdmin, entries, navItems])
+  }, [adminItems, canAccess, canAdmin, entries, navItems, portalItems])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

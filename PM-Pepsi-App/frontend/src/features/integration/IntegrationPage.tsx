@@ -1,6 +1,7 @@
 import type { ConfirmationImportPreviewResponse, Iw37nImportPreviewResponse } from '@/api/schemas'
 import { CanPermission } from '@/components/auth/CanPermission'
 import { ConfirmImportReviewPanel } from '@/components/confirmation/ConfirmImportReviewPanel'
+import { IntegrationJobStatusBadge } from '@/components/integration/IntegrationJobStatusBadge'
 import { Iw37nImportReviewPanel } from '@/components/iw37n/Iw37nImportReviewPanel'
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
 import { AppCard } from '@/components/layout/AppCard'
@@ -10,6 +11,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   Table,
   TableBody,
@@ -127,7 +129,7 @@ export function IntegrationPage() {
             bodyClassName="!p-0"
           >
         <Tabs defaultValue="iw37n" className="space-y-4 p-4">
-          <TabsList className="flex h-auto flex-wrap gap-1 bg-[var(--app-surface)] p-1">
+          <TabsList className="flex h-auto flex-wrap gap-1 rounded-lg border border-app/60 bg-app-subtle/40 p-1 shadow-sm">
             <TabsTrigger value="iw37n">{t('tabs.iw37n')}</TabsTrigger>
             {canConfirmImport ? (
               <TabsTrigger value="confirm-in">{t('tabs.confirmIn')}</TabsTrigger>
@@ -490,12 +492,12 @@ function IntegrationConfirmInTab() {
               {t('confirmIn.hint')}{' '}
               <code className="text-code">inbound/confirm</code> {t('confirmIn.hintFolder')}
             </p>
-            <p className="mt-1 text-xs text-amber-800">{t('confirmIn.zb02Warning')}</p>
+            <p className="mt-1 text-xs app-tone-warning-label">{t('confirmIn.zb02Warning')}</p>
             {inboundDir ? (
               <p className="mt-2 break-all text-xs text-app-muted">{inboundDir}</p>
             ) : null}
             {pending.length > 0 ? (
-              <p className="mt-1 text-xs text-amber-700">
+              <p className="mt-1 text-xs app-tone-warning-label">
                 {t('confirmIn.pendingScan', { count: pending.length })}
               </p>
             ) : null}
@@ -528,7 +530,7 @@ function IntegrationConfirmInTab() {
           />
         ) : null}
         {statusQ.isError ? (
-          <p className="mt-3 text-xs text-amber-700">{t('confirmIn.folderStatusFailed')}</p>
+          <p className="mt-3 text-xs app-tone-warning-label">{t('confirmIn.folderStatusFailed')}</p>
         ) : null}
       </AppCard>
     </div>
@@ -636,13 +638,7 @@ function IntegrationConfirmTab() {
           </TableHeader>
           <TableBody>
             {exportQ.isLoading && !exportQ.data ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`ex-sk-${i}`}>
-                  <TableCell colSpan={7}>
-                    <Skeleton className="h-8 w-full" />
-                  </TableCell>
-                </TableRow>
-              ))
+              <TableSkeletonRows rows={6} columns={7} />
             ) : preview.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="p-0">
@@ -735,7 +731,7 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
           <div>
             <h3 className="text-body-sm font-semibold text-app">{t('jobs.folderTitle')}</h3>
             {statusQ.isError ? (
-              <p className="mt-2 text-xs text-amber-700">
+              <p className="mt-2 text-xs app-tone-warning-label">
                 {t('jobs.migrationHint')}{' '}
                 <code className="text-code">075</code> + <code className="text-code">076</code>
               </p>
@@ -839,13 +835,7 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
             </TableHeader>
             <TableBody>
               {jobsQ.isLoading && !jobsQ.data ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <TableRow key={`job-sk-${i}`}>
-                    <TableCell colSpan={6}>
-                      <Skeleton className="h-8 w-full" />
-                    </TableCell>
-                  </TableRow>
-                ))
+                <TableSkeletonRows rows={6} columns={6} narrowFirstColumn />
               ) : (jobsQ.data ?? []).length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="p-0">
@@ -884,17 +874,7 @@ function IntegrationJobsTab({ canRunScan }: { canRunScan: boolean }) {
                       <TableCell className="text-xs">{j.jobType}</TableCell>
                       <TableCell className="text-xs">{j.trigger}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            j.status === 'success'
-                              ? 'secondary'
-                              : j.status === 'failed'
-                                ? 'destructive'
-                                : 'outline'
-                          }
-                        >
-                          {j.status}
-                        </Badge>
+                        <IntegrationJobStatusBadge status={j.status} />
                       </TableCell>
                       <TableCell className="text-xs text-app-muted">
                         {new Date(j.startedAt).toLocaleString()}

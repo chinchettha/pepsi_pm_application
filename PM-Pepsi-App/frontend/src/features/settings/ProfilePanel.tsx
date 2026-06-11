@@ -4,8 +4,7 @@ import { getStoredAuthUser } from '@/features/auth/login-api'
 import { useProfileQuery } from '@/features/profile/profile-api'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
-import { LanguagePreferencePanel } from '@/features/settings/LanguagePreferencePanel'
-import { TelegramLinkPanel } from '@/features/settings/TelegramLinkPanel'
+import { SidebarPreferencePanel } from '@/features/settings/SidebarPreferencePanel'
 import { AlertCircle } from 'lucide-react'
 import { resolveRoleDisplayLabel } from '@/lib/role-display'
 import { useAppLocale } from '@/providers/I18nProvider'
@@ -43,8 +42,7 @@ export function ProfilePanel() {
 
   return (
     <div className="space-y-4">
-      <LanguagePreferencePanel />
-      <TelegramLinkPanel />
+      <SidebarPreferencePanel />
       <AppCard pad="compact" className="space-y-4">
         <div>
           <h3 className="text-body-sm font-semibold text-app">{t('settings.profileTitle')}</h3>

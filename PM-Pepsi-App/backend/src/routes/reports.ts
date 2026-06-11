@@ -8,9 +8,26 @@ import {
 } from '../schemas/reports.js'
 import { activityLogListResponseSchema } from '../schemas/activity-log.js'
 import { auditHubResponseSchema } from '../schemas/reports-audit-hub.js'
+import { resolveReportsRange } from '../lib/reports-range.js'
 import { listActivityLog } from '../services/activity-log.js'
 import { getReportsAuditHub } from '../services/reports-audit-hub.js'
 import { getReportsKpi, getSummaryWeekly } from '../services/reports.js'
+
+function emptyReportsKpi(from?: string, to?: string, weeksBack = 8) {
+  const range = resolveReportsRange({ fromInput: from, toInput: to, weeksBack })
+  return {
+    range: {
+      from: range.from,
+      to: range.to,
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+    },
+    labels: [] as string[],
+    utilization: [] as number[],
+    backlogHours: [] as number[],
+    weekToWeek: [],
+  }
+}
 
 function isSchemaMissing(err: unknown): boolean {
   const message = err instanceof Error ? err.message : ''
@@ -46,7 +63,8 @@ export function registerReportsRoutes(app: Express, pool: Pool, sessionSecret: s
       res.json(reportsKpiResponseSchema.parse(data))
     } catch (err) {
       if (isSchemaMissing(err)) {
-        res.status(503).json({ error: 'SCHEMA_NOT_READY', message: schemaHint })
+        const weeks = Number.isFinite(weeksBack) ? weeksBack : 8
+        res.json(reportsKpiResponseSchema.parse(emptyReportsKpi(from, to, weeks)))
         return
       }
       throw err

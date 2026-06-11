@@ -1,4 +1,5 @@
 import type { NavShellMode } from '@/api/schemas'
+import { MenuNavLayoutPreview } from '@/components/layout/SidebarNavPreview'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -75,6 +76,13 @@ export function MenuNavLayoutCard({ canWrite }: { canWrite: boolean }) {
             ) : null}
           </div>
         )}
+        {!layoutQ.isLoading ? (
+          <div className="space-y-2 border-t border-app pt-4">
+            <p className="text-body-sm font-medium text-app">{t('menu.layoutPreviewTitle')}</p>
+            <p className="text-caption text-app-muted">{t('menu.layoutPreviewDesc')}</p>
+            <MenuNavLayoutPreview mode={current} />
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   )

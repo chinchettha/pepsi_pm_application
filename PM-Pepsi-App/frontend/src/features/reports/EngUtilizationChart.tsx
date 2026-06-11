@@ -14,6 +14,7 @@ import {
 import { Bar } from 'react-chartjs-2'
 import type { EngUtilizationChartRow } from '@/lib/eng-utilization-chart'
 import { readCssVar } from '@/lib/css-tokens'
+import { useTranslation } from 'react-i18next'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -31,6 +32,7 @@ export function EngUtilizationChart({
   showRca = false,
   kioskDark = false,
 }: Props) {
+  const { t } = useTranslation('reports')
   const isFull = layout === 'fullscreen'
   const tickColor = kioskDark ? 'rgba(248, 250, 252, 0.72)' : undefined
   const titleColor = kioskDark ? readCssVar('--app-text') : undefined
@@ -46,7 +48,7 @@ export function EngUtilizationChart({
             : 'py-8 text-center text-caption'
         }
       >
-        ไม่มีข้อมูลในช่วงที่เลือก — ตรวจ tbmanhours และการยืนยันงาน (confirm)
+        {t('summaryWeekly.chart.empty')}
       </p>
     )
   }

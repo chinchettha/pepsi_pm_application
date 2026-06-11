@@ -5,8 +5,16 @@ import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { EmptyState } from '@/components/ui/empty-state'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   deleteAdminRole,
   fetchAdminRolesMatrix,
@@ -16,7 +24,7 @@ import {
 import { clearRbacPreview, getRbacPreviewSnapshot, setRbacPreview } from '@/lib/rbac-preview'
 import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, EyeOff, Plus, RefreshCcw } from 'lucide-react'
+import { EyeOff, Plus, RefreshCcw } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -64,7 +72,18 @@ export function AdminRolesPage() {
       roleCode: string
       grants: Record<string, boolean>
     }) => setAdminRolePermissions(roleCode, grants),
-    onSuccess: () => invalidateMatrix(qc),
+    onSuccess: (_data, { roleCode, grants }) => {
+      invalidateMatrix(qc)
+      const preview = getRbacPreviewSnapshot()
+      if (preview?.roleCode === roleCode) {
+        const next = new Set(preview.permissions)
+        for (const [permCode, granted] of Object.entries(grants)) {
+          if (granted) next.add(permCode)
+          else next.delete(permCode)
+        }
+        setRbacPreview({ ...preview, permissions: [...next] })
+      }
+    },
     onError: () => toast.error(t('roles.savePermsFailed')),
     onSettled: () => setPending(null),
   })
@@ -200,11 +219,33 @@ export function AdminRolesPage() {
         </CardHeader>
         <CardContent>
           {q.isLoading && !matrix ? (
-            <Skeleton className="h-64 w-full" />
+            <div className="overflow-x-auto rounded-card border border-app" aria-busy="true">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-app-subtle">
+                    <TableHead className="sticky left-0 z-20 min-w-[220px] bg-app-subtle">
+                      <Skeleton className="h-4 w-24" />
+                    </TableHead>
+                    {Array.from({ length: 3 }, (_, i) => (
+                      <TableHead key={i} className="align-top">
+                        <div className="mx-auto flex w-24 flex-col items-center gap-1">
+                          <Skeleton className="size-3 rounded-full" />
+                          <Skeleton className="h-4 w-8" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableSkeletonRows rows={14} columns={4} />
+                </TableBody>
+              </Table>
+            </div>
           ) : q.isError ? (
-            <EmptyState
-              icon={AlertCircle}
+            <QueryLoadErrorState
               title={t('roles.matrixLoadFailed')}
+              error={q.error}
               description={(q.error as Error).message || t('roles.matrixLoadHint')}
               action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
             />

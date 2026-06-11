@@ -91,7 +91,7 @@ export function PmCustomerTrendPanel({
       ? [t('phaseR'), t('phaseS'), t('phaseT')]
       : [t('axisX'), t('axisY'), t('axisZ')]
 
-  const unit = kind === 'current_3phase' ? 'A' : 'mm/s RMS'
+  const unit = kind === 'current_3phase' ? t('trend.unitCurrent') : t('trend.unitVibration')
   const title = kind === 'current_3phase' ? t('trend.currentTitle') : t('trend.vibrationTitle')
   const subtitle =
     kind === 'current_3phase' ? t('trend.currentSubtitle') : t('trend.vibrationSubtitle')
@@ -141,12 +141,12 @@ export function PmCustomerTrendPanel({
         <p className="text-sm font-bold">{title}</p>
         <p className="text-[11px]">{subtitle}</p>
         {task ? (
-          <p className="mt-1 text-[11px] text-slate-700">
+          <p className="mt-1 text-[11px] text-app-muted">
             {t('trend.taskLabel')}: {task.machine}
             {task.pmlist ? ` · ${task.pmlist}` : ''}
           </p>
         ) : (
-          <p className="mt-1 text-[11px] text-amber-800">{t('trend.noTaskHint')}</p>
+          <p className="app-tone-warning-label mt-1 text-[11px]">{t('trend.noTaskHint')}</p>
         )}
       </div>
 
@@ -184,7 +184,7 @@ export function PmCustomerTrendPanel({
                 <td>
                   <Input
                     type="time"
-                    className="h-7 border-0 border-b border-slate-400 bg-transparent px-1 text-xs shadow-none"
+                    className="h-7 border-0 border-b border-app bg-transparent px-1 text-xs shadow-none"
                     value={row.time}
                     disabled={!enabled}
                     onChange={(e) =>
@@ -253,7 +253,9 @@ export function PmCustomerTrendPanel({
         >
           {saveMut.isPending ? t('saving') : t('trend.saveTable')}
         </Button>
-        {!orderId ? <span className="self-center text-xs text-slate-600">{t('trend.selectWoHint')}</span> : null}
+        {!orderId ? (
+          <span className="self-center text-xs text-app-muted">{t('trend.selectWoHint')}</span>
+        ) : null}
       </div>
     </section>
   )

@@ -34,8 +34,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { EmptyState } from '@/components/ui/empty-state'
-import { Skeleton } from '@/components/ui/skeleton'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   Table,
   TableBody,
@@ -84,7 +84,6 @@ import {
 } from '@/lib/telegram-link-api'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  AlertCircle,
   ImageIcon,
   KeyRound,
   Loader2,
@@ -849,18 +848,11 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         ) : null}
 
         <div className="overflow-hidden app-table-shell">
-          {listQ.isLoading && !listQ.data ? (
-            <div className="p-4">
-              <Skeleton className="h-48 w-full rounded" />
-            </div>
-          ) : listQ.isError ? (
-            <EmptyState
-              icon={AlertCircle}
+          {listQ.isError && !listQ.data ? (
+            <QueryLoadErrorState
               className="m-4"
               title={t('admin.table.loadFailed')}
-              description={
-                listQ.error instanceof Error ? listQ.error.message : String(listQ.error)
-              }
+              error={listQ.error}
               action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
             />
           ) : (
@@ -874,6 +866,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                         aria-label={t('admin.table.selectAllPage')}
                         checked={allOnPageSelected}
                         onChange={toggleSelectAll}
+                        disabled={listQ.isLoading && !listQ.data}
                         className="size-4 rounded border-app"
                       />
                     </TableHead>
@@ -890,7 +883,13 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.length === 0 ? (
+                {listQ.isLoading && !listQ.data ? (
+                  <TableSkeletonRows
+                    rows={10}
+                    columns={variant === 'admin' && showAdminActions ? 10 : 9}
+                    narrowFirstColumn
+                  />
+                ) : items.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={variant === 'admin' && showAdminActions ? 10 : 9}
@@ -1059,16 +1058,11 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
 
         {variant === 'admin' && accountTab === 'member' ? (
           <div className="overflow-hidden app-table-shell">
-            {membersQ.isLoading && !membersQ.data ? (
-              <div className="p-4">
-                <Skeleton className="h-48 w-full rounded" />
-              </div>
-            ) : membersQ.isError ? (
-              <EmptyState
-                icon={AlertCircle}
+            {membersQ.isError && !membersQ.data ? (
+              <QueryLoadErrorState
                 className="m-4"
                 title={t('admin.members.loadFailed')}
-                description={(membersQ.error as Error).message}
+                error={membersQ.error}
                 action={{ label: tc('actions.retry'), onClick: () => void membersQ.refetch() }}
               />
             ) : (
@@ -1083,7 +1077,9 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(membersQ.data ?? []).length === 0 ? (
+                  {membersQ.isLoading && !membersQ.data ? (
+                    <TableSkeletonRows rows={8} columns={5} narrowFirstColumn />
+                  ) : (membersQ.data ?? []).length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="py-8 text-center text-caption">
                         {t('admin.members.empty')}
@@ -2158,7 +2154,7 @@ function Field({
     <div className="space-y-1">
       <Label className="text-xs text-app-muted">
         {label}
-        {required ? <span className="ml-1 text-red-600">*</span> : null}
+        {required ? <span className="ml-1 text-form-error">*</span> : null}
       </Label>
       {children}
     </div>

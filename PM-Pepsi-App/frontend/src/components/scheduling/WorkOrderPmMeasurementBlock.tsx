@@ -8,6 +8,7 @@ import {
   filterReadingsForTask,
   readingsToChartPoints,
 } from '@/lib/pm-measurement-chart'
+import { cn } from '@/lib/utils'
 import { useMutation } from '@tanstack/react-query'
 import { Activity, LineChart } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -25,6 +26,9 @@ const KIND_OPTIONS = [
   { value: 'current_3phase' as const, labelKey: 'pmMeasurement.current3phase' as const },
   { value: 'vibration_3axis' as const, labelKey: 'pmMeasurement.vibration3axis' as const },
 ]
+
+const SELECT_CLASS =
+  'flex h-9 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm text-app focus-app-ring focus-visible:outline-none disabled:opacity-50'
 
 function chartCopy(t: ReturnType<typeof useTranslation>['t'], kind: 'current_3phase' | 'vibration_3axis') {
   if (kind === 'current_3phase') {
@@ -136,9 +140,14 @@ export function WorkOrderPmMeasurementBlock({ orderId, item, pmExecution, onSave
   if (!kind && !pmExecution.canEdit && taskReadings.length === 0) return null
 
   return (
-    <div className="mt-3 space-y-3 rounded-button border border-sky-200/70 bg-sky-50/30 p-3">
-      <div className="flex items-center gap-2 text-xs font-semibold text-sky-900">
-        <LineChart className="size-4" aria-hidden />
+    <div
+      className={cn(
+        'mt-3 space-y-3 rounded-card border p-4 shadow-sm',
+        'app-tone-info-section app-tone-info-inner',
+      )}
+    >
+      <div className="flex items-center gap-2 text-xs font-semibold app-tone-info-strong">
+        <LineChart className="size-4 app-tone-info-icon" aria-hidden />
         {item.measurementTitle || t('pmMeasurement.defaultTitle')}
         {item.mpoint ? (
           <span className="font-normal text-app-muted">· {item.mpoint}</span>
@@ -149,7 +158,7 @@ export function WorkOrderPmMeasurementBlock({ orderId, item, pmExecution, onSave
         <div className="space-y-2">
           <Label>{t('pmMeasurement.kindLabel')}</Label>
           <select
-            className="w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body-sm"
+            className={SELECT_CLASS}
             value={kindOverride}
             onChange={(e) =>
               setKindOverride(e.target.value as 'current_3phase' | 'vibration_3axis' | '')
@@ -178,7 +187,7 @@ export function WorkOrderPmMeasurementBlock({ orderId, item, pmExecution, onSave
           />
 
           {taskReadings.length > 0 ? (
-            <div className="overflow-x-auto rounded-button border border-app">
+            <div className="app-table-shell overflow-x-auto rounded-button border border-app">
               <table className="w-full min-w-[280px] text-left text-xs">
                 <thead className="bg-app-subtle/60 text-app-muted">
                   <tr>
@@ -210,31 +219,31 @@ export function WorkOrderPmMeasurementBlock({ orderId, item, pmExecution, onSave
           ) : null}
 
           {pmExecution.canEdit ? (
-            <div className="space-y-2 border-t border-sky-200/60 pt-3">
-              <p className="flex items-center gap-1 text-xs font-semibold text-sky-900">
-                <Activity className="size-3.5" aria-hidden />
+            <div className="space-y-3 border-t border-app/60 pt-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold app-tone-info-strong">
+                <Activity className="size-3.5 app-tone-info-icon" aria-hidden />
                 {kind === 'current_3phase'
                   ? t('pmMeasurement.saveCurrent3phase')
                   : t('pmMeasurement.saveThisReading')}
               </p>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
                   <Label>{axisLabels[0]}</Label>
                   <Input inputMode="decimal" value={v1} onChange={(e) => setV1(e.target.value)} />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                   <Label>{axisLabels[1]}</Label>
                   <Input inputMode="decimal" value={v2} onChange={(e) => setV2(e.target.value)} />
                 </div>
-                <div>
+                <div className="space-y-1.5">
                   <Label>{axisLabels[2]}</Label>
                   <Input inputMode="decimal" value={v3} onChange={(e) => setV3(e.target.value)} />
                 </div>
               </div>
               {kind === 'vibration_3axis' ? (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div>
-                    <Label>Warning (mm/s)</Label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>{t('pmMeasurement.warningLabel')}</Label>
                     <Input
                       inputMode="decimal"
                       placeholder={t('pmMeasurement.warningPlaceholder')}
@@ -242,8 +251,8 @@ export function WorkOrderPmMeasurementBlock({ orderId, item, pmExecution, onSave
                       onChange={(e) => setWarningLimit(e.target.value)}
                     />
                   </div>
-                  <div>
-                    <Label>Alarm (mm/s)</Label>
+                  <div className="space-y-1.5">
+                    <Label>{t('pmMeasurement.alarmLabel')}</Label>
                     <Input
                       inputMode="decimal"
                       placeholder={t('pmMeasurement.alarmPlaceholder')}

@@ -6,7 +6,8 @@ import { WktypeDisplay } from '@/components/scheduling/WktypeDisplay'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Skeleton } from '@/components/ui/skeleton'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   Table,
   TableBody,
@@ -177,12 +178,41 @@ export function PlanningPage() {
             bodyClassName="space-y-3"
           >
             {q.isLoading && !q.data ? (
-              <Skeleton className="h-56 w-full rounded-card" aria-label={t('list.loading')} />
+              <div
+                className="app-table-shell max-h-[min(70vh,720px)] overflow-auto"
+                aria-busy="true"
+                aria-label={t('list.loading')}
+              >
+                <Table embedded stickyHeader zebra>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('table.wo')}</TableHead>
+                      <TableHead>{t('table.type')}</TableHead>
+                      <TableHead>{t('table.detail')}</TableHead>
+                      <TableHead>{t('table.lineFl')}</TableHead>
+                      <TableHead>{t('table.plan')}</TableHead>
+                      <TableHead>{t('table.hours')}</TableHead>
+                      <TableHead>{t('table.moved')}</TableHead>
+                      {planningStatus === 'closed' ? (
+                        <TableHead>{t('table.closedDate')}</TableHead>
+                      ) : null}
+                      <TableHead>{t('table.status')}</TableHead>
+                      {planningStatus === 'open' ? (
+                        <TableHead>{t('table.ack')}</TableHead>
+                      ) : null}
+                      <TableHead>{t('table.owner')}</TableHead>
+                      <TableHead className="text-right">{t('table.actions')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableSkeletonRows rows={10} columns={11} narrowFirstColumn />
+                  </TableBody>
+                </Table>
+              </div>
             ) : q.isError ? (
-              <EmptyState
-                icon={AlertCircle}
+              <QueryLoadErrorState
                 title={t('list.loadFailed')}
-                description={(q.error as Error).message}
+                error={q.error}
                 action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
               />
             ) : rows.length === 0 ? (
@@ -271,17 +301,14 @@ export function PlanningPage() {
                         {planningStatus === 'open' ? (
                           <TableCell>
                             {p.ackStatus === 'acknowledged' ? (
-                              <Badge className="bg-emerald-600 text-badge">
+                              <Badge className="app-tone-success-fill text-badge">
                                 <CheckCircle2 className="mr-1 size-3" />
                                 {t('ack.acknowledged')}
                               </Badge>
                             ) : p.ackStatus === 'pending' ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                disabled={ackMut.isPending}
+                              <div
                                 className={cn(
+                                  'flex flex-wrap items-center gap-1.5',
                                   appCssMotionClassWhen(
                                     isPulsing(p.id),
                                     reduceMotion,
@@ -289,13 +316,23 @@ export function PlanningPage() {
                                     PLANNING_ACK_PULSE_STATIC,
                                   ),
                                 )}
-                                onClick={() => ackMut.mutate(Number(p.id))}
                               >
-                                {ackMut.isPending ? (
-                                  <Loader2 className="mr-1 size-3.5 animate-spin" />
-                                ) : null}
-                                {t('ack.acknowledge')}
-                              </Button>
+                                <Badge variant="outline" className="app-tone-warning-badge">
+                                  {t('ack.pending')}
+                                </Badge>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={ackMut.isPending}
+                                  onClick={() => ackMut.mutate(Number(p.id))}
+                                >
+                                  {ackMut.isPending ? (
+                                    <Loader2 className="mr-1 size-3.5 animate-spin" />
+                                  ) : null}
+                                  {t('ack.acknowledge')}
+                                </Button>
+                              </div>
                             ) : (
                               <span className="text-caption text-app-muted">—</span>
                             )}
@@ -319,16 +356,19 @@ export function PlanningPage() {
                                 ? t('row.recordClose')
                                 : t('row.viewClose')}
                             </Button>
-                            {canAssign && planningStatus === 'open' ? (
+                            {planningStatus === 'open' ? (
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="outline"
+                                variant="default"
+                                disabled={!canAssign}
                                 onClick={() => openAssign(p)}
                                 title={
-                                  p.status === 'CONF'
-                                    ? t('row.assignTitleUpdate')
-                                    : t('row.assignTitleNew')
+                                  !canAssign
+                                    ? t('row.assignNoPermission')
+                                    : p.status === 'CONF'
+                                      ? t('row.assignTitleUpdate')
+                                      : t('row.assignTitleNew')
                                 }
                               >
                                 {t('row.assign')}

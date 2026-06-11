@@ -1,4 +1,5 @@
 import type { Iw37nImportPreviewResponse, Iw37nImportSummary } from '@/api/schemas'
+import { ImportReviewActionBadge } from '@/components/integration/ImportReviewActionBadge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,13 +17,6 @@ import { Link } from 'react-router-dom'
 export type Iw37nImportRow = Iw37nImportPreviewResponse['rows'][number]
 
 type RowFilter = 'all' | 'error' | 'skipped' | 'ok'
-
-function actionBadgeClass(action: Iw37nImportRow['action']): string {
-  if (action === 'error') return 'border-transparent bg-red-600 text-white hover:bg-red-700'
-  if (action === 'updated') return 'border-transparent bg-sky-700 text-white hover:bg-sky-800'
-  if (action === 'inserted') return 'app-tone-success-fill border-transparent hover:opacity-90'
-  return ''
-}
 
 function duplicateBatchRef(
   t: (key: string, opts?: Record<string, unknown>) => string,
@@ -75,20 +69,17 @@ export function Iw37nImportReviewPanel({
       </div>
 
       {summary.isDuplicate ? (
-        <div
-          role="alert"
-          className="rounded-button border border-purple-400 bg-purple-50 px-3 py-2 text-body-sm text-purple-950"
-        >
-          <p className="font-medium">
+        <div role="alert" className="app-tone-info-callout rounded-button border px-3 py-2 text-body-sm">
+          <p className="font-medium text-app">
             {t('review.duplicateTitle', {
               batchRef: duplicateBatchRef(t, summary.duplicateOfBatchId),
             })}
           </p>
-          <p className="mt-1 text-xs text-purple-800/90">{t('review.duplicateHint')}</p>
+          <p className="mt-1 text-xs text-app-muted">{t('review.duplicateHint')}</p>
           {summary.duplicateOfBatchId ? (
             <Link
               to="/iw37n"
-              className="mt-2 inline-block text-xs font-medium text-purple-900 underline hover:text-purple-700"
+              className="mt-2 inline-block text-xs font-medium text-[var(--app-accent)] underline"
             >
               {t('review.openIw37n', { id: summary.duplicateOfBatchId })}
             </Link>
@@ -105,11 +96,11 @@ export function Iw37nImportReviewPanel({
       </div>
 
       {summary.errorGroups.length > 0 ? (
-        <div className="rounded-button border border-red-200 bg-red-50/80 px-3 py-2">
-          <p className="text-xs font-medium text-red-900">
+        <div className="app-tone-danger-callout rounded-button border px-3 py-2">
+          <p className="text-xs font-medium">
             {t('review.errorSummary', { count: summary.errors })}
           </p>
-          <ul className="mt-1 max-h-32 space-y-1 overflow-y-auto text-xs text-red-800">
+          <ul className="mt-1 max-h-32 space-y-1 overflow-y-auto text-xs opacity-90">
             {summary.errorGroups.map((g) => (
               <li key={g.message}>
                 <span className="font-mono tabular-nums">{g.count}×</span> {g.message}
@@ -166,9 +157,7 @@ export function Iw37nImportReviewPanel({
                 <TableRow key={r.rowNo}>
                   <TableCell className="text-center tabular-nums">{r.rowNo}</TableCell>
                   <TableCell>
-                    <Badge variant={r.action === 'skipped' ? 'secondary' : 'default'} className={actionBadgeClass(r.action)}>
-                      {r.action}
-                    </Badge>
+                    <ImportReviewActionBadge action={r.action} />
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {r.wkorder}/{r.opac}
@@ -192,7 +181,7 @@ export function Iw37nImportReviewPanel({
           {t('review.cancel')}
         </Button>
         {summary.isDuplicate ? (
-          <p className="self-center text-xs font-medium text-purple-900">
+          <p className="app-tone-warning-label self-center text-xs font-medium">
             {t('review.cannotCommitDuplicate')}
           </p>
         ) : !canCommit ? (

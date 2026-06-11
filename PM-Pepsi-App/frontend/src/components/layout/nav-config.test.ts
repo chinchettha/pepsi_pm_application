@@ -33,6 +33,16 @@ describe('nav-config sidebar coverage', () => {
     expect(adminUserLinks).toHaveLength(1)
   })
 
+  it('keeps parent items without end for nested child routes (U4g.10)', () => {
+    const nestedParents = ['/work-orders', '/planning', '/confirmation', '/master-data']
+    for (const path of nestedParents) {
+      const entry = appNav.find((e) => e.kind === 'item' && e.to === path)
+      expect(entry?.kind === 'item' && entry.end, `${path} should not use end`).toBeFalsy()
+    }
+    const home = appNav.find((e) => e.kind === 'item' && e.to === '/')
+    expect(home?.kind === 'item' && home.end).toBe(true)
+  })
+
   it('covers core operational routes from PHP parity', () => {
     for (const path of [
       '/',

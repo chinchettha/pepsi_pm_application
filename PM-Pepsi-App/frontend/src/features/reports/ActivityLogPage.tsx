@@ -7,12 +7,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 
 import { Input } from '@/components/ui/input'
 
 import { Label } from '@/components/ui/label'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 
 import {
 
@@ -52,6 +54,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import { AlertCircle, BarChart3, Search } from 'lucide-react'
 
+import { useQueryLoadErrorToast } from '@/lib/query-load-error'
 import { useMemo, useState } from 'react'
 
 import { Link } from 'react-router-dom'
@@ -163,6 +166,11 @@ export function ActivityLogPage() {
   })
 
 
+
+  useQueryLoadErrorToast(
+    { isError: kpiQ.isError, error: kpiQ.error, data: kpiQ.data },
+    t('page.loadFailed'),
+  )
 
   const w2wHint =
     kpiQ.data && kpiQ.data.weekToWeek.length > 0
@@ -314,23 +322,65 @@ export function ActivityLogPage() {
 
       <AppPageSection index={1}>
 
-        {q.isLoading && !q.data ? (
+        {q.isError && !q.data ? (
 
-          <Skeleton className="h-64 w-full rounded-card" />
-
-        ) : q.isError ? (
-
-          <EmptyState
-
-            icon={AlertCircle}
+          <QueryLoadErrorState
 
             title={t('activity.loadFailed')}
 
-            description={(q.error as Error).message}
+            error={q.error}
 
             action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
 
           />
+
+        ) : q.isLoading && !q.data ? (
+
+          <AppCard pad="compact">
+
+            <div className="app-table-shell overflow-x-auto" aria-busy="true">
+
+              <Table embedded stickyHeader zebra>
+
+                <TableHeader>
+
+                  <TableRow>
+
+                    <TableHead className={cn('w-12', tableStickyClass(1))}>#</TableHead>
+
+                    <TableHead className={tableStickyClass(2)}>{t('activity.colLoggedAt')}</TableHead>
+
+                    <TableHead>{t('activity.colPerson')}</TableHead>
+
+                    <TableHead>{t('activity.colJob')}</TableHead>
+
+                    <TableHead>{t('activity.colLine')}</TableHead>
+
+                    <TableHead>WO</TableHead>
+
+                    <TableHead>{t('activity.colResource')}</TableHead>
+
+                    <TableHead>{t('activity.colWindow')}</TableHead>
+
+                    <TableHead>{t('activity.colActivity')}</TableHead>
+
+                    <TableHead>{t('activity.colStatus')}</TableHead>
+
+                  </TableRow>
+
+                </TableHeader>
+
+                <TableBody>
+
+                  <TableSkeletonRows rows={10} columns={10} narrowFirstColumn />
+
+                </TableBody>
+
+              </Table>
+
+            </div>
+
+          </AppCard>
 
         ) : q.data ? (
 
@@ -387,7 +437,7 @@ export function ActivityLogPage() {
 
                       q.data.items.map((row, i) => (
 
-                        <TableRow key={row.id}>
+                        <TableRow key={`${row.source}-${row.id}-${row.createdAt}-${i}`}>
 
                           <TableCell className={tableStickyClass(1)}>{i + 1}</TableCell>
 
@@ -531,7 +581,7 @@ export function ActivityLogPage() {
 
           ) : kpiQ.isError ? (
 
-            <p className="text-caption text-red-600">{(kpiQ.error as Error).message}</p>
+            <p className="text-caption text-form-error">{(kpiQ.error as Error).message}</p>
 
           ) : (
 

@@ -2,6 +2,8 @@ import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
 import * as React from 'react'
 
 import { buttonVariants, type ButtonProps } from '@/components/ui/button'
+import { focusInitialInDialog } from '@/lib/dialog-focus'
+import { useDialogContentRef } from '@/lib/use-dialog-content-ref'
 import { cn } from '@/lib/utils'
 
 const AlertDialog = AlertDialogPrimitive.Root
@@ -26,19 +28,30 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
-    <AlertDialogOverlay />
-    <AlertDialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        'macos-dialog-glass fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog border border-app bg-[var(--app-surface)] p-6 shadow-app-dialog duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-        className,
-      )}
-      {...props}
-    />
-  </AlertDialogPortal>
-))
+>(({ className, onOpenAutoFocus, ...props }, ref) => {
+  const { innerRef, setRef } = useDialogContentRef(ref)
+
+  return (
+    <AlertDialogPortal>
+      <AlertDialogOverlay />
+      <AlertDialogPrimitive.Content
+        ref={setRef}
+        tabIndex={-1}
+        className={cn(
+          'macos-dialog-glass fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-dialog border border-app bg-[var(--app-surface)] p-6 shadow-app-dialog duration-200 outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+          className,
+        )}
+        onOpenAutoFocus={(e) => {
+          onOpenAutoFocus?.(e)
+          if (e.defaultPrevented) return
+          e.preventDefault()
+          focusInitialInDialog(innerRef.current)
+        }}
+        {...props}
+      />
+    </AlertDialogPortal>
+  )
+})
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
 
 const AlertDialogHeader = ({

@@ -295,7 +295,7 @@ export function ImageLightbox({
                   key="error"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="px-6 text-center text-sm text-red-300"
+                  className="px-6 text-center text-sm text-form-error"
                 >
                   {error}
                 </motion.p>

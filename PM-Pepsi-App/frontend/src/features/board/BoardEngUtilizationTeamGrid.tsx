@@ -38,7 +38,7 @@ export function BoardEngUtilizationTeamGrid({
       {loading ? (
         <p className="text-body-sm opacity-60">{t('util.loadingPeople')}</p>
       ) : error ? (
-        <p className="text-body-sm text-red-300">{error.message}</p>
+        <p className="text-body-sm text-form-error">{error.message}</p>
       ) : (
         <div className="engineering-board__team-scroll">
           <EngUtilizationTeamGrid

@@ -142,7 +142,19 @@
       "status": "Status",
       "started": "Started",
       "files": "Files / batch"
+    },
+    "status": {
+      "success": "Success",
+      "failed": "Failed",
+      "running": "Running",
+      "pending": "Pending"
     }
+  },
+  "importAction": {
+    "error": "Error",
+    "updated": "Updated",
+    "inserted": "Inserted",
+    "skipped": "Skipped"
   },
   "guide": {
     "title": "CSV file contract (SAP ↔ PM)",

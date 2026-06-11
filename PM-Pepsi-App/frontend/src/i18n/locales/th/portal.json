@@ -9,6 +9,11 @@
     "openSettings": "โปรไฟล์และตั้งค่า"
   },
   "backToPortal": "Portal",
+  "commandPaletteGroup": "Portal",
+  "commandPaletteHint": "สลับระบบงาน",
+  "loadError": "โหลดรายการระบบไม่สำเร็จ",
+  "handoffError": "เปิดระบบไม่สำเร็จ — ลองอีกครั้งหรือติดต่อผู้ดูแล",
+  "moduleChipPm": "PM",
   "openModule": "เปิด {{name}}",
   "openCta": "เปิดระบบ",
   "modules": {

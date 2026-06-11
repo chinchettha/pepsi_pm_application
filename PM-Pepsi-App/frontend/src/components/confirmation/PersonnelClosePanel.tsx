@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { ConfirmDeleteAlertDialog } from '@/components/ui/confirm-delete-alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -105,9 +106,12 @@ export function PersonnelClosePanel({
     onError: (e: Error) => toast.error(e.message || t('personnel.saveFailed')),
   })
 
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
+
   const delMut = useMutation({
     mutationFn: (idwrkclose: number) => deletePersonnelClose(idwrkclose),
     onSuccess: async () => {
+      setDeleteTarget(null)
       await qc.invalidateQueries({ queryKey: ['confirmation', 'personnel-closes', idiw37] })
       onChanged?.()
     },
@@ -193,7 +197,7 @@ export function PersonnelClosePanel({
         {workcentersQ.isLoading ? (
           <Skeleton className="h-24 w-full rounded-card" />
         ) : workcentersQ.isError ? (
-          <p className="text-body-sm text-red-600">{(workcentersQ.error as Error).message}</p>
+          <p className="text-body-sm text-form-error">{(workcentersQ.error as Error).message}</p>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {(workcentersQ.data ?? []).map((wc) => {
@@ -219,9 +223,10 @@ export function PersonnelClosePanel({
                   }}
                   className={cn(
                     'rounded-card border px-2 py-2 text-left text-xs transition-colors',
-                    'bg-teal-600 text-white border-teal-700 hover:bg-teal-700',
+                    'app-tone-info-progress border-transparent hover:opacity-90',
                     'disabled:cursor-not-allowed disabled:opacity-45',
-                    isSelected && 'ring-2 ring-white ring-offset-2 ring-offset-teal-600',
+                    isSelected &&
+                      'ring-2 ring-[var(--app-surface)] ring-offset-2 ring-offset-[color-mix(in_srgb,var(--status-info)_70%,var(--app-bg))]',
                     isClosed && 'opacity-60',
                   )}
                 >
@@ -265,7 +270,7 @@ export function PersonnelClosePanel({
               </TableRow>
             ) : personnelQ.isError ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-body-sm text-red-600">
+                <TableCell colSpan={6} className="py-8 text-center text-body-sm text-form-error">
                   {(personnelQ.error as Error).message}
                 </TableCell>
               </TableRow>
@@ -308,7 +313,7 @@ export function PersonnelClosePanel({
                         size="sm"
                         variant="destructive"
                         disabled={!canWrite || delMut.isPending}
-                        onClick={() => delMut.mutate(p.idwrkclose)}
+                        onClick={() => setDeleteTarget(p.idwrkclose)}
                         aria-label={t('personnel.deleteAria')}
                       >
                         <Trash2 className="size-4" />
@@ -321,6 +326,17 @@ export function PersonnelClosePanel({
           </TableBody>
         </Table>
       </div>
+
+      <ConfirmDeleteAlertDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={t('personnel.deleteTitle')}
+        description={t('personnel.deleteDescription')}
+        loading={delMut.isPending}
+        onConfirm={() => {
+          if (deleteTarget != null) delMut.mutate(deleteTarget)
+        }}
+      />
     </div>
   )
 }

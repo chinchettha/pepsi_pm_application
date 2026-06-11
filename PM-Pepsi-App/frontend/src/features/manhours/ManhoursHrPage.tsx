@@ -241,7 +241,7 @@ export function ManhoursHrPage() {
                         <TableCell className="text-right tabular-nums">
                           {p.manhourHours.toFixed(1)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums font-medium text-amber-700">
+                        <TableCell className="text-right tabular-nums font-medium app-tone-warning-strong">
                           {p.utilizationPercent.toFixed(2)}%
                         </TableCell>
                       </TableRow>
@@ -321,7 +321,7 @@ export function ManhoursHrPage() {
                           <TableCell className="text-right">
                             <HourCell value={manhourOtNet(row)} />
                           </TableCell>
-                          <TableCell className="text-right tabular-nums text-amber-700">
+                          <TableCell className="text-right tabular-nums app-tone-warning-strong">
                             {u ? `${u.pct.toFixed(2)}%` : '—'}
                           </TableCell>
                         </TableRow>

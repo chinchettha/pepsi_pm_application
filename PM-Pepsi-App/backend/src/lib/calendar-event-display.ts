@@ -33,11 +33,14 @@ export const CALENDAR_STATUS_COLORS = {
   overdue: BRAND_CALENDAR.overdue,
 } as const
 
+export type CalendarEventDisplayStatus = 'in_progress' | 'overdue' | 'moved' | 'completed'
+
 export type CalendarOrderRow = {
   idiw37: number
   wkorder: string
   wktype: string | null
   mat: string | null
+  team?: string | null
   bscstart: string | number | null
   actfinish: string | number | null
   cday: string | number | null
@@ -190,7 +193,12 @@ export function resolveCalendarEventColor(
   row: CalendarOrderRow,
   moveColor: string,
   displayUnix: number,
-): { color: string; pmExecutionStatus: PmExecutionStatus; moved: boolean } {
+): {
+  color: string
+  pmExecutionStatus: PmExecutionStatus
+  moved: boolean
+  displayStatus: CalendarEventDisplayStatus
+} {
   const pmExecutionStatus = resolvePmExecutionStatus({
     syst: row.syst,
     percentClose: row.percent_close,
@@ -200,18 +208,38 @@ export function resolveCalendarEventColor(
 
   const moved = hasPlanMove(row)
   if (pmExecutionStatus === 'done' || pmExecutionStatus === 'closed') {
-    return { color: CALENDAR_STATUS_COLORS.completed, pmExecutionStatus, moved }
+    return {
+      color: CALENDAR_STATUS_COLORS.completed,
+      pmExecutionStatus,
+      moved,
+      displayStatus: 'completed',
+    }
   }
   if (
     isPlanMovableStatus(row.syst) &&
     isCalendarDisplayDateOverdue(displayUnix)
   ) {
-    return { color: CALENDAR_STATUS_COLORS.overdue, pmExecutionStatus, moved }
+    return {
+      color: CALENDAR_STATUS_COLORS.overdue,
+      pmExecutionStatus,
+      moved,
+      displayStatus: 'overdue',
+    }
   }
   if (moved) {
-    return { color: moveColor || CALENDAR_STATUS_COLORS.moved, pmExecutionStatus, moved }
+    return {
+      color: moveColor || CALENDAR_STATUS_COLORS.moved,
+      pmExecutionStatus,
+      moved,
+      displayStatus: 'moved',
+    }
   }
-  return { color: CALENDAR_STATUS_COLORS.inProgress, pmExecutionStatus, moved }
+  return {
+    color: CALENDAR_STATUS_COLORS.inProgress,
+    pmExecutionStatus,
+    moved,
+    displayStatus: 'in_progress',
+  }
 }
 
 /** เลข WO เต็ม + ประเภท (Maint Code · ZB · ZD) + /N เมื่อย้ายแผน */
@@ -339,7 +367,7 @@ export function mapCalendarOrderRowToEvent(
   if (displayUnix == null) return null
 
   const syst = (row.syst ?? '').trim()
-  const { color, pmExecutionStatus, moved } = resolveCalendarEventColor(
+  const { color, pmExecutionStatus, moved, displayStatus } = resolveCalendarEventColor(
     row,
     moveColor,
     displayUnix,
@@ -367,6 +395,10 @@ export function mapCalendarOrderRowToEvent(
     orderFrameEnd: formatTimeFromIso(planTimes.planEndIso),
   }
 
+  const team = (row.team ?? '').trim()
+  const pmTeam =
+    team === 'A' || team === 'B' || team === 'EE' || team === 'UT' ? team : undefined
+
   return {
     id: String(row.idiw37),
     date: unixToDateString(displayUnix),
@@ -379,6 +411,8 @@ export function mapCalendarOrderRowToEvent(
     syst,
     pmPhase: resolveWoPmPhase(syst),
     pmExecutionStatus,
+    displayStatus,
+    team: pmTeam,
     activityCode: activityCode || undefined,
     moveCount: moved && row.mpcount != null ? Number(row.mpcount) : undefined,
     workHours: workHours > 0 ? workHours : undefined,

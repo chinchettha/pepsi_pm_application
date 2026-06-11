@@ -2,6 +2,7 @@ import {
   SchedulingPageSection,
   SchedulingSection,
 } from '@/components/scheduling/SchedulingPageLayout'
+import { APP_GROUP_HOVER_MOTION } from '@/lib/app-motion'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
@@ -110,7 +111,12 @@ function MachineCard({
       className="group"
     >
       <article className="flex items-center gap-3 rounded-card border border-app/75 bg-[var(--app-surface)] p-4 shadow-sm transition-all duration-200 hover:border-[color-mix(in_srgb,var(--app-accent)_30%,var(--app-border))] hover:shadow-md">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--app-accent)_12%,white)] text-[color-mix(in_srgb,var(--app-accent)_85%,black)] ring-1 ring-[color-mix(in_srgb,var(--app-accent)_18%,transparent)] transition-transform duration-200 group-hover:scale-105">
+        <span
+          className={cn(
+            'flex size-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--app-accent)_12%,white)] text-[color-mix(in_srgb,var(--app-accent)_85%,black)] ring-1 ring-[color-mix(in_srgb,var(--app-accent)_18%,transparent)]',
+            APP_GROUP_HOVER_MOTION,
+          )}
+        >
           <Cog className="size-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">

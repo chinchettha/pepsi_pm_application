@@ -1,4 +1,4 @@
-import { personnelImageUrl } from '@/lib/api-public'
+import { AuthenticatedImage } from '@/components/ui/authenticated-image'
 import { cn } from '@/lib/utils'
 import { useMemo, useState } from 'react'
 
@@ -50,19 +50,19 @@ export function PersonnelAvatar({
   const showPhoto = Boolean(hasImage && !failed)
 
   if (showPhoto) {
+    const v = ver != null ? `?v=${encodeURIComponent(String(ver))}` : ''
+    const path = `/api/v1/personnel/${encodeURIComponent(idwkctr)}/image${v}`
     return (
-      <img
-        src={personnelImageUrl(idwkctr, ver)}
+      <AuthenticatedImage
+        path={path}
         alt={label}
-        loading="lazy"
-        decoding="async"
         className={cn(
           dim,
           'shrink-0 rounded-full object-cover ring-1 ring-app',
           size === 'lg' && 'ring-2 shadow-sm',
           className,
         )}
-        onError={() => setFailed(true)}
+        onUnavailable={() => setFailed(true)}
       />
     )
   }

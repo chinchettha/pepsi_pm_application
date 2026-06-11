@@ -20,6 +20,8 @@ import {
   getTelegramSummary,
   isTelegramSchemaMissing,
   listTelegramGroups,
+  telegramLinkStatusWhenSchemaMissing,
+  telegramSummaryWhenSchemaMissing,
   patchTelegramGroup,
   testTelegramGroupSend,
 } from '../services/admin-telegram.js'
@@ -40,7 +42,7 @@ export function registerAdminTelegramRoutes(
       res.json(telegramSummaryResponseSchema.parse(summary))
     } catch (err) {
       if (isTelegramSchemaMissing(err)) {
-        res.status(503).json({ error: 'SCHEMA_MISSING', message: SCHEMA_HINT })
+        res.json(telegramSummaryResponseSchema.parse(telegramSummaryWhenSchemaMissing()))
         return
       }
       throw err
@@ -56,7 +58,7 @@ export function registerAdminTelegramRoutes(
         res.json(telegramLinkStatusResponseSchema.parse(status))
       } catch (err) {
         if (isTelegramSchemaMissing(err)) {
-          res.status(503).json({ error: 'SCHEMA_MISSING', message: SCHEMA_HINT })
+          res.json(telegramLinkStatusResponseSchema.parse(telegramLinkStatusWhenSchemaMissing()))
           return
         }
         throw err
@@ -70,7 +72,7 @@ export function registerAdminTelegramRoutes(
       res.json(telegramGroupListResponseSchema.parse({ items }))
     } catch (err) {
       if (isTelegramSchemaMissing(err)) {
-        res.status(503).json({ error: 'SCHEMA_MISSING', message: SCHEMA_HINT })
+        res.json(telegramGroupListResponseSchema.parse({ items: [] }))
         return
       }
       throw err

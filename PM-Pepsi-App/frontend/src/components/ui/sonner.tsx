@@ -1,5 +1,5 @@
 import { useTheme } from '@/lib/theme-provider'
-import { AlertTriangle, CircleCheck, CircleX, Info } from 'lucide-react'
+import { AlertTriangle, CircleCheck, CircleX, Info, Loader2 } from 'lucide-react'
 import { Toaster as Sonner, type ToasterProps } from 'sonner'
 
 const toastClassNames = {
@@ -38,6 +38,12 @@ export function AppToaster({ ...props }: ToasterProps) {
           <AlertTriangle className="size-[1.125rem] shrink-0 text-[var(--sys-orange-light)]" aria-hidden />
         ),
         info: <Info className="size-[1.125rem] shrink-0 text-[var(--sys-blue-light)]" aria-hidden />,
+        loading: (
+          <Loader2
+            className="size-[1.125rem] shrink-0 animate-spin text-[var(--app-accent)] motion-reduce:animate-none"
+            aria-hidden
+          />
+        ),
       }}
       {...props}
     />

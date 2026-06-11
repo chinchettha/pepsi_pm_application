@@ -3,7 +3,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import { MASS_CONFIRM_MAX_ITEMS } from '@/api/schemas'
+import { APP_INTERACTIVE_MOTION } from '@/lib/app-motion'
 import { fetchWorkcenters, postConfirmationMassClose } from '@/lib/api-public'
+import { cn } from '@/lib/utils'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import type { MassConfirmBatchResult } from '@/components/confirmation/MassConfirmExportPanel'
@@ -12,6 +14,9 @@ import { toast } from 'sonner'
 
 /** Re-export for UI copy — ต้องตรงกับ `SAP_MASS_CONFIRM_MAX` บน backend */
 export const MASS_CONFIRM_MAX = MASS_CONFIRM_MAX_ITEMS
+
+const SELECT_CLASS =
+  'flex h-10 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-1 text-body-sm text-app shadow-sm focus-app-ring focus-visible:outline-none disabled:opacity-50'
 
 function todayDdMmYyyy() {
   const d = new Date()
@@ -100,14 +105,19 @@ export function MassConfirmBar({
 
   if (selectedIds.length === 0) return null
 
+  const atLimit = selectedIds.length >= MASS_CONFIRM_MAX
+
   return (
-    <div
-      className="space-y-3 rounded-card border border-emerald-200/80 bg-gradient-to-b from-emerald-50/90 to-emerald-50/40 px-4 py-3.5 shadow-sm"
-    >
+    <div className="app-tone-success-mass-bar sticky top-0 z-10 space-y-3 rounded-card border px-4 py-3.5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-body-sm font-semibold text-app">
           {t('massConfirm.selectedCount')}{' '}
-          <span className="tabular-nums text-emerald-800">
+          <span
+            className={cn(
+              'tabular-nums',
+              atLimit ? 'app-tone-warning-strong' : 'app-tone-success-strong',
+            )}
+          >
             {selectedIds.length} / {MASS_CONFIRM_MAX}
           </span>{' '}
           {t('massConfirm.items')}
@@ -117,14 +127,14 @@ export function MassConfirmBar({
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 lg:grid-cols-[minmax(10rem,1.2fr)_1fr_1fr]">
         <div className="space-y-1.5">
           <Label htmlFor="mass-wkctr" className="text-xs font-semibold tracking-wide text-app-muted">
             {t('massConfirm.wkctrLabel')}
           </Label>
           <select
             id="mass-wkctr"
-            className="h-10 w-full rounded-button border border-app/80 bg-[var(--app-surface)] px-2 text-body-sm shadow-sm"
+            className={SELECT_CLASS}
             value={wkctr}
             onChange={(e) => setWkctr(e.target.value)}
           >
@@ -136,59 +146,59 @@ export function MassConfirmBar({
             ))}
           </select>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="mass-start-d" className="text-xs font-semibold tracking-wide text-app-muted">
-            {t('massConfirm.startDate')}
-          </Label>
-          <Input
-            id="mass-start-d"
-            className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
-            value={startD}
-            onChange={(e) => setStartD(e.target.value)}
-            placeholder={t('massConfirm.datePlaceholder')}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="mass-start-t" className="text-xs font-semibold tracking-wide text-app-muted">
-            {t('massConfirm.startTime')}
-          </Label>
-          <Input
-            id="mass-start-t"
-            className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
-            value={startT}
-            onChange={(e) => setStartT(e.target.value)}
-            placeholder={t('massConfirm.timePlaceholder')}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="mass-end-d" className="text-xs font-semibold tracking-wide text-app-muted">
-            {t('massConfirm.endDate')}
-          </Label>
-          <Input
-            id="mass-end-d"
-            className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
-            value={endD}
-            onChange={(e) => setEndD(e.target.value)}
-            placeholder={t('massConfirm.datePlaceholder')}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="mass-end-t" className="text-xs font-semibold tracking-wide text-app-muted">
-            {t('massConfirm.endTime')}
-          </Label>
-          <Input
-            id="mass-end-t"
-            className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
-            value={endT}
-            onChange={(e) => setEndT(e.target.value)}
-            placeholder={t('massConfirm.timePlaceholder')}
-          />
-        </div>
+
+        <fieldset className="space-y-1.5">
+          <legend className="text-xs font-semibold tracking-wide text-app-muted">
+            {t('massConfirm.startLegend')}
+          </legend>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              id="mass-start-d"
+              aria-label={t('massConfirm.startDate')}
+              className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
+              value={startD}
+              onChange={(e) => setStartD(e.target.value)}
+              placeholder={t('massConfirm.datePlaceholder')}
+            />
+            <Input
+              id="mass-start-t"
+              aria-label={t('massConfirm.startTime')}
+              className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
+              value={startT}
+              onChange={(e) => setStartT(e.target.value)}
+              placeholder={t('massConfirm.timePlaceholder')}
+            />
+          </div>
+        </fieldset>
+
+        <fieldset className="space-y-1.5">
+          <legend className="text-xs font-semibold tracking-wide text-app-muted">
+            {t('massConfirm.endLegend')}
+          </legend>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              id="mass-end-d"
+              aria-label={t('massConfirm.endDate')}
+              className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
+              value={endD}
+              onChange={(e) => setEndD(e.target.value)}
+              placeholder={t('massConfirm.datePlaceholder')}
+            />
+            <Input
+              id="mass-end-t"
+              aria-label={t('massConfirm.endTime')}
+              className="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm"
+              value={endT}
+              onChange={(e) => setEndT(e.target.value)}
+              placeholder={t('massConfirm.timePlaceholder')}
+            />
+          </div>
+        </fieldset>
       </div>
 
       <Button
         type="button"
-        className="shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
+        className={cn('w-full sm:w-auto shadow-md', APP_INTERACTIVE_MOTION)}
         disabled={massMut.isPending}
         onClick={onSave}
       >

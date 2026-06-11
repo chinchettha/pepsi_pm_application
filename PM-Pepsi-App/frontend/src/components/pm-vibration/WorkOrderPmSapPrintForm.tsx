@@ -324,7 +324,7 @@ export function WorkOrderPmSapPrintForm({
 
       <div className="sap-wo-print__actions">
         {!canWrite && selectWoHint ? (
-          <p className="mb-2 text-xs text-amber-800">{selectWoHint}</p>
+          <p className="app-tone-warning-label mb-2 text-xs">{selectWoHint}</p>
         ) : null}
         <Button type="button" size="sm" disabled={!canWrite || saving} onClick={onSave}>
           {saving ? t('saving') : t('paperForm.saveCurrentReadings')}

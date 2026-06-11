@@ -61,7 +61,7 @@ const BACKUP_SCHEDULE_CACHE_KEY = 'admin.backup.schedule.v1'
 const BACKUP_LIST_CACHE_KEY = 'admin.backup.list.v1'
 
 function statusBadge(status: BackupHistoryItem['status'], t: (key: string) => string) {
-  if (status === 'success') return <Badge className="bg-emerald-700">{t('backup.statusSuccess')}</Badge>
+  if (status === 'success') return <Badge className="app-tone-success-fill">{t('backup.statusSuccess')}</Badge>
   if (status === 'failed') return <Badge variant="destructive">{t('backup.statusFailed')}</Badge>
   if (status === 'running') return <Badge variant="secondary">{t('backup.statusRunning')}</Badge>
   return <Badge variant="outline">{status}</Badge>
@@ -286,10 +286,10 @@ export function AdminBackupPage() {
             <CardDescription>{t('backup.pgToolsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 text-body-sm sm:grid-cols-2">
-            <p>
+            <div>
               <span className="font-medium text-app">pg_dump:</span>{' '}
               {pgOk ? (
-                <Badge className="ml-1 bg-emerald-700">{t('backup.ready')}</Badge>
+                <Badge className="app-tone-success-fill ml-1">{t('backup.ready')}</Badge>
               ) : (
                 <Badge variant="destructive" className="ml-1">
                   {t('backup.notFound')}
@@ -298,11 +298,11 @@ export function AdminBackupPage() {
               <code className="mt-1 block truncate font-mono text-xs text-app-muted">
                 {scheduleQ.data?.pgDumpBin ?? 'pg_dump'}
               </code>
-            </p>
-            <p>
+            </div>
+            <div>
               <span className="font-medium text-app">psql:</span>{' '}
               {psqlOk ? (
-                <Badge className="ml-1 bg-emerald-700">{t('backup.ready')}</Badge>
+                <Badge className="app-tone-success-fill ml-1">{t('backup.ready')}</Badge>
               ) : (
                 <Badge variant="destructive" className="ml-1">
                   {t('backup.notFound')}
@@ -311,7 +311,7 @@ export function AdminBackupPage() {
               <code className="mt-1 block truncate font-mono text-xs text-app-muted">
                 {scheduleQ.data?.psqlBin ?? 'psql'}
               </code>
-            </p>
+            </div>
           </CardContent>
         </Card>
 
@@ -324,10 +324,10 @@ export function AdminBackupPage() {
         ) : null}
 
         {canRestore ? (
-          <Card className="border-red-200 bg-red-50/50">
+          <Card className="app-tone-danger-callout border">
             <CardHeader>
-              <CardTitle className="text-base text-red-900">{t('backup.restoreCardTitle')}</CardTitle>
-              <CardDescription className="text-red-800/80">
+              <CardTitle className="text-base">{t('backup.restoreCardTitle')}</CardTitle>
+              <CardDescription className="opacity-90">
                 <Trans t={t} i18nKey="backup.restoreCardDesc" components={{ code: <code /> }} />
               </CardDescription>
             </CardHeader>
@@ -531,7 +531,7 @@ export function AdminBackupPage() {
                                     setRestoreDialogOpen(true)
                                   }}
                                 >
-                                  <RotateCcw className="size-4 text-red-700" />
+                                  <RotateCcw className="size-4 text-form-error" />
                                 </Button>
                               ) : null}
                             </>
@@ -545,7 +545,7 @@ export function AdminBackupPage() {
                               disabled={deleteMut.isPending}
                               onClick={() => setDeleteTargetId(row.id)}
                             >
-                              <Trash2 className="size-4 text-red-600" />
+                              <Trash2 className="size-4 text-form-error" />
                             </Button>
                           ) : null}
                         </div>

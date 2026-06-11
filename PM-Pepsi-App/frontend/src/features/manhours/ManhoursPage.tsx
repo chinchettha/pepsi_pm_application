@@ -124,7 +124,9 @@ export function ManhoursPage() {
     const q = zbPeopleQText.trim().toLowerCase()
     if (!q) return true
     return (
-      r.wkctr.toLowerCase().includes(q) || (r.displayName ?? '').toLowerCase().includes(q)
+      String(r.wkctr ?? '')
+        .toLowerCase()
+        .includes(q) || (r.displayName ?? '').toLowerCase().includes(q)
     )
   })
   const zbPeopleTotals = zbPeopleRows.reduce(
@@ -153,9 +155,7 @@ export function ManhoursPage() {
     const els = [totalOrdersRef.current, utilRef.current].filter(Boolean) as HTMLElement[]
     if (els.length === 0) return
     pulseAnimRef.current = animate(els, {
-      targets: els,
       scale: [1, 1.02, 1],
-      filter: ['brightness(1)', 'brightness(1.06)', 'brightness(1)'],
       duration: 420,
       easing: 'easeOutQuad',
       delay: (_el: HTMLElement, i: number) => i * 40,

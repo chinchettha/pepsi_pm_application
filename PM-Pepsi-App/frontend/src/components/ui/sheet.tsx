@@ -3,6 +3,8 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import * as React from 'react'
 
+import { focusInitialInDialog } from '@/lib/dialog-focus'
+import { useDialogContentRef } from '@/lib/use-dialog-content-ref'
 import { cn } from '@/lib/utils'
 
 const Sheet = SheetPrimitive.Root
@@ -48,29 +50,45 @@ type SheetContentProps = React.ComponentPropsWithoutRef<typeof SheetPrimitive.Co
   VariantProps<typeof sheetVariants> & {
     /** ซ่อนปุ่ม X มุมขวาบน (ใช้ SheetClose เองใน header) */
     hideClose?: boolean
+    /** Override overlay classes (e.g. nav drawer `bg-black/40`) */
+    overlayClassName?: string
   }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = 'right', className, children, hideClose = false, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      {!hideClose ? (
-        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-[var(--app-surface)] transition-opacity hover:opacity-100 focus:outline-none focus-app-ring disabled:pointer-events-none">
-          <X className="size-4" />
-          <span className="sr-only">ปิด</span>
-        </SheetPrimitive.Close>
-      ) : null}
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
+>(({ side = 'right', className, children, hideClose = false, overlayClassName, onOpenAutoFocus, ...props }, ref) => {
+  const { innerRef, setRef } = useDialogContentRef(ref)
+
+  return (
+    <SheetPortal>
+      <SheetOverlay className={overlayClassName} />
+      <SheetPrimitive.Content
+        ref={setRef}
+        tabIndex={-1}
+        className={cn(sheetVariants({ side }), 'outline-none', className)}
+        onOpenAutoFocus={(e) => {
+          onOpenAutoFocus?.(e)
+          if (e.defaultPrevented) return
+          e.preventDefault()
+          focusInitialInDialog(innerRef.current)
+        }}
+        {...props}
+      >
+        {children}
+        {!hideClose ? (
+          <SheetPrimitive.Close
+            data-dialog-close
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-[var(--app-surface)] transition-opacity hover:opacity-100 focus:outline-none focus-app-ring disabled:pointer-events-none"
+          >
+            <X className="size-4" />
+            <span className="sr-only">ปิด</span>
+          </SheetPrimitive.Close>
+        ) : null}
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  )
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (

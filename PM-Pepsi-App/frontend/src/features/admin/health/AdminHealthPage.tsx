@@ -52,8 +52,8 @@ import { toast } from 'sonner'
 type HealthStatus = AdminHealthResponse['db']['status']
 
 function statusBadge(status: HealthStatus, t: (key: string) => string) {
-  if (status === 'ok') return <Badge className="bg-emerald-700">{t('health.statusOk')}</Badge>
-  if (status === 'warning') return <Badge className="bg-amber-600">{t('health.statusWarning')}</Badge>
+  if (status === 'ok') return <Badge className="app-tone-success-fill">{t('health.statusOk')}</Badge>
+  if (status === 'warning') return <Badge className="app-tone-warning-fill">{t('health.statusWarning')}</Badge>
   if (status === 'error') return <Badge variant="destructive">{t('health.statusError')}</Badge>
   return <Badge variant="secondary">{t('health.statusUnknown')}</Badge>
 }
@@ -184,7 +184,7 @@ function OverviewTab({
             {t('health.diskTotalLabel')} {formatBytes(data.disk.totalBytes)}
           </p>
           {data.disk.message ? (
-            <p className="text-xs text-amber-700">{data.disk.message}</p>
+            <p className="app-tone-warning-label text-xs">{data.disk.message}</p>
           ) : null}
         </StatusCard>
 
@@ -261,7 +261,7 @@ function OverviewTab({
                 {t('health.migrationRunPending')}
               </Button>
               {!maintenanceOn ? (
-                <p className="mt-1 text-xs text-amber-800">
+                <p className="app-tone-warning-label mt-1 text-xs">
                   {t('health.migrationMaintenanceRequired')}{' '}
                   <Link to="/admin/settings" className="underline">
                     {t('health.settingsLink')}
@@ -309,7 +309,7 @@ function OverviewTab({
                     </TableCell>
                     <TableCell className="text-right">
                       {row.status === 'applied' ? (
-                        <Badge className="bg-emerald-700">{t('health.badgeApplied')}</Badge>
+                        <Badge className="app-tone-success-fill">{t('health.badgeApplied')}</Badge>
                       ) : (
                         <Badge variant="destructive">{t('health.badgePending')}</Badge>
                       )}
@@ -470,7 +470,7 @@ export function AdminHealthPage() {
             <Card className="admin-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <AlertTriangle className="size-4 text-amber-600" />
+                  <AlertTriangle className="app-tone-warning-icon size-4" />
                   {t('health.errorLogTitle')}
                 </CardTitle>
                 <CardDescription>{t('health.errorLogDesc')}</CardDescription>
@@ -580,7 +580,7 @@ export function AdminHealthPage() {
                             <TableCell className="font-mono text-xs">{row.route}</TableCell>
                             <TableCell className="text-right tabular-nums">{row.count}</TableCell>
                             <TableCell className="text-right tabular-nums">{row.p50Ms} ms</TableCell>
-                            <TableCell className="text-right font-medium tabular-nums text-amber-800">
+                            <TableCell className="app-tone-warning-strong text-right font-medium tabular-nums">
                               {row.p95Ms} ms
                             </TableCell>
                             <TableCell className="text-right tabular-nums">{row.maxMs} ms</TableCell>

@@ -10,6 +10,7 @@ import {
   schedulingHeroLinkBtnClass,
   schedulingHeroLinkIconClass,
 } from '@/components/scheduling/SchedulingPageLayout'
+import { MassConfirmSearchCard } from '@/features/confirmation/MassConfirmSearchCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -51,12 +52,14 @@ export function ConfirmationPage() {
     usePermission('confirmation.export') ||
     usePermission('confirmation.import') ||
     isAdmin
+  const canMassConfirm = usePermission('confirmation.write') || isAdmin
 
   const [importResult, setImportResult] = useState<ConfirmationImportResponse | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
 
   const pageHints = [
     t('page.hintExportSap'),
+    t('page.hintMassConfirm'),
     t('page.hintImportConfirm'),
     t('page.hintQcQueue'),
     t('page.hintCsv'),
@@ -141,6 +144,12 @@ export function ConfirmationPage() {
             canExport={canExport}
             sectionIndex={sectionIndex++}
           />
+
+          {canMassConfirm ? (
+            <SchedulingPageSection index={sectionIndex++}>
+              <MassConfirmSearchCard collapsible defaultOpen />
+            </SchedulingPageSection>
+          ) : null}
 
           {canImportConfirm ? (
             <SchedulingPageSection index={sectionIndex++}>
@@ -252,7 +261,7 @@ export function ConfirmationPage() {
                                         : 'destructive'
                                     }
                                   >
-                                    {r.action}
+                                    {t(`import.action.${r.action}`, { defaultValue: r.action })}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="tabular-nums">{r.confirmation}</TableCell>

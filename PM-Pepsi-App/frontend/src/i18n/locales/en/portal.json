@@ -9,6 +9,11 @@
     "openSettings": "Profile & settings"
   },
   "backToPortal": "Portal",
+  "commandPaletteGroup": "Portal",
+  "commandPaletteHint": "Switch application module",
+  "loadError": "Could not load applications",
+  "handoffError": "Could not open the application. Try again or contact an administrator.",
+  "moduleChipPm": "PM",
   "openModule": "Open {{name}}",
   "openCta": "Open application",
   "modules": {

@@ -24,6 +24,24 @@ export function isTelegramSchemaMissing(err: unknown): boolean {
   )
 }
 
+/** GET admin telegram — คืน 200 แทน 503 เมื่อ schema ยังไม่ migrate (ลด console noise + empty UI) */
+export function telegramSummaryWhenSchemaMissing(): TelegramSummaryResponse {
+  return {
+    botConfigured: false,
+    notifyEnabled: false,
+    totalGroups: 0,
+    enabledGroups: 0,
+    linkedTechnicians: 0,
+    activeTechnicians: 0,
+    wkctrGroups: [],
+    pmTeams: ['A', 'B', 'EE', 'UT'],
+  }
+}
+
+export function telegramLinkStatusWhenSchemaMissing(): TelegramLinkStatusResponse {
+  return { linked: 0, unlinked: 0, items: [] }
+}
+
 type GroupRow = {
   id: string
   code: string

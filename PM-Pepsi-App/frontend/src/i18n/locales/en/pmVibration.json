@@ -105,7 +105,8 @@
     "completed": "Completed",
     "completedBy": "Completed by",
     "saveCurrentReadings": "Save 3-phase readings",
-    "taskLineSuffix": "3-phase current check"
+    "taskLineSuffix": "3-phase current check",
+    "noPermitsFound": "No Permits Found"
   },
   "statusTitle": "Usage status",
   "statusIntro": "Check if you can enter and save — forms are never hidden",
@@ -142,7 +143,9 @@
     "noTaskHint": "No measurement task — select a WO with PM tasks",
     "saveTable": "Save table → update chart",
     "loadSaved": "Load saved readings",
-    "selectWoHint": "Select a WO before saving"
+    "selectWoHint": "Select a WO before saving",
+    "unitCurrent": "A",
+    "unitVibration": "mm/s RMS"
   },
   "perTaskHint": "Below the table — enter one task at a time and see trend charts"
 }

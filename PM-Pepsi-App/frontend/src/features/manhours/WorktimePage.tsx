@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { getStoredAuthUser } from '@/features/auth/login-api'
+import { getAuthToken, getStoredAuthUser } from '@/features/auth/login-api'
 import { fetchEngUtilizationDaily, fetchWorktimeSummaryOverall } from '@/lib/api-public'
 import { personnelImageUrl } from '@/lib/api-public'
 import { defaultHrConfirmMonth, pepsiWeekSelectOptions } from '@/lib/manhour-hr-confirm-period'
@@ -263,24 +263,55 @@ function EngUtilizationDailyChart() {
     r.displayName?.trim() ? `${r.wkctr} (${r.displayName})` : r.wkctr,
   )
 
-  // preload images (best-effort)
+  // preload personnel photos for chart avatars (authenticated — avoids 401 on <img src>)
   useEffect(() => {
     if (!rows.length) return
     const cache = imgCacheRef.current
+    let cancelled = false
+    const blobUrls: string[] = []
+
     for (const r of rows) {
-      if (!r.idwkctr || !r.hasImage) continue
-      if (cache.has(r.idwkctr)) continue
-      const img = new Image()
-      img.decoding = 'async'
-      img.loading = 'eager'
-      img.src = personnelImageUrl(r.idwkctr)
-      img.onload = () => {
-        bumpImgReady((x) => x + 1)
-      }
-      img.onerror = () => {
-        // keep silent; fallback is initials (not drawn)
-      }
-      cache.set(r.idwkctr, img)
+      const idwkctr = r.idwkctr
+      if (!idwkctr || !r.hasImage) continue
+      if (cache.has(idwkctr)) continue
+
+      void (async () => {
+        try {
+          const token = getAuthToken()
+          const res = await fetch(personnelImageUrl(idwkctr), {
+            credentials: 'include',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          })
+          if (!res.ok || cancelled) return
+          const blob = await res.blob()
+          if (cancelled) return
+          const blobUrl = URL.createObjectURL(blob)
+          blobUrls.push(blobUrl)
+          const img = new Image()
+          img.decoding = 'async'
+          img.onload = () => {
+            if (img.naturalWidth > 0) bumpImgReady((x) => x + 1)
+            else {
+              cache.delete(idwkctr)
+              URL.revokeObjectURL(blobUrl)
+            }
+          }
+          img.onerror = () => {
+            cache.delete(idwkctr)
+            URL.revokeObjectURL(blobUrl)
+            bumpImgReady((x) => x + 1)
+          }
+          img.src = blobUrl
+          cache.set(idwkctr, img)
+        } catch {
+          // initials fallback in chart plugin
+        }
+      })()
+    }
+
+    return () => {
+      cancelled = true
+      for (const url of blobUrls) URL.revokeObjectURL(url)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows])
@@ -446,7 +477,7 @@ function EngUtilizationDailyChart() {
                   const img =
                     row?.idwkctr && row.hasImage ? imgCacheRef.current.get(row.idwkctr) : undefined
 
-                  if (img && img.complete) {
+                  if (img && img.complete && img.naturalWidth > 0) {
                     ctx.save()
                     ctx.beginPath()
                     ctx.arc(x, y, r, 0, Math.PI * 2)

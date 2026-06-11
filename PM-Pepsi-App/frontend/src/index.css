@@ -64,10 +64,20 @@
   --app-border: #e4e4e7;
   --app-sidebar: #eaeaea;
   --app-sidebar-fg: #1f2937;
-  --app-sidebar-fg-muted: #6b7280;
+  --app-sidebar-fg-muted: #5b6470;
   --app-sidebar-border: #d4d4d8;
   --app-sidebar-hover: color-mix(in srgb, var(--app-accent) 10%, #eaeaea);
   --app-sidebar-active: color-mix(in srgb, var(--app-accent) 16%, #eaeaea);
+  --app-sidebar-inner-highlight: rgba(255, 255, 255, 0.72);
+  --app-sidebar-elevated:
+    0 1px 0 color-mix(in srgb, var(--app-sidebar-inner-highlight) 55%, transparent),
+    0 6px 20px color-mix(in srgb, var(--app-text) 7%, transparent);
+  --app-sidebar-elevated-pinned:
+    0 1px 0 color-mix(in srgb, var(--app-sidebar-inner-highlight) 40%, transparent),
+    0 2px 10px color-mix(in srgb, var(--app-text) 4%, transparent);
+  --app-sidebar-elevated-hover:
+    0 2px 6px color-mix(in srgb, var(--app-text) 5%, transparent),
+    0 14px 36px color-mix(in srgb, var(--app-text) 12%, transparent);
   --app-glass-bg: rgba(255, 255, 255, 0.7);
   --app-glass-border: rgba(255, 255, 255, 0.18);
 
@@ -204,8 +214,18 @@ html.dark {
   --app-border: #475569;
   --app-sidebar: #1e293b;
   --app-sidebar-fg: rgba(255, 255, 255, 0.94);
-  --app-sidebar-fg-muted: rgba(255, 255, 255, 0.72);
-  --app-sidebar-border: rgba(255, 255, 255, 0.14);
+  --app-sidebar-fg-muted: rgba(255, 255, 255, 0.76);
+  --app-sidebar-border: rgba(255, 255, 255, 0.06);
+  --app-sidebar-inner-highlight: rgba(255, 255, 255, 0.06);
+  --app-sidebar-elevated:
+    inset -1px 0 0 var(--app-sidebar-inner-highlight),
+    0 10px 32px rgba(0, 0, 0, 0.42);
+  --app-sidebar-elevated-pinned:
+    inset -1px 0 0 var(--app-sidebar-inner-highlight),
+    0 4px 16px rgba(0, 0, 0, 0.32);
+  --app-sidebar-elevated-hover:
+    inset -1px 0 0 rgba(255, 255, 255, 0.09),
+    0 18px 44px rgba(0, 0, 0, 0.55);
   --app-accent: var(--brand-logo-sky);
   --app-glass-bg: rgba(30, 41, 59, 0.78);
   --app-glass-border: rgba(255, 255, 255, 0.14);
@@ -243,6 +263,14 @@ body {
   border-left: 3px solid color-mix(in srgb, var(--app-accent) 55%, transparent);
   background: color-mix(in srgb, var(--app-accent) 6%, transparent);
   border-radius: 0 var(--app-radius-button) var(--app-radius-button) 0;
+}
+
+.macos-sidebar .nav-menu-group-heading--sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--app-sidebar) 94%, var(--app-surface));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--app-sidebar-border) 70%, transparent);
 }
 
 .nav-menu-group-heading--sidebar.nav-menu-group-heading--first {
@@ -308,6 +336,15 @@ body {
 
 /* Announcement banner — คอลัมน์เนื้อหาเท่านั้น (ไม่ทับ sidebar) */
 .app-announcement-zone {
+  position: relative;
+  z-index: 15;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* U4g.10 — impersonation / system banners: content column only (sidebar z-30) */
+.app-shell-banners {
   position: relative;
   z-index: 15;
   flex-shrink: 0;
@@ -754,6 +791,117 @@ html.dark .macos-admin .macos-sidebar .nav-menu-group-heading {
   border-color: color-mix(in srgb, var(--status-warning) 45%, var(--app-border));
   background: color-mix(in srgb, var(--status-warning) 12%, var(--app-surface));
   color: color-mix(in srgb, var(--status-warning) 92%, var(--app-text));
+}
+
+.app-tone-danger-callout {
+  border-color: color-mix(in srgb, var(--status-danger) 45%, var(--app-border));
+  background: color-mix(in srgb, var(--status-danger) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-danger) 92%, var(--app-text));
+}
+
+.app-tone-danger-text {
+  color: color-mix(in srgb, var(--status-danger) 90%, var(--app-text));
+}
+
+.app-tone-danger-badge {
+  border-color: color-mix(in srgb, var(--status-danger) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-danger) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-danger) 90%, var(--app-text));
+}
+
+.app-tone-danger-btn-ghost {
+  color: color-mix(in srgb, var(--status-danger) 85%, var(--app-text));
+}
+
+.app-tone-danger-btn-ghost:hover {
+  background: color-mix(in srgb, var(--status-danger) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-danger) 95%, var(--app-text));
+}
+
+.app-tone-danger-outline-btn {
+  border-color: color-mix(in srgb, var(--status-danger) 45%, var(--app-border));
+  color: color-mix(in srgb, var(--status-danger) 90%, var(--app-text));
+}
+
+.app-tone-danger-outline-btn:hover {
+  background: color-mix(in srgb, var(--status-danger) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-danger) 95%, var(--app-text));
+}
+
+.app-tone-success-row-highlight {
+  background: color-mix(in srgb, var(--status-success) 10%, var(--app-surface));
+}
+
+.app-tone-success-mass-bar {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--status-success) 12%, var(--app-surface)),
+    color-mix(in srgb, var(--status-success) 6%, var(--app-surface))
+  );
+}
+
+.app-tone-warning-move-plan {
+  border-color: color-mix(in srgb, var(--status-warning) 40%, var(--app-border));
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--status-warning) 12%, var(--app-surface)),
+    color-mix(in srgb, var(--status-warning) 8%, var(--app-surface))
+  );
+}
+
+.app-tone-warning-move-plan__icon {
+  background: color-mix(in srgb, var(--status-warning) 18%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 85%, var(--app-text));
+}
+
+.app-tone-info-callout {
+  border-color: color-mix(in srgb, var(--status-info) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-info) 10%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-info) 92%, var(--app-text));
+}
+
+.app-tone-info-chip {
+  background: color-mix(in srgb, var(--status-info) 12%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-info) 90%, var(--app-text));
+}
+
+.app-tone-info-phase {
+  border-color: color-mix(in srgb, var(--status-info) 35%, var(--app-border));
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--status-info) 12%, var(--app-surface)),
+    var(--app-surface)
+  );
+}
+
+.app-tone-info-section-gradient {
+  border-color: color-mix(in srgb, var(--status-info) 35%, var(--app-border));
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--status-info) 10%, var(--app-surface)),
+    var(--app-surface),
+    color-mix(in srgb, var(--app-accent) 4%, var(--app-surface))
+  );
+}
+
+.app-tone-info-connector {
+  background: color-mix(in srgb, var(--status-info) 28%, var(--app-border));
+}
+
+.app-tone-success-workflow {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+  background: color-mix(in srgb, var(--status-success) 10%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-success) 92%, var(--app-text));
+}
+
+.app-tone-success-panel-gradient {
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--app-border));
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--status-success) 12%, var(--app-surface)),
+    var(--app-surface)
+  );
 }
 
 .app-tone-warning-fill {
@@ -1314,6 +1462,10 @@ html.dark .login-page__glow {
   color: var(--sys-red-light);
 }
 
+html.dark .text-form-error {
+  color: color-mix(in srgb, var(--sys-red-light) 88%, white);
+}
+
 @keyframes login-wallpaper-drift {
   from {
     transform: scale(1.03);
@@ -1525,9 +1677,9 @@ html.dark .login-page__glow {
   backdrop-filter: blur(16px) saturate(1.12);
   -webkit-backdrop-filter: blur(16px) saturate(1.12);
   transition:
-    border-color 0.25s ease,
-    box-shadow 0.25s ease,
-    transform 0.25s ease;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .portal-module-card--active {
@@ -1588,7 +1740,7 @@ html.dark .login-page__glow {
   color: var(--portal-module-accent);
   background: color-mix(in srgb, var(--portal-module-accent) 14%, var(--app-surface));
   border: 1px solid color-mix(in srgb, var(--portal-module-accent) 24%, transparent);
-  transition: transform 0.25s ease;
+  transition: transform 0.2s ease;
 }
 
 .portal-module-card--active:hover .portal-module-card__icon {
@@ -1607,8 +1759,8 @@ html.dark .login-page__glow {
   opacity: 0;
   transform: translate(-4px, 4px);
   transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .portal-module-card--active:hover .portal-module-card__arrow {
@@ -3033,6 +3185,21 @@ html.dark .dashboard-quick:hover .dashboard-quick__icon {
   }
 }
 
+/*
+ * § Sidebar Premium (U4g) — consolidated block
+ * Token map: docs/customer-requirements/UI-DESIGN-TOKENS.md § U4g
+ * Shell:     AppNavShell.tsx · use-sidebar-state.ts · sidebar-prefs.ts
+ * Nav items: NavMenuList.tsx
+ * Preview:   /dev/ui · SidebarPlaygroundStates.tsx
+ *
+ * Layers (do not scatter new sidebar rules outside this section):
+ *   1. .macos-sidebar shell + --sb-menu-* aliases
+ *   2. .app-sidebar-brand* header
+ *   3. .sidebar-nav / .sidebar-nav-indicator / .nav-menu-link*
+ *   4. .app-sidebar--drawer mobile
+ * Group headings live earlier: .nav-menu-group-heading (line ~225)
+ */
+
 /* macOS-style nav shell — ใช้ทั้งแอปหลักและ Admin */
 .macos-sidebar {
   --sb-menu-text: var(--app-sidebar-fg);
@@ -3043,22 +3210,162 @@ html.dark .dashboard-quick:hover .dashboard-quick__icon {
   --sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --sidebar-motion: 300ms var(--sidebar-ease);
 
-  background: color-mix(in srgb, var(--app-sidebar) 92%, white);
-  border-right: 0;
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--app-sidebar) 86%, var(--app-surface)) 0%,
+    color-mix(in srgb, var(--app-sidebar) 96%, var(--app-surface-muted)) 100%
+  );
+  border-right: 1px solid var(--app-sidebar-border);
   backdrop-filter: none;
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--app-text) 10%, transparent);
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--app-sidebar-elevated);
   transition:
     width var(--sidebar-motion),
     box-shadow var(--sidebar-motion);
 }
 
+.macos-sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--app-sidebar-inner-highlight);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.macos-sidebar[data-pinned='true'] {
+  box-shadow: var(--app-sidebar-elevated-pinned);
+}
+
+.macos-sidebar[data-pinned='false'] {
+  box-shadow: var(--app-sidebar-elevated-hover);
+}
+
 html.dark .macos-sidebar {
-  background: color-mix(in srgb, var(--app-sidebar) 92%, #111113);
-  border-right: 0;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--app-sidebar) 94%, #1a1d24) 0%,
+    color-mix(in srgb, var(--app-sidebar) 82%, #0c0e12) 100%
+  );
+  border-right-color: var(--app-sidebar-border);
+}
+
+/* U4g.6 — footer zone */
+.app-sidebar-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--app-sidebar-border);
+  padding: 0.5rem;
+  background: color-mix(in srgb, var(--app-sidebar) 90%, var(--app-surface-muted));
+}
+
+html.dark .app-sidebar-footer {
+  background: color-mix(in srgb, var(--app-sidebar) 78%, #08090c);
+}
+
+.app-sidebar-footer__user {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.25rem 0.125rem 0.125rem;
+}
+
+.app-sidebar-footer__user--collapsed {
+  justify-content: center;
+  padding: 0.125rem 0;
+}
+
+.app-sidebar-footer__user-text {
+  overflow: hidden;
+}
+
+.app-sidebar-footer__role-badge {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 999px;
+  margin-top: 0.125rem;
+  padding: 0.0625rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--sb-menu-muted);
+  background: color-mix(in srgb, var(--sb-menu-muted) 10%, var(--app-sidebar));
+}
+
+.macos-sidebar .sidebar-footer__avatar {
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--app-text) 10%, transparent);
+}
+
+/* U4g.5 — pin toggle pressed state */
+.sidebar-pin-btn[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--sb-menu-highlight) 12%, var(--app-sidebar-hover));
+  color: color-mix(in srgb, var(--sb-menu-highlight) 88%, var(--sb-menu-text));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sb-menu-highlight) 24%, transparent);
+}
+
+.sidebar-pin-btn[aria-pressed='true']:hover {
+  background: color-mix(in srgb, var(--sb-menu-highlight) 16%, var(--app-sidebar-hover));
+  color: var(--sb-menu-text);
+}
+
+/* U4g.5 — label reveal: opacity trails width on expand, hides first on collapse */
+.macos-sidebar .sidebar-reveal-label,
+.macos-sidebar .app-sidebar-brand__title-block {
+  transition:
+    opacity 120ms var(--sidebar-ease),
+    max-width var(--sidebar-motion);
+}
+
+.macos-sidebar[data-collapsed='false'] .sidebar-reveal-label,
+.macos-sidebar[data-collapsed='false'] .app-sidebar-brand__title-block {
+  transition-delay: 100ms, 0ms;
+}
+
+.macos-sidebar[data-collapsed='true'] .sidebar-reveal-label,
+.macos-sidebar[data-collapsed='true'] .app-sidebar-brand__title-block {
+  transition-delay: 0ms;
+  transition-duration: 60ms, var(--sidebar-motion);
+}
+
+.macos-sidebar[data-reduced-motion='true'] {
+  --sidebar-motion: 0ms;
+  transition: none;
+}
+
+.macos-sidebar[data-reduced-motion='true'] .sidebar-reveal-label,
+.macos-sidebar[data-reduced-motion='true'] .app-sidebar-brand__title-block,
+.macos-sidebar[data-reduced-motion='true'] .sidebar-nav .nav-menu-link__label {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .macos-sidebar {
+    --sidebar-motion: 0ms;
+    transition: none;
+  }
+
+  .macos-sidebar .sidebar-reveal-label,
+  .macos-sidebar .app-sidebar-brand__title-block,
+  .macos-sidebar .sidebar-nav .nav-menu-link__label {
+    transition: none;
+  }
 }
 
 .macos-admin .macos-sidebar {
+  /* U4g.8 — same sidebar components; shell tokens alias to admin theme */
+  --app-sidebar: var(--admin-surface-muted);
+  --app-sidebar-fg: var(--admin-text);
+  --app-sidebar-fg-muted: var(--admin-text-muted);
+  --app-sidebar-border: var(--admin-border);
+  --app-sidebar-hover: color-mix(in srgb, var(--admin-primary) 10%, var(--admin-surface-muted));
+  --app-sidebar-active: color-mix(in srgb, var(--admin-primary) 16%, var(--admin-surface-muted));
   --sb-menu-text: var(--admin-text);
   --sb-menu-muted: color-mix(in srgb, var(--admin-text) 65%, transparent);
   --sb-menu-accent: var(--admin-primary);
@@ -3066,11 +3373,29 @@ html.dark .macos-sidebar {
   --sb-menu-active-surface: var(--admin-surface);
 }
 
+html.dark .macos-admin .macos-sidebar {
+  --app-sidebar-inner-highlight: rgba(255, 255, 255, 0.06);
+  --app-sidebar-elevated:
+    inset -1px 0 0 var(--app-sidebar-inner-highlight),
+    4px 0 24px rgba(0, 0, 0, 0.28);
+  --app-sidebar-elevated-pinned:
+    inset -1px 0 0 var(--app-sidebar-inner-highlight),
+    6px 0 28px rgba(0, 0, 0, 0.34);
+  --app-sidebar-elevated-hover:
+    inset -1px 0 0 var(--app-sidebar-inner-highlight),
+    2px 0 16px rgba(0, 0, 0, 0.22);
+}
+
 /* โลโก้เมนู / topbar — ขั้นต่ำ 40px (Admin ตั้งค่าได้สูงกว่า) */
 .app-brand-logo-nav {
   height: max(2.5rem, var(--brand-logo-nav-height, 2.5rem));
   width: auto;
   max-width: calc(max(2.5rem, var(--brand-logo-nav-height, 2.5rem)) * 4);
+}
+
+.pepsi-stripe--sidebar {
+  height: 3px;
+  opacity: 0.92;
 }
 
 .app-sidebar-brand {
@@ -3091,13 +3416,114 @@ html.dark .macos-sidebar {
   padding: 0.75rem 0.375rem;
 }
 
+.app-sidebar-brand__mark {
+  padding: 0.25rem 0.4375rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--app-surface) 94%, white),
+    color-mix(in srgb, var(--brand-pepsi-blue) 5%, var(--app-sidebar))
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 55%, transparent),
+    0 1px 4px color-mix(in srgb, var(--app-text) 7%, transparent);
+}
+
+html.dark .app-sidebar-brand__mark {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--app-surface) 88%, #111114),
+    color-mix(in srgb, var(--brand-pepsi-blue) 12%, #0f0f12)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.app-sidebar-brand__logo {
+  display: block;
+  height: max(1.75rem, calc(var(--brand-logo-nav-height, 2.5rem) * 0.7));
+  width: auto;
+  max-width: calc(max(1.75rem, var(--brand-logo-nav-height, 2.5rem)) * 1.8);
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--app-text) 8%, transparent));
+}
+
+/* U4g.9 — compact density: tighter nav stack · 44px touch targets on mobile */
+.macos-sidebar[data-sidebar-density='compact'] .sidebar-nav {
+  gap: 0;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.macos-sidebar[data-sidebar-density='compact'] .nav-menu-group-heading--sidebar {
+  padding-top: 0.375rem;
+  padding-bottom: 0.125rem;
+}
+
+.macos-sidebar[data-sidebar-density='compact'] .nav-menu-link--sidebar {
+  height: 2.25rem;
+  min-height: 2.75rem;
+}
+
+@media (min-width: 1024px) {
+  .macos-sidebar[data-sidebar-density='compact'] .nav-menu-link--sidebar {
+    min-height: 2.25rem;
+  }
+}
+
+.macos-sidebar[data-sidebar-density='compact'] .app-sidebar-brand {
+  min-height: 4rem;
+}
+
+.macos-sidebar[data-sidebar-density='compact'] .app-sidebar-brand--expanded {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+
+.macos-sidebar[data-sidebar-density='compact'] .app-sidebar-footer {
+  padding: 0.375rem;
+}
+
+.app-sidebar-brand__title-block {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 0.375rem;
+  overflow: hidden;
+  max-width: 12rem;
+  opacity: 1;
+}
+
+.app-sidebar-brand__title-block--collapsed {
+  max-width: 0;
+  flex: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .app-sidebar-brand__title {
   font-size: var(--app-font-size-lg);
   font-weight: 600;
   line-height: 1.25;
-  transition:
-    opacity var(--sidebar-motion, 300ms cubic-bezier(0.22, 1, 0.36, 1)),
-    max-width var(--sidebar-motion, 300ms cubic-bezier(0.22, 1, 0.36, 1));
+  color: var(--app-sidebar-fg);
+}
+
+.app-sidebar-brand__module-chip {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0.0625rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.macos-sidebar .app-sidebar-brand__module-chip {
+  background: color-mix(in srgb, var(--sb-menu-highlight) 14%, var(--app-sidebar));
+  color: color-mix(in srgb, var(--sb-menu-highlight) 90%, var(--sb-menu-text));
 }
 
 .app-topbar-brand-title {
@@ -3347,10 +3773,11 @@ html.dark .macos-admin .app-surface :where(input, textarea, select) {
   );
 }
 
-/* macOS26 web: sidebar menu clarity (main app + admin) */
+/* macOS26 web: sidebar menu clarity (main app + admin) — U4g.3 sliding indicator */
 .macos-sidebar .sidebar-nav {
   gap: 4px;
 }
+
 .macos-sidebar .sidebar-nav > div.nav-menu-group-heading::after {
   content: '';
   display: block;
@@ -3364,27 +3791,79 @@ html.dark .macos-admin .app-surface :where(input, textarea, select) {
   );
   opacity: 0.8;
 }
+
+/* U4g.8 — indicator behind links; isolated stack (tour / command palette do not clip paint) */
+.macos-sidebar .sidebar-nav {
+  isolation: isolate;
+}
+
+.sidebar-nav-indicator {
+  border-radius: var(--app-radius-button);
+  background: color-mix(in srgb, var(--sb-menu-accent) 16%, var(--sb-menu-active-surface));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 4px 14px color-mix(in srgb, var(--sb-menu-accent) 14%, transparent);
+}
+
+.sidebar-nav-indicator::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  width: 4px;
+  height: 1.25rem;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--sb-menu-highlight) 95%, white),
+    color-mix(in srgb, var(--sb-menu-accent) 85%, transparent)
+  );
+  box-shadow: 0 0 8px color-mix(in srgb, var(--sb-menu-highlight) 35%, transparent);
+}
+
+html.dark .sidebar-nav-indicator {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 6px 18px color-mix(in srgb, var(--sb-menu-accent) 20%, transparent);
+}
+
 .macos-sidebar .sidebar-nav a {
   position: relative;
   border: 1px solid transparent;
   background: transparent;
   color: var(--sb-menu-muted);
   transition:
-    background var(--sidebar-motion),
-    color var(--sidebar-motion),
-    border-color var(--sidebar-motion),
-    box-shadow var(--sidebar-motion),
+    background 150ms var(--sidebar-ease),
+    color 150ms var(--sidebar-ease),
     transform 150ms var(--sidebar-ease);
 }
+
 .macos-sidebar .sidebar-nav a:hover {
   background: color-mix(in srgb, var(--sb-menu-accent) 8%, transparent);
   border-color: transparent;
   color: var(--sb-menu-text);
 }
+
 .macos-sidebar .sidebar-nav a:active {
   transform: translateY(0.5px);
 }
-.macos-sidebar .sidebar-nav a[aria-current='page'] {
+
+.macos-sidebar .sidebar-nav[data-nav-indicator='on'] a[aria-current='page'] {
+  color: var(--sb-menu-text);
+  background: transparent;
+  box-shadow: none;
+}
+
+.macos-sidebar .sidebar-nav[data-nav-indicator='on'] a[aria-current='page']:hover {
+  background: transparent;
+}
+
+.macos-sidebar .sidebar-nav[data-nav-indicator='on'] a[aria-current='page']::before {
+  display: none;
+}
+
+.macos-sidebar .sidebar-nav[data-nav-indicator='off'] a[aria-current='page'] {
   color: var(--sb-menu-text);
   background: color-mix(in srgb, var(--sb-menu-accent) 16%, var(--sb-menu-active-surface));
   border-color: transparent;
@@ -3393,109 +3872,208 @@ html.dark .macos-admin .app-surface :where(input, textarea, select) {
     0 10px 24px color-mix(in srgb, var(--sb-menu-accent) 16%, transparent),
     0 2px 10px color-mix(in srgb, var(--app-text) 10%, transparent);
 }
-.macos-sidebar .sidebar-nav a[aria-current='page']::before {
-  content: '';
-  position: absolute;
-  left: 6px;
-  top: 50%;
-  width: 4px;
-  height: 20px;
-  transform: translateY(-50%) scaleY(0.6);
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--sb-menu-highlight) 95%, white),
-    color-mix(in srgb, var(--app-primary) 85%, transparent)
-  );
-  opacity: 0;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--sb-menu-highlight) 35%, transparent);
-  transition:
-    opacity var(--sidebar-motion),
-    transform var(--sidebar-motion);
-}
 
-.macos-sidebar .sidebar-nav a[aria-current='page']::before,
-.macos-sidebar .sidebar-nav a.nav-menu-link--active::before {
-  opacity: 1;
-  transform: translateY(-50%) scaleY(1);
-}
-.macos-sidebar .sidebar-nav a[aria-current='page']::after {
-  content: none;
-}
-
-/* Sidebar ยุบ — active ชัดที่ไอคอน + tooltip */
+/* Sidebar ยุบ (U4g.4) — icon ring · dot · scroll fade · glass tooltip */
 .macos-sidebar[data-collapsed='true'] .sidebar-nav a[aria-current='page']::before,
 .macos-sidebar .sidebar-nav--collapsed a[aria-current='page']::before {
   display: none;
 }
 
-.macos-sidebar[data-collapsed='true'] .sidebar-nav a[aria-current='page'],
-.macos-sidebar .sidebar-nav--collapsed a.nav-menu-link--active {
-  background: color-mix(in srgb, var(--sb-menu-accent) 22%, var(--app-sidebar-active));
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--sb-menu-highlight) 35%, transparent),
-    0 4px 12px color-mix(in srgb, var(--sb-menu-accent) 18%, transparent);
+.macos-sidebar .sidebar-nav--collapsed a {
+  color: var(--sb-menu-muted);
 }
 
-.macos-sidebar[data-collapsed='true'] .sidebar-nav a[aria-current='page'] .nav-menu-link__icon,
-.macos-sidebar .sidebar-nav--collapsed a.nav-menu-link--active .nav-menu-link__icon {
+.macos-sidebar .sidebar-nav--collapsed a:hover {
   color: var(--sb-menu-text);
-  background: color-mix(in srgb, var(--sb-menu-highlight) 18%, transparent);
+}
+
+.macos-sidebar .sidebar-nav--collapsed a .nav-menu-link__icon {
+  color: var(--sb-menu-muted);
+}
+
+.macos-sidebar .sidebar-nav--collapsed a:hover .nav-menu-link__icon {
+  color: var(--sb-menu-text);
+}
+
+.macos-sidebar .sidebar-nav--collapsed a[aria-current='page'],
+.macos-sidebar .sidebar-nav--collapsed a.nav-menu-link--active {
+  color: var(--sb-menu-text);
+  background: color-mix(in srgb, var(--sb-menu-accent) 10%, transparent);
+  box-shadow: none;
+}
+
+.macos-sidebar .sidebar-nav--collapsed a[aria-current='page'] .nav-menu-link__icon,
+.macos-sidebar .sidebar-nav--collapsed a.nav-menu-link--active .nav-menu-link__icon {
+  color: var(--sb-menu-highlight);
+  background: color-mix(in srgb, var(--sb-menu-highlight) 14%, transparent);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 0 0 2px color-mix(in srgb, var(--sb-menu-highlight) 55%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 0 2px color-mix(in srgb, var(--sb-menu-highlight) 58%, transparent);
+}
+
+.macos-sidebar .sidebar-nav--collapsed .nav-menu-link__icon-slot::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translateX(-50%) scale(0);
+  border-radius: 999px;
+  background: var(--sb-menu-highlight);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--sb-menu-highlight) 50%, transparent);
+  opacity: 0;
+  transition:
+    transform 150ms var(--sidebar-ease),
+    opacity 150ms var(--sidebar-ease);
+}
+
+.macos-sidebar .sidebar-nav--collapsed a[aria-current='page'] .nav-menu-link__icon-slot::after,
+.macos-sidebar .sidebar-nav--collapsed a.nav-menu-link--active .nav-menu-link__icon-slot::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.sidebar-nav--fade-top.sidebar-nav--fade-bottom {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
+}
+
+.sidebar-nav--fade-top:not(.sidebar-nav--fade-bottom) {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 100%);
+}
+
+.sidebar-nav--fade-bottom:not(.sidebar-nav--fade-top) {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 14px), transparent 100%);
+}
+
+.sidebar-tooltip {
+  pointer-events: none;
+  border-color: color-mix(in srgb, var(--app-sidebar-border) 75%, var(--app-border));
+  background: color-mix(in srgb, var(--app-surface) 86%, transparent);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, white 35%, transparent),
+    var(--app-shadow-dialog);
+}
+
+html.dark .sidebar-tooltip {
+  background: color-mix(in srgb, var(--app-surface) 82%, #0f0f12);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .macos-sidebar .sidebar-nav--collapsed .nav-menu-link__icon-slot::after {
+    transition: none;
+  }
 }
 
 .app-sidebar--drawer {
   box-shadow:
+    inset -1px 0 0 var(--app-sidebar-inner-highlight),
     0 0 0 1px color-mix(in srgb, var(--app-border) 40%, transparent),
     0 24px 48px color-mix(in srgb, var(--app-text) 18%, transparent);
 }
-.macos-sidebar .sidebar-nav a[aria-current='page'] svg {
-  color: color-mix(in srgb, var(--sb-menu-text) 82%, transparent);
+
+/* U4g.7 — Sheet nav drawer: sidebar shell over dialog glass · z above banners (z-15) */
+.app-sidebar-sheet.macos-sidebar {
+  border-radius: 0;
+  color: var(--app-sidebar-fg);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--app-sidebar) 86%, var(--app-surface)) 0%,
+    color-mix(in srgb, var(--app-sidebar) 96%, var(--app-surface-muted)) 100%
+  );
+  box-shadow:
+    inset -1px 0 0 var(--app-sidebar-inner-highlight),
+    0 0 0 1px color-mix(in srgb, var(--app-border) 40%, transparent),
+    0 24px 48px color-mix(in srgb, var(--app-text) 18%, transparent);
 }
 
-html.dark .macos-sidebar .sidebar-nav a[aria-current='page'] svg {
-  color: var(--brand-logo-sky);
+html.dark .app-sidebar-sheet.macos-sidebar {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--app-sidebar) 94%, #1a1d24) 0%,
+    color-mix(in srgb, var(--app-sidebar) 82%, #0c0e12) 100%
+  );
 }
 
+.macos-admin .app-sidebar-sheet.macos-sidebar {
+  color: var(--admin-text);
+}
 .macos-sidebar .sidebar-nav .nav-menu-link__label {
   transition:
-    opacity var(--sidebar-motion),
+    opacity 120ms var(--sidebar-ease),
     max-width var(--sidebar-motion),
     margin var(--sidebar-motion);
 }
 
+.macos-sidebar[data-collapsed='false'] .sidebar-nav .nav-menu-link__label {
+  transition-delay: 80ms, 0ms, 0ms;
+}
+
+.macos-sidebar[data-collapsed='true'] .sidebar-nav .nav-menu-link__label {
+  transition-delay: 0ms;
+  transition-duration: 50ms, var(--sidebar-motion), var(--sidebar-motion);
+}
+
 .macos-sidebar .sidebar-nav a svg {
-  border-radius: var(--app-radius-button);
-  padding: 6px;
-  box-sizing: content-box;
   transition:
     background var(--sidebar-motion),
     transform var(--sidebar-motion),
     color var(--sidebar-motion);
 }
 
-.macos-sidebar:not([data-collapsed='true']) .sidebar-nav a:hover svg {
-  transform: scale(1.06);
-}
-.macos-sidebar .sidebar-nav a:hover svg {
-  background: color-mix(in srgb, var(--sb-menu-accent) 10%, transparent);
-}
-.macos-sidebar .sidebar-nav a[aria-current='page'] svg {
-  background: color-mix(in srgb, var(--sb-menu-accent) 10%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-.macos-sidebar .sidebar-nav a:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--sb-menu-accent) 60%, transparent);
-  outline-offset: 2px;
+.macos-sidebar .sidebar-nav[data-nav-indicator='on'] a .nav-menu-link__icon {
+  color: color-mix(in srgb, var(--sb-menu-muted) 92%, var(--sb-menu-text));
 }
 
-html.dark .macos-sidebar .sidebar-nav a[aria-current='page'] {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 10px 24px color-mix(in srgb, var(--sb-menu-accent) 22%, transparent),
-    0 2px 10px rgba(0, 0, 0, 0.35);
+.macos-sidebar .sidebar-nav[data-nav-indicator='on'] a[aria-current='page'] .nav-menu-link__icon {
+  color: color-mix(in srgb, var(--sb-menu-highlight) 88%, var(--sb-menu-text));
+}
+
+.macos-sidebar .sidebar-nav[data-nav-indicator='on'] a:hover .nav-menu-link__icon {
+  color: var(--sb-menu-text);
+}
+
+.macos-sidebar .sidebar-nav[data-collapsed='true'] a svg,
+.macos-sidebar .sidebar-nav--collapsed a svg {
+  border-radius: var(--app-radius-button);
+  padding: 6px;
+  box-sizing: content-box;
+}
+
+.macos-sidebar .sidebar-nav a:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--sb-menu-highlight) 72%, transparent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sb-menu-highlight) 22%, transparent);
+  z-index: 3;
+}
+
+.nav-menu-link--navbar[aria-current='page'] {
+  background: color-mix(in srgb, var(--app-accent) 10%, transparent);
+  box-shadow: inset 0 -2px 0 var(--app-accent);
+}
+
+.nav-menu-link--navbar[aria-current='page']:hover {
+  background: color-mix(in srgb, var(--app-accent) 12%, transparent);
 }
 
 /* macOS Tahoe-ish “Vibrancy” for Admin only (scoped) */
@@ -3692,6 +4270,63 @@ html.dark [data-sonner-toast] {
 [data-sonner-toast] [data-close-button]:hover {
   background: var(--app-subtle);
   color: var(--app-text);
+}
+
+/* Sonner — slide-in from right + icon pop (PRE-UAT U4c) */
+@keyframes app-sonner-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(100% + 0.75rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes app-sonner-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(calc(100% + 0.75rem));
+  }
+}
+
+@keyframes app-sonner-icon-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+[data-sonner-toast][data-mounted='true'] {
+  animation: app-sonner-slide-in 0.32s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+}
+
+[data-sonner-toast][data-removed='true'] {
+  animation: app-sonner-slide-out 0.2s ease-in forwards;
+}
+
+[data-sonner-toast][data-mounted='true'] [data-icon] svg {
+  animation: app-sonner-icon-pop 0.22s ease-out 0.06s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toast][data-mounted='true'],
+  [data-sonner-toast][data-removed='true'] {
+    animation: none;
+  }
+
+  [data-sonner-toast][data-mounted='true'] [data-icon] svg {
+    animation: none;
+  }
 }
 
 .macos-admin .admin-layout-shell .admin-page-content {
@@ -4212,6 +4847,28 @@ html.dark .admin-layout-shell .admin-card {
   color: color-mix(in srgb, var(--sys-red-light) 62%, var(--admin-text));
 }
 
+html.dark .app-callout--amber,
+html.dark .admin-callout--amber {
+  border-color: color-mix(in srgb, var(--status-warning) 42%, var(--app-border));
+  background: color-mix(in srgb, var(--status-warning) 14%, var(--app-surface));
+  color: color-mix(in srgb, var(--status-warning) 92%, var(--app-text));
+}
+
+html.dark .macos-admin .admin-callout--amber {
+  border-color: color-mix(in srgb, var(--status-warning) 42%, var(--admin-border));
+  background: color-mix(in srgb, var(--status-warning) 14%, var(--admin-surface));
+  color: color-mix(in srgb, var(--status-warning) 92%, var(--admin-text));
+}
+
+html.dark .app-tone-warning-review {
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--status-warning) 14%, var(--app-surface)),
+    var(--app-surface),
+    color-mix(in srgb, var(--app-accent) 4%, var(--app-surface))
+  );
+}
+
 .admin-diff--added {
   border-left: 4px solid var(--sys-green-light);
   background: color-mix(in srgb, var(--sys-green-light) 10%, var(--admin-surface));
@@ -4241,6 +4898,48 @@ html.dark .pm-fullcalendar--modern {
 html.dark .pm-fullcalendar .fc .fc-daygrid-day-number,
 html.dark .pm-fullcalendar--modern .fc .pm-cal-day-num {
   color: var(--app-text);
+}
+
+html.dark .pm-fullcalendar .fc {
+  --fc-border-color: var(--app-border);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: color-mix(in srgb, var(--app-bg) 40%, var(--app-surface));
+  --fc-neutral-text-color: var(--app-text-muted);
+  --fc-button-text-color: var(--app-text);
+  --fc-button-bg-color: var(--app-surface-muted);
+  --fc-button-border-color: var(--app-border);
+  --fc-button-hover-bg-color: color-mix(in srgb, var(--app-accent) 16%, var(--app-surface-muted));
+  --fc-button-hover-border-color: color-mix(in srgb, var(--app-accent) 28%, var(--app-border));
+  --fc-button-active-bg-color: color-mix(in srgb, var(--app-accent) 22%, var(--app-surface-muted));
+  --fc-button-active-border-color: color-mix(in srgb, var(--app-accent) 35%, var(--app-border));
+}
+
+html.dark .pm-fullcalendar .fc .fc-scrollgrid,
+html.dark .pm-fullcalendar .fc .fc-scrollgrid-section > td,
+html.dark .pm-fullcalendar .fc .fc-col-header-cell,
+html.dark .pm-fullcalendar .fc .fc-daygrid-day {
+  background: transparent;
+  color: var(--app-text);
+}
+
+html.dark .pm-fullcalendar .fc .fc-popover {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
+  box-shadow: var(--app-shadow-dialog);
+}
+
+html.dark .pm-fullcalendar .fc .fc-popover .fc-header {
+  background: color-mix(in srgb, var(--app-surface-muted) 80%, var(--app-surface));
+  color: var(--app-text);
+}
+
+html.dark .pm-fullcalendar .fc .fc-daygrid-more-link {
+  color: var(--app-accent);
+}
+
+html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
+  background: color-mix(in srgb, var(--app-accent) 12%, var(--app-surface));
 }
 
 .scheduling-page-stack {
@@ -4320,6 +5019,14 @@ html.dark .pm-fullcalendar--modern .fc .pm-cal-day-num {
 /* ── Modern FullCalendar (pm-fullcalendar--modern) ── */
 .pm-fullcalendar--modern {
   --pm-cal-day-min-height: 7.5rem;
+  --cal-status-in-progress: var(--brand-logo-sky);
+  --cal-status-overdue: #ff3b30;
+  --cal-status-moved: var(--brand-logo-orange);
+  --cal-status-completed: var(--brand-logo-green-light);
+  --cal-team-a: color-mix(in srgb, var(--status-success) 88%, white);
+  --cal-team-b: color-mix(in srgb, var(--status-danger) 82%, white);
+  --cal-team-ee: color-mix(in srgb, var(--status-info) 85%, white);
+  --cal-team-ut: color-mix(in srgb, var(--status-warning) 85%, white);
   --pm-cal-weekend-bg: color-mix(in srgb, var(--brand-logo-orange) 6%, var(--app-surface));
   --pm-cal-weekend-border: color-mix(in srgb, var(--brand-logo-orange) 18%, var(--app-border));
   --pm-cal-sunday-bg: color-mix(in srgb, var(--brand-logo-orange) 9%, var(--app-surface));
@@ -4673,6 +5380,17 @@ html.dark .pm-fullcalendar--modern .fc .pm-cal-day-num {
   scrollbar-gutter: stable;
 }
 
+.pm-cal-gantt {
+  --cal-status-in-progress: var(--brand-logo-sky);
+  --cal-status-overdue: #ff3b30;
+  --cal-status-moved: var(--brand-logo-orange);
+  --cal-status-completed: var(--brand-logo-green-light);
+  --cal-team-a: color-mix(in srgb, var(--status-success) 88%, white);
+  --cal-team-b: color-mix(in srgb, var(--status-danger) 82%, white);
+  --cal-team-ee: color-mix(in srgb, var(--status-info) 85%, white);
+  --cal-team-ut: color-mix(in srgb, var(--status-warning) 85%, white);
+}
+
 .pm-cal-gantt__bar {
   z-index: 2;
   cursor: pointer;
@@ -4692,6 +5410,86 @@ html.dark .pm-fullcalendar--modern .fc .pm-cal-day-num {
 
 .pm-fullcalendar--modern .fc .pm-cal-event--phase-confirm {
   box-shadow: inset 3px 0 0 var(--brand-logo-green-light);
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--status-in-progress {
+  background-color: var(--cal-status-in-progress) !important;
+  border-color: color-mix(in srgb, var(--cal-status-in-progress) 80%, black) !important;
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--status-overdue {
+  background-color: var(--cal-status-overdue) !important;
+  border-color: color-mix(in srgb, var(--cal-status-overdue) 80%, black) !important;
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--status-moved {
+  background-color: var(--cal-status-moved) !important;
+  border-color: color-mix(in srgb, var(--cal-status-moved) 80%, black) !important;
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--status-completed {
+  background-color: var(--cal-status-completed) !important;
+  border-color: color-mix(in srgb, var(--cal-status-completed) 75%, black) !important;
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--team-a {
+  box-shadow:
+    inset -3px 0 0 var(--cal-team-a),
+    0 1px 3px color-mix(in srgb, var(--app-text) 12%, transparent);
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--team-b {
+  box-shadow:
+    inset -3px 0 0 var(--cal-team-b),
+    0 1px 3px color-mix(in srgb, var(--app-text) 12%, transparent);
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--team-ee {
+  box-shadow:
+    inset -3px 0 0 var(--cal-team-ee),
+    0 1px 3px color-mix(in srgb, var(--app-text) 12%, transparent);
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--team-ut {
+  box-shadow:
+    inset -3px 0 0 var(--cal-team-ut),
+    0 1px 3px color-mix(in srgb, var(--app-text) 12%, transparent);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--status-in-progress {
+  background-color: var(--cal-status-in-progress) !important;
+  border: 1px solid color-mix(in srgb, var(--cal-status-in-progress) 80%, black);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--status-overdue {
+  background-color: var(--cal-status-overdue) !important;
+  border: 1px solid color-mix(in srgb, var(--cal-status-overdue) 80%, black);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--status-moved {
+  background-color: var(--cal-status-moved) !important;
+  border: 1px solid color-mix(in srgb, var(--cal-status-moved) 80%, black);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--status-completed {
+  background-color: var(--cal-status-completed) !important;
+  border: 1px solid color-mix(in srgb, var(--cal-status-completed) 75%, black);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--team-a {
+  box-shadow: inset -3px 0 0 var(--cal-team-a);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--team-b {
+  box-shadow: inset -3px 0 0 var(--cal-team-b);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--team-ee {
+  box-shadow: inset -3px 0 0 var(--cal-team-ee);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--team-ut {
+  box-shadow: inset -3px 0 0 var(--cal-team-ut);
 }
 
 .pm-cal-gantt__bar.pm-cal-event--phase-create {

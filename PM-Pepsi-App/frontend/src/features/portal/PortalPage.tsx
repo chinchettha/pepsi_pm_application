@@ -2,12 +2,12 @@ import { ModulePortalCard } from '@/components/portal/ModulePortalCard'
 import { PortalShell } from '@/components/portal/PortalShell'
 import { portalGridMotion } from '@/features/portal/portal-motion'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { motion, useReducedMotion } from 'framer-motion'
 import { getStoredAuthUser } from '@/features/auth/login-api'
-import { toastError } from '@/lib/app-toast'
 import { resolvePostLoginPathForUserst } from '@/lib/primary-roles'
-import { fetchPortalModules, type PortalModule } from '@/lib/portal-api'
+import { fetchPortalModules, requestModuleHandoff, type PortalModule } from '@/lib/portal-api'
 import {
   isPortalAutoSkipEnabled,
   isPortalEnabled,
@@ -16,7 +16,7 @@ import {
 } from '@/lib/portal-enabled'
 import { useQuery } from '@tanstack/react-query'
 import { LayoutGrid } from 'lucide-react'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -70,14 +70,45 @@ export function PortalPage() {
   })
 
   useEffect(() => {
-    if (!isPortalAutoSkipEnabled() || !q.data?.autoRedirect) return
-    const target = q.data.autoRedirect
-    if (target.startsWith('http://') || target.startsWith('https://')) {
-      window.location.assign(target)
+    if (!q.isError) return
+    toast.error(t('loadError'))
+  }, [q.isError, t])
+
+  const handoffBusy = useRef(false)
+
+  const runExternalHandoff = useCallback(
+    async (mod: PortalModule) => {
+      if (handoffBusy.current) return
+      handoffBusy.current = true
+      try {
+        const { redirectUrl } = await requestModuleHandoff(mod.code)
+        window.location.assign(redirectUrl)
+      } catch {
+        toast.error(t('handoffError'))
+        handoffBusy.current = false
+      }
+    },
+    [t],
+  )
+
+  useEffect(() => {
+    if (!isPortalAutoSkipEnabled() || !q.data) return
+    const { autoRedirect, modules } = q.data
+    if (autoRedirect) {
+      if (autoRedirect.startsWith('http://') || autoRedirect.startsWith('https://')) {
+        window.location.assign(autoRedirect)
+        return
+      }
+      navigate(autoRedirect, { replace: true })
       return
     }
-    navigate(target, { replace: true })
-  }, [q.data?.autoRedirect, navigate])
+    if (modules.length === 1) {
+      const only = modules[0]
+      if (only?.ready && only.handoff === 'code_exchange') {
+        void runExternalHandoff(only)
+      }
+    }
+  }, [q.data, navigate, runExternalHandoff])
 
   const openModule = useCallback(
     (mod: PortalModule) => {
@@ -101,6 +132,11 @@ export function PortalPage() {
         return
       }
 
+      if (mod.handoff === 'code_exchange') {
+        void runExternalHandoff(mod)
+        return
+      }
+
       if (mod.external && mod.entryUrl) {
         window.location.assign(mod.entryUrl)
         return
@@ -108,7 +144,7 @@ export function PortalPage() {
 
       toast.info(t('toast.comingSoon', { name }))
     },
-    [i18n.language, navigate, t],
+    [i18n.language, navigate, runExternalHandoff, t],
   )
 
   if (!isPortalEnabled()) {
@@ -130,17 +166,14 @@ export function PortalPage() {
   if (q.isError) {
     return (
       <PortalShell>
-        <EmptyState
+        <QueryLoadErrorState
           icon={LayoutGrid}
-          title={t('noModules.title')}
-          description={q.error instanceof Error ? q.error.message : t('noModules.description')}
+          title={t('common:errors.loadFailed')}
+          error={q.error}
+          description={t('noModules.description')}
           action={{
             label: t('common:actions.retry'),
-            onClick: () => {
-              void q.refetch().catch((err) => {
-                toastError(err instanceof Error ? err.message : String(err))
-              })
-            },
+            onClick: () => void q.refetch(),
           }}
         />
       </PortalShell>

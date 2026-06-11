@@ -1,6 +1,7 @@
 import type { WoPmExecution } from '@/api/schemas'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { putWorkOrderPmNote } from '@/lib/api-public'
 import { cn } from '@/lib/utils'
 import { useMutation } from '@tanstack/react-query'
@@ -50,10 +51,10 @@ export function WorkOrderPmCommentThread({
             <li
               key={entry.identry}
               className={cn(
-                'rounded-button border px-3 py-2 text-body-sm',
+                'rounded-button border px-3 py-2.5 text-body-sm',
                 inline
                   ? 'border-dashed border-neutral-400 bg-white'
-                  : 'border-app bg-[var(--app-surface)]',
+                  : 'border-app/70 bg-[var(--app-surface)] shadow-sm',
               )}
             >
               <p className="whitespace-pre-wrap text-app">{entry.note}</p>
@@ -73,14 +74,12 @@ export function WorkOrderPmCommentThread({
       {canEdit ? (
         <div className="space-y-2">
           <Label htmlFor={`pm-wo-comment-${orderId}`}>{t('pmComment.addLabel')}</Label>
-          <textarea
+          <Textarea
             id={`pm-wo-comment-${orderId}`}
             rows={inline ? 3 : 4}
             className={cn(
-              'w-full resize-y px-3 py-2 text-body-sm',
-              inline
-                ? 'sap-wo-print__input sap-wo-print__input--left min-h-[3.5rem]'
-                : 'rounded-button border border-app bg-[var(--app-surface)]',
+              'resize-y',
+              inline && 'sap-wo-print__input sap-wo-print__input--left min-h-[3.5rem]',
               textareaClassName,
             )}
             value={draft}

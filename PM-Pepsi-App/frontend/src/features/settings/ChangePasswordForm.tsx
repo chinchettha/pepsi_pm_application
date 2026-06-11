@@ -47,7 +47,7 @@ export function ChangePasswordForm() {
       </div>
 
       {success ? (
-        <p className="rounded-card border border-emerald-200 bg-emerald-50 px-3 py-2 text-body-sm text-emerald-900">
+        <p className="app-tone-success-panel rounded-card border px-3 py-2 text-body-sm">
           {t('settings.password.success')}
         </p>
       ) : null}
@@ -95,7 +95,7 @@ export function ChangePasswordForm() {
       </div>
 
       {mut.isError ? (
-        <p className="text-body-sm text-red-600">{(mut.error as Error).message}</p>
+        <p className="text-body-sm text-form-error">{(mut.error as Error).message}</p>
       ) : null}
 
       <Button

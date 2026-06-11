@@ -4,6 +4,7 @@ import {
 } from '@/components/scheduling/SchedulingPageLayout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ConfirmDeleteAlertDialog } from '@/components/ui/confirm-delete-alert-dialog'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,7 +19,7 @@ import {
   Trash2,
   UserRound,
 } from 'lucide-react'
-import { useMemo, type KeyboardEvent } from 'react'
+import { useMemo, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type ConfirmCommentItem = {
@@ -102,6 +103,7 @@ function CommentCard({
   dateLocale: string
 }) {
   const isEditing = editingId === comment.idcom
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   return (
     <motion.li variants={reduceMotion ? undefined : cardVariants} layout={!reduceMotion}>
@@ -147,8 +149,8 @@ function CommentCard({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
-                  onClick={() => onDelete(comment.idcom)}
+                  className="app-tone-danger-btn-ghost h-7 px-2"
+                  onClick={() => setDeleteOpen(true)}
                   disabled={deletePending}
                   aria-label={t('woComments.deleteAria')}
                 >
@@ -205,6 +207,14 @@ function CommentCard({
           )}
         </div>
       </article>
+      <ConfirmDeleteAlertDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={t('woComments.deleteTitle')}
+        description={t('woComments.deleteDescription')}
+        loading={deletePending}
+        onConfirm={() => onDelete(comment.idcom)}
+      />
     </motion.li>
   )
 }
@@ -355,7 +365,7 @@ export function WorkOrderConfirmCommentsSection({
               <Skeleton className="h-28 w-full rounded-xl" />
             </div>
           ) : isError ? (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p className="app-tone-danger-callout rounded-xl border px-4 py-3 text-sm">
               {error?.message ?? t('shared.loadingFailed')}
             </p>
           ) : items.length === 0 ? (

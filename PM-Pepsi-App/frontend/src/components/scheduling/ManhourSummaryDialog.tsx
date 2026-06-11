@@ -72,7 +72,7 @@ export function ManhourSummaryDialog({
             <Skeleton className="h-48 w-full rounded-card" />
           </div>
         ) : q.isError ? (
-          <p className="text-body-sm text-red-600">{(q.error as Error).message}</p>
+          <p className="text-body-sm text-form-error">{(q.error as Error).message}</p>
         ) : !q.data || q.data.totalOrders === 0 ? (
           <p className="text-caption">
             ไม่มี Work Order ในวันที่เลือก (เทียบ PHP ที่ไม่เปิด modal เมื่อไม่มีข้อมูล)

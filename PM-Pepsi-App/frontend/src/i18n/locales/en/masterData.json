@@ -1,124 +1,343 @@
-{
-  "page": {
-    "title": "Master data",
-    "hints": ["Activity type", "Master PM", "PM process", "ZB02"],
-    "noAccess": "No access",
-    "noAccessDesc": "Requires master-data.read permission",
-    "tabCount": "{{count}} tabs",
-    "masterHub": "Master Hub",
-    "readOnly": "Read-only mode — master-data.write required to edit"
-  },
-  "panel": {
-    "loadFailed": "Could not load",
-    "empty": "No data",
-    "emptyHint": "Check migration/seed or import data",
-    "retry": "Try again"
-  },
-  "actions": {
-    "add": "Add",
-    "edit": "Edit",
-    "delete": "Delete",
-    "save": "Save",
-    "cancel": "Cancel",
-    "close": "Close",
-    "import": "Import",
-    "importFile": "Import file"
-  },
-  "aria": {
-    "edit": "Edit",
-    "delete": "Delete"
-  },
-  "rowCount": "{{count}} items",
-  "tabs": {
-    "equipment": "Equipment",
-    "functional": "Functional Loc.",
-    "machine": "Machines",
-    "material": "Materials",
-    "zone": "Zones",
-    "department": "Departments",
-    "tasklist": "Task list",
-    "worktype": "Work types",
-    "zb": "ZB",
-    "level": "Levels",
-    "position": "Positions",
-    "activitytype": "Activity type (MAT)",
-    "pm-master-ee": "MASTER PM EE",
-    "pm-master-me": "MASTER PM ME",
-    "pm-master-pk": "MASTER PM PK",
-    "workstatus": "Work status",
-    "reason": "Reasons",
-    "group": "Groups",
-    "lineproduct": "Production lines",
-    "lineschdul": "Line schedules"
-  },
-  "activityType": {
-    "badge": "ZB02 · MaintActivityType",
-    "add": "Add",
-    "import": "Import file",
-    "edit": "Edit",
-    "delete": "Delete",
-    "matRequired": "Enter MAT",
-    "descRequired": "Enter description",
-    "checkYn": "Check must be Y or N",
-    "saved": "Saved",
-    "deleted": "Deleted",
-    "imported": "Imported",
-    "dialogCreate": "Add activity type",
-    "dialogEdit": "Edit activity type",
-    "dialogDelete": "Delete activity type",
-    "dialogImport": "Import activity types (Excel/CSV)",
-    "mat": "MAT",
-    "description": "Description",
-    "check": "Check",
-    "confirmDelete": "Delete {{mat}} — this cannot be undone",
-    "pickFile": "Choose file",
-    "importResult": "Inserted {{inserted}} · Updated {{updated}} · Skipped {{skipped}}",
-    "emptyHint": "Run migration 002 or add a new row"
-  },
-  "pmMaster": {
-    "title": "MASTER PM PROCESS {{discipline}}",
-    "loadExcel": "Load Excel",
-    "pickFile": "Choose file",
-    "loaded": "Loaded {{rows}} rows · {{sheets}} sheet(s)",
-    "readFailed": "Could not read file",
-    "noImportRows": "No rows available to import",
-    "imported": "Task list import: +{{inserted}} ~{{updated}} skipped {{skipped}}",
-    "importFailed": "Import failed",
-    "allSheets": "All sheets ({{count}})",
-    "sheet": "Sheet",
-    "search": "Search",
-    "searchPlaceholder": "Zone, Legacy, PM list…",
-    "rowCount": "{{count}} rows",
-    "previewShown": " · showing {{count}}",
-    "importBtn": "Import to task list",
-    "importing": "Importing…",
-    "needWrite": "Requires master-data.write",
-    "emptyTitle": "No data yet",
-    "emptyDesc": "Click「Load Excel」and choose {{file}}"
-  },
-  "groupWkctr": {
-    "note": "Work center group — linked to work centers in Admin · Users —",
-    "notPmTeam": "not",
-    "noteSuffix": "PM Plan team A/B/EE/UT on work orders"
-  },
-  "genericTable": {
-    "code": "Code",
-    "nameTh": "Name (Thai)",
-    "plant": "Plant",
-    "active": "Active",
-    "yes": "Yes",
-    "no": "No"
-  },
-  "emptyHints": {
-    "department": "Run migration 011 or import departments",
-    "equipment": "Run migration 012 or import equipment",
-    "functional": "Run migration 005 or import functional locations"
-  },
-  "toast": {
-    "tasklistSaved": "Task list saved",
-    "tasklistDeleted": "Deleted",
-    "tasklistAdded": "Task list added",
-    "tasklistImported": "Task list imported"
-  }
-}
-
+{
+  "page": {
+    "title": "Master data",
+    "description": "SAP reference tables — equipment, zones, task lists, materials, and more.",
+    "hints": ["Activity type", "Master PM", "PM process", "ZB02"],
+    "noAccess": "No access",
+    "noAccessDesc": "Requires master-data.read permission",
+    "tabCount": "{{count}} tabs",
+    "masterHub": "Master Hub",
+    "readOnly": "Read-only mode — master-data.write required to edit"
+  },
+  "panel": {
+    "loadFailed": "Could not load",
+    "empty": "No data",
+    "emptyHint": "Check migration/seed or import data",
+    "retry": "Try again"
+  },
+  "actions": {
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "create": "Create",
+    "update": "Update",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "import": "Import",
+    "importFile": "Import file"
+  },
+  "dialogs": {
+    "confirmDeleteNamed": "This action cannot be undone. Delete {{name}}?"
+  },
+  "import": {
+    "selectFile": "Select file",
+    "pasteCsvLegacy": "Or paste CSV (same column order as legacy export)",
+    "resultFull": "Inserted {{inserted}} · Updated {{updated}} · Failed {{failed}} · Skipped {{skipped}}",
+    "resultShort": "Inserted {{inserted}} · Updated {{updated}} · Failed {{failed}}"
+  },
+  "entities": {
+    "department": {
+      "create": "Create department",
+      "edit": "Edit department",
+      "delete": "Delete department"
+    },
+    "equipment": {
+      "create": "Create equipment",
+      "edit": "Edit equipment",
+      "delete": "Delete equipment",
+      "import": "Import equipment (CSV/Excel)",
+      "importDesc": "Upload file export: equipment, description, equipmentsub, functionalloc, equl, equ1, equea. For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "pasteColumns": "Or paste CSV: equipment,equdescrip,equipmentsub,functionalloc,equl,equ1,equea"
+    },
+    "functional": {
+      "create": "Create functional location",
+      "edit": "Edit functional location",
+      "delete": "Delete functional location",
+      "import": "Import functional locations (CSV/Excel)",
+      "importDesc": "Upload file export: functionalloc, funldescrip, functionallocsub. For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "pasteColumns": "Or paste CSV: functionalloc,funldescrip,functionallocsub"
+    },
+    "reason": {
+      "create": "Create reason",
+      "edit": "Edit reason",
+      "delete": "Delete reason"
+    },
+    "worktype": {
+      "create": "Create work type",
+      "edit": "Edit work type",
+      "delete": "Delete work type"
+    },
+    "zb": {
+      "create": "Create ZB",
+      "edit": "Edit ZB",
+      "delete": "Delete ZB"
+    },
+    "level": {
+      "create": "Create level",
+      "edit": "Edit level",
+      "delete": "Delete level"
+    },
+    "position": {
+      "create": "Create position",
+      "edit": "Edit position",
+      "delete": "Delete position"
+    },
+    "group": {
+      "create": "Create group",
+      "edit": "Edit group",
+      "delete": "Delete group"
+    },
+    "tasklist": {
+      "create": "Create task list",
+      "edit": "Edit task list",
+      "delete": "Delete task list",
+      "import": "Import task list (CSV/Excel)",
+      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "pasteColumns": "Or paste CSV"
+    },
+    "workstatus": {
+      "create": "Create work status",
+      "edit": "Edit work status",
+      "delete": "Delete work status"
+    },
+    "lineproduct": {
+      "create": "Create production line",
+      "edit": "Edit production line",
+      "delete": "Delete production line",
+      "import": "Import production lines (CSV/Excel)",
+      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "pasteColumns": "Or paste CSV: productline,prolinedescrip"
+    },
+    "lineschdul": {
+      "create": "Create line schedule",
+      "edit": "Edit line schedule",
+      "delete": "Delete line schedule",
+      "confirmDelete": "This action cannot be undone. Delete this line schedule?",
+      "import": "Import line schedules (CSV/Excel)",
+      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "pasteColumns": "Or paste CSV: productline,lineday(DD.MM.YYYY),uptime,linereason"
+    },
+    "zone": {
+      "create": "Create zone",
+      "edit": "Edit zone",
+      "delete": "Delete zone",
+      "import": "Import zones (CSV/Excel)",
+      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "pasteColumns": "Or paste CSV: zone,zonedescrip,productline"
+    },
+    "machine": {
+      "create": "Create machine",
+      "edit": "Edit machine",
+      "delete": "Delete machine",
+      "import": "Import machines (CSV/Excel)",
+      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "pasteColumns": "Or paste CSV: machine,zone,wkctrtype"
+    },
+    "material": {
+      "create": "Create material",
+      "edit": "Edit material",
+      "delete": "Delete material",
+      "confirmDelete": "This action cannot be undone. Delete material row?",
+      "import": "Import materials (CSV/Excel)",
+      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Dates are stored as date in PostgreSQL. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "pasteColumns": "Or paste CSV (same column order as legacy export)"
+    }
+  },
+  "aria": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "rowCount": "{{count}} items",
+  "tabs": {
+    "equipment": "Equipment",
+    "functional": "Functional Loc.",
+    "machine": "Machines",
+    "material": "Materials",
+    "zone": "Zones",
+    "department": "Departments",
+    "tasklist": "Task list",
+    "worktype": "Work types",
+    "zb": "ZB",
+    "level": "Levels",
+    "position": "Positions",
+    "activitytype": "Activity type (MAT)",
+    "pm-master-ee": "MASTER PM EE",
+    "pm-master-me": "MASTER PM ME",
+    "pm-master-pk": "MASTER PM PK",
+    "workstatus": "Work status",
+    "reason": "Reasons",
+    "group": "Groups",
+    "lineproduct": "Production lines",
+    "lineschdul": "Line schedules"
+  },
+  "activityType": {
+    "badge": "ZB02 · MaintActivityType",
+    "add": "Add",
+    "import": "Import file",
+    "edit": "Edit",
+    "delete": "Delete",
+    "matRequired": "Enter MAT",
+    "descRequired": "Enter description",
+    "checkYn": "Check must be Y or N",
+    "saved": "Saved",
+    "deleted": "Deleted",
+    "imported": "Imported",
+    "dialogCreate": "Add activity type",
+    "dialogEdit": "Edit activity type",
+    "dialogDelete": "Delete activity type",
+    "dialogImport": "Import activity types (Excel/CSV)",
+    "mat": "MAT",
+    "description": "Description",
+    "check": "Check",
+    "confirmDelete": "Delete {{mat}} — this cannot be undone",
+    "pickFile": "Choose file",
+    "importResult": "Inserted {{inserted}} · Updated {{updated}} · Skipped {{skipped}}",
+    "emptyHint": "Run migration 002 or add a new row"
+  },
+  "pmMaster": {
+    "title": "MASTER PM PROCESS {{discipline}}",
+    "loadExcel": "Load Excel",
+    "pickFile": "Choose file",
+    "loaded": "Loaded {{rows}} rows · {{sheets}} sheet(s)",
+    "readFailed": "Could not read file",
+    "noImportRows": "No rows available to import",
+    "imported": "Task list import: +{{inserted}} ~{{updated}} skipped {{skipped}}",
+    "importFailed": "Import failed",
+    "allSheets": "All sheets ({{count}})",
+    "sheet": "Sheet",
+    "search": "Search",
+    "searchPlaceholder": "Zone, Legacy, PM list…",
+    "rowCount": "{{count}} rows",
+    "previewShown": " · showing {{count}}",
+    "importBtn": "Import to task list",
+    "importing": "Importing…",
+    "needWrite": "Requires master-data.write",
+    "emptyTitle": "No data yet",
+    "emptyDesc": "Click「Load Excel」and choose {{file}}"
+  },
+  "groupWkctr": {
+    "note": "Work center group — linked to work centers in Admin · Users —",
+    "notPmTeam": "not",
+    "noteSuffix": "PM Plan team A/B/EE/UT on work orders"
+  },
+  "genericTable": {
+    "code": "Code",
+    "nameTh": "Name (Thai)",
+    "plant": "Plant",
+    "active": "Active",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "emptyHints": {
+    "department": "Run migration 011 or import departments",
+    "equipment": "Run migration 012 or import equipment",
+    "functional": "Run migration 005 or import functional locations"
+  },
+  "fields": {
+    "iddepartment": "Department code",
+    "department": "Department",
+    "equipment": "Equipment",
+    "description": "Description",
+    "equdescrip": "Description",
+    "equipmentsub": "Equipment sub",
+    "functionalloc": "Functional loc.",
+    "equl": "L",
+    "equ1": "1",
+    "equea": "EA/CT",
+    "funldescrip": "Description",
+    "functionallocsub": "Functional loc. sub",
+    "reasoncode": "Reason code",
+    "reasonname": "Description",
+    "code": "Code",
+    "typeStatusCode": "Type status code",
+    "wkctrtype": "Description",
+    "wkzb": "ZB code",
+    "zbdescrip": "Description",
+    "idwklevel": "Level code",
+    "wklevel": "Description",
+    "idposition": "Position code",
+    "position": "Description",
+    "wkctrgroup": "Group",
+    "wkctrdescription": "Group description",
+    "idwkctrtype": "Type code",
+    "idzone": "Zone code",
+    "idmachine": "Machine list",
+    "mntplan": "Maintenance plan",
+    "tasklist": "Task list",
+    "legacy": "Legacy",
+    "machine": "M/C",
+    "pmlist": "PM list",
+    "pmday": "Days",
+    "machinestatus": "Machine status",
+    "pmmin": "Min",
+    "pmman": "Man",
+    "manhour": "Man hour",
+    "mat": "Act code",
+    "runhr": "%run hr",
+    "mpoint": "Measurement point",
+    "bcprunhr": "BCP run hr",
+    "gls": "Grease/Lube/SP",
+    "ment": "ment",
+    "freqhour": "Freq hour",
+    "plan": "Plan",
+    "columnType": "Type",
+    "syst": "System status",
+    "wkstreason": "Description",
+    "wkstcolor": "Color code",
+    "productline": "Product line",
+    "prolinedescrip": "Description",
+    "idproductline": "Line",
+    "lineday": "Date (DD.MM.YYYY)",
+    "uptime": "Uptime",
+    "linereason": "Reason",
+    "dateColumn": "Date",
+    "zone": "Zone",
+    "zonedescrip": "Description",
+    "lineProduct": "Line product",
+    "machineName": "Machine",
+    "machineColumn": "Machine",
+    "zoneColumn": "Zone",
+    "wkorder": "Order",
+    "pstngdate": "Posting date (DD.MM.YYYY)",
+    "postingDateColumn": "Posting date",
+    "materialdesc": "Material description",
+    "materialDescColumn": "Material description",
+    "amountinlc": "Amount in LC",
+    "amountColumn": "Amount",
+    "mvt": "MvT",
+    "crcy": "Currency",
+    "matquantity": "Quantity",
+    "material": "Material"
+  },
+  "validation": {
+    "required": "{{field}} is required.",
+    "maxLength": "{{field}} must be {{max}} characters or less.",
+    "number": "{{field}} must be a number.",
+    "invalidDate": "Invalid date format. Expected DD.MM.YYYY",
+    "postingDateRequired": "Posting date is required (DD.MM.YYYY).",
+    "fixErrors": "Please fix validation errors and try again."
+  },
+  "importErrors": {
+    "pickFile": "Select a file or paste CSV text before importing.",
+    "noRows": "No rows found. Expected columns: {{columns}}",
+    "noRowsRequired": "No rows found. Required columns: {{columns}}",
+    "columns": {
+      "equipment": "equipment, description, equipmentsub, functionalloc, equl, equ1, equea",
+      "functional": "functionalloc, funldescrip, functionallocsub",
+      "tasklist": "wkctrtype, zone, machineList, mntplan, tasklist, legacy, machine, pmlist, ...",
+      "lineproduct": "productline, prolinedescrip",
+      "lineschdul": "productline, lineday(DD.MM.YYYY), uptime, linereason",
+      "zone": "zone, zonedescrip, productline",
+      "machine": "machine, zone, wkctrtype",
+      "material": "wkorder, pstngdate, materialdesc, amountinlc, mvt"
+    }
+  },
+  "toast": {
+    "tasklistSaved": "Task list saved",
+    "tasklistDeleted": "Deleted",
+    "tasklistAdded": "Task list added",
+    "tasklistImported": "Task list imported"
+  }
+}
+

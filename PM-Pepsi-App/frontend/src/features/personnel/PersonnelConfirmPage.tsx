@@ -22,6 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { MassConfirmBar, MASS_CONFIRM_MAX } from '@/components/confirmation/MassConfirmBar'
+import { MassConfirmSelectionSummary } from '@/components/confirmation/MassConfirmSelectionSummary'
 import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDialog'
 import { WktypeDisplay } from '@/components/scheduling/WktypeDisplay'
 import { getStoredAuthUser } from '@/features/auth/login-api'
@@ -345,6 +346,8 @@ export function PersonnelConfirmPage() {
             ))}
           </div>
         </AppCard>
+
+        <MassConfirmSelectionSummary selectedIds={[...selectedIds]} items={items} />
 
         <MassConfirmBar
           selectedIds={[...selectedIds]}

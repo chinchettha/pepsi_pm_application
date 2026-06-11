@@ -150,13 +150,13 @@ export function WoConfirmationTechnicianStatus({ orderId, onOpenDetail }: Props)
         <Badge variant="secondary">
           {t('technician.doneCount', { count: doneCount })}
         </Badge>
-        <Badge variant="outline" className="border-amber-300 text-amber-900">
+        <Badge variant="outline" className="app-tone-warning-badge">
           {t('technician.pendingCount', { count: pendingCount })}
         </Badge>
       </div>
 
       {closeHint ? (
-        <p className="rounded-card border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
+        <p className="app-tone-warning-callout rounded-card border px-3 py-2 text-xs">
           {closeHint}
           {t('technician.closeHintSuffix')}
         </p>
@@ -186,8 +186,8 @@ export function WoConfirmationTechnicianStatus({ orderId, onOpenDetail }: Props)
                       variant={row.status === 'done' ? 'default' : 'outline'}
                       className={
                         row.status === 'done'
-                          ? 'bg-teal-700 hover:bg-teal-700'
-                          : 'border-amber-300 text-amber-900'
+                          ? 'app-tone-success-fill'
+                          : 'app-tone-warning-badge'
                       }
                     >
                       {row.status === 'done'

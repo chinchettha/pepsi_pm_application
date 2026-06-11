@@ -2,6 +2,7 @@
   "page": {
     "title": "Export Confirmation",
     "hintExportSap": "Export SAP",
+    "hintMassConfirm": "Mass ≤44",
     "hintImportConfirm": "นำเข้า Confirm",
     "hintQcQueue": "QC queue",
     "hintCsv": "CSV",
@@ -26,7 +27,13 @@
     "colStart": "Start",
     "colFinish": "Finish",
     "colMessage": "Message",
-    "noRows": "ไม่มีแถวข้อมูล"
+    "noRows": "ไม่มีแถวข้อมูล",
+    "action": {
+      "inserted": "เพิ่มใหม่",
+      "updated": "อัปเดต",
+      "skipped": "ข้าม",
+      "error": "ผิดพลาด"
+    }
   },
   "importReview": {
     "title": "สรุปก่อนนำเข้า Confirm IN",
@@ -125,10 +132,15 @@
     "noExportableRows": "ยังไม่มีแถวที่พร้อม export (ต้อง Admin QC อนุมัติก่อน)",
     "downloadSuccess": "ดาวน์โหลด CONFIRM_OUT ({{count}} แถว)",
     "toastQcApproved": "อนุมัติ QC {{count}} รายการ",
-    "partialCloseFailed": "มี {{count}} รายการปิดงานไม่สำเร็จ — export ด้านบนเฉพาะรายการที่สำเร็จ"
+    "partialCloseFailed": "มี {{count}} รายการปิดงานไม่สำเร็จ — export ด้านบนเฉพาะรายการที่สำเร็จ",
+    "summaryFailed": "โหลดสรุปชุดไม่สำเร็จ"
   },
   "massConfirm": {
     "title": "Mass Confirm",
+    "sapLimitHint": "SAP จำกัดสูงสุด {{max}} ใบงานต่อชุด — เลือก WO สถานะ CRTD/REL กำหนด Work Center และเวลา แล้วปิดครั้งเดียว",
+    "startLegend": "เริ่ม",
+    "endLegend": "สิ้นสุด",
+    "tableSelectedHint": "เลือกแล้ว {{count}} / {{max}} — แถวที่เต็มโควต้าจะเลือกเพิ่มไม่ได้",
     "collapsedWithResults": "กดลูกศรเพื่อแสดง · {{count}} WO CRTD/REL",
     "collapsedSearch": "กดลูกศรเพื่อค้นหา WO แบบ bulk",
     "searchTitle": "ค้นหา WO",
@@ -170,16 +182,18 @@
   "images": {
     "selectWoFirst": "เลือก Work Order ก่อนอัปโหลดรูป",
     "panelTitle": "รูปปิดงาน",
-    "panelDesc": "อัปโหลดรูปหลังทำ PM เสร็จ — เลือกหลายไฟล์ต่อครั้งได้",
+    "panelDesc": "อัปโหลดเฉพาะรูปหลังทำ PM เสร็จ — เลือกหลายไฟล์ต่อครั้งได้",
+    "afterOnlyPolicy": "อัปโหลดเฉพาะรูปหลังทำ PM เสร็จ — รูปเก่าก่อนแยกหมวดดูอย่างเดียว (ไม่รับอัปโหลด Before ใหม่)",
     "totalPhotos": "รวม {{count}} รูป",
     "before": "Before",
-    "after": "After",
+    "after": "หลัง PM",
+    "legacy": "เก่า (ดูอย่างเดียว)",
     "phaseBeforeTitle": "ก่อนทำงาน (Before)",
     "phaseBeforeHint": "ภาพสภาพก่อนซ่อม / ก่อนดำเนินการ",
     "phaseAfterTitle": "หลังทำ PM เสร็จ (After)",
     "phaseAfterHint": "ภาพหลังทำ PM เสร็จแล้ว — ส่งเฉพาะรูปนี้",
     "photoCount": "{{count}} รูป",
-    "recommendedPerPhase": "แนะนำประมาณ {{count}} รูปต่อฝั่ง (ไม่จำกัดจำนวน)",
+    "recommendedPerPhase": "แนะนำประมาณ {{count}} รูปหลังทำ PM (ไม่จำกัดจำนวน)",
     "captionLabel": "คำอธิบาย (ใช้ร่วมกับชุดรูปที่เลือก)",
     "captionPlaceholder": "เช่น จุดรั่ว, หลังเปลี่ยนอะไหล่",
     "pickFromDevice": "เลือกรูปจากเครื่อง",
@@ -189,9 +203,12 @@
     "upload": "อัปโหลด",
     "view": "ดู",
     "deletePhotoAria": "ลบรูป",
+    "deletePhotoTitle": "ลบรูปนี้?",
+    "deletePhotoDescription": "ลบรูปปิดงานออกจากใบงานนี้",
     "noPhotosInPhase": "ยังไม่มีรูปในหมวดนี้",
     "legacyTitle": "รูปเก่า / ก่อนทำ PM (อ่านอย่างเดียว)",
-    "legacyDesc": "รูปที่อัปโหลดก่อนมีการแยกหมวด",
+    "legacyDesc": "รูปที่อัปโหลดก่อนมีการแยกหมวด — ดูอย่างเดียว ไม่สามารถอัปโหลดหรือลบ",
+    "legacyReadOnlyBadge": "อ่านอย่างเดียว",
     "lightboxFallbackTitle": "ดูรูปปิดงาน"
   },
   "personnel": {
@@ -218,6 +235,8 @@
     "openWoBeforeTable": "เปิดใบงานก่อน",
     "noRecords": "ยังไม่มีการบันทึกเวลาช่าง",
     "confirmClose": "ยืนยันปิดงาน",
-    "deleteAria": "ลบ"
+    "deleteAria": "ลบ",
+    "deleteTitle": "ลบเวลาช่างนี้?",
+    "deleteDescription": "ลบรายการเวลาปิดงานของช่างรายการนี้"
   }
 }

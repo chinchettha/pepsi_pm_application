@@ -27,17 +27,17 @@ export function AdminAboutPage() {
 
   const migrationBadge = (pending: number, status: string) => {
     if (pending === 0 && status === 'ok') {
-      return <Badge className="bg-emerald-700">{t('about.migrationComplete')}</Badge>
+      return <Badge className="app-tone-success-fill">{t('about.migrationComplete')}</Badge>
     }
     if (status === 'error') return <Badge variant="destructive">{t('about.migrationError')}</Badge>
-    return <Badge className="bg-amber-600">{t('about.migrationPending', { count: pending })}</Badge>
+    return <Badge className="app-tone-warning-fill">{t('about.migrationPending', { count: pending })}</Badge>
   }
 
   const licenseBadge = (status: string) => {
     const tone = licenseStatusTone(status)
     const label = licenseStatusLabel(status, t)
-    if (tone === 'ok') return <Badge className="bg-emerald-700">{label}</Badge>
-    if (tone === 'warn') return <Badge className="bg-amber-600">{label}</Badge>
+    if (tone === 'ok') return <Badge className="app-tone-success-fill">{label}</Badge>
+    if (tone === 'warn') return <Badge className="app-tone-warning-fill">{label}</Badge>
     return <Badge variant="secondary">{label}</Badge>
   }
   const canRead = usePermission('admin.about.read')
@@ -173,7 +173,7 @@ export function AdminAboutPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Migration</CardTitle>
                   <CardDescription>
-                    <Link to="/admin/health" className="text-sky-700 underline">
+                    <Link to="/admin/health" className="text-[var(--app-accent)] underline">
                       {t('about.migrationDetail')}
                     </Link>
                   </CardDescription>
@@ -190,7 +190,7 @@ export function AdminAboutPage() {
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-app-muted">
                     <div
-                      className="h-full bg-emerald-600 transition-all"
+                      className="app-tone-success-fill h-full transition-all"
                       style={{ width: `${migPct}%` }}
                     />
                   </div>
@@ -201,7 +201,7 @@ export function AdminAboutPage() {
                     </p>
                   ) : null}
                   {d.migration.unverifiedCount > 0 ? (
-                    <p className="text-xs text-amber-700">
+                    <p className="app-tone-warning-label text-xs">
                       {t('about.migrationUnverified', { count: d.migration.unverifiedCount })}
                     </p>
                   ) : null}
@@ -254,7 +254,7 @@ export function AdminAboutPage() {
                     {t('about.diskFree', { free: formatBytes(d.server.disk.freeBytes) })}
                   </p>
                   {d.server.disk.message ? (
-                    <p className="text-xs text-amber-700">{d.server.disk.message}</p>
+                    <p className="app-tone-warning-label text-xs">{d.server.disk.message}</p>
                   ) : null}
                 </CardContent>
               </Card>
@@ -268,15 +268,15 @@ export function AdminAboutPage() {
                 </CardTitle>
                 <CardDescription>
                   {t('about.licenseSettingsHint')}{' '}
-                  <Link to="/admin/settings" className="text-sky-700 underline">
+                  <Link to="/admin/settings" className="text-[var(--app-accent)] underline">
                     {t('about.configureInSettings')}
                   </Link>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-body-sm">
-                <p className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   {t('about.licenseStatus')} {licenseBadge(d.license.status)}
-                </p>
+                </div>
                 {d.license.expiresAt ? (
                   <p className="text-app-muted">
                     {t('about.licenseExpires', {

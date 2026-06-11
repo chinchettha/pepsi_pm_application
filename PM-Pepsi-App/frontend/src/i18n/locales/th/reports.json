@@ -196,5 +196,23 @@
     "excel": "ดาวน์โหลด Excel",
     "default": "Download",
     "loading": "Downloading…"
+  },
+  "summaryWeekly": {
+    "teamGrid": {
+      "empty": "ไม่มีช่างที่มี HR hour ในช่วงนี้"
+    },
+    "chart": {
+      "empty": "ไม่มีข้อมูลในช่วงที่เลือก — ตรวจ tbmanhours และการยืนยันงาน (confirm)"
+    },
+    "importHint": {
+      "noData": "ยังไม่มีข้อมูล IW37N / manhour ในระบบ — นำเข้า SAP ที่ /integration หรือบันทึก manhour ก่อน แล้วเลือกช่วงวันที่ให้ครอบข้อมูล",
+      "readyLead": "ข้อมูลรายงานจาก DB หลัง import — IW37N {{count}} แถว",
+      "iw37nRange": "แผนงาน {{from}} – {{to}}",
+      "manhourRange": "Manhour {{from}} – {{to}}",
+      "woInRange": "WO ในช่วงที่เลือก {{count}} ใบ",
+      "wrongRange": "ช่วงวันที่ที่เลือกไม่ทับข้อมูล SAP ใน DB (IW37N {{from}} – {{to}}) — รายงานสัปดาห์จึงว่างหรือไม่ตรงหลัง import",
+      "applySapRange": "ใช้ช่วงข้อมูล SAP ({{from}} – {{to}})",
+      "noManhour": "ยังไม่มี manhour — ตาราง %PM/%Reactive ต้องมี HR hour จาก manhour ในช่วงเดียวกัน"
+    }
   }
 }

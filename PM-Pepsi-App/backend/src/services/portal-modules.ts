@@ -72,7 +72,13 @@ export async function listPortalModulesForUser(
       .map((row) => {
         const externalUrl = row.base_url.trim()
         const isPm = row.module_code === 'pm'
+        const usesCodeExchange = row.handoff_mode === 'code_exchange'
         const ready = isPm || externalUrl.length > 0
+        const entryUrl = isPm
+          ? resolvePostLoginPathForUserst(user.userst, '/plan-calendar')
+          : usesCodeExchange
+            ? ''
+            : externalUrl || row.entry_path || ''
         return {
           code: row.module_code,
           nameTh: row.name_th,
@@ -81,10 +87,8 @@ export async function listPortalModulesForUser(
           descriptionEn: row.description_en ?? '',
           iconKey: row.icon_key,
           accentToken: row.accent_token,
-          external: !isPm && externalUrl.length > 0,
-          entryUrl: isPm
-            ? resolvePostLoginPathForUserst(user.userst, '/plan-calendar')
-            : externalUrl || row.entry_path || '',
+          external: !isPm && ready,
+          entryUrl,
           ready,
           handoff: row.handoff_mode,
         }
@@ -93,7 +97,7 @@ export async function listPortalModulesForUser(
     let autoRedirect: string | null = null
     if (modules.length === 1) {
       const only = modules[0]!
-      if (only.ready && only.entryUrl) {
+      if (only.ready && only.handoff === 'same_origin' && only.entryUrl) {
         autoRedirect = only.entryUrl
       }
     }

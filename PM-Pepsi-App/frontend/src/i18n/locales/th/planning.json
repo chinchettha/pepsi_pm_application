@@ -51,6 +51,7 @@
   "ack": {
     "acknowledge": "รับทราบ",
     "acknowledged": "รับทราบแล้ว",
+    "pending": "รอรับทราบ",
     "success": "รับทราบงานแล้ว",
     "failed": "รับทราบไม่สำเร็จ"
   },
@@ -65,6 +66,7 @@
     "assign": "จ่ายงาน",
     "assignTitleNew": "จ่ายงานเข้า tbplangingwork",
     "assignTitleUpdate": "มีแผนแล้ว — กดเพื่ออัปเดต (upsert)",
+    "assignNoPermission": "ต้องมีสิทธิ์ planning.assign",
     "closeTabOpen": "เปิดแท็บ Confirm เพื่อบันทึกปิดงาน",
     "closeTabClosed": "เปิดแท็บ Confirm เพื่อดูประวัติปิดงาน"
   },
@@ -88,6 +90,7 @@
     "successAutoCount": "จ่ายงาน Auto สำเร็จ {{count}} คน",
     "alreadyAssigned": "ช่างคนนี้ถูกจ่ายงาน WO นี้แล้ว — ไม่มีการเปลี่ยนแปลง",
     "loading": "กำลังโหลดข้อมูล WO…",
+    "loadFailed": "โหลดข้อมูลใบงานสำหรับจ่ายงานไม่สำเร็จ",
     "submitting": "กำลังบันทึกการจ่ายงาน…",
     "successTitle": "จ่ายงานเสร็จแล้ว",
     "successDone": "เสร็จสิ้น",

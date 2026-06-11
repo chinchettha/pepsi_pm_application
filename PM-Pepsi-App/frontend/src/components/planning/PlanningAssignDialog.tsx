@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { SpinnerBlock } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -20,6 +21,7 @@ import {
 import { formatPlanningHourValue } from '@/lib/planning-available-hours'
 import { planningAssignModeMeta } from '@/lib/planning-i18n'
 import type { PlanningAssignMode } from '@/lib/planning-assign-mode'
+import { usePermission } from '@/lib/use-permission'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
@@ -62,6 +64,7 @@ export function PlanningAssignDialog({
 }: Props) {
   const { t } = useTranslation('planning')
   const { t: tc } = useTranslation('common')
+  const canAssign = usePermission('planning.assign')
   const qc = useQueryClient()
   const [phase, setPhase] = useState<DialogPhase>('form')
   const [successResult, setSuccessResult] = useState<SuccessResult | null>(null)
@@ -225,7 +228,13 @@ export function PlanningAssignDialog({
           ) : modalQ.isLoading ? (
             <SpinnerBlock label={t('assignDialog.loading')} />
           ) : modalQ.isError ? (
-            <p className="text-body-sm text-red-600">{(modalQ.error as Error).message}</p>
+            <QueryLoadErrorState
+              title={t('assignDialog.loadFailed')}
+              error={modalQ.error}
+              action={{ label: tc('actions.retry'), onClick: () => void modalQ.refetch() }}
+            />
+          ) : !canAssign ? (
+            <p className="text-body-sm text-app-muted">{t('row.assignNoPermission')}</p>
           ) : (
             <div className="relative space-y-4">
               {submitting ? (

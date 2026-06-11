@@ -64,13 +64,13 @@ export function applyThemeToDocument(
   /* Sidebar — Light: พื้นเทา #EAEAEA + ตัวอักษรเข้ม · Dark: โทน slate + ข้อความขาว */
   if (resolved === 'dark') {
     root.style.setProperty('--app-sidebar-fg', 'rgba(255, 255, 255, 0.94)')
-    root.style.setProperty('--app-sidebar-fg-muted', 'rgba(255, 255, 255, 0.72)')
-    root.style.setProperty('--app-sidebar-border', 'rgba(255, 255, 255, 0.14)')
+    root.style.setProperty('--app-sidebar-fg-muted', 'rgba(255, 255, 255, 0.76)')
+    root.style.setProperty('--app-sidebar-border', 'rgba(255, 255, 255, 0.06)')
     root.style.setProperty('--app-sidebar-hover', 'rgba(255, 255, 255, 0.1)')
     root.style.setProperty('--app-sidebar-active', 'rgba(255, 255, 255, 0.18)')
   } else {
     root.style.setProperty('--app-sidebar-fg', '#1f2937')
-    root.style.setProperty('--app-sidebar-fg-muted', '#6b7280')
+    root.style.setProperty('--app-sidebar-fg-muted', '#5b6470')
     root.style.setProperty('--app-sidebar-border', '#d4d4d8')
     root.style.setProperty('--app-sidebar-hover', `color-mix(in srgb, ${primary} 10%, #eaeaea)`)
     root.style.setProperty('--app-sidebar-active', `color-mix(in srgb, ${primary} 16%, #eaeaea)`)

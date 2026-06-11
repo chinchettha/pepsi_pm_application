@@ -25,8 +25,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { EmptyState } from '@/components/ui/empty-state'
-import { Skeleton } from '@/components/ui/skeleton'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   Table,
   TableBody,
@@ -49,7 +49,7 @@ import { idbGet, idbSet } from '@/lib/idb-cache'
 import { usePublicSettings } from '@/providers/SettingsProvider'
 import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import { AlertCircle, History, Loader2, RefreshCcw, Search, Trash2 } from 'lucide-react'
+import { History, Loader2, RefreshCcw, Search, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -76,25 +76,9 @@ function fromLocalInputValue(local: string): string | undefined {
 }
 
 function statusBadge(status: AuditLogItem['status']) {
-  if (status === 'ok') return <Badge className="bg-emerald-700">ok</Badge>
+  if (status === 'ok') return <Badge className="app-tone-success-fill">ok</Badge>
   if (status === 'denied') return <Badge variant="destructive">denied</Badge>
   return <Badge variant="secondary">error</Badge>
-}
-
-function AuditTableSkeleton({ rows = 8 }: { rows?: number }) {
-  return (
-    <>
-      {Array.from({ length: rows }, (_, i) => (
-        <TableRow key={i}>
-          {Array.from({ length: 7 }, (__, j) => (
-            <TableCell key={j}>
-              <Skeleton className="h-5 w-full" />
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </>
-  )
 }
 
 export function AdminAuditPage() {
@@ -388,7 +372,7 @@ export function AdminAuditPage() {
         {canDelete ? (
           <Card className="admin-callout admin-callout--amber border shadow-none">
             <CardHeader>
-              <CardTitle className="text-base text-amber-900">{t('audit.cleanupTitle')}</CardTitle>
+              <CardTitle className="text-base">{t('audit.cleanupTitle')}</CardTitle>
               <CardDescription>
                 {t('audit.cleanupDescPrefix')}{' '}
                 <strong>{t('audit.cleanupDescDays', { days: metaQ.data?.retentionDays ?? 365 })}</strong>
@@ -445,15 +429,14 @@ export function AdminAuditPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <AuditTableSkeleton />
+                <TableSkeletonRows rows={8} columns={7} />
               </TableBody>
             </Table>
           </div>
         ) : listQ.isError && effectiveRows.length === 0 ? (
-          <EmptyState
-            icon={AlertCircle}
+          <QueryLoadErrorState
             title={t('audit.loadFailed')}
-            description={(listQ.error as Error).message}
+            error={listQ.error}
             action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
           />
         ) : (
@@ -520,7 +503,7 @@ export function AdminAuditPage() {
               <div className="border-t border-app px-4 py-2">
                 <Table>
                   <TableBody>
-                    <AuditTableSkeleton rows={3} />
+                    <TableSkeletonRows rows={3} columns={7} />
                   </TableBody>
                 </Table>
               </div>

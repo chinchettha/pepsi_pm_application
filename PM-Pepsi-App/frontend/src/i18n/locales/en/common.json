@@ -20,6 +20,10 @@
     "showFilters": "Show filters",
     "hideFilters": "Hide filters"
   },
+  "confirmDelete": {
+    "confirm": "Delete",
+    "cannotUndo": "This cannot be undone."
+  },
   "nav": {
     "pinMenu": "Pin menu expanded",
     "unpinMenu": "Unpin menu",
@@ -103,6 +107,9 @@
     "saved": "Saved",
     "deleted": "Deleted"
   },
+  "errors": {
+    "loadFailed": "Could not load data"
+  },
   "settings": {
     "title": "Settings",
     "description": "Profile · API health · System users",
@@ -110,6 +117,8 @@
     "noAccessDesc": "Requires permission admin.settings.read",
     "tabs": {
       "profile": "Profile",
+      "language": "Language",
+      "telegram": "Telegram",
       "connection": "Connection",
       "users": "Users"
     },
@@ -126,6 +135,19 @@
     "signInForProfile": "Sign in to view your profile",
     "loadProfileFailed": "Could not load profile",
     "languageHint": "Applies to this browser only. English is the default for new users.",
+    "sidebar": {
+      "title": "Sidebar layout",
+      "hint": "Saved in this browser only. Pin/unpin is in the sidebar footer.",
+      "densityLabel": "Menu density",
+      "densityHint": "Compact reduces spacing; touch targets stay at least 44px on mobile.",
+      "densityComfortable": "Comfortable",
+      "densityCompact": "Compact",
+      "widthLabel": "Expanded width",
+      "widthHint": "Collapsed rail stays icon-only (w-14).",
+      "widthNarrow": "Standard (240px)",
+      "widthWide": "Wide (256px)",
+      "pinHint": "Pin the menu open: use the pin button at the bottom of the sidebar."
+    },
     "hintApiHealth": "API health",
     "connection": {
       "apiAddress": "API address",

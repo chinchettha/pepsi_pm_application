@@ -64,7 +64,7 @@
 | **P1** | Flow หลัก | `[~]` | **ใช่** |
 | **P2** | PM Manual / ค่าวัด | `[~]` | ใช่ (ถ้าลูกค้า UAT PM) |
 | **P3** | Telegram | `[~]` | ตาม scope go-live |
-| **P4** | UI Polish U4 | `[ ]` | ไม่ (แต่ควรทำก่อนส่ง) → **[`PRE-UAT-UI-PHASES.md`](customer-requirements/PRE-UAT-UI-PHASES.md)** |
+| **P4** | UI Polish U4 | `[x]` | ไม่ (แต่ควรทำก่อนส่ง) → **[`PRE-UAT-UI-PHASES.md`](customer-requirements/PRE-UAT-UI-PHASES.md)** |
 | **P5** | รายงาน · Admin · Board | `[~]` | บางข้อ |
 | **P6** | Deploy production | `[ ]` | **ใช่** (UAT บน env จริง) |
 | **P7** | Handoff → ชีต UAT | `[ ]` | สุดท้าย |
@@ -78,7 +78,7 @@
 - [ ] **P0** — Import IW37N + Confirm IN คู่กันได้ · ปฏิทิน/WO ไม่ว่างเมื่อมีข้อมูล · migration รันครบบน DB เป้าหมาย
 - [ ] **P1** — Flow A1–A9 (ด้านล่าง) ทีม dev ทดสอบผ่านบน env เดียวกับที่ลูกค้าจะใช้
 - [ ] **P2** — PM ฟอร์มกระดาษ WO **4001565681** บันทึก/แสดงครบ (ถ้ารวมใน scope UAT)
-- [ ] **P4** — ผ่าน Gate U4 ใน [`PRE-UAT-UI-PHASES.md`](customer-requirements/PRE-UAT-UI-PHASES.md) (หน้า 1–7 · build · audit:ui)
+- [x] **P4** — ผ่าน Gate U4 ใน [`PRE-UAT-UI-PHASES.md`](customer-requirements/PRE-UAT-UI-PHASES.md) (หน้า 1–13 · build · audit:ui · E2E U4e/U4f)
 - [ ] **P6** — URL HTTPS เปิดได้ · login · API health · backup plan
 - [ ] ไม่มี `(mock)` ใน production UI — `npm run audit:ui` ผ่าน
 - [ ] [`USER-MANUAL-TH.md`](USER-MANUAL-TH.md) สอดคล้องฟีเจอร์ล่าสุด (รูปหลัง PM · Telegram ถ้ามี)
@@ -228,7 +228,7 @@
 
 **สถานะ Master:** ติ๊ก `[x]` เมื่อ **U4 Gate ผ่าน** ในเอกสาร UI
 
-- [ ] U4 Gate ผ่าน (หน้า 1–7 · `npm run build` · `audit:ui`)
+- [x] U4 Gate ผ่าน (หน้า 1–13 · `npm run build` · `audit:ui` · E2E console/viewport/locale/portal)
 
 ---
 
@@ -300,12 +300,15 @@
 ## P7.2 เอกสารก่อนส่งลูกค้า
 
 - [ ] อัปเดต [`USER-MANUAL-TH.md`](USER-MANUAL-TH.md) — รูปหลัง PM · Telegram · ภาษา EN default
-- [ ] สร้าง/อัป **UAT รอบ 3** จาก template [`UAT-ROUND-2-TH.md`](customer-requirements/UAT-ROUND-2-TH.md):
+- [x] สร้าง **UAT รอบ 3** — [`UAT-ROUND-3-TH.md`](customer-requirements/UAT-ROUND-3-TH.md) (+ `.docx`):
   - [ ] ใส่ URL · commit · วันที่ · บัญชีทดสอบ
   - [ ] เพิ่ม § Telegram (ถ้า P3)
   - [ ] แก้ Confirm: **รูปหลัง PM เท่านั้น**
   - [ ] ลบ/แก้ scope ที่ปิดแล้ว (Line Calendar ฯลฯ)
 - [ ] Export Word/PDF สำหรับลูกค้ากรอก
+- [x] [`E2E-TEST-DETAILED-TH.docx`](customer-requirements/E2E-TEST-DETAILED-TH.docx) — E2E Playwright
+- [x] [`TEST-CASE-SCENARIO-DETAILED-TH.docx`](customer-requirements/TEST-CASE-SCENARIO-DETAILED-TH.docx) — Test Case Scenario
+- [x] [`SECURITY-DETAILED-TH.docx`](customer-requirements/SECURITY-DETAILED-TH.docx) — Security & Cybersecurity
 
 ## P7.3 ส่งมอบ
 
@@ -340,10 +343,16 @@
 | [`PRE-UAT-UI-PHASES.md`](customer-requirements/PRE-UAT-UI-PHASES.md) | **U4 UI ก่อน UAT** — ไล่ทีละหน้า · popup · motion |
 | [`UI-POLISH-PHASES.md`](customer-requirements/UI-POLISH-PHASES.md) | U0–U3 ปิดแล้ว · U4 → PRE-UAT-UI-PHASES |
 | [`TELEGRAM-IMPLEMENTATION-CHECKLIST.md`](customer-requirements/TELEGRAM-IMPLEMENTATION-CHECKLIST.md) | รายละเอียด Telegram §A–H |
-| [`UAT-ROUND-2-TH.md`](customer-requirements/UAT-ROUND-2-TH.md) | **template** ชีต UAT (ยังไม่ส่งจน P7 ผ่าน) |
+| [`UAT-ROUND-3-TH.md`](customer-requirements/UAT-ROUND-3-TH.md) | **ชีต UAT go-live รอบ 3** (ส่งลูกค้าเมื่อ P7 ผ่าน) |
+| [`UAT-ROUND-2-TH.md`](customer-requirements/UAT-ROUND-2-TH.md) | ชีต UAT รอบ 2 (อ้างอิง PM manual ละเอียด) |
 | [`MEETING-SUMMARY-REQUIREMENTS.md`](customer-requirements/MEETING-SUMMARY-REQUIREMENTS.md) | requirement ประชุม |
 | [`LEGACY-ISSUES-CHECKLIST.md`](customer-requirements/LEGACY-ISSUES-CHECKLIST.md) | regression ระบบเก่า |
 | [`USER-MANUAL-TH.md`](USER-MANUAL-TH.md) | คู่มือผู้ใช้ |
+| [`TEST-CASE-SCENARIO-DETAILED-TH.docx`](customer-requirements/TEST-CASE-SCENARIO-DETAILED-TH.docx) | Manual/UAT test scenarios |
+| [`E2E-TEST-DETAILED-TH.docx`](customer-requirements/E2E-TEST-DETAILED-TH.docx) | Playwright E2E catalog |
+| [`SECURITY-DETAILED-TH.docx`](customer-requirements/SECURITY-DETAILED-TH.docx) | Security go-live checklist |
+| [`INSTALL-DEPLOY-RUNBOOK-TH.docx`](customer-requirements/INSTALL-DEPLOY-RUNBOOK-TH.docx) | Deploy P6 · Runbook IT |
+| [`SETUP-NEW-MACHINE.md`](SETUP-NEW-MACHINE.md) | ติดตั้ง dev/UAT (Markdown ละเอียด) |
 
 ---
 

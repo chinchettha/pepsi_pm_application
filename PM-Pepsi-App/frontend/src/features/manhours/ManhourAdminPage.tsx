@@ -6,6 +6,7 @@ import { AppCard } from '@/components/layout/AppCard'
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
@@ -18,7 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/skeleton'
+import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   Table,
   TableBody,
@@ -375,17 +376,17 @@ export function ManhourAdminPage() {
 
         {importResult ? <ImportResultBlock data={importResult} /> : null}
 
-        {listQ.isLoading && !listQ.data ? (
-          <Skeleton className="h-64 w-full rounded-card" />
-        ) : listQ.isError ? (
-          <EmptyState
-            icon={AlertCircle}
+        {listQ.isError && !listQ.data ? (
+          <QueryLoadErrorState
             title={t('admin.tableLoadFailed')}
-            description={(listQ.error as Error).message}
+            error={listQ.error}
             action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
           />
         ) : (
-          <div className="app-table-shell overflow-x-auto">
+          <div
+            className="app-table-shell overflow-x-auto"
+            aria-busy={listQ.isLoading && !listQ.data ? true : undefined}
+          >
             <Table embedded stickyHeader zebra>
               <TableHeader>
                 <TableRow>
@@ -399,7 +400,9 @@ export function ManhourAdminPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.length ? (
+                {listQ.isLoading && !listQ.data ? (
+                  <TableSkeletonRows rows={10} columns={7} />
+                ) : items.length ? (
                   items.map((row) => (
                     <TableRow key={row.idmanhour}>
                       <TableCell>

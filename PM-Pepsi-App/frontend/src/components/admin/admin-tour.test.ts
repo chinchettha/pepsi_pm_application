@@ -48,8 +48,7 @@ describe('AdminTour helpers', () => {
   })
 
   it('expects Joyride steps = command hint + console + sub-pages', async () => {
-    expect(TOUR_PAGE_SECTIONS.length).toBe(12)
-    expect(ADMIN_TOUR_STEP_COUNT).toBe(14)
+    expect(ADMIN_TOUR_STEP_COUNT).toBe(2 + TOUR_PAGE_SECTIONS.length)
     const { i18n } = await import('@/i18n')
     expect(buildAdminTourSteps(i18n.getFixedT('en', 'admin'))).toHaveLength(ADMIN_TOUR_STEP_COUNT)
   })

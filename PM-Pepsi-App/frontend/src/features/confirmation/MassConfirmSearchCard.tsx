@@ -14,7 +14,7 @@ import {
 } from '@/components/scheduling/SchedulingPageLayout'
 import { WktypeDisplay } from '@/components/scheduling/WktypeDisplay'
 import { Badge } from '@/components/ui/badge'
-import { EmptyState } from '@/components/ui/empty-state'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -25,8 +25,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { postWorkOrdersSearch } from '@/lib/api-public'
+import { cn } from '@/lib/utils'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { AlertCircle, Layers } from 'lucide-react'
+import { Info, Layers } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -66,6 +67,7 @@ export function MassConfirmSearchCard({
   const rows = searchQ.data ?? []
   const rowIds = useMemo(() => rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n)), [rows])
   const allSelected = rowIds.length > 0 && rowIds.every((id) => selected.has(id))
+  const selectedCount = selected.size
 
   const toggleAll = () => {
     if (allSelected) {
@@ -121,12 +123,17 @@ export function MassConfirmSearchCard({
           : t('massConfirm.collapsedSearch')
       }
       badge={
-        <Badge variant="secondary" className="text-xs font-normal tabular-nums">
+        <Badge variant="outline" className="app-tone-info-outline-badge text-xs font-normal tabular-nums">
           ≤{MASS_CONFIRM_MAX}
         </Badge>
       }
       bodyClassName="space-y-4"
     >
+      <p className="app-tone-info-callout flex gap-2 rounded-xl border px-3 py-2.5 text-xs">
+        <Info className="mt-0.5 size-4 shrink-0 opacity-80" aria-hidden />
+        <span>{t('massConfirm.sapLimitHint', { max: MASS_CONFIRM_MAX })}</span>
+      </p>
+
       <form onSubmit={onSearch}>
         <SchedulingFilterShell
           title={t('massConfirm.searchTitle')}
@@ -168,12 +175,9 @@ export function MassConfirmSearchCard({
         searchQ.isLoading && !searchQ.data ? (
           <Skeleton className="h-40 w-full rounded-card" aria-label={t('massConfirm.loadingSearch')} />
         ) : searchQ.isError ? (
-          <EmptyState
-            icon={AlertCircle}
+          <QueryLoadErrorState
             title={t('massConfirm.searchFailed')}
-            description={
-              searchQ.error instanceof Error ? searchQ.error.message : t('massConfirm.genericError')
-            }
+            error={searchQ.error}
             action={{ label: tc('actions.retry'), onClick: () => void searchQ.refetch() }}
           />
         ) : (
@@ -183,13 +187,22 @@ export function MassConfirmSearchCard({
             eventCount={rows.length}
             isRefreshing={searchQ.isFetching && !searchQ.isLoading}
           >
+            {selectedCount > 0 ? (
+              <p className="mb-2 text-xs text-app-muted tabular-nums">
+                {t('massConfirm.tableSelectedHint', {
+                  count: selectedCount,
+                  max: MASS_CONFIRM_MAX,
+                })}
+              </p>
+            ) : null}
             <div className="app-table-shell overflow-x-auto">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">
+                    <TableHead className="w-11">
                       <input
                         type="checkbox"
+                        className="size-4 rounded border-app accent-[var(--app-accent)]"
                         aria-label={t('massConfirm.selectAllAria')}
                         checked={allSelected}
                         onChange={toggleAll}
@@ -211,19 +224,28 @@ export function MassConfirmSearchCard({
                   ) : (
                     rows.slice(0, 200).map((row) => {
                       const id = Number(row.id)
+                      const isSelected = selected.has(id)
+                      const selectionFull = !isSelected && selectedCount >= MASS_CONFIRM_MAX
                       return (
                         <TableRow
                           key={row.id}
-                          className={selected.has(id) ? 'bg-emerald-50/60' : undefined}
+                          className={cn(
+                            isSelected ? 'app-tone-success-row-highlight' : undefined,
+                            selectionFull ? 'opacity-60' : undefined,
+                          )}
                         >
-                          <TableCell>
-                            <input
-                              type="checkbox"
-                              checked={selected.has(id)}
-                              onChange={() => toggleOne(id)}
-                            />
+                          <TableCell className="py-2">
+                            <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
+                              <input
+                                type="checkbox"
+                                className="size-4 rounded border-app accent-[var(--app-accent)]"
+                                checked={isSelected}
+                                disabled={selectionFull}
+                                onChange={() => toggleOne(id)}
+                              />
+                            </label>
                           </TableCell>
-                          <TableCell className="text-xs font-medium">{row.wkorder}</TableCell>
+                          <TableCell className="text-xs font-medium tabular-nums">{row.wkorder}</TableCell>
                           <TableCell className="text-xs">
                             <WktypeDisplay code={row.wktype} mat={row.mat} />
                           </TableCell>

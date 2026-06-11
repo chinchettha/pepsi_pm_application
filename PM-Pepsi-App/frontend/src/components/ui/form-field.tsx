@@ -35,7 +35,7 @@ export function FormField({
         {children}
       </div>
       {error ? (
-        <p id={errorId} className="text-caption text-red-600" role="alert">
+        <p id={errorId} className="text-caption text-form-error" role="alert">
           {error}
         </p>
       ) : hint ? (

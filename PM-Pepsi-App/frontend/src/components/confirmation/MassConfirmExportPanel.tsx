@@ -1,6 +1,8 @@
 import { Badge } from '@/components/ui/badge'
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
 import { Button } from '@/components/ui/button'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -17,6 +19,8 @@ import {
   fetchMassConfirmExportSummary,
   postConfirmQcApproveBatch,
 } from '@/lib/api-public'
+import { APP_INTERACTIVE_MOTION } from '@/lib/app-motion'
+import { cn } from '@/lib/utils'
 import { usePermission } from '@/lib/use-permission'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck } from 'lucide-react'
@@ -98,17 +102,17 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
   if (batch.succeeded.length === 0) return null
 
   return (
-    <div className="space-y-3 rounded-card border border-blue-200 bg-blue-50/80 p-4">
+    <div className="app-tone-info-section space-y-3 rounded-card border p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h3 className="text-body-sm font-semibold text-app">
+        <div className="min-w-0">
+          <h3 className="flex flex-wrap items-center gap-2 text-body-sm font-semibold text-app">
             {t('massExport.title')}
             {batchComplete ? (
-              <Badge className="ml-2" variant="default">
+              <Badge variant="default" className="tabular-nums">
                 {t('massExport.batchComplete', { count: batch.succeeded.length })}
               </Badge>
             ) : (
-              <Badge className="ml-2" variant="secondary">
+              <Badge variant="secondary" className="tabular-nums">
                 {t('massExport.batchPartial', {
                   ok: batch.succeeded.length,
                   failed: batch.failed.length,
@@ -126,23 +130,29 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
       </div>
 
       {summaryQ.isLoading ? (
-        <p className="text-caption">{t('massExport.checkingBatch')}</p>
+        <Skeleton className="h-24 w-full rounded-xl" aria-label={t('massExport.checkingBatch')} />
+      ) : summaryQ.isError ? (
+        <QueryLoadErrorState
+          title={t('massExport.summaryFailed')}
+          error={summaryQ.error}
+          action={{ label: tc('actions.retry'), onClick: () => void summaryQ.refetch() }}
+        />
       ) : summary ? (
         <>
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded app-surface-panel px-2 py-1 ring-1 ring-app">
+            <span className="app-tone-info-chip rounded-lg px-2.5 py-1 tabular-nums">
               {t('massExport.readyExport')}: <strong>{summary.exportable}</strong>
             </span>
-            <span className="rounded app-surface-panel px-2 py-1 ring-1 ring-app">
+            <span className="app-tone-info-chip rounded-lg px-2.5 py-1 tabular-nums">
               {t('massExport.qcPending')}: <strong>{summary.qcPending}</strong>
             </span>
-            <span className="rounded app-surface-panel px-2 py-1 ring-1 ring-app">
+            <span className="app-tone-info-chip rounded-lg px-2.5 py-1 tabular-nums">
               {t('massExport.qcApproved')}: <strong>{summary.qcApproved}</strong>
             </span>
           </div>
 
           <div className="app-table-shell max-h-48 overflow-auto">
-            <Table>
+            <Table embedded stickyHeader zebra>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('massExport.colWo')}</TableHead>
@@ -153,7 +163,7 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
               <TableBody>
                 {summary.items.map((row) => (
                   <TableRow key={row.idiw37}>
-                    <TableCell className="text-xs font-medium">{row.wkorder}</TableCell>
+                    <TableCell className="text-xs font-medium tabular-nums">{row.wkorder}</TableCell>
                     <TableCell className="text-xs">
                       {row.qcStatus === 'pending'
                         ? t('qc.statusPending')
@@ -178,10 +188,11 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
                 type="button"
                 size="sm"
                 variant="secondary"
+                className={cn('gap-1.5', APP_INTERACTIVE_MOTION)}
                 disabled={approveMut.isPending}
                 onClick={() => approveMut.mutate()}
               >
-                <ShieldCheck className="mr-1 h-4 w-4" />
+                <ShieldCheck className="size-4" aria-hidden />
                 {approveMut.isPending
                   ? t('massExport.approvingQc')
                   : t('massExport.approveQcBatch', { count: summary.qcPending })}
@@ -209,7 +220,7 @@ export function MassConfirmExportPanel({ batch, onDismiss }: MassConfirmExportPa
       ) : null}
 
       {batch.failed.length > 0 ? (
-        <p className="text-xs text-amber-800">
+        <p className="app-tone-warning-label text-xs">
           {t('massExport.partialCloseFailed', { count: batch.failed.length })}
         </p>
       ) : null}

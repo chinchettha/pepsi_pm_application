@@ -71,7 +71,7 @@ export function BlockedIpCard({ items, canWrite }: BlockedIpCardProps) {
     <Card className="admin-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Ban className="size-4 text-red-600" />
+          <Ban className="size-4 text-form-error" />
           {t('security.blockIpTitle')}
           <Badge variant="secondary" className="ml-1 tabular-nums">
             {items.length}

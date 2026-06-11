@@ -1,4 +1,5 @@
 import type { EngUtilizationChartRow } from '@/lib/eng-utilization-chart'
+import { useTranslation } from 'react-i18next'
 import { EngUtilizationPersonCard } from './EngUtilizationPersonCard'
 
 type Props = {
@@ -17,6 +18,7 @@ export function EngUtilizationTeamGrid({
   imageUrl,
   className,
 }: Props) {
+  const { t } = useTranslation('reports')
   const kiosk = variant === 'kiosk'
 
   if (people.length === 0) {
@@ -28,7 +30,7 @@ export function EngUtilizationTeamGrid({
             : 'py-6 text-center text-caption'
         }
       >
-        ไม่มีช่างที่มี HR hour ในช่วงนี้
+        {t('summaryWeekly.teamGrid.empty')}
       </p>
     )
   }
