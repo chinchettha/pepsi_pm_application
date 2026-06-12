@@ -1434,6 +1434,65 @@ html.dark .login-page__overlay {
   text-align: center;
 }
 
+.login-page__title {
+  color: var(--app-text);
+}
+
+.login-page__label {
+  font-size: var(--app-font-size-sm);
+  font-weight: 500;
+  color: color-mix(in srgb, var(--app-text) 92%, transparent);
+}
+
+.login-page__input {
+  border-color: color-mix(in srgb, var(--app-border) 78%, var(--app-accent) 22%);
+  background: color-mix(in srgb, var(--app-surface) 88%, transparent);
+}
+
+.login-page__input:focus-visible {
+  border-color: color-mix(in srgb, var(--app-accent) 65%, var(--app-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 28%, transparent);
+}
+
+html.dark .login-page__input {
+  border-color: color-mix(in srgb, var(--app-border) 70%, white 30%);
+  background: color-mix(in srgb, var(--app-bg) 55%, var(--app-surface) 45%);
+}
+
+html.dark .login-page__input::placeholder {
+  color: color-mix(in srgb, var(--app-text-muted) 88%, white);
+}
+
+.login-page__submit {
+  font-weight: 600;
+}
+
+.login-page__footer {
+  text-align: center;
+}
+
+.login-page__footer-link {
+  font-size: var(--app-font-size-sm);
+  font-weight: 500;
+  color: color-mix(in srgb, var(--app-text) 88%, var(--app-accent) 12%);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.login-page__footer-link:hover {
+  color: var(--app-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+html.dark .login-page__footer-link {
+  color: color-mix(in srgb, var(--app-text) 92%, white);
+}
+
+html.dark .login-page__footer-link:hover {
+  color: var(--app-accent);
+}
+
 html.dark .login-page__card {
   border-color: color-mix(in srgb, var(--app-border) 85%, transparent);
   background: color-mix(in srgb, var(--app-glass-bg) 72%, var(--app-surface));

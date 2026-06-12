@@ -46,6 +46,7 @@ const byRoute: Record<string, LucideIcon> = {
   '/manhours': Timer,
   '/worktime': Clock3,
   '/personnel': Users,
+  '/personnel/confirm': ShieldCheck,
   '/reports': BarChart3,
   '/reports/audit': ShieldCheck,
   '/manhours-hr': Printer,

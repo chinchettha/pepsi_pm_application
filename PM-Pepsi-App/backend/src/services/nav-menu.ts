@@ -7,7 +7,11 @@ type NavMenuResponse = z.infer<typeof navMenuResponseSchema>
 type NavItem = NavMenuResponse['items'][number]
 
 /** Routes removed from product — hide from sidebar even if tbmenu still has a row. */
-const DEPRECATED_NAV_ROUTES = new Set(['/line-calendar', '/manhours/admin'])
+const DEPRECATED_NAV_ROUTES = new Set([
+  '/line-calendar',
+  '/manhours/admin',
+  '/personnel/admin',
+])
 
 function isDeprecatedNavItem(to: string, menulink: string | null): boolean {
   if (DEPRECATED_NAV_ROUTES.has(to.split('?')[0] ?? to)) return true

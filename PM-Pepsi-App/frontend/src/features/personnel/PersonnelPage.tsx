@@ -7,7 +7,7 @@
  */
 import { CanPermission } from '@/components/auth/CanPermission'
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -38,6 +38,7 @@ import {
   Phone,
   ShieldCheck,
   Timer,
+  User,
   Users,
   Wrench,
 } from 'lucide-react'
@@ -62,7 +63,7 @@ function StatCard({
   openModuleLabel?: string
 }) {
   const inner = (
-    <AppCard pad="compact" className="transition hover:border-[var(--app-border)] hover:shadow-md">
+    <AppCard pad="compact" className="h-full transition hover:border-[var(--app-border)] hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs uppercase tracking-wide text-app-muted">{label}</div>
@@ -211,90 +212,155 @@ export function PersonnelPage() {
         </>
       }
     >
+      {q.isLoading && !q.data ? (
         <AppPageSection index={0}>
-        {q.isLoading && !q.data ? (
           <Skeleton className="h-48 w-full rounded-card" />
-        ) : q.isError ? (
+        </AppPageSection>
+      ) : q.isError ? (
+        <AppPageSection index={0}>
           <EmptyState
             icon={AlertCircle}
             title={t('dashboard.loadFailed')}
             description={q.error instanceof Error ? q.error.message : String(q.error)}
             action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
           />
-        ) : q.data ? (
-          <>
-            <ProfileCard data={q.data} />
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                label={t('dashboard.stats.openJobs')}
-                value={q.data.planning.openCount}
-                hint={t('dashboard.stats.openJobsHint')}
-                to="/planning"
-                icon={ClipboardList}
-                openModuleLabel={t('dashboard.openModule')}
-              />
-              <StatCard
-                label={t('dashboard.stats.closedJobs')}
-                value={q.data.planning.closedCount}
-                hint={t('dashboard.stats.closedJobsHint')}
-                to="/planning"
-                icon={Briefcase}
-                openModuleLabel={t('dashboard.openModule')}
-              />
-              <StatCard
-                label={t('dashboard.stats.myConfirmation')}
-                value={q.data.confirmation.totalClose}
-                hint={t('dashboard.stats.myConfirmationTotal', {
-                  minutes: formatMinutes(q.data.confirmation.totalMinutes, t),
-                })}
-                to="/confirmation"
-                icon={Users}
-                openModuleLabel={t('dashboard.openModule')}
-              />
-              <StatCard
-                label={t('dashboard.stats.totalHours')}
-                value={
-                  q.data.worktime?.total
-                    ? formatHours(q.data.worktime.total, t)
-                    : '—'
-                }
-                hint={t('dashboard.stats.totalHoursHint')}
-                to="/manhours"
-                icon={Timer}
-                openModuleLabel={t('dashboard.openModule')}
-              />
-            </div>
-
-            {showAdminGlobal && q.data.roleData?.global ? (
-              <GlobalOverviewCards
-                data={q.data.roleData.global}
-                unassignedCount={q.data.roleData.unassigned?.total ?? 0}
-              />
-            ) : null}
-
-            {showAdminGlobal && q.data.roleData?.unassigned ? (
-              <UnassignedWorkOrdersSection
-                items={q.data.roleData.unassigned.items}
-                total={q.data.roleData.unassigned.total}
-              />
-            ) : null}
-
-            {showManagerTeam && q.data.roleData?.team ? (
-              <ManagerTeamSection team={q.data.roleData.team} />
-            ) : null}
-
-            <RecentPlanning data={q.data} />
-            <RecentConfirmation data={q.data} />
-          </>
-        ) : (
-          <EmptyState
-            title={t('dashboard.noData')}
-            description={t('dashboard.noDataHint')}
-          />
-        )}
         </AppPageSection>
+      ) : q.data ? (
+        <PersonnelDashboardSections
+          data={q.data}
+          showAdminGlobal={showAdminGlobal}
+          showManagerTeam={showManagerTeam}
+        />
+      ) : (
+        <AppPageSection index={0}>
+          <EmptyState title={t('dashboard.noData')} description={t('dashboard.noDataHint')} />
+        </AppPageSection>
+      )}
     </AppPageShell>
+  )
+}
+
+type DashboardData = Awaited<ReturnType<typeof fetchPersonnelDashboard>>
+
+function PersonnelDashboardSections({
+  data,
+  showAdminGlobal,
+  showManagerTeam,
+}: {
+  data: DashboardData
+  showAdminGlobal: boolean
+  showManagerTeam: boolean
+}) {
+  const { t } = useTranslation('personnel')
+  let sectionIndex = 0
+  const profileIdx = sectionIndex++
+  const statsIdx = sectionIndex++
+  const globalIdx =
+    showAdminGlobal && data.roleData?.global ? sectionIndex++ : null
+  const unassignedIdx =
+    showAdminGlobal && data.roleData?.unassigned ? sectionIndex++ : null
+  const teamIdx =
+    showManagerTeam && data.roleData?.team ? sectionIndex++ : null
+  const planningIdx = sectionIndex++
+  const confirmIdx = sectionIndex++
+
+  const p = data.profile
+
+  return (
+    <>
+      <AppPageSection index={profileIdx}>
+        <AppPageSectionCard
+          icon={User}
+          title={p.displayName}
+          description={`${p.idwkctr}${p.position ? ` · ${p.position}` : ''}`}
+        >
+          <ProfileCardBody data={data} />
+        </AppPageSectionCard>
+      </AppPageSection>
+
+      <AppPageSection index={statsIdx}>
+        <AppPageSectionCard
+          icon={ClipboardList}
+          title={t('dashboard.statsSectionTitle')}
+          description={t('dashboard.statsSectionDesc')}
+        >
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label={t('dashboard.stats.openJobs')}
+              value={data.planning.openCount}
+              hint={t('dashboard.stats.openJobsHint')}
+              to="/planning"
+              icon={ClipboardList}
+              openModuleLabel={t('dashboard.openModule')}
+            />
+            <StatCard
+              label={t('dashboard.stats.closedJobs')}
+              value={data.planning.closedCount}
+              hint={t('dashboard.stats.closedJobsHint')}
+              to="/planning"
+              icon={Briefcase}
+              openModuleLabel={t('dashboard.openModule')}
+            />
+            <StatCard
+              label={t('dashboard.stats.myConfirmation')}
+              value={data.confirmation.totalClose}
+              hint={t('dashboard.stats.myConfirmationTotal', {
+                minutes: formatMinutes(data.confirmation.totalMinutes, t),
+              })}
+              to="/confirmation"
+              icon={Users}
+              openModuleLabel={t('dashboard.openModule')}
+            />
+            <StatCard
+              label={t('dashboard.stats.totalHours')}
+              value={data.worktime?.total ? formatHours(data.worktime.total, t) : '—'}
+              hint={t('dashboard.stats.totalHoursHint')}
+              to="/manhours"
+              icon={Timer}
+              openModuleLabel={t('dashboard.openModule')}
+            />
+          </div>
+        </AppPageSectionCard>
+      </AppPageSection>
+
+      {globalIdx != null && data.roleData?.global ? (
+        <AppPageSection index={globalIdx}>
+          <AppPageSectionCard
+            icon={Layers}
+            title={t('dashboard.globalSectionTitle')}
+            description={t('dashboard.globalSectionDesc')}
+          >
+            <GlobalOverviewCards
+              data={data.roleData.global}
+              unassignedCount={data.roleData.unassigned?.total ?? 0}
+            />
+          </AppPageSectionCard>
+        </AppPageSection>
+      ) : null}
+
+      {unassignedIdx != null && data.roleData?.unassigned ? (
+        <AppPageSection index={unassignedIdx}>
+          <UnassignedWorkOrdersSection
+            items={data.roleData.unassigned.items}
+            total={data.roleData.unassigned.total}
+          />
+        </AppPageSection>
+      ) : null}
+
+      {teamIdx != null && data.roleData?.team ? (
+        <AppPageSection index={teamIdx}>
+          <ManagerTeamSection team={data.roleData.team} />
+        </AppPageSection>
+      ) : null}
+
+      <AppPageSection index={planningIdx}>
+        <RecentPlanning data={data} />
+      </AppPageSection>
+
+      <AppPageSection index={confirmIdx}>
+        <RecentConfirmation data={data} />
+      </AppPageSection>
+    </>
   )
 }
 
@@ -307,7 +373,7 @@ function GlobalOverviewCards({
 }) {
   const { t } = useTranslation('personnel')
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
         label={t('dashboard.stats.factoryOpenWo')}
         value={data.openTotal}
@@ -354,19 +420,26 @@ function UnassignedWorkOrdersSection({
   total: number
 }) {
   const { t } = useTranslation('personnel')
+  const empty = items.length === 0
   return (
-    <div className="app-tone-info-callout overflow-hidden rounded-card border shadow-sm">
-      <div className="flex items-center justify-between border-b border-app/50 px-6 py-3">
-        <div>
-          <div className="text-body-sm font-medium text-app">
-            {t('dashboard.unassigned.title')}
-          </div>
-          <p className="text-xs text-app-muted">{t('dashboard.unassigned.subtitle')}</p>
-        </div>
+    <AppPageSectionCard
+      icon={Inbox}
+      title={t('dashboard.unassigned.title')}
+      description={t('dashboard.unassigned.subtitle')}
+      collapsible
+      defaultOpen={!empty}
+      collapsedHint={
+        empty
+          ? t('dashboard.unassigned.emptyTitle')
+          : t('dashboard.unassigned.goAssign', { total })
+      }
+      actions={
         <Button asChild size="sm">
           <Link to="/planning">{t('dashboard.unassigned.goAssign', { total })}</Link>
         </Button>
-      </div>
+      }
+      bodyClassName="!p-0"
+    >
       <div className="app-table-shell overflow-x-auto">
       <Table embedded stickyHeader zebra>
         <TableHeader>
@@ -422,7 +495,7 @@ function UnassignedWorkOrdersSection({
         </TableBody>
       </Table>
       </div>
-    </div>
+    </AppPageSectionCard>
   )
 }
 
@@ -439,20 +512,22 @@ function ManagerTeamSection({
     : team.groupCode
       ? t('dashboard.team.titleWithCode', { code: team.groupCode })
       : t('dashboard.team.title')
+  const teamSubtitle = t('dashboard.team.subtitle', {
+    members: team.members.length,
+    open: team.totalOpen,
+    close: team.totalClose,
+  })
+  const empty = team.members.length === 0
   return (
-    <div className="app-tone-info-section overflow-hidden rounded-card border shadow-sm">
-      <div className="app-tone-info-inner flex items-center justify-between border-b px-6 py-3">
-        <div className="min-w-0">
-          <div className="app-tone-info-strong text-body-sm font-medium">{teamTitle}</div>
-          <p className="app-tone-info-label text-xs">
-            {t('dashboard.team.subtitle', {
-              members: team.members.length,
-              open: team.totalOpen,
-              close: team.totalClose,
-            })}
-          </p>
-        </div>
-      </div>
+    <AppPageSectionCard
+      icon={Users}
+      title={teamTitle}
+      description={teamSubtitle}
+      collapsible
+      defaultOpen={!empty}
+      collapsedHint={empty ? t('dashboard.team.emptyTitle') : teamSubtitle}
+      bodyClassName="!p-0"
+    >
       <div className="app-table-shell overflow-x-auto">
       <Table embedded stickyHeader zebra>
         <TableHeader>
@@ -497,38 +572,32 @@ function ManagerTeamSection({
         </TableBody>
       </Table>
       </div>
-    </div>
+    </AppPageSectionCard>
   )
 }
 
-function ProfileCard({ data }: { data: NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<typeof fetchPersonnelDashboard>>>>['data']> }) {
+function ProfileCardBody({ data }: { data: DashboardData }) {
   const { t } = useTranslation('personnel')
   const p = data.profile
   return (
-    <AppCard pad="default">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <PersonnelAvatar
-          idwkctr={p.idwkctr}
-          displayName={p.displayName}
-          hasImage={Boolean(p.imgMember)}
-          size="lg"
-          className="ring-2"
-        />
-        <div className="min-w-0 flex-1 space-y-3">
-          <div>
-            <div className="text-xl font-semibold text-app">
-              {p.displayName}
-            </div>
-            <div className="mt-1 text-caption">
-              {t('dashboard.profile.hrCode')}{' '}
-              <span className="font-mono">{p.idwkctr}</span>
-              {p.username && p.username !== p.idwkctr ? (
-                <span className="ml-2 text-xs text-app-muted">({p.username})</span>
-              ) : null}
-            </div>
-          </div>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+      <PersonnelAvatar
+        idwkctr={p.idwkctr}
+        displayName={p.displayName}
+        hasImage={Boolean(p.imgMember)}
+        size="lg"
+        className="ring-2"
+      />
+      <div className="min-w-0 flex-1 space-y-3">
+        <div className="text-caption">
+          {t('dashboard.profile.hrCode')}{' '}
+          <span className="font-mono">{p.idwkctr}</span>
+          {p.username && p.username !== p.idwkctr ? (
+            <span className="ml-2 text-xs text-app-muted">({p.username})</span>
+          ) : null}
+        </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-2">
             <DataLine label={t('dashboard.profile.workCntr')} value={p.wkctr || '—'} />
             <DataLine label={t('dashboard.profile.plant')} value={p.plnt || '—'} />
             <DataLine label={t('dashboard.profile.role')} value={<RoleBadge role={p.userRole} />} />
@@ -573,10 +642,9 @@ function ProfileCard({ data }: { data: NonNullable<ReturnType<typeof useQuery<Aw
                   : '—'
               }
             />
-          </div>
         </div>
       </div>
-    </AppCard>
+    </div>
   )
 }
 
@@ -596,19 +664,24 @@ function RecentPlanning({
 }) {
   const { t } = useTranslation('personnel')
   const items = data.planning.recent
+  const empty = items.length === 0
   return (
-    <div className="overflow-hidden app-table-shell">
-      <div className="flex items-center justify-between border-b border-app px-6 py-3">
-        <div>
-          <div className="text-body-sm font-medium text-app">
-            {t('dashboard.recentPlanning.title')}
-          </div>
-          <p className="text-xs text-app-muted">{t('dashboard.recentPlanning.subtitle')}</p>
-        </div>
+    <AppPageSectionCard
+      icon={CalendarClock}
+      title={t('dashboard.recentPlanning.title')}
+      description={t('dashboard.recentPlanning.subtitle')}
+      collapsible
+      defaultOpen={!empty}
+      collapsedHint={
+        empty ? t('dashboard.recentPlanning.emptyTitle') : t('dashboard.recentPlanning.subtitle')
+      }
+      actions={
         <Button asChild size="sm" variant="outline">
           <Link to="/planning">{t('dashboard.recentPlanning.goPlanning')}</Link>
         </Button>
-      </div>
+      }
+      bodyClassName="!p-0"
+    >
       <div className="app-table-shell overflow-x-auto">
       <Table embedded stickyHeader zebra>
         <TableHeader>
@@ -668,7 +741,7 @@ function RecentPlanning({
         </TableBody>
       </Table>
       </div>
-    </div>
+    </AppPageSectionCard>
   )
 }
 
@@ -679,19 +752,24 @@ function RecentConfirmation({
 }) {
   const { t } = useTranslation('personnel')
   const items = data.confirmation.recent
+  const empty = items.length === 0
   return (
-    <div className="overflow-hidden app-table-shell">
-      <div className="flex items-center justify-between border-b border-app px-6 py-3">
-        <div>
-          <div className="text-body-sm font-medium text-app">
-            {t('dashboard.recentConfirm.title')}
-          </div>
-          <p className="text-xs text-app-muted">{t('dashboard.recentConfirm.subtitle')}</p>
-        </div>
+    <AppPageSectionCard
+      icon={ClipboardCheck}
+      title={t('dashboard.recentConfirm.title')}
+      description={t('dashboard.recentConfirm.subtitle')}
+      collapsible
+      defaultOpen={!empty}
+      collapsedHint={
+        empty ? t('dashboard.recentConfirm.emptyTitle') : t('dashboard.recentConfirm.subtitle')
+      }
+      actions={
         <Button asChild size="sm" variant="outline">
           <Link to="/confirmation">{t('dashboard.recentConfirm.goConfirmation')}</Link>
         </Button>
-      </div>
+      }
+      bodyClassName="!p-0"
+    >
       <div className="app-table-shell overflow-x-auto">
       <Table embedded stickyHeader zebra>
         <TableHeader>
@@ -745,6 +823,6 @@ function RecentConfirmation({
         </TableBody>
       </Table>
       </div>
-    </div>
+    </AppPageSectionCard>
   )
 }

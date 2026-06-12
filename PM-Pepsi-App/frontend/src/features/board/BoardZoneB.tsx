@@ -44,11 +44,21 @@ export function BoardZoneB({
       className={
         carousel
           ? 'engineering-board__zone engineering-board__zone--b engineering-board__zone-b-stack'
-          : 'engineering-board__zone-b-stack'
+          : 'engineering-board__zone engineering-board__zone--b engineering-board__zone-b-stack'
       }
       aria-label={t('util.zoneAria')}
     >
-      {carousel ? <p className="engineering-board__zone-tag">{t('zoneB.zoneTag')} · Utilization</p> : null}
+      <div className="engineering-board__panel-head engineering-board__panel-head--zone-b">
+        <div>
+          <p className="engineering-board__zone-tag">{t('zoneB.zoneTagLine')}</p>
+          <h2 className="engineering-board__panel-title engineering-board__panel-title--flush">
+            {t('zoneB.title')}
+          </h2>
+          <p className="engineering-board__activity-sub">
+            {t('zoneB.sectionDesc', { label: rangeLabel })}
+          </p>
+        </div>
+      </div>
 
       <div className="engineering-board__util-toolbar">
         <BoardUtilLegend showRca={showRca} />

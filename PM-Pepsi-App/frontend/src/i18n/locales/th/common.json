@@ -50,9 +50,12 @@
     "hello": "สวัสดี {{name}}",
     "signInTitle": "เข้าสู่ระบบ",
     "signInTo": "เข้าสู่ระบบ {{app}}",
+    "signInHint": "ใช้บัญชี Work center หรือสมาชิกที่หัวหน้างานมอบให้",
     "signingIn": "กำลังเข้าสู่ระบบ…",
     "backHome": "กลับหน้าแรก",
+    "openBoard": "จอ Engineering Board (kiosk)",
     "usernamePlaceholder": "ชื่อผู้ใช้",
+    "passwordPlaceholder": "รหัสผ่าน",
     "feedback": {
       "invalidTitle": "เข้าสู่ระบบไม่สำเร็จ",
       "lockoutTitle": "ถูกระงับชั่วคราว",

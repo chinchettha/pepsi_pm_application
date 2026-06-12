@@ -322,11 +322,6 @@
     "purgeFailed": "ลบไม่สำเร็จ",
     "loadFailed": "โหลด audit ไม่สำเร็จ"
   },
-  "security": {
-    "title": "รายงานความปลอดภัย",
-    "description": "Login ล้มเหลว · RBAC deny · Rate limit — จาก audit log",
-    "loadFailed": "โหลดรายงานความปลอดภัยไม่สำเร็จ"
-  },
   "about": {
     "title": "เกี่ยวกับระบบ",
     "description": "เวอร์ชัน · องค์กร · migration · เซิร์ฟเวอร์และ license",
@@ -657,6 +652,17 @@
     }
   },
   "security": {
+    "title": "รายงานความปลอดภัย",
+    "description": "Login ล้มเหลว · RBAC deny · Rate limit — จาก audit log",
+    "loadFailed": "โหลดรายงานความปลอดภัยไม่สำเร็จ",
+    "hints": ["Login ล้มเหลว", "RBAC deny", "Rate limit", "Audit"],
+    "deniedBadge": "ปฏิเสธ",
+    "sections": {
+      "rangeTitle": "ช่วงเวลา",
+      "rangeDesc": "ช่วง audit สำหรับกราฟและสรุป IP",
+      "overviewTitle": "ภาพรวมความปลอดภัย",
+      "overviewDesc": "Login ล้มเหลว RBAC ปฏิเสธ และ rate limit"
+    },
     "daysLabel": "ช่วงเวลา (วัน)",
     "daysOption": "{{count}} วัน",
     "failedLoginKpi": "Login ล้มเหลว",

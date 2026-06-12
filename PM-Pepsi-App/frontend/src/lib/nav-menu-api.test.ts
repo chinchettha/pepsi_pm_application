@@ -15,6 +15,17 @@ describe('stripDeprecatedNavEntries', () => {
     expect(paths).toEqual(['/calendar', '/backlog'])
   })
 
+  it('removes legacy /personnel/admin from sidebar entries', () => {
+    const stripped = stripDeprecatedNavEntries([
+      { kind: 'heading', label: 'ชั่วโมง & บุคลากร' },
+      { kind: 'item', to: '/personnel', label: 'Personal Dashboard', icon: Home, menuright: 'A:U:W' },
+      { kind: 'item', to: '/personnel/admin', label: 'จัดการบุคลากร', icon: Home, menuright: 'A' },
+      { kind: 'item', to: '/worktime', label: 'Summary Over all', icon: Home, menuright: 'A:U:W' },
+    ])
+    const paths = stripped.filter((e) => e.kind === 'item').map((e) => e.to)
+    expect(paths).toEqual(['/personnel', '/worktime'])
+  })
+
   it('removes /manhours/admin from sidebar entries', () => {
     const stripped = stripDeprecatedNavEntries([
       { kind: 'heading', label: 'ชั่วโมง & บุคลากร' },
@@ -28,6 +39,22 @@ describe('stripDeprecatedNavEntries', () => {
 })
 
 describe('supplementNavFromFallback', () => {
+  it('adds /reports/audit when API only has /reports', () => {
+    const reports = appNav.find((e) => e.kind === 'item' && e.to === '/reports') as NavLinkEntry
+    const merged = supplementNavFromFallback(
+      [
+        { kind: 'heading', label: 'รายงาน' },
+        reports,
+        { kind: 'heading', label: 'ระบบ' },
+        appNav.find((e) => e.kind === 'item' && e.to === '/settings') as NavLinkEntry,
+      ],
+      appNav,
+    )
+    const paths = merged.filter((e) => e.kind === 'item').map((e) => e.to)
+    expect(paths).toContain('/reports/audit')
+    expect(paths).toContain('/activity-log')
+  })
+
   it('adds /admin/branding when missing from API nav', () => {
     const reports = appNav.find((e) => e.kind === 'item' && e.to === '/reports') as NavLinkEntry
     const settings = appNav.find((e) => e.kind === 'item' && e.to === '/settings') as NavLinkEntry

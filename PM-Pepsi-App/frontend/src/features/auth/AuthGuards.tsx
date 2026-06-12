@@ -6,6 +6,7 @@ import { resolvePostLoginPathForUserst } from '@/lib/primary-roles'
 import { getStoredAuthUser, isLoggedIn, refreshAuthSession } from '@/features/auth/login-api'
 import { HttpErrorPage } from '@/features/errors/HttpErrorPage'
 import { ADMIN_READ_PERMISSIONS } from '@/lib/admin-sections'
+import { pathAllowedForUser } from '@/lib/nav-active'
 import { permissionForRoute, PUBLIC_NAV_PATHS } from '@/lib/nav-route-permissions'
 import { hasPermission } from '@/lib/permissions'
 import { useAppNav } from '@/lib/use-app-nav'
@@ -59,12 +60,6 @@ export function RequireAuth() {
   }
 
   return <Outlet />
-}
-
-function pathAllowedForUser(pathname: string, allowedPaths: string[]): boolean {
-  return allowedPaths.some(
-    (p) => p === pathname || (p !== '/' && pathname.startsWith(`${p}/`)),
-  )
 }
 
 /** กัน deep link ไป route ที่ role ไม่มีสิทธิ์ (เมนูจาก tbmenu หรือ fallback) */

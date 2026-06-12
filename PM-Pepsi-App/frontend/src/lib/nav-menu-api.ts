@@ -4,7 +4,12 @@ import { fetchApi } from '@/lib/fetch-api'
 import { resolveNavIcon } from '@/lib/nav-icon-map'
 
 /** Routes removed from product — strip from sidebar (API tbmenu + fallback supplement). */
-const DEPRECATED_NAV_ROUTES = new Set(['/line-calendar', '/manhours/admin'])
+const DEPRECATED_NAV_ROUTES = new Set([
+  '/line-calendar',
+  '/manhours/admin',
+  /** Legacy CRUD route — redirects to `/admin/users` (see App.tsx) */
+  '/personnel/admin',
+])
 
 /** ชื่อเมนูจาก tbmenu ที่ต้องการ override ฝั่ง React */
 const NAV_LABEL_OVERRIDES: Record<string, string> = {

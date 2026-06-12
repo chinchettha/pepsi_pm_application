@@ -394,9 +394,15 @@ export function EngineeringBoardPage() {
             </span>
             <span>
               {loggedIn ? (
-                <Link to="/" className="engineering-board__footer-link">
-                  {t('footer.backApp')}
-                </Link>
+                <>
+                  <Link to="/" className="engineering-board__footer-link">
+                    {t('footer.backApp')}
+                  </Link>
+                  {' · '}
+                  <Link to="/summary-weekly" className="engineering-board__footer-link">
+                    {t('footer.engUtilDetail')}
+                  </Link>
+                </>
               ) : (
                 <Link to="/login" className="engineering-board__footer-link">
                   {t('signIn')}

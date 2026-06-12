@@ -7,7 +7,7 @@
  *
  */
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -256,97 +256,110 @@ export function PersonnelConfirmPage() {
         </>
       }
     >
-        <AppPageSection index={0}>
-        {/* Summary cards */}
-        <div className="grid gap-3 sm:grid-cols-4">
-          <SummaryCard
-            label={t('confirm.summary.totalOpen')}
-            value={summary?.totalOpen ?? 0}
-            icon={ClipboardList}
-            tone="neutral"
-            isLoading={listQ.isLoading}
-          />
-          <SummaryCard
-            label={t('confirm.summary.fullyClosed')}
-            value={summary?.fullyClosed ?? 0}
-            icon={CheckCircle2}
-            tone="success"
-            isLoading={listQ.isLoading}
-          />
-          <SummaryCard
-            label={t('confirm.summary.inProgress')}
-            value={summary?.inProgress ?? 0}
-            icon={Users}
-            tone="info"
-            isLoading={listQ.isLoading}
-          />
-          <SummaryCard
-            label={t('confirm.summary.notStarted')}
-            value={summary?.notStarted ?? 0}
-            icon={CircleDashed}
-            tone="warning"
-            isLoading={listQ.isLoading}
-          />
-        </div>
-
-        {/* Filters */}
-        <AppCard pad="compact" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <form onSubmit={onSubmitSearch} className="flex flex-1 items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-app-muted" />
-              <Input
-                placeholder={t('confirm.search.placeholder')}
-                className="pl-8"
-                value={qInput}
-                onChange={(e) => setQInput(e.target.value)}
-              />
-            </div>
-            <Button type="submit" variant="default" size="sm">
-              {tc('actions.search')}
-            </Button>
-            {q ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setQInput('')
-                  setQ('')
-                }}
-              >
-                {t('confirm.search.clear')}
-              </Button>
-            ) : null}
-          </form>
-          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-            <Filter className="size-4 text-app-muted" />
-            {STATUS_TAB_IDS.map((tabId) => (
-              <Button
-                key={tabId}
-                type="button"
-                size="sm"
-                variant={status === tabId ? 'default' : 'outline'}
-                onClick={() => setStatus(tabId)}
-              >
-                {t(STATUS_TAB_LABEL_KEYS[tabId])}
-                {summary
-                  ? ` (${
-                      tabId === 'all'
-                        ? summary.totalOpen
-                        : tabId === 'not_started'
-                          ? summary.notStarted
-                          : tabId === 'in_progress'
-                            ? summary.inProgress
-                            : tabId === 'qc_pending'
-                              ? (summary as { qcPending?: number }).qcPending ?? 0
-                              : summary.fullyClosed
-                    })`
-                  : ''}
-              </Button>
-            ))}
+      <AppPageSection index={0}>
+        <AppPageSectionCard
+          icon={ClipboardList}
+          title={t('confirm.statsSectionTitle')}
+          description={t('confirm.statsSectionDesc')}
+        >
+          <div className="grid gap-3 sm:grid-cols-4">
+            <SummaryCard
+              label={t('confirm.summary.totalOpen')}
+              value={summary?.totalOpen ?? 0}
+              icon={ClipboardList}
+              tone="neutral"
+              isLoading={listQ.isLoading}
+            />
+            <SummaryCard
+              label={t('confirm.summary.fullyClosed')}
+              value={summary?.fullyClosed ?? 0}
+              icon={CheckCircle2}
+              tone="success"
+              isLoading={listQ.isLoading}
+            />
+            <SummaryCard
+              label={t('confirm.summary.inProgress')}
+              value={summary?.inProgress ?? 0}
+              icon={Users}
+              tone="info"
+              isLoading={listQ.isLoading}
+            />
+            <SummaryCard
+              label={t('confirm.summary.notStarted')}
+              value={summary?.notStarted ?? 0}
+              icon={CircleDashed}
+              tone="warning"
+              isLoading={listQ.isLoading}
+            />
           </div>
-        </AppCard>
+        </AppPageSectionCard>
+      </AppPageSection>
 
+      <AppPageSection index={1}>
+        <AppPageSectionCard
+          icon={Filter}
+          title={t('confirm.filtersSectionTitle')}
+          description={t('confirm.filtersSectionDesc')}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <form onSubmit={onSubmitSearch} className="flex flex-1 items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-app-muted" />
+                <Input
+                  placeholder={t('confirm.search.placeholder')}
+                  className="pl-8"
+                  value={qInput}
+                  onChange={(e) => setQInput(e.target.value)}
+                />
+              </div>
+              <Button type="submit" variant="default" size="sm">
+                {tc('actions.search')}
+              </Button>
+              {q ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setQInput('')
+                    setQ('')
+                  }}
+                >
+                  {t('confirm.search.clear')}
+                </Button>
+              ) : null}
+            </form>
+            <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+              {STATUS_TAB_IDS.map((tabId) => (
+                <Button
+                  key={tabId}
+                  type="button"
+                  size="sm"
+                  variant={status === tabId ? 'default' : 'outline'}
+                  onClick={() => setStatus(tabId)}
+                >
+                  {t(STATUS_TAB_LABEL_KEYS[tabId])}
+                  {summary
+                    ? ` (${
+                        tabId === 'all'
+                          ? summary.totalOpen
+                          : tabId === 'not_started'
+                            ? summary.notStarted
+                            : tabId === 'in_progress'
+                              ? summary.inProgress
+                              : tabId === 'qc_pending'
+                                ? (summary as { qcPending?: number }).qcPending ?? 0
+                                : summary.fullyClosed
+                      })`
+                    : ''}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </AppPageSectionCard>
+      </AppPageSection>
+
+      <AppPageSection index={2}>
         <MassConfirmSelectionSummary selectedIds={[...selectedIds]} items={items} />
 
         <MassConfirmBar
@@ -355,20 +368,27 @@ export function PersonnelConfirmPage() {
           onComplete={() => void listQ.refetch()}
         />
 
-        <AppCard pad="compact">
+        <AppPageSectionCard
+          icon={Users}
+          title={t('confirm.tableSectionTitle')}
+          description={t('confirm.tableSectionDesc')}
+          bodyClassName="!p-0"
+        >
           {listQ.isLoading && !listQ.data ? (
-            <div className="space-y-2">
+            <div className="space-y-2 p-4">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full rounded" />
               ))}
             </div>
           ) : errorMessage ? (
-            <EmptyState
-              icon={AlertCircle}
-              title={t('confirm.table.loadFailed')}
-              description={errorMessage}
-              action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
-            />
+            <div className="p-4">
+              <EmptyState
+                icon={AlertCircle}
+                title={t('confirm.table.loadFailed')}
+                description={errorMessage}
+                action={{ label: tc('actions.retry'), onClick: () => void listQ.refetch() }}
+              />
+            </div>
           ) : (
             <div className="app-table-shell overflow-x-auto">
             <Table embedded stickyHeader zebra>
@@ -497,8 +517,8 @@ export function PersonnelConfirmPage() {
             </Table>
             </div>
           )}
-        </AppCard>
-        </AppPageSection>
+        </AppPageSectionCard>
+      </AppPageSection>
 
       <WorkOrderDetailDialog
         orderId={detailId}

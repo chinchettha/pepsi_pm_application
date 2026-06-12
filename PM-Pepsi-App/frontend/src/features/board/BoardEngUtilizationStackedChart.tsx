@@ -32,9 +32,11 @@ export function BoardEngUtilizationStackedChart({
 
   return (
     <section className="engineering-board__panel engineering-board__panel--chart">
-      <h2 className="engineering-board__panel-title">
-        {t('util.stackedTitle', { label: rangeLabel })}
-      </h2>
+      <div className="engineering-board__panel-head">
+        <h2 className="engineering-board__panel-title engineering-board__panel-title--flush">
+          {t('util.stackedTitle', { label: rangeLabel })}
+        </h2>
+      </div>
       {loading ? (
         <p className="text-body-sm opacity-60">{t('util.loadingChart')}</p>
       ) : error ? (

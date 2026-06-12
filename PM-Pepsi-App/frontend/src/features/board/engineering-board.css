@@ -523,6 +523,10 @@ html.board-kiosk-root #root {
   margin-bottom: 0;
 }
 
+.engineering-board__panel-head--zone-b {
+  margin-bottom: 0;
+}
+
 .engineering-board__panel--chart {
   min-height: 0;
 }

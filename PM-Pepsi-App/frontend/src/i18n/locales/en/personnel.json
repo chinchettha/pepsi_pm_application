@@ -27,6 +27,10 @@
       "perPersonClose": "Per-person closeout",
       "manageUsers": "Manage users"
     },
+    "statsSectionTitle": "My work summary",
+    "statsSectionDesc": "Open/closed jobs, confirmations, and recorded hours",
+    "globalSectionTitle": "Plant overview",
+    "globalSectionDesc": "Factory-wide WO status for planners and admins",
     "stats": {
       "openJobs": "Open jobs (pending close)",
       "openJobsHint": "view_planwork for my work center + syst CRTD/REL",
@@ -137,6 +141,12 @@
       "exportConfirmation": "Export Confirmation"
     },
     "refresh": "Refresh",
+    "statsSectionTitle": "Open work order summary",
+    "statsSectionDesc": "Counts by technician close-out status",
+    "filtersSectionTitle": "Search and filters",
+    "filtersSectionDesc": "Find work orders and narrow by close-out status",
+    "tableSectionTitle": "Work orders",
+    "tableSectionDesc": "Select rows for mass confirm or open work order details",
     "summary": {
       "totalOpen": "All open work orders",
       "fullyClosed": "Fully closed by all",
@@ -376,6 +386,16 @@
       "title": "Users & WorkCntr",
       "description": "WorkCntr = technician code (PAC/PRO/UTI), separate from HR login · photo upload/delete · personnel CRUD",
       "hints": ["WorkCntr", "WebP photo", "Excel import", "Member"]
+    },
+    "sections": {
+      "accountTitle": "Account type",
+      "accountDesc": "Work center technicians vs HR member logins",
+      "filtersTitle": "Search and filters",
+      "filtersDesc": "Find people by WorkCntr, HR ID, or name · narrow by status and role",
+      "workcenterTableTitle": "Work center accounts",
+      "workcenterTableDesc": "Technician codes, photos, roles, and admin actions",
+      "membersTableTitle": "Member accounts",
+      "membersTableDesc": "HR / member logins — reset password, lock, impersonate"
     },
     "page": {
       "title": "Personnel admin",

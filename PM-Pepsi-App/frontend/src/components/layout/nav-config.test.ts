@@ -43,6 +43,20 @@ describe('nav-config sidebar coverage', () => {
     expect(home?.kind === 'item' && home.end).toBe(true)
   })
 
+  it('uses end on Personal Dashboard so confirm/admin siblings stay distinct', () => {
+    const dashboard = appNav.find((e) => e.kind === 'item' && e.to === '/personnel')
+    const confirm = appNav.find((e) => e.kind === 'item' && e.to === '/personnel/confirm')
+    expect(dashboard?.kind === 'item' && dashboard.end).toBe(true)
+    expect(confirm?.kind === 'item' && confirm.end).toBeFalsy()
+  })
+
+  it('uses end on Reports so Auditor Hub sibling stays distinct', () => {
+    const reports = appNav.find((e) => e.kind === 'item' && e.to === '/reports')
+    const audit = appNav.find((e) => e.kind === 'item' && e.to === '/reports/audit')
+    expect(reports?.kind === 'item' && reports.end).toBe(true)
+    expect(audit?.kind === 'item' && audit.end).toBeFalsy()
+  })
+
   it('covers core operational routes', () => {
     for (const path of [
       '/',

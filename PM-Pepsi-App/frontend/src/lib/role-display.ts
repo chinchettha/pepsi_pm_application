@@ -17,3 +17,17 @@ export function resolveRoleDisplayLabel(
   if (locale === 'en') return en || source.userst?.trim() || '—'
   return th || en || source.userst?.trim() || '—'
 }
+
+/** Menu Builder / preview dropdown — `A - Admin` */
+export function formatRolePreviewOption(
+  roleCode: string,
+  locale: AppLocale,
+  source?: RoleLabelSource | null,
+): string {
+  const code = roleCode.trim().toUpperCase()
+  if (source) {
+    const name = resolveRoleDisplayLabel({ ...source, userst: code }, locale)
+    if (name && name !== code) return `${code} - ${name}`
+  }
+  return code
+}

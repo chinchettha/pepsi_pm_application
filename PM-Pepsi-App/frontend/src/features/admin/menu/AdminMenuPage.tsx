@@ -30,7 +30,10 @@ import {
   previewNavForRole,
 } from '@/lib/admin-menu-preview'
 import { fetchAdminRolesMatrix } from '@/lib/admin-roles-api'
+import { i18n } from '@/i18n'
+import { formatRolePreviewOption } from '@/lib/role-display'
 import { useAuthUser, usePermission } from '@/lib/use-permission'
+import { useAppLocale } from '@/providers/I18nProvider'
 import {
   DndContext,
   type DragEndEvent,
@@ -61,10 +64,12 @@ const MENU_KEY = ['admin', 'menu'] as const
 function MenuPreviewPanel({
   rows,
   previewRole,
+  previewRoleLabel,
   previewPermissions,
 }: {
   rows: AdminMenuRow[]
   previewRole: string
+  previewRoleLabel: string
   previewPermissions?: string[]
 }) {
   const { t } = useTranslation('admin')
@@ -76,7 +81,7 @@ function MenuPreviewPanel({
   return (
     <div className="rounded-card bg-[var(--admin-text)] p-3 text-body-sm text-[var(--admin-surface)]">
       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-app-muted">
-        Preview · role {previewRole}
+        Preview · role {previewRoleLabel}
         {previewPermissions ? (
           <span className="ml-1 font-normal normal-case text-app-muted">
             {t('menu.previewPerms', { count: previewPermissions.length })}
@@ -118,7 +123,9 @@ function MenuPreviewPanel({
 
 export function AdminMenuPage() {
   const { t } = useTranslation('admin')
+  const { t: tp } = useTranslation('personnel')
   const { t: tc } = useTranslation('common')
+  const { locale } = useAppLocale()
   const qc = useQueryClient()
   const authUser = useAuthUser()
   const canRead = usePermission('admin.menu.read')
@@ -150,6 +157,29 @@ export function AdminMenuPage() {
     if (fromMatrix.length > 0) return fromMatrix
     return [...MENU_ROLE_BITS]
   }, [rolesMatrixQ.data])
+
+  const roleOptionLabel = useCallback(
+    (code: string) => {
+      const role = rolesMatrixQ.data?.roles.find((r) => r.roleCode === code)
+      if (role) {
+        return formatRolePreviewOption(code, locale, {
+          roleNameTh: role.roleName,
+          roleNameEn: role.roleNameEn,
+        })
+      }
+      const userstKey = `personnel:admin.userst.${code}`
+      if (i18n.exists(userstKey)) {
+        return tp(`admin.userst.${code}`).replace(/\s*—\s*/, ' - ')
+      }
+      return code
+    },
+    [rolesMatrixQ.data, locale, tp],
+  )
+
+  const previewRoleLabel = useMemo(
+    () => roleOptionLabel(previewRole),
+    [previewRole, roleOptionLabel],
+  )
 
   useEffect(() => {
     if (roleOptions.length === 0) return
@@ -293,7 +323,7 @@ export function AdminMenuPage() {
           >
             {roleOptions.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {roleOptionLabel(r)}
               </option>
             ))}
           </select>
@@ -363,6 +393,7 @@ export function AdminMenuPage() {
             <MenuPreviewPanel
               rows={rows}
               previewRole={previewRole}
+              previewRoleLabel={previewRoleLabel}
               previewPermissions={previewPermissions}
             />
           </CardContent>

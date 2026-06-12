@@ -1,12 +1,15 @@
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { FailedLoginChart } from './FailedLoginChart'
-import { AdminPageShell } from '@/components/admin/AdminPageShell'
+import {
+  AdminPageSection,
+  AdminPageSectionCard,
+  AdminPageShell,
+} from '@/components/admin/AdminPageShell'
 import { AdminKpiCard } from '@/components/admin/AdminKpiCard'
 import { AdminKpiGrid } from '@/components/admin/AdminKpiGrid'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,17 +25,19 @@ import { BlockIpQuickButton, BlockedIpCard } from './BlockedIpCard'
 import { fetchSecurityOverview } from '@/lib/admin-security-api'
 import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { AlertCircle, Ban, Lock, RefreshCcw, ShieldAlert, ShieldX } from 'lucide-react'
+import {
+  AlertCircle,
+  Ban,
+  CalendarDays,
+  Lock,
+  RefreshCcw,
+  ShieldAlert,
+  ShieldX,
+} from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-
-const selectClass =
-  'flex h-10 rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body text-app'
-
-function deniedBadge() {
-  return <Badge variant="destructive">denied</Badge>
-}
+import { menuSelectClass } from '@/features/admin/menu/menu-form-utils'
 
 export function AdminSecurityPage() {
   const { t } = useTranslation('admin')
@@ -57,13 +62,54 @@ export function AdminSecurityPage() {
   }
 
   const data = q.data
+  const hints = t('security.hints', { returnObjects: true }) as string[]
+
+  const kpiBody =
+    q.isLoading && !data ? (
+      <AdminKpiGrid className="sm:grid-cols-2 lg:grid-cols-3">
+        <Skeleton className="h-28 rounded-card" />
+        <Skeleton className="h-28 rounded-card" />
+        <Skeleton className="h-28 rounded-card" />
+      </AdminKpiGrid>
+    ) : q.isError && !data ? (
+      <EmptyState
+        icon={AlertCircle}
+        title={t('security.loadFailed')}
+        description={(q.error as Error).message}
+        action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
+      />
+    ) : data ? (
+      <AdminKpiGrid className="sm:grid-cols-2 lg:grid-cols-3">
+        <AdminKpiCard
+          tone="danger"
+          icon={Lock}
+          label={t('security.failedLoginKpi')}
+          value={String(data.failedLogin.total)}
+          hint={t('security.failedLoginHint', { days })}
+        />
+        <AdminKpiCard
+          tone="warning"
+          icon={ShieldX}
+          label={t('security.rbacDenyKpi')}
+          value={String(data.denied.total)}
+          hint={t('security.rbacDenyHint')}
+        />
+        <AdminKpiCard
+          tone="info"
+          icon={Ban}
+          label={t('security.rateLimitKpi')}
+          value={String(data.rateLimitHits)}
+          hint={t('security.rateLimitIpHint', { count: data.rateLimitedIps.length })}
+        />
+      </AdminKpiGrid>
+    ) : null
 
   return (
     <AdminPageShell
       tourTarget="admin-security"
       title={t('security.title')}
       description={t('security.description')}
-      hints={['Login fail', 'RBAC deny', 'Rate limit', 'Audit']}
+      hints={hints}
       headerActions={
         <Button
           type="button"
@@ -73,15 +119,25 @@ export function AdminSecurityPage() {
           onClick={() => void q.refetch()}
           disabled={q.isFetching}
         >
-          <RefreshCcw className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`} aria-hidden />{t('shared.refresh')}</Button>
+          <RefreshCcw
+            className={`mr-1 size-3.5 ${q.isFetching ? 'animate-spin' : ''}`}
+            aria-hidden
+          />
+          {t('shared.refresh')}
+        </Button>
       }
     >
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1">
+      <AdminPageSection index={0}>
+        <AdminPageSectionCard
+          icon={CalendarDays}
+          title={t('security.sections.rangeTitle')}
+          description={t('security.sections.rangeDesc')}
+        >
+          <div className="max-w-xs space-y-1">
             <Label htmlFor="sec-days">{t('security.daysLabel')}</Label>
             <select
               id="sec-days"
-              className={selectClass}
+              className={menuSelectClass}
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
             >
@@ -92,83 +148,48 @@ export function AdminSecurityPage() {
               ))}
             </select>
           </div>
-        </div>
+        </AdminPageSectionCard>
+      </AdminPageSection>
 
-        {q.isLoading && !data ? (
-          <AdminKpiGrid className="sm:grid-cols-2 lg:grid-cols-3">
-            <Skeleton className="h-28 rounded-card" />
-            <Skeleton className="h-28 rounded-card" />
-            <Skeleton className="h-28 rounded-card" />
-          </AdminKpiGrid>
-        ) : q.isError && !data ? (
-          <EmptyState
-            icon={AlertCircle}
-            title={t('security.loadFailed')}
-            description={(q.error as Error).message}
-            action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
-          />
-        ) : data ? (
-          <AdminKpiGrid className="sm:grid-cols-2 lg:grid-cols-3">
-            <AdminKpiCard
-              tone="danger"
-              icon={Lock}
-              label={t('security.failedLoginKpi')}
-              value={String(data.failedLogin.total)}
-              hint={t('security.failedLoginHint', { days })}
-            />
-            <AdminKpiCard
-              tone="warning"
-              icon={ShieldX}
-              label={t('security.rbacDenyKpi')}
-              value={String(data.denied.total)}
-              hint={t('security.rbacDenyHint')}
-            />
-            <AdminKpiCard
-              tone="info"
-              icon={Ban}
-              label={t('security.rateLimitKpi')}
-              value={String(data.rateLimitHits)}
-              hint={t('security.rateLimitIpHint', { count: data.rateLimitedIps.length })}
-            />
-          </AdminKpiGrid>
-        ) : null}
+      <AdminPageSection index={1}>
+        <AdminPageSectionCard
+          icon={ShieldAlert}
+          title={t('security.sections.overviewTitle')}
+          description={t('security.sections.overviewDesc')}
+        >
+          {kpiBody}
+        </AdminPageSectionCard>
+      </AdminPageSection>
 
-        <Card className="admin-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Lock className="size-4" aria-hidden />
-              {t('security.failedLoginChartTitle')}
-            </CardTitle>
-            <CardDescription>{t('security.failedLoginChartDesc')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {q.isLoading && !data ? (
-              <Skeleton className="h-[220px]" />
-            ) : (
-              <div className="h-[220px]">
-                <FailedLoginChart series={data?.failedLogin.series ?? []} />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <AdminPageSection index={2}>
+        <AdminPageSectionCard
+          icon={Lock}
+          title={t('security.failedLoginChartTitle')}
+          description={t('security.failedLoginChartDesc')}
+        >
+          {q.isLoading && !data ? (
+            <Skeleton className="h-[220px]" />
+          ) : (
+            <div className="h-[220px]">
+              <FailedLoginChart series={data?.failedLogin.series ?? []} />
+            </div>
+          )}
+        </AdminPageSectionCard>
+      </AdminPageSection>
 
-        <Card className="admin-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Ban className="size-4" aria-hidden />
-              {t('security.rateLimitTitle')}
-            </CardTitle>
-            <CardDescription>{data?.rateLimitNote}</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {q.isLoading && !data ? (
-              <Skeleton className="m-4 h-32" />
-            ) : (data?.rateLimitedIps.length ?? 0) === 0 ? (
-              <p className="p-4 text-caption">
-                {t('security.rateLimitEmpty')}
-              </p>
-            ) : (
-              <div className="app-table-shell overflow-x-auto">
+      <AdminPageSection index={3}>
+        <AdminPageSectionCard
+          icon={Ban}
+          title={t('security.rateLimitTitle')}
+          description={data?.rateLimitNote}
+          bodyClassName="!p-0"
+        >
+          {q.isLoading && !data ? (
+            <Skeleton className="m-4 h-32" />
+          ) : (data?.rateLimitedIps.length ?? 0) === 0 ? (
+            <p className="p-4 text-caption">{t('security.rateLimitEmpty')}</p>
+          ) : (
+            <div className="app-table-shell overflow-x-auto">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
@@ -197,27 +218,25 @@ export function AdminSecurityPage() {
                   ))}
                 </TableBody>
               </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </AdminPageSectionCard>
+      </AdminPageSection>
 
+      <AdminPageSection index={4}>
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="admin-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldAlert className="size-4" aria-hidden />
-                {t('security.suspiciousIpTitle')}
-              </CardTitle>
-              <CardDescription>{t('security.suspiciousIpDesc', { days })}</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {q.isLoading && !data ? (
-                <Skeleton className="m-4 h-32" />
-              ) : (data?.suspiciousIps.length ?? 0) === 0 ? (
-                <p className="p-4 text-caption">{t('security.noSuspiciousIp')}</p>
-              ) : (
-                <div className="app-table-shell overflow-x-auto">
+          <AdminPageSectionCard
+            icon={ShieldAlert}
+            title={t('security.suspiciousIpTitle')}
+            description={t('security.suspiciousIpDesc', { days })}
+            bodyClassName="!p-0"
+          >
+            {q.isLoading && !data ? (
+              <Skeleton className="m-4 h-32" />
+            ) : (data?.suspiciousIps.length ?? 0) === 0 ? (
+              <p className="p-4 text-caption">{t('security.noSuspiciousIp')}</p>
+            ) : (
+              <div className="app-table-shell overflow-x-auto">
                 <Table embedded stickyHeader zebra>
                   <TableHeader>
                     <TableRow>
@@ -246,37 +265,34 @@ export function AdminSecurityPage() {
                     ))}
                   </TableBody>
                 </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            )}
+          </AdminPageSectionCard>
 
-          <Card className="admin-card">
-            <CardHeader>
-              <CardTitle className="text-base">
-                {t('security.rbacDenyTitle')}
-                {data ? (
-                  <Badge variant="secondary" className="ml-2 tabular-nums">
-                    {data.denied.total}
-                  </Badge>
-                ) : null}
-              </CardTitle>
-              <CardDescription>
-                {t('security.rbacDenyFromMiddleware')}{' '}
-                <Link to="/admin/audit?status=denied" className="text-[var(--app-accent)] underline">
-                  {t('security.viewInAudit')}
-                </Link>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {q.isLoading && !data ? (
-                <Skeleton className="m-4 h-32" />
-              ) : (data?.denied.items.length ?? 0) === 0 ? (
-                <p className="p-4 text-caption">
-                  {t('security.rbacDenyEmpty')}
-                </p>
-              ) : (
-                <div className="app-table-shell overflow-x-auto">
+          <AdminPageSectionCard
+            icon={ShieldX}
+            title={t('security.rbacDenyTitle')}
+            description={t('security.rbacDenyFromMiddleware')}
+            badge={
+              data ? (
+                <Badge variant="secondary" className="tabular-nums">
+                  {data.denied.total}
+                </Badge>
+              ) : null
+            }
+            bodyClassName="!p-0"
+          >
+            <p className="border-b border-app/45 px-4 py-2 text-xs text-app-muted">
+              <Link to="/admin/audit?status=denied" className="text-[var(--app-accent)] underline">
+                {t('security.viewInAudit')}
+              </Link>
+            </p>
+            {q.isLoading && !data ? (
+              <Skeleton className="m-4 h-32" />
+            ) : (data?.denied.items.length ?? 0) === 0 ? (
+              <p className="p-4 text-caption">{t('security.rbacDenyEmpty')}</p>
+            ) : (
+              <div className="app-table-shell overflow-x-auto">
                 <Table embedded stickyHeader zebra>
                   <TableHeader>
                     <TableRow>
@@ -300,24 +316,26 @@ export function AdminSecurityPage() {
                         <TableCell>
                           <div className="flex flex-wrap items-center gap-1">
                             <span className="font-mono text-xs">{row.message ?? '—'}</span>
-                            {deniedBadge()}
+                            <Badge variant="destructive">{t('security.deniedBadge')}</Badge>
                           </div>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            )}
+          </AdminPageSectionCard>
         </div>
+      </AdminPageSection>
 
+      <AdminPageSection index={5}>
         {data ? (
           <BlockedIpCard items={data.blockedIps.items} canWrite={canWrite} />
         ) : q.isLoading && !data ? (
           <Skeleton className="h-48 rounded-card" />
         ) : null}
+      </AdminPageSection>
     </AdminPageShell>
   )
 }

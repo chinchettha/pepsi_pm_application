@@ -6,7 +6,11 @@
  *   ใช้ `<img src=/api/v1/personnel/:idwkctr/image>` (ส่ง cookie auth อัตโนมัติ)
  * - Excel import: skip 2 rows แรก (`$n > 2`) + แสดงผลทีละแถว
  */
-import { AdminPageShell } from '@/components/admin/AdminPageShell'
+import {
+  AdminPageSection,
+  AdminPageSectionCard,
+  AdminPageShell,
+} from '@/components/admin/AdminPageShell'
 import { PersonnelAdminPhotoGoLiveBanner } from '@/features/admin/users/PersonnelAdminPhotoGoLiveBanner'
 import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { TelegramInviteDialog } from '@/components/telegram/TelegramInviteDialog'
@@ -84,6 +88,7 @@ import {
 } from '@/lib/telegram-link-api'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  Filter,
   ImageIcon,
   KeyRound,
   Loader2,
@@ -93,12 +98,15 @@ import {
   MessageSquare,
   Pencil,
   RefreshCcw,
+  Table2,
   Trash2,
   Unlock,
   Upload,
   UserPlus,
+  Users,
 } from 'lucide-react'
-import type { ChangeEvent, FormEvent } from 'react'
+import type { ChangeEvent, FormEvent, ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -662,18 +670,56 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
     </>
   )
 
+  const accountTabs =
+    variant === 'admin' ? (
+      <Tabs
+        value={accountTab}
+        onValueChange={(v) => setAccountTab(v as 'workcenter' | 'member')}
+      >
+        <TabsList>
+          <TabsTrigger value="workcenter">{t('admin.tabWorkcenter')}</TabsTrigger>
+          <TabsTrigger value="member">{t('admin.tabMember')}</TabsTrigger>
+        </TabsList>
+      </Tabs>
+    ) : null
+
+  const wrapAdminWorkcenterSection = (
+    index: number,
+    card: {
+      icon: LucideIcon
+      title: string
+      description: string
+      bodyClassName?: string
+    },
+    content: ReactNode,
+  ) => {
+    if (variant !== 'admin' || accountTab !== 'workcenter') return content
+    return (
+      <AdminPageSection index={index}>
+        <AdminPageSectionCard
+          icon={card.icon}
+          title={card.title}
+          description={card.description}
+          bodyClassName={card.bodyClassName}
+        >
+          {content}
+        </AdminPageSectionCard>
+      </AdminPageSection>
+    )
+  }
+
   const body = (
       <>
         {variant === 'admin' ? (
-          <Tabs
-            value={accountTab}
-            onValueChange={(v) => setAccountTab(v as 'workcenter' | 'member')}
-          >
-            <TabsList>
-              <TabsTrigger value="workcenter">{t('admin.tabWorkcenter')}</TabsTrigger>
-              <TabsTrigger value="member">{t('admin.tabMember')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <AdminPageSection index={0}>
+            <AdminPageSectionCard
+              icon={Users}
+              title={t('admin.sections.accountTitle')}
+              description={t('admin.sections.accountDesc')}
+            >
+              {accountTabs}
+            </AdminPageSectionCard>
+          </AdminPageSection>
         ) : null}
 
         {(variant !== 'admin' || accountTab === 'workcenter') && (
@@ -691,6 +737,14 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
             }}
           />
         ) : null}
+        {wrapAdminWorkcenterSection(
+          1,
+          {
+            icon: Filter,
+            title: t('admin.sections.filtersTitle'),
+            description: t('admin.sections.filtersDesc'),
+          },
+          <>
         <div className="flex flex-wrap items-center gap-3">
           <Input
             placeholder={t('admin.searchPlaceholder')}
@@ -846,8 +900,18 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
             {t('admin.filterHiddenBanner', { count: filteredOutCount })}
           </div>
         ) : null}
+          </>,
+        )}
 
-        <div className="overflow-hidden app-table-shell">
+        {wrapAdminWorkcenterSection(
+          2,
+          {
+            icon: Table2,
+            title: t('admin.sections.workcenterTableTitle'),
+            description: t('admin.sections.workcenterTableDesc'),
+            bodyClassName: '!p-0',
+          },
+          <div className="overflow-hidden app-table-shell">
           {listQ.isError && !listQ.data ? (
             <QueryLoadErrorState
               className="m-4"
@@ -1052,11 +1116,19 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
               </TableBody>
             </Table>
           )}
-        </div>
+        </div>,
+        )}
         </>
         )}
 
         {variant === 'admin' && accountTab === 'member' ? (
+          <AdminPageSection index={1}>
+            <AdminPageSectionCard
+              icon={Table2}
+              title={t('admin.sections.membersTableTitle')}
+              description={t('admin.sections.membersTableDesc')}
+              bodyClassName="!p-0"
+            >
           <div className="overflow-hidden app-table-shell">
             {membersQ.isError && !membersQ.data ? (
               <QueryLoadErrorState
@@ -1120,6 +1192,8 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
               </Table>
             )}
           </div>
+            </AdminPageSectionCard>
+          </AdminPageSection>
         ) : null}
 
       <AlertDialog

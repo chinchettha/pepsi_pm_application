@@ -1,4 +1,5 @@
 import type { NavEntry, NavLinkEntry } from '@/components/layout/nav-config'
+import { i18n } from '@/i18n'
 import { translateAdminNavLabel } from '@/lib/admin-i18n'
 import type { TFunction } from 'i18next'
 import type { AppLocale } from '@/lib/app-locale'
@@ -25,8 +26,8 @@ function translateRoute(path: string, t: TFunction): string | undefined {
   const admin = translateAdminNavLabel(path, t)
   if (admin) return admin
   const key = `nav:routes.${path}`
-  if (t(key) !== key) return t(key)
-  return undefined
+  if (!i18n.exists(key)) return undefined
+  return t(key)
 }
 
 function translateHeading(label: string, t: TFunction): string | undefined {

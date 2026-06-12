@@ -4,7 +4,7 @@ import { ImportReviewActionBadge } from '@/components/integration/ImportReviewAc
 import { Iw37nImportReviewPanel } from '@/components/iw37n/Iw37nImportReviewPanel'
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { QueryLoadErrorState } from '@/components/ui/query-load-error'
@@ -36,8 +36,18 @@ import {
 } from '@/lib/api-public'
 import { formatEpochSecondsToDdMmYyyy } from '@/lib/master-data-api'
 import { useAnyPermission, usePermission } from '@/lib/use-permission'
+import { cn } from '@/lib/utils'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, ClipboardCheck, FolderSync, Pencil } from 'lucide-react'
+import {
+  AlertCircle,
+  ClipboardCheck,
+  ClipboardList,
+  FolderSync,
+  History,
+  Pencil,
+  Table2,
+  Upload,
+} from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -449,6 +459,20 @@ export function Iw37nPage() {
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  const lastImportSectionIdx = 1
+  const itemsSectionIdx = 2
+  const batchSectionIdx = 3
+
+  const folderHintText = `${t('iw37nPage.folderHint')} .csv / .xlsx / .xls ${t('iw37nPage.folderHintFiles')} inbound/iw37n ${t('iw37nPage.folderHintScan')} ${integrationQ.data?.watchIntervalMinutes ?? 10} ${t('iw37nPage.folderHintMinutes')}${integrationQ.data?.watchEnabled === false ? ` ${t('iw37nPage.folderWatchOff')}` : ''}`
+
+  const lastImportCollapsedHint = lastImport
+    ? t('iw37nPage.lastImportCollapsedSummary', {
+        fileName: lastImport.fileName,
+        status: lastImport.status,
+        count: lastImport.rows.length,
+      })
+    : t('iw37nPage.lastImportEmpty')
+
   if (!canRead) {
     return (
       <AppPageShell title={t('iw37nPage.title')} description={t('iw37nPage.description')}>
@@ -491,92 +515,113 @@ export function Iw37nPage() {
         </>
       }
     >
+      {(canImport || canRunFolderScan) ? (
         <AppPageSection index={0}>
-        {canImport ? (
-          <AppCard pad="default">
-            <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.importTitle')}</h3>
-            <p className="mt-1 text-xs text-app-muted">
-              {t('iw37nPage.importHintBefore')}
-              <strong>{t('iw37nPage.importHintStrong')}</strong>
-              {t('iw37nPage.importHintAfter')}
-            </p>
-            <p className="mt-2 text-xs text-app-muted">
-              {t('iw37nPage.importMasterBefore')}
-              <strong>{t('iw37nPage.importMasterStrong')}</strong>
-              {t('iw37nPage.importMasterMid')}
-              <Link to="/master-data" className="font-medium underline underline-offset-2">
-                {t('iw37nPage.importMasterLink')}
-              </Link>
-            </p>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1 space-y-1">
-                <label className="text-xs font-medium text-app-muted">{t('iw37nPage.selectFileLabel')}</label>
-                <Input
-                  ref={fileRef}
-                  type="file"
-                  accept=".xls,.xlsx,.xlsm,.csv"
-                  onChange={() => {
-                    setImportPreview(null)
-                    setPendingFile(fileRef.current?.files?.[0] ?? null)
-                  }}
-                />
-              </div>
-              <Button
-                type="button"
-                onClick={runDirectImport}
-                disabled={previewMut.isPending || importMut.isPending}
-              >
-                {importMut.isPending ? t('iw37nPage.importing') : t('iw37nPage.importNow')}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={runPreview}
-                disabled={previewMut.isPending || importMut.isPending}
-                className="gap-2"
-              >
-                <ClipboardCheck className="size-4" />
-                {previewMut.isPending ? t('iw37nPage.previewing') : t('iw37nPage.preview')}
-              </Button>
-            </div>
-            {importPreview ? (
-              <Iw37nImportReviewPanel
-                summary={importPreview.summary}
-                rows={importPreview.rows}
-                committing={importMut.isPending}
-                onCommit={runCommit}
-                onCancel={cancelPreview}
-              />
-            ) : null}
-          </AppCard>
-        ) : (
-          <AppCard pad="compact">
-            <p className="text-caption">
-              {t('iw37nPage.needImportPerm')} <code className="text-xs">iw37n.import</code>{' '}
-              {t('iw37nPage.or')} <code className="text-xs">iw37n.write</code>
-            </p>
-          </AppCard>
-        )}
-
-        {canRunFolderScan ? (
-          <AppCard pad="default">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.folderTitle')}</h3>
-                <p className="mt-1 text-xs text-app-muted">
-                  {t('iw37nPage.folderHint')}{' '}
-                  <code className="text-code">.csv / .xlsx / .xls</code> {t('iw37nPage.folderHintFiles')}{' '}
-                  <code className="text-code">inbound/iw37n</code> {t('iw37nPage.folderHintScan')}{' '}
-                  {integrationQ.data?.watchIntervalMinutes ?? 10} {t('iw37nPage.folderHintMinutes')}
-                  {integrationQ.data?.watchEnabled === false ? ` ${t('iw37nPage.folderWatchOff')}` : ''}
+          <AppPageSectionCard
+            icon={canImport ? Upload : FolderSync}
+            title={t('iw37nPage.importSourcesTitle')}
+            description={t('iw37nPage.importSourcesDesc')}
+            bodyClassName="space-y-5"
+          >
+            {canImport ? (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-body-sm font-semibold text-app">{t('iw37nPage.importTitle')}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-app-muted">
+                    {t('iw37nPage.importHintBefore')}
+                    <strong>{t('iw37nPage.importHintStrong')}</strong>
+                    {t('iw37nPage.importHintAfter')}
+                  </p>
+                </div>
+                <p className="text-xs leading-relaxed text-app-muted">
+                  {t('iw37nPage.importMasterBefore')}
+                  <strong>{t('iw37nPage.importMasterStrong')}</strong>
+                  {t('iw37nPage.importMasterMid')}
+                  <Link to="/master-data" className="font-medium underline underline-offset-2">
+                    {t('iw37nPage.importMasterLink')}
+                  </Link>
                 </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-xs font-medium text-app-muted">
+                      {t('iw37nPage.selectFileLabel')}
+                    </label>
+                    <Input
+                      ref={fileRef}
+                      type="file"
+                      accept=".xls,.xlsx,.xlsm,.csv"
+                      onChange={() => {
+                        setImportPreview(null)
+                        setPendingFile(fileRef.current?.files?.[0] ?? null)
+                      }}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={runDirectImport}
+                    disabled={previewMut.isPending || importMut.isPending}
+                  >
+                    {importMut.isPending ? t('iw37nPage.importing') : t('iw37nPage.importNow')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={runPreview}
+                    disabled={previewMut.isPending || importMut.isPending}
+                    className="gap-2"
+                  >
+                    <ClipboardCheck className="size-4" />
+                    {previewMut.isPending ? t('iw37nPage.previewing') : t('iw37nPage.preview')}
+                  </Button>
+                </div>
+                {importPreview ? (
+                  <Iw37nImportReviewPanel
+                    summary={importPreview.summary}
+                    rows={importPreview.rows}
+                    committing={importMut.isPending}
+                    onCommit={runCommit}
+                    onCancel={cancelPreview}
+                  />
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-caption text-app-muted">
+                {t('iw37nPage.needImportPerm')} <code className="text-xs">iw37n.import</code>{' '}
+                {t('iw37nPage.or')} <code className="text-xs">iw37n.write</code>
+              </p>
+            )}
+
+            {canRunFolderScan ? (
+              <div
+                className={cn(
+                  'space-y-3',
+                  canImport && 'border-t border-app/50 pt-5',
+                )}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-body-sm font-semibold text-app">{t('iw37nPage.folderTitle')}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-app-muted">{folderHintText}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    disabled={folderScanMut.isPending || integrationQ.isError}
+                    onClick={() => folderScanMut.mutate()}
+                  >
+                    <FolderSync className="size-4" />
+                    {folderScanMut.isPending ? t('iw37nPage.scanning') : t('iw37nPage.scanNow')}
+                  </Button>
+                </div>
                 {integrationQ.isError ? (
-                  <p className="app-tone-warning-label mt-2 text-xs">
+                  <p className="app-tone-warning-label text-xs">
                     {t('iw37nPage.folderNotReady')}{' '}
                     <code className="text-code">075_integration_job.sql</code>
                   </p>
                 ) : integrationQ.data ? (
-                  <p className="mt-2 break-all text-xs text-app-muted">
+                  <p className="break-all text-xs text-app-muted">
                     {integrationQ.data.inboundIw37nDir}
                     <span className="ml-2 text-app-muted">
                       {t('iw37nPage.folderPending', {
@@ -585,10 +630,10 @@ export function Iw37nPage() {
                     </span>
                   </p>
                 ) : integrationQ.isLoading ? (
-                  <Skeleton className="mt-2 h-4 w-full max-w-md" />
+                  <Skeleton className="h-4 w-full max-w-md" />
                 ) : null}
                 {integrationQ.data?.lastJob ? (
-                  <p className="mt-1 text-xs text-app-muted">
+                  <p className="text-xs text-app-muted">
                     {t('iw37nPage.folderLastJob', {
                       id: integrationQ.data.lastJob.id,
                       status: integrationQ.data.lastJob.status,
@@ -596,45 +641,49 @@ export function Iw37nPage() {
                     })}
                   </p>
                 ) : null}
+                {integrationQ.data && integrationQ.data.pendingIw37nFiles.length > 0 ? (
+                  <ul className="list-inside list-disc text-xs text-app-muted">
+                    {integrationQ.data.pendingIw37nFiles.map((f) => (
+                      <li key={f.name}>
+                        {t('iw37nPage.folderFileEntry', {
+                          name: f.name,
+                          sizeKb: Math.round(f.sizeBytes / 1024),
+                        })}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-2"
-                disabled={folderScanMut.isPending || integrationQ.isError}
-                onClick={() => folderScanMut.mutate()}
-              >
-                <FolderSync className="size-4" />
-                {folderScanMut.isPending ? t('iw37nPage.scanning') : t('iw37nPage.scanNow')}
-              </Button>
-            </div>
-            {integrationQ.data && integrationQ.data.pendingIw37nFiles.length > 0 ? (
-              <ul className="mt-3 list-inside list-disc text-xs text-app-muted">
-                {integrationQ.data.pendingIw37nFiles.map((f) => (
-                  <li key={f.name}>
-                    {t('iw37nPage.folderFileEntry', {
-                      name: f.name,
-                      sizeKb: Math.round(f.sizeBytes / 1024),
-                    })}
-                  </li>
-                ))}
-              </ul>
             ) : null}
-          </AppCard>
-        ) : null}
-
-        <AppCard pad="default">
-          <div>
-            <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.lastImportTitle')}</h3>
-            <p className="mt-1 text-xs text-app-muted">
-              {t('iw37nPage.lastImportHintBefore')}
-              <strong>{t('iw37nPage.lastImportHintStrong')}</strong>
-              {t('iw37nPage.lastImportHintAfter')}
+          </AppPageSectionCard>
+        </AppPageSection>
+      ) : (
+        <AppPageSection index={0}>
+          <AppCard pad="compact">
+            <p className="text-caption">
+              {t('iw37nPage.needImportPerm')} <code className="text-xs">iw37n.import</code>{' '}
+              {t('iw37nPage.or')} <code className="text-xs">iw37n.write</code>
             </p>
-          </div>
+          </AppCard>
+        </AppPageSection>
+      )}
 
+      <AppPageSection index={lastImportSectionIdx}>
+        <AppPageSectionCard
+          key={lastImport?.batchId ?? 'empty'}
+          icon={ClipboardList}
+          title={t('iw37nPage.lastImportTitle')}
+          description={
+            lastImport
+              ? `${t('iw37nPage.lastImportHintBefore')}${t('iw37nPage.lastImportHintStrong')}${t('iw37nPage.lastImportHintAfter')}`
+              : undefined
+          }
+          collapsible
+          defaultOpen={Boolean(lastImport)}
+          collapsedHint={lastImportCollapsedHint}
+        >
           {lastImport ? (
-            <div className="mt-3 space-y-2">
+            <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-app-muted">
                   {lastImport.fileName} ({lastImport.status}) — SHA {lastImport.sha256.slice(0, 8)}…
@@ -724,18 +773,19 @@ export function Iw37nPage() {
             </div>
           ) : (
             <EmptyState
-              className="mt-4 border-0 bg-transparent"
+              className="border-0 bg-transparent py-4"
               title={t('iw37nPage.lastImportEmpty')}
               description={t('iw37nPage.lastImportEmptyHint')}
             />
           )}
-        </AppCard>
+        </AppPageSectionCard>
+      </AppPageSection>
 
-        <AppCard pad="default">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.itemsTitle')}</h3>
-            </div>
+      <AppPageSection index={itemsSectionIdx}>
+        <AppPageSectionCard
+          icon={Table2}
+          title={t('iw37nPage.itemsTitle')}
+          actions={
             <div className="flex flex-wrap items-center gap-2">
               <Input
                 value={itemQ}
@@ -744,7 +794,7 @@ export function Iw37nPage() {
                   setItemOffset(0)
                 }}
                 placeholder={t('iw37nPage.searchPlaceholder')}
-                className="h-9 w-[260px]"
+                className="h-9 w-[220px] sm:w-[260px]"
               />
               <Button
                 type="button"
@@ -765,10 +815,11 @@ export function Iw37nPage() {
                 {t('iw37nPage.nextPage')}
               </Button>
             </div>
-          </div>
-
+          }
+          bodyClassName="space-y-4"
+        >
           {itemsQ.isLoading && !itemsQ.data ? (
-            <div className="mt-4 app-table-shell overflow-x-auto" aria-busy="true">
+            <div className="app-table-shell overflow-x-auto" aria-busy="true">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
@@ -788,14 +839,13 @@ export function Iw37nPage() {
             </div>
           ) : itemsQ.isError ? (
             <QueryLoadErrorState
-              className="mt-4"
               title={t('iw37nPage.itemsLoadFailed')}
               error={itemsQ.error}
               description={t('iw37nPage.itemsLoadFailedDesc')}
               action={{ label: t('iw37n.retry'), onClick: () => void itemsQ.refetch() }}
             />
           ) : (
-            <div className="mt-4 app-table-shell overflow-x-auto">
+            <div className="app-table-shell overflow-x-auto">
               <Table embedded stickyHeader zebra>
                 <TableHeader>
                   <TableRow>
@@ -854,9 +904,137 @@ export function Iw37nPage() {
               </Table>
             </div>
           )}
-        </AppCard>
+        </AppPageSectionCard>
+      </AppPageSection>
 
-        <Dialog
+      <AppPageSection index={batchSectionIdx}>
+        <AppPageSectionCard
+          icon={History}
+          title={t('iw37nPage.batchHistoryTitle')}
+          bodyClassName="space-y-4"
+        >
+          {batches.isLoading && !batches.data ? (
+            <div className="app-table-shell overflow-x-auto" aria-busy="true">
+              <Table embedded stickyHeader zebra>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('iw37nPage.table.file')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.date')}</TableHead>
+                    <TableHead className="text-right">{t('iw37nPage.table.rows')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.sha256')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.status')}</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableSkeletonRows rows={6} columns={6} />
+                </TableBody>
+              </Table>
+            </div>
+          ) : batches.isError ? (
+            <QueryLoadErrorState
+              title={t('iw37nPage.batchHistoryLoadFailed')}
+              error={batches.error}
+              description={t('iw37n.historyLoadFailedDesc')}
+              action={{ label: t('iw37n.retry'), onClick: () => void batches.refetch() }}
+            />
+          ) : (
+            <div className="app-table-shell overflow-x-auto">
+              <Table embedded stickyHeader zebra>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('iw37nPage.table.file')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.date')}</TableHead>
+                    <TableHead className="text-right">{t('iw37nPage.table.rows')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.sha256')}</TableHead>
+                    <TableHead>{t('iw37nPage.table.status')}</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(batches.data?.length ?? 0) === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="p-0">
+                        <EmptyState
+                          className="border-0 bg-transparent py-10"
+                          title={t('iw37nPage.batchHistoryEmpty')}
+                          description={t('iw37nPage.batchHistoryEmptyHint')}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    batches.data?.map((b) => (
+                      <TableRow key={b.id}>
+                        <TableCell className="max-w-[220px] truncate text-body-sm font-medium">
+                          {b.fileName}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs">
+                          {b.importedAt.slice(0, 19).replace('T', ' ')}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{b.rows}</TableCell>
+                        <TableCell className="max-w-[120px] truncate font-mono text-xs text-app-muted">
+                          {b.sha256}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge
+                              variant={b.status === 'OK' ? 'default' : 'secondary'}
+                              className="text-xs"
+                            >
+                              {b.status}
+                            </Badge>
+                            {b.isDuplicate ? (
+                              <Badge variant="outline" className="text-xs">
+                                {t('iw37nPage.duplicate')}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <ReportExportButton
+                              format="csv"
+                              loading={exporting}
+                              disabled={exporting}
+                              onClick={() => downloadCsv(b.id)}
+                            />
+                            <ReportExportButton
+                              format="xlsx"
+                              loading={exporting}
+                              disabled={exporting}
+                              onClick={() => downloadXlsx(b.id, b.fileName)}
+                            />
+                            {b.isDuplicate && b.duplicateOfBatchId ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openBatchView(b.duplicateOfBatchId!, `batch-${b.duplicateOfBatchId}`)}
+                              >
+                                {t('iw37nPage.originalBatch')}
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={batchViewId === b.id && batchViewOpen ? 'default' : 'outline'}
+                              onClick={() => openBatchView(b.id, b.fileName)}
+                            >
+                              {t('iw37nPage.viewResult')}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </AppPageSectionCard>
+      </AppPageSection>
+
+      <Dialog
           open={editOpen}
           onOpenChange={(next) => {
             if (!next) {
@@ -991,130 +1169,7 @@ export function Iw37nPage() {
           </DialogContent>
         </Dialog>
 
-        <AppCard pad="default">
-          <h3 className="text-body-sm font-semibold text-app">{t('iw37nPage.batchHistoryTitle')}</h3>
-          {batches.isLoading && !batches.data ? (
-            <div className="mt-4 app-table-shell overflow-x-auto" aria-busy="true">
-              <Table embedded stickyHeader zebra>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('iw37nPage.table.file')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.date')}</TableHead>
-                    <TableHead className="text-right">{t('iw37nPage.table.rows')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.sha256')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.status')}</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableSkeletonRows rows={6} columns={6} />
-                </TableBody>
-              </Table>
-            </div>
-          ) : batches.isError ? (
-            <QueryLoadErrorState
-              className="mt-4"
-              title={t('iw37nPage.batchHistoryLoadFailed')}
-              error={batches.error}
-              description={t('iw37n.historyLoadFailedDesc')}
-              action={{ label: t('iw37n.retry'), onClick: () => void batches.refetch() }}
-            />
-          ) : (
-            <div className="mt-4 app-table-shell overflow-x-auto">
-              <Table embedded stickyHeader zebra>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('iw37nPage.table.file')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.date')}</TableHead>
-                    <TableHead className="text-right">{t('iw37nPage.table.rows')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.sha256')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.status')}</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(batches.data?.length ?? 0) === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="p-0">
-                        <EmptyState
-                          className="border-0 bg-transparent py-10"
-                          title={t('iw37nPage.batchHistoryEmpty')}
-                          description={t('iw37nPage.batchHistoryEmptyHint')}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    batches.data?.map((b) => (
-                      <TableRow key={b.id}>
-                        <TableCell className="max-w-[220px] truncate text-body-sm font-medium">
-                          {b.fileName}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs">
-                          {b.importedAt.slice(0, 19).replace('T', ' ')}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{b.rows}</TableCell>
-                        <TableCell className="max-w-[120px] truncate font-mono text-xs text-app-muted">
-                          {b.sha256}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge
-                              variant={b.status === 'OK' ? 'default' : 'secondary'}
-                              className="text-xs"
-                            >
-                              {b.status}
-                            </Badge>
-                            {b.isDuplicate ? (
-                              <Badge variant="outline" className="text-xs">
-                                {t('iw37nPage.duplicate')}
-                              </Badge>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <ReportExportButton
-                              format="csv"
-                              loading={exporting}
-                              disabled={exporting}
-                              onClick={() => downloadCsv(b.id)}
-                            />
-                            <ReportExportButton
-                              format="xlsx"
-                              loading={exporting}
-                              disabled={exporting}
-                              onClick={() => downloadXlsx(b.id, b.fileName)}
-                            />
-                            {b.isDuplicate && b.duplicateOfBatchId ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openBatchView(b.duplicateOfBatchId!, `batch-${b.duplicateOfBatchId}`)}
-                              >
-                                {t('iw37nPage.originalBatch')}
-                              </Button>
-                            ) : null}
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={batchViewId === b.id && batchViewOpen ? 'default' : 'outline'}
-                              onClick={() => openBatchView(b.id, b.fileName)}
-                            >
-                              {t('iw37nPage.viewResult')}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </AppCard>
-
-        <Dialog
+      <Dialog
           open={batchViewOpen}
           onOpenChange={(open) => {
             setBatchViewOpen(open)
@@ -1231,7 +1286,6 @@ export function Iw37nPage() {
             </div>
           </DialogContent>
         </Dialog>
-        </AppPageSection>
     </AppPageShell>
   )
 }

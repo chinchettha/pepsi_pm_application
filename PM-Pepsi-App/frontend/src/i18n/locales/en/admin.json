@@ -322,11 +322,6 @@
     "purgeFailed": "Purge failed",
     "loadFailed": "Could not load audit log"
   },
-  "security": {
-    "title": "Security report",
-    "description": "Failed login · RBAC deny · rate limit — from audit log",
-    "loadFailed": "Could not load security report"
-  },
   "about": {
     "title": "About",
     "description": "Version · organization · migration · server and license",
@@ -657,6 +652,17 @@
     }
   },
   "security": {
+    "title": "Security report",
+    "description": "Failed login · RBAC deny · rate limit — from audit log",
+    "loadFailed": "Could not load security report",
+    "hints": ["Login fail", "RBAC deny", "Rate limit", "Audit"],
+    "deniedBadge": "denied",
+    "sections": {
+      "rangeTitle": "Time range",
+      "rangeDesc": "Audit window for charts and IP summaries",
+      "overviewTitle": "Security overview",
+      "overviewDesc": "Failed logins, RBAC denials, and rate-limit hits"
+    },
     "daysLabel": "Time range (days)",
     "daysOption": "{{count}} days",
     "failedLoginKpi": "Failed logins",

@@ -20,6 +20,7 @@ import { motion } from 'framer-motion'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
+import { ExternalLink } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
@@ -138,17 +139,27 @@ export function LoginPage() {
           <div className="login-page__card-shine" aria-hidden />
           <div className="login-page__card-inner">
             <div className="login-page__card-header">
-              <h1 className="text-heading-page font-semibold text-app">{t('auth.signInTitle')}</h1>
-              {appName ? (
-                <p className="mt-1 text-caption text-app-muted">{t('auth.signInTo', { app: appName })}</p>
-              ) : null}
+              <p className="text-eyebrow">{appName}</p>
+              <h1 className="login-page__title text-heading-page font-semibold">
+                {t('auth.signInTitle')}
+              </h1>
+              <p id="login-hint" className="mt-2 text-caption text-app-muted">
+                {t('auth.signInHint')}
+              </p>
             </div>
 
-            <form onSubmit={onSubmit} className="mt-6 space-y-4">
+            <form
+              onSubmit={onSubmit}
+              className="login-page__form mt-6 space-y-4"
+              aria-describedby="login-hint"
+            >
               <div className="space-y-2">
-                <Label htmlFor="login-username">{t('auth.username')}</Label>
+                <Label htmlFor="login-username" className="login-page__label">
+                  {t('auth.username')}
+                </Label>
                 <Input
                   id="login-username"
+                  className="login-page__input"
                   autoComplete="username"
                   placeholder={t('auth.usernamePlaceholder')}
                   disabled={submitting || feedbackOpen}
@@ -159,11 +170,15 @@ export function LoginPage() {
                 ) : null}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="login-password">{t('auth.password')}</Label>
+                <Label htmlFor="login-password" className="login-page__label">
+                  {t('auth.password')}
+                </Label>
                 <Input
                   id="login-password"
+                  className="login-page__input"
                   type="password"
                   autoComplete="current-password"
+                  placeholder={t('auth.passwordPlaceholder')}
                   disabled={submitting || feedbackOpen}
                   {...form.register('password')}
                 />
@@ -171,14 +186,21 @@ export function LoginPage() {
                   <p className="text-body-sm text-form-error">{form.formState.errors.password.message}</p>
                 ) : null}
               </div>
-              <Button type="submit" className="w-full" disabled={submitting || feedbackOpen}>
+              <Button
+                type="submit"
+                className="login-page__submit w-full"
+                disabled={submitting || feedbackOpen}
+              >
                 {submitting ? t('auth.signingIn') : t('actions.login')}
               </Button>
             </form>
 
-            <Button type="button" variant="ghost" className="mt-4 w-full" asChild>
-              <Link to="/">{t('auth.backHome')}</Link>
-            </Button>
+            <div className="login-page__footer mt-5 border-t border-[color-mix(in_srgb,var(--app-border)_55%,transparent)] pt-4">
+              <Link to="/board" className="login-page__footer-link inline-flex items-center justify-center gap-1.5">
+                <ExternalLink className="size-3.5 shrink-0 opacity-80" aria-hidden />
+                {t('auth.openBoard')}
+              </Link>
+            </div>
           </div>
         </motion.div>
       </div>

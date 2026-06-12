@@ -2,7 +2,7 @@
  * Manhour HR
  */
 import { AppCard } from '@/components/layout/AppCard'
-import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'
+import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -29,7 +29,15 @@ import { fetchManhourHr } from '@/lib/api-public'
 import { useAnyPermission } from '@/lib/use-permission'
 import { cn } from '@/lib/utils'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { AlertCircle, Printer, RefreshCcw } from 'lucide-react'
+import {
+  AlertCircle,
+  CalendarDays,
+  LineChart,
+  Printer,
+  RefreshCcw,
+  Table2,
+  Users,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -78,6 +86,20 @@ export function ManhoursHrPage() {
 
   const team = q.data?.utilization.team
   const range = q.data?.range
+
+  const utilRangeHint = range
+    ? [
+        t('hr.calcRange', { from: range.fromDate, to: range.toDate }),
+        q.data?.utilization.manhourWorkdayFrom && q.data?.utilization.manhourWorkdayTo
+          ? t('hr.dbRange', {
+              from: q.data.utilization.manhourWorkdayFrom,
+              to: q.data.utilization.manhourWorkdayTo,
+            })
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : undefined
 
   if (!canRead) {
     return (
@@ -142,49 +164,47 @@ export function ManhoursHrPage() {
       }
     >
       <AppPageSection index={0}>
-      <ReportsDateFilter
-        key={`${submitted.from}-${submitted.to}`}
-        initial={submitted}
-        onSearch={setSubmitted}
-      />
+        <AppPageSectionCard
+          icon={CalendarDays}
+          title={t('hr.dateSectionTitle')}
+          description={t('hr.dateSectionDesc')}
+        >
+          <ReportsDateFilter
+            key={`${submitted.from}-${submitted.to}`}
+            initial={submitted}
+            onSearch={setSubmitted}
+          />
+          <p className="mt-3 text-caption text-app-muted">
+            {t('hr.rangeSelected', { from: submitted.from, to: submitted.to })}
+          </p>
+        </AppPageSectionCard>
       </AppPageSection>
 
       <AppPageSection index={1}>
-      <p className="text-caption">
-        {t('hr.rangeSelected', { from: submitted.from, to: submitted.to })}
-      </p>
-
-      {range ? (
-        <AppCard pad="compact" className="space-y-1">
-          <p className="text-body-sm font-medium text-app">{t('hr.utilizationTitle')}</p>
-          <p className="text-caption">
-            {t('hr.calcRange', { from: range.fromDate, to: range.toDate })}
-            {q.data?.utilization.manhourWorkdayFrom && q.data?.utilization.manhourWorkdayTo
-              ? ` · ${t('hr.dbRange', {
-                  from: q.data.utilization.manhourWorkdayFrom,
-                  to: q.data.utilization.manhourWorkdayTo,
-                })}`
-              : ''}
-          </p>
-        </AppCard>
-      ) : null}
-
-      {q.isLoading && !q.data ? (
-        <Skeleton className="h-72 w-full rounded-card" />
-      ) : q.isError ? (
-        <EmptyState
-          icon={AlertCircle}
-          title={t('hr.loadFailed')}
-          description={(q.error as Error).message}
-          action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
-        />
-      ) : q.data ? (
-        <>
-          {team ? (
+        {q.isLoading && !q.data ? (
+          <Skeleton className="h-40 w-full rounded-card" />
+        ) : q.isError ? (
+          <EmptyState
+            icon={AlertCircle}
+            title={t('hr.loadFailed')}
+            description={(q.error as Error).message}
+            action={{ label: tc('actions.retry'), onClick: () => void q.refetch() }}
+          />
+        ) : !q.data ? (
+          <EmptyState title={t('hr.empty')} description={t('hr.emptyHint')} />
+        ) : team ? (
+          <AppPageSectionCard
+            icon={LineChart}
+            title={t('hr.utilSectionTitle')}
+            description={t('hr.utilSectionDesc')}
+          >
+            {utilRangeHint ? (
+              <p className="mb-3 text-caption text-app-muted">{utilRangeHint}</p>
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-3">
               <AppCard pad="compact">
                 <div className="text-xs text-app-muted">{t('hr.teamUtil')}</div>
-                <div className="mt-1 text-2xl font-semibold tabular-nums text-sky-800">
+                <div className="mt-1 text-2xl font-semibold tabular-nums app-tone-info-strong">
                   {team.utilizationPercent.toFixed(2)}%
                 </div>
                 <p className="mt-1 text-xs text-app-muted">
@@ -207,146 +227,158 @@ export function ManhoursHrPage() {
                 </div>
               </AppCard>
             </div>
-          ) : null}
+          </AppPageSectionCard>
+        ) : null}
+      </AppPageSection>
 
-          <AppCard pad="compact" className="space-y-2">
-            <p className="text-body-sm font-medium text-app">{t('hr.byPersonTitle')}</p>
-            <p className="text-xs text-app-muted">{t('hr.byPersonHint')}</p>
-            <div className="app-table-shell overflow-x-auto">
-              <Table embedded stickyHeader zebra>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className={cn(tableStickyClass(1), 'min-w-[5.5rem]')}>
-                      {t('hr.colWc')}
-                    </TableHead>
-                    <TableHead>{t('page.colName')}</TableHead>
-                    <TableHead className="text-right">{t('hr.colConfirm')}</TableHead>
-                    <TableHead className="text-right">{t('hr.colHr')}</TableHead>
-                    <TableHead className="text-right">{t('hr.colUtil')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {q.data.utilization.byPerson.length ? (
-                    q.data.utilization.byPerson.map((p) => (
-                      <TableRow key={p.idwkctr}>
-                        <TableCell
-                          className={cn('font-mono text-body-sm', tableStickyClass(1), 'min-w-[5.5rem]')}
-                        >
-                          {p.wkctr}
-                        </TableCell>
-                        <TableCell>{p.displayName ?? '—'}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {p.confirmHours.toFixed(1)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {p.manhourHours.toFixed(1)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums font-medium app-tone-warning-strong">
-                          {p.utilizationPercent.toFixed(2)}%
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
+      {q.data ? (
+        <>
+          <AppPageSection index={2}>
+            <AppPageSectionCard
+              icon={Users}
+              title={t('hr.byPersonTitle')}
+              description={t('hr.byPersonHint')}
+              bodyClassName="!p-0"
+            >
+              <div className="app-table-shell overflow-x-auto">
+                <Table embedded stickyHeader zebra>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={5} className="p-0">
-                        <EmptyState
-                          className="border-0 bg-transparent py-8"
-                          title={t('hr.byPersonEmpty')}
-                          description={t('hr.byPersonEmptyHint')}
-                        />
-                      </TableCell>
+                      <TableHead className={cn(tableStickyClass(1), 'min-w-[5.5rem]')}>
+                        {t('hr.colWc')}
+                      </TableHead>
+                      <TableHead>{t('page.colName')}</TableHead>
+                      <TableHead className="text-right">{t('hr.colConfirm')}</TableHead>
+                      <TableHead className="text-right">{t('hr.colHr')}</TableHead>
+                      <TableHead className="text-right">{t('hr.colUtil')}</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </AppCard>
-
-          <AppCard pad="compact" className="space-y-2">
-            <p className="text-body-sm font-medium text-app">{t('hr.dailyTitle')}</p>
-            <div className="app-table-shell overflow-x-auto">
-              <Table embedded stickyHeader zebra>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-14">{t('hr.colSeq')}</TableHead>
-                    <TableHead>{t('hr.colWorkDate')}</TableHead>
-                    <TableHead>{t('page.colName')}</TableHead>
-                    <TableHead>{t('hr.colPosition')}</TableHead>
-                    <TableHead className="text-right">WH</TableHead>
-                    <TableHead className="text-right">OT1</TableHead>
-                    <TableHead className="text-right">OT1.5</TableHead>
-                    <TableHead className="text-right">OT1HOL</TableHead>
-                    <TableHead className="text-right">OT2</TableHead>
-                    <TableHead className="text-right">OT3</TableHead>
-                    <TableHead className="text-right">{t('hr.colSummary')}</TableHead>
-                    <TableHead className="text-right">{t('hr.colOtNet')}</TableHead>
-                    <TableHead className="text-right">{t('hr.colUtil')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {q.data.items.length ? (
-                    q.data.items.map((row, i) => {
-                      const u =
-                        personUtilMap.get(row.idwkctr) ??
-                        (row.wkctr ? personUtilMap.get(row.wkctr) : undefined)
-                      return (
-                        <TableRow key={row.idmanhour}>
-                          <TableCell>{i + 1}</TableCell>
-                          <TableCell>{formatManhourDate(row.endDate, row.workday)}</TableCell>
-                          <TableCell className="min-w-[10rem]">
-                            {row.displayName?.trim() || row.idwkctr}
+                  </TableHeader>
+                  <TableBody>
+                    {q.data.utilization.byPerson.length ? (
+                      q.data.utilization.byPerson.map((p) => (
+                        <TableRow key={p.idwkctr}>
+                          <TableCell
+                            className={cn('font-mono text-body-sm', tableStickyClass(1), 'min-w-[5.5rem]')}
+                          >
+                            {p.wkctr}
                           </TableCell>
-                          <TableCell>{row.position?.trim() || '—'}</TableCell>
-                          <TableCell className="text-right">
-                            <HourCell value={row.wh} />
+                          <TableCell>{p.displayName ?? '—'}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {p.confirmHours.toFixed(1)}
                           </TableCell>
-                          <TableCell className="text-right">
-                            <HourCell value={row.ot1} />
+                          <TableCell className="text-right tabular-nums">
+                            {p.manhourHours.toFixed(1)}
                           </TableCell>
-                          <TableCell className="text-right">
-                            <HourCell value={row.ot15} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <HourCell value={row.ot1hol} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <HourCell value={row.ot2} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <HourCell value={row.ot3} />
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            <HourCell value={row.total} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <HourCell value={manhourOtNet(row)} />
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums app-tone-warning-strong">
-                            {u ? `${u.pct.toFixed(2)}%` : '—'}
+                          <TableCell className="text-right tabular-nums font-medium app-tone-warning-strong">
+                            {p.utilizationPercent.toFixed(2)}%
                           </TableCell>
                         </TableRow>
-                      )
-                    })
-                  ) : (
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="p-0">
+                          <EmptyState
+                            className="border-0 bg-transparent py-8"
+                            title={t('hr.byPersonEmpty')}
+                            description={t('hr.byPersonEmptyHint')}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </AppPageSectionCard>
+          </AppPageSection>
+
+          <AppPageSection index={3}>
+            <AppPageSectionCard
+              icon={Table2}
+              title={t('hr.dailyTitle')}
+              description={t('hr.dailySectionDesc')}
+              bodyClassName="!p-0"
+            >
+              <div className="app-table-shell overflow-x-auto">
+                <Table embedded stickyHeader zebra>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={13} className="p-0">
-                        <EmptyState
-                          className="border-0 bg-transparent py-10"
-                          title={t('hr.dailyEmpty')}
-                          description={t('hr.dailyEmptyHint')}
-                        />
-                      </TableCell>
+                      <TableHead className="w-14">{t('hr.colSeq')}</TableHead>
+                      <TableHead>{t('hr.colWorkDate')}</TableHead>
+                      <TableHead>{t('page.colName')}</TableHead>
+                      <TableHead>{t('hr.colPosition')}</TableHead>
+                      <TableHead className="text-right">WH</TableHead>
+                      <TableHead className="text-right">OT1</TableHead>
+                      <TableHead className="text-right">OT1.5</TableHead>
+                      <TableHead className="text-right">OT1HOL</TableHead>
+                      <TableHead className="text-right">OT2</TableHead>
+                      <TableHead className="text-right">OT3</TableHead>
+                      <TableHead className="text-right">{t('hr.colSummary')}</TableHead>
+                      <TableHead className="text-right">{t('hr.colOtNet')}</TableHead>
+                      <TableHead className="text-right">{t('hr.colUtil')}</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </AppCard>
+                  </TableHeader>
+                  <TableBody>
+                    {q.data.items.length ? (
+                      q.data.items.map((row, i) => {
+                        const u =
+                          personUtilMap.get(row.idwkctr) ??
+                          (row.wkctr ? personUtilMap.get(row.wkctr) : undefined)
+                        return (
+                          <TableRow key={row.idmanhour}>
+                            <TableCell>{i + 1}</TableCell>
+                            <TableCell>{formatManhourDate(row.endDate, row.workday)}</TableCell>
+                            <TableCell className="min-w-[10rem]">
+                              {row.displayName?.trim() || row.idwkctr}
+                            </TableCell>
+                            <TableCell>{row.position?.trim() || '—'}</TableCell>
+                            <TableCell className="text-right">
+                              <HourCell value={row.wh} />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <HourCell value={row.ot1} />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <HourCell value={row.ot15} />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <HourCell value={row.ot1hol} />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <HourCell value={row.ot2} />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <HourCell value={row.ot3} />
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              <HourCell value={row.total} />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <HourCell value={manhourOtNet(row)} />
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums app-tone-warning-strong">
+                              {u ? `${u.pct.toFixed(2)}%` : '—'}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={13} className="p-0">
+                          <EmptyState
+                            className="border-0 bg-transparent py-10"
+                            title={t('hr.dailyEmpty')}
+                            description={t('hr.dailyEmptyHint')}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </AppPageSectionCard>
+          </AppPageSection>
         </>
-      ) : (
-        <EmptyState title={t('hr.empty')} description={t('hr.emptyHint')} />
-      )}
-      </AppPageSection>
+      ) : null}
     </AppPageShell>
   )
 }

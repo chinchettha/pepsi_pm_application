@@ -46,7 +46,7 @@ import { WorkOrdersPage } from '@/features/work-orders/WorkOrdersPage'
 import { PmVibrationPage } from '@/features/pm-vibration/PmVibrationPage'
 import { PortalPage } from '@/features/portal/PortalPage'
 import { UiPlaygroundPage } from '@/features/dev/UiPlaygroundPage'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 
 export default function App() {
   return (
@@ -83,8 +83,10 @@ export default function App() {
           <Route path="personnel" element={<PersonnelPage />} />
           <Route path="personnel/admin" element={<Navigate to="/admin/users" replace />} />
           <Route path="personnel/confirm" element={<PersonnelConfirmPage />} />
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="reports/audit" element={<AuditorHubPage />} />
+          <Route path="reports" element={<Outlet />}>
+            <Route index element={<ReportsPage />} />
+            <Route path="audit" element={<AuditorHubPage />} />
+          </Route>
           <Route path="activity-log" element={<ActivityLogPage />} />
           <Route path="manhours-hr" element={<ManhoursHrPage />} />
           <Route path="summary-weekly" element={<SummaryWeeklyPage />} />

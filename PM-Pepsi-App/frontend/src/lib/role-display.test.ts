@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveRoleDisplayLabel } from './role-display'
+import { formatRolePreviewOption, resolveRoleDisplayLabel } from './role-display'
 
 describe('resolveRoleDisplayLabel', () => {
   const labels = {
@@ -24,5 +24,20 @@ describe('resolveRoleDisplayLabel', () => {
 
   it('falls back to userst when both names missing', () => {
     expect(resolveRoleDisplayLabel({ userst: 'U' }, 'en')).toBe('U')
+  })
+})
+
+describe('formatRolePreviewOption', () => {
+  it('combines role code and localized name', () => {
+    expect(
+      formatRolePreviewOption('A', 'en', {
+        roleNameTh: 'ผู้ดูแลระบบ',
+        roleNameEn: 'Administrator',
+      }),
+    ).toBe('A - Administrator')
+  })
+
+  it('returns code only when name is missing', () => {
+    expect(formatRolePreviewOption('X', 'en', { userst: 'X' })).toBe('X')
   })
 })

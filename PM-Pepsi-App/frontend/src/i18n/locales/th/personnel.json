@@ -27,6 +27,10 @@
       "perPersonClose": "ปิดงานรายบุคคล",
       "manageUsers": "จัดการผู้ใช้"
     },
+    "statsSectionTitle": "สรุปงานของฉัน",
+    "statsSectionDesc": "งานเปิด/ปิด การยืนยันงาน และชั่วโมงที่บันทึก",
+    "globalSectionTitle": "ภาพรวมโรงงาน",
+    "globalSectionDesc": "สถานะ WO ทั้งโรงงานสำหรับ planner และ admin",
     "stats": {
       "openJobs": "งานเปิด (รอปิด)",
       "openJobsHint": "view_planwork for my work center + syst CRTD/REL",
@@ -137,6 +141,12 @@
       "exportConfirmation": "Export Confirmation"
     },
     "refresh": "รีเฟรช",
+    "statsSectionTitle": "สรุป WO ที่เปิดอยู่",
+    "statsSectionDesc": "จำนวนตามสถานะการปิดงานของช่าง",
+    "filtersSectionTitle": "ค้นหาและตัวกรอง",
+    "filtersSectionDesc": "ค้นหา WO และกรองตามสถานะปิดงาน",
+    "tableSectionTitle": "รายการ Work Order",
+    "tableSectionDesc": "เลือกหลายแถวเพื่อยืนยันแบบกลุ่ม หรือเปิดรายละเอียด WO",
     "summary": {
       "totalOpen": "WO ที่เปิดทั้งหมด",
       "fullyClosed": "ปิดครบทุกคน",
@@ -376,6 +386,16 @@
       "title": "Users & WorkCntr",
       "description": "WorkCntr = รหัสช่าง (PAC/PRO/UTI) แยกจาก HR login · อัปโหลด/ลบรูป · CRUD บุคลากร",
       "hints": ["WorkCntr", "รูป WebP", "นำเข้า Excel", "Member"]
+    },
+    "sections": {
+      "accountTitle": "ประเภทบัญชี",
+      "accountDesc": "ช่าง work center กับบัญชี member (HR login)",
+      "filtersTitle": "ค้นหาและตัวกรอง",
+      "filtersDesc": "ค้นจาก WorkCntr / HR ID / ชื่อ · กรองสถานะและบทบาท",
+      "workcenterTableTitle": "บัญชี work center",
+      "workcenterTableDesc": "รหัสช่าง รูป บทบาท และการดำเนินการ admin",
+      "membersTableTitle": "บัญชี member",
+      "membersTableDesc": "บัญชี HR / member — รีเซ็ตรหัสผ่าน ล็อก สวมสิทธิ์"
     },
     "page": {
       "title": "Personnel admin",
