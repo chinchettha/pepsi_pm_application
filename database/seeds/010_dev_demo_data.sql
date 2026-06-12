@@ -40,6 +40,28 @@ FROM (
       'Seal replacement',
       '7151-PL02',
       'Filling valve V2'
+    ),
+    (
+      '4000102',
+      'ZB02',
+      '01',
+      EXTRACT(EPOCH FROM CURRENT_DATE)::bigint,
+      'REL',
+      '0010',
+      'PM motor inspection',
+      '7151-MOT-01',
+      'Main drive motor M1'
+    ),
+    (
+      '4000103',
+      'ZB05',
+      '01',
+      EXTRACT(EPOCH FROM (CURRENT_DATE + INTERVAL '1 day'))::bigint,
+      'CRTD',
+      '0020',
+      'Breakdown conveyor stop',
+      '7151-CONV-03',
+      'Conveyor section C3'
     )
 ) AS v(wkorder, wktype, mat, bscstart, syst, opac, operationshorttext, functionalloc, equdescrip)
 WHERE NOT EXISTS (SELECT 1 FROM app.tbiw37n x WHERE x.wkorder = v.wkorder AND x.opac = v.opac);

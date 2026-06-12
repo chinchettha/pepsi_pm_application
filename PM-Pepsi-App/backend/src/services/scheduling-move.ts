@@ -63,7 +63,7 @@ export async function moveWorkOrderPlan(
     cday: string | number | null
     mpcount: number | null
   }>(
-    `SELECT o.syst, o.bscstart, o.actfinish, o.cday, mp.mpcount
+    `SELECT o.syst, o.bscstart, o.actfinish, mp.cday, mp.mpcount
      FROM app.tbiw37n o
      LEFT JOIN app.tbmoveplan mp ON mp.idiw37 = o.idiw37
      WHERE o.idiw37 = $1 AND ${sqlFactoryScope('o', '$2')}`,

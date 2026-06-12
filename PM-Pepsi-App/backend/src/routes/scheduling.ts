@@ -102,7 +102,8 @@ export function registerSchedulingRoutes(
           res.status(status).json({ error: err.code, message: err.message })
           return
         }
-        throw err
+        console.error('[scheduling/move-plan]', err)
+        res.status(500).json({ error: 'INTERNAL', message: 'Move plan failed' })
       }
     },
   )

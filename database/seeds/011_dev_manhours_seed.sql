@@ -3,8 +3,8 @@
 
 BEGIN;
 
-INSERT INTO app.tbmanhours (idwkctr, workday, wh, ot1, ot15, ot1hol, ot2, ot3)
-SELECT v.idwkctr, v.workday, v.wh, v.ot1, v.ot15, v.ot1hol, v.ot2, v.ot3
+INSERT INTO app.tbmanhours (idwkctr, stworkday, workday, wh, ot1, ot15, ot1hol, ot2, ot3)
+SELECT v.idwkctr, v.workday, v.workday, v.wh, v.ot1, v.ot15, v.ot1hol, v.ot2, v.ot3
 FROM (
   VALUES
     ('WC001', EXTRACT(EPOCH FROM (CURRENT_DATE - INTERVAL '7 day'))::bigint, 8, 1, 0, 0, 0, 0),
