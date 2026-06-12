@@ -1,6 +1,6 @@
 /**
- * Personal Dashboard — เทียบ navbar profile + `M_personel.php` (CRUD `tbworkcenter`) +
- * `M_personel_confirm.php` (สรุปงานปิดต่อช่าง). เก็บข้อมูลเฉพาะของ user ที่ login อยู่เท่านั้น
+ * Personal Dashboard
+ * (สรุปงานปิดต่อช่าง). เก็บข้อมูลเฉพาะของ user ที่ login อยู่เท่านั้น
  * เพื่อใช้บน `/personnel`
  */
 import { z } from 'zod'

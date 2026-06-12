@@ -5,7 +5,7 @@ import {
 } from './backlog.js'
 
 describe('backlog manhour schema', () => {
-  it('accepts ModalMHshow date range body', () => {
+ it('accepts manhour summary date range body', () => {
     const parsed = backlogManhourSearchBodySchema.parse({
       fromDate: '2026-05-01',
       toDate: '2026-05-01',

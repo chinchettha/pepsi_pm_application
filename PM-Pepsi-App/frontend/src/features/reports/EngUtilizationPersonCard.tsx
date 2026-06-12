@@ -24,7 +24,7 @@ function initialsFromLabel(label: string): string {
   return (name.slice(0, 2) || '?').toUpperCase()
 }
 
-/** การ์ดรายคน — เทียบแถวใน Excel + รูป `imgMember/` ใน PHP */
+/** Person card with photo */
 export function EngUtilizationPersonCard({
   person,
   showRca = false,

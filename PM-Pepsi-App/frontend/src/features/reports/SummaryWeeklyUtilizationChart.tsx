@@ -1,5 +1,5 @@
 /**
- * Technician Utilizations — เทียบ `W_summary_weekly_chart.php`, `W_summary_weekly_chart2.php`
+ * Technician Utilizations
  */
 import type { SummaryWeeklyUtilizationBar } from '@/api/schemas'
 import { readCssVar } from '@/lib/css-tokens'

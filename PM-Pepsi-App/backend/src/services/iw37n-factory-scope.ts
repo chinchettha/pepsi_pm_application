@@ -1,7 +1,7 @@
 import { FACTORY_CODE } from './scheduling-shared.js'
 import type { Iw37nImportRow } from './iw37n-parser.js'
 
-/** เงื่อนไข SQL โรงงาน — เทียบ PHP `functionalloc LIKE '%7151%'` + รองรับ ALV ที่เก็บคำอธิบายใน funcdescrip */
+/** เงื่อนไข SQL โรงงาน (functionalloc / funcdescrip 7151) */
 export function factoryScopeSql(columnPrefix = ''): string {
   const c = columnPrefix ? `${columnPrefix}.` : ''
   return `(

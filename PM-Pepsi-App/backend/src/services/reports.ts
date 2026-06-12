@@ -123,7 +123,7 @@ export async function getReportsKpi(
 }
 
 /**
- * สรุปรายสัปดาห์ — เทียบ `W_summary_weekly.php` + `W_summary_weekly_chart2.php`
+ * สรุปรายสัปดาห์
  */
 export async function getSummaryWeekly(
   pool: Pool,

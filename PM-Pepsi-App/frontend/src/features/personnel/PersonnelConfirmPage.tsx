@@ -1,10 +1,10 @@
 /**
- * Personnel Confirmation Dashboard — เทียบ PHP `M_personel_confirm.php`
+ * Personnel Confirmation Dashboard
  *
  * - Admin only — ดู % การปิดงานของช่างต่อ WO (อ่าน `view_countpersonelclose`)
  * - Filter: text search + status (ทั้งหมด/ยังไม่เริ่ม/กำลังทำ/เสร็จ)
  * - แต่ละแถวมีปุ่ม Confirm ที่เปิด `WorkOrderDetailDialog` ด้วย `initialTab="confirm"`
- *   (เทียบ `M_personel_confirm_form.php` ที่เป็น modal 4 แท็บ)
+ *
  */
 import { AppCard } from '@/components/layout/AppCard'
 import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'

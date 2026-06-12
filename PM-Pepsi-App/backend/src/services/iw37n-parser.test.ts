@@ -124,7 +124,7 @@ describe('parseIw37nMatrix', () => {
     expect(rows[0]?.functionalloc).toBe('PI-TH-7151')
   })
 
-  it('matches M_iw37n.php empty-column validation', () => {
+ it('matches IW37N import validation empty-column validation', () => {
     const valid = [
       '',
       '',

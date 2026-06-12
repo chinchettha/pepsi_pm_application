@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
-/** เทียบ `index.php?module=logout` / `logout.php` */
 export function LogoutPage() {
   const navigate = useNavigate()
   const { t } = useTranslation('common')

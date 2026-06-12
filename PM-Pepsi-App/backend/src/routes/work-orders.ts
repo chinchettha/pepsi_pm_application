@@ -233,7 +233,7 @@ export function registerWorkOrderRoutes(
     storage: multer.memoryStorage(),
   })
 
-  // multer แยกสำหรับไฟล์ Excel (M_Confirm.php) — ใหญ่กว่ารูปได้
+ // multer for Excel confirmation import — ใหญ่กว่ารูปได้
   const uploadExcel = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: getMulterFileSizeLimit() },
@@ -681,7 +681,7 @@ export function registerWorkOrderRoutes(
     },
   )
 
-  // Multi-assign แบบ batch — เพิ่มช่างหลายคนในคลิกเดียว (เทียบ M_personel/AddPlan.php loop หลายครั้ง)
+ // Multi-assign แบบ batch — เพิ่มช่างหลายคนในคลิกเดียว
   app.post(
     '/api/v1/work-orders/:id/planning/batch',
     ...requirePlanningAssign,
@@ -760,7 +760,7 @@ export function registerWorkOrderRoutes(
     },
   )
 
-  // DELETE all assignments ของ WO (back-compat) — เทียบ legacy "clear ทั้ง WO"
+ // DELETE all assignments ของ WO (back-compat)
   app.delete(
     '/api/v1/work-orders/:id/planning',
     ...requirePlanningDelete,
@@ -791,7 +791,7 @@ export function registerWorkOrderRoutes(
     },
   )
 
-  // DELETE assignment เฉพาะ (idiw37, wkctr) — multi-assign — เทียบ AddPlan.php `st=Del`
+ // DELETE assignment เฉพาะ (idiw37, wkctr) — multi-assign
   app.delete(
     '/api/v1/work-orders/:id/planning/:wkctr',
     ...requirePlanningDelete,
@@ -1843,7 +1843,7 @@ export function registerWorkOrderRoutes(
     },
   )
 
-  // POST /api/v1/confirmation/import/preview — ตรวจก่อน commit (เทียบ IW37N preview)
+ // POST /api/v1/confirmation/import/preview — ตรวจก่อน commit ()
   app.post(
     '/api/v1/confirmation/import/preview',
     ...requireConfirmImport,
@@ -1892,8 +1892,8 @@ export function registerWorkOrderRoutes(
     },
   )
 
-  // POST /api/v1/confirmation/import (Admin only) — เทียบ M_Confirm.php
-  // skip 2 rows + validate ตาม PHP บรรทัด 76 + insert/update เทียบ PHP บรรทัด 130-165
+ // POST /api/v1/confirmation/import (Admin only)
+ // skip 2 rows + validate ตาม PHP บรรทัด 76 + insert/update upsert rules
   app.post(
     '/api/v1/confirmation/import',
     ...requireConfirmImport,

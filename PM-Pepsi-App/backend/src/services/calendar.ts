@@ -262,7 +262,7 @@ function appendAssignedWkctrFilter(wkctrs: string[] | undefined, params: unknown
   )`
 }
 
-/** สรุปตัวกรองปฏิทิน — เทียบ `#OrderDetail` ใน `M_filter_iw37.php` / W_calendar.php */
+/** สรุปตัวกรองปฏิทิน */
 export async function getCalendarFilterDetail(
   pool: Pool,
   body: CalendarSearch,

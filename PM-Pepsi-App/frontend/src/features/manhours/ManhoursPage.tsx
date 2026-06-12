@@ -1,6 +1,5 @@
 /**
- * เทียบ `M_manhour_chart.php` + `M_manhour_chart_performance.php` + `M_manhour_chart_show.php`
- */
+ * Manhour charts and performance views */
 import { CanPermission } from '@/components/auth/CanPermission'
 import { PersonnelAvatar } from '@/components/personnel/PersonnelAvatar'
 import { AppCard } from '@/components/layout/AppCard'

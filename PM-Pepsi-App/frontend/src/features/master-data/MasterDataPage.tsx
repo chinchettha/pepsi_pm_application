@@ -2783,7 +2783,7 @@ function TasklistPanel() {
             </div>
             <div className="text-xs text-app-muted">{t('entities.tasklist.pasteColumns')}</div>
           </div>
-          <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'TYPE 01,ZONE 01,MACHINE-01,PLAN-01,TASK-01,LEGACY-01,M/C,PM-01,7,0,10,2,1,ACT,80,MP,0,GLS,MENT,0,PLAN'} />
+ <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'TYPE 01,ZONE 01,MACHINE-01,PLAN-01,TASK-01,LEGACY-01,M/C,PM-01,7,0,10,2,1,ACT,80,MP,0,GLS,MENT,0,PLAN'} />
           {importMut.isSuccess ? <MasterDataImportResult inserted={importMut.data.inserted} updated={importMut.data.updated} failed={importMut.data.failed} /> : null}
           {importMut.isError ? <p className="text-body-sm text-form-error">{(importMut.error as Error).message}</p> : null}
           <MasterDataImportDialogFooter onClose={closeImport} onImport={() => importMut.mutate()} pending={importMut.isPending} />

@@ -1,5 +1,5 @@
 /**
- * Admin CRUD + import — เทียบ `M_manhour.php`, `M_manhour_form.php`, `M_manhour_imports.php`
+ * Admin CRUD + import
  */
 import type { ManhourImportResponse, ManhourItem } from '@/api/schemas'
 import { AppCard } from '@/components/layout/AppCard'
@@ -473,7 +473,7 @@ export function ManhourAdminPage() {
                       id: form.idmanhour,
                       hrId: form.idwkctr,
                     })
-                  : t('admin.dialogLegacyNote')}
+                  : t('admin.dialogFormDesc')}
               </DialogDescription>
             </DialogHeader>
 

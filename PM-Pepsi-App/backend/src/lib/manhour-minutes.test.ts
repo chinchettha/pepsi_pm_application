@@ -8,7 +8,7 @@ import {
 } from './manhour-minutes.js'
 
 describe('manhour-minutes', () => {
-  it('converts hour unit to minutes like ModalMHshow.php', () => {
+ it('converts hour unit to minutes for hour-to-minute conversion', () => {
     expect(workValueToMinutes(8, 'H')).toBe(480)
     expect(workValueToMinutes(90, 'MIN')).toBe(90)
     expect(workValueToMinutes(2, 'h')).toBe(120)
@@ -19,7 +19,7 @@ describe('manhour-minutes', () => {
     expect(formatUntimeUnit(null)).toBe('MIN')
   })
 
-  it('computes Summary/W and OT net like W_manhours_hr.php', () => {
+ it('computes Summary/W and OT net for HR manhour OT net', () => {
     const row = { wh: 8, ot1: 1, ot15: 1.5, ot1hol: 0, ot2: 2, ot3: 0 }
     expect(manhourSummaryW(row)).toBe(12.5)
     expect(manhourOtNet(row)).toBe(4.5)

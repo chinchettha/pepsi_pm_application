@@ -1,6 +1,6 @@
 /**
- * Personal Dashboard — เทียบ navbar profile (`navbar.php`) + `M_personel*.php` (ข้อมูลตนใน `tbworkcenter`)
- * + `M_personel_confirm.php` (สรุปงานปิดของตน) + `worktime_count.php` (ชั่วโมงรวม)
+ * Personal Dashboard
+ * (สรุปงานปิดของตน) (ชั่วโมงรวม)
  *
  * ใช้ `GET /api/v1/personnel/me/dashboard` รวม profile + planning summary + confirmation summary + worktime
  * ของ user ปัจจุบันให้ทุกคนเปิดเองได้ (`/personnel` menuright `A:U:W`).

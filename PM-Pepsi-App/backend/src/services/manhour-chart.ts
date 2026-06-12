@@ -92,7 +92,7 @@ function zbPercent(planned: number, confirmed: number): number {
   return Math.round((planned / confirmed) * 10000) / 100
 }
 
-/** แถว manhour ช่วง stworkday–workday ทับซ้อนช่วงที่เลือก (เทียบ legacy M_manhour) */
+/** แถว manhour ช่วง stworkday–workday ทับซ้อนช่วงที่เลือก (M_manhour) */
 const MANHOUR_PERIOD_OVERLAP_SQL = 'stworkday <= $3 AND workday >= $2'
 
 async function loadProfile(pool: Pool, idwkctr: string): Promise<ManhourChartProfile | null> {

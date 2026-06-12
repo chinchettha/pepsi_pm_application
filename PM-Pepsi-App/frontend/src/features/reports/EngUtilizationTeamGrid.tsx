@@ -10,7 +10,7 @@ type Props = {
   className?: string
 }
 
-/** กริดรายคนพร้อมรูป — เทียบ Summary Daily/Weekly ใน Eng Utilization 2026.xlsx */
+/** กริดรายคนพร้อมรูป — Summary Daily/Weekly ใน Eng Utilization 2026.xlsx */
 export function EngUtilizationTeamGrid({
   people,
   showRca = false,

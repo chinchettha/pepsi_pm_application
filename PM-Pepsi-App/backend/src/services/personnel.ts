@@ -1,11 +1,11 @@
 /**
  * Personal Dashboard service — รวมข้อมูลของ user ปัจจุบันจากหลายตาราง:
  * - profile: `app.tbworkcenter` + ลุก lookup `tbposition`, `tbdepartment`, `tbwkctrgroup`, `tbwkctrtype`, `tbwklevel`
- *   (เทียบ `personel_form_tab1/2.php` ของ PHP)
+ *
  * - planning: `app.view_planwork` กรอง `idwkctr` ของผู้ใช้ (open/closed count + recent open)
  * - confirmation: `app.tbcofirm` (และ `tbiw37n` สำหรับ `wkorder`) กรองด้วย `wkctr` ของผู้ใช้
- *   เพื่อสรุปจำนวนงานปิด + รวมเวลา (เทียบ `M_personel_confirm.php` แต่เน้น user เดียว)
- * - worktime: ใช้ `getWorktimeTotal` (เทียบ `worktime_count.php`)
+ * เพื่อสรุปจำนวนงานปิด + รวมเวลา
+ * - worktime: ใช้ `getWorktimeTotal`
  *
  * หมายเหตุ: หาก view/ตารางบางส่วนยังไม่ migrate จะคืน 0 / [] เพื่อให้ UI ใช้งานได้แม้ data ไม่พร้อม
  */

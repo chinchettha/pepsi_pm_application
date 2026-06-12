@@ -47,7 +47,7 @@
       "edit": "แก้ไขอุปกรณ์",
       "delete": "ลบอุปกรณ์",
       "import": "นำเข้าอุปกรณ์ (CSV/Excel)",
-      "importDesc": "อัปโหลดไฟล์ export: equipment, description, equipmentsub, functionalloc, equl, equ1, equea — Excel ข้าม 2 แถวแรก (PHP parity) รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "อัปโหลดไฟล์ export: equipment, description, equipmentsub, functionalloc, equl, equ1, equea — Excel ข้าม 2 แถวแรก รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "หรือวาง CSV: equipment,equdescrip,equipmentsub,functionalloc,equl,equ1,equea"
     },
     "functional": {
@@ -55,7 +55,7 @@
       "edit": "แก้ไข Functional location",
       "delete": "ลบ Functional location",
       "import": "นำเข้า Functional location (CSV/Excel)",
-      "importDesc": "อัปโหลดไฟล์ export: functionalloc, funldescrip, functionallocsub — Excel ข้าม 2 แถวแรก (PHP parity) รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "อัปโหลดไฟล์ export: functionalloc, funldescrip, functionallocsub — Excel ข้าม 2 แถวแรก รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "หรือวาง CSV: functionalloc,funldescrip,functionallocsub"
     },
     "reason": {
@@ -93,7 +93,7 @@
       "edit": "แก้ไข Task list",
       "delete": "ลบ Task list",
       "import": "นำเข้า Task list (CSV/Excel)",
-      "importDesc": "Excel ข้าม 2 แถวแรก (PHP parity) รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "Excel ข้าม 2 แถวแรก รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "หรือวาง CSV"
     },
     "workstatus": {
@@ -106,7 +106,7 @@
       "edit": "แก้ไขสายผลิต",
       "delete": "ลบสายผลิต",
       "import": "นำเข้าสายผลิต (CSV/Excel)",
-      "importDesc": "Excel ข้าม 2 แถวแรก (PHP parity) รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "Excel ข้าม 2 แถวแรก รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "หรือวาง CSV: productline,prolinedescrip"
     },
     "lineschdul": {
@@ -115,7 +115,7 @@
       "delete": "ลบตารางสาย",
       "confirmDelete": "ไม่สามารถย้อนกลับได้ — ลบตารางสายนี้?",
       "import": "นำเข้าตารางสาย (CSV/Excel)",
-      "importDesc": "Excel ข้าม 2 แถวแรก (PHP parity) รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "Excel ข้าม 2 แถวแรก รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "หรือวาง CSV: productline,lineday(DD.MM.YYYY),uptime,linereason"
     },
     "zone": {
@@ -123,7 +123,7 @@
       "edit": "แก้ไขโซน",
       "delete": "ลบโซน",
       "import": "นำเข้าโซน (CSV/Excel)",
-      "importDesc": "Excel ข้าม 2 แถวแรก (PHP parity) รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "Excel ข้าม 2 แถวแรก รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "หรือวาง CSV: zone,zonedescrip,productline"
     },
     "machine": {
@@ -131,7 +131,7 @@
       "edit": "แก้ไขเครื่องจักร",
       "delete": "ลบเครื่องจักร",
       "import": "นำเข้าเครื่องจักร (CSV/Excel)",
-      "importDesc": "Excel ข้าม 2 แถวแรก (PHP parity) รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "Excel ข้าม 2 แถวแรก รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "หรือวาง CSV: machine,zone,wkctrtype"
     },
     "material": {
@@ -140,7 +140,7 @@
       "delete": "ลบวัสดุ",
       "confirmDelete": "ไม่สามารถย้อนกลับได้ — ลบแถววัสดุนี้?",
       "import": "นำเข้าวัสดุ (CSV/Excel)",
-      "importDesc": "Excel ข้าม 2 แถวแรก (PHP parity) วันที่เก็บเป็น date ใน PostgreSQL รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "Excel ข้าม 2 แถวแรก วันที่เก็บเป็น date ใน PostgreSQL รองรับ .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "หรือวาง CSV (ลำดับคอลัมน์เดียวกับ export เดิม)"
     }
   },

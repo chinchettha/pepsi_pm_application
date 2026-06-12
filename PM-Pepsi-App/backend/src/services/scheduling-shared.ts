@@ -5,7 +5,7 @@ import type { z } from 'zod'
 
 export type CalendarEvent = z.infer<typeof calendarEventSchema>
 
-/** เทียบ $Factory_code ใน sap/include/define.php */
+/** Factory code 7151 scope */
 export const FACTORY_CODE = '7151'
 
 /** เงื่อนไขโรงงาน — PHP ใช้ functionalloc; รองรับ ALV ที่มี 7151 ใน funcdescrip หรือ prefix ตอน import */
@@ -14,7 +14,7 @@ export function sqlFactoryScope(columnPrefix = '', paramRef: string): string {
   return `(${c}functionalloc ILIKE ${paramRef} OR ${c}funcdescrip ILIKE ${paramRef})`
 }
 
-/** แผนเขียว (TECO/ปิดแล้ว) ห้าม Move — เทียบ Details Rev.1 + LEGACY A.1 */
+/** แผนเขียว (TECO/ปิดแล้ว) ห้าม Move — Details Rev.1 + LEGACY A.1 */
 const PLAN_MOVABLE_SYST = new Set(['CRTD', 'REL'])
 
 export function isPlanMovableStatus(syst: string | null | undefined): boolean {

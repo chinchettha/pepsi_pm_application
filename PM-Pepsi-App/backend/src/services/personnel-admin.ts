@@ -1,6 +1,6 @@
 /**
- * Admin CRUD ของ `app.tbworkcenter` — เทียบ `M_personel.php` + `_form` + `_imports`
- * รวมถึงการ resolve lookup name → id ตอน import (เทียบ `ShowDetail()` ใน PHP)
+ * Admin CRUD ของ `app.tbworkcenter`
+ * รวมถึงการ resolve lookup name → id ตอน import (()` ใน PHP)
  */
 import type { Pool, PoolClient } from 'pg'
 import bcrypt from 'bcryptjs'
@@ -145,7 +145,7 @@ function mapRow(row: PersonnelRow): PersonnelAdminItem {
 /**
  * `status` filter — 4 รูปแบบ
  * - `all`      = ทุกคน (รวมลาออก/เกษียณ)
- * - `active`   = `is_active=true` ใน tbwkctrstatus (default — เทียบ legacy ที่ซ่อนคนลาออก)
+ * - `active` = `is_active=true` ใน tbwkctrstatus (default
  *                **รวมแถวที่ workstatus เป็น NULL/ว่าง** (data เก่าก่อน 039) เพื่อกันคนหาย
  * - `inactive` = `is_active=false`
  * - `<code>`   = match `tbworkcenter.workstatus = <code>` ตรง ๆ

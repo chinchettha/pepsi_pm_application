@@ -40,7 +40,7 @@ function parseIsoYyyyMmDdToSec(v: string): number | null {
   return Math.floor(ms / 1000)
 }
 
-/** เทียบ ModalMHshow.php — แปลง H เป็นนาทีก่อนรวม */
+/** Convert hour unit to minutes before sum */
 const MH_WORK_MIN_SQL = `CASE
   WHEN UPPER(TRIM(COALESCE(untime::text, ''))) = 'H' THEN COALESCE(work, 0) * 60
   ELSE COALESCE(work, 0)

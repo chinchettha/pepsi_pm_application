@@ -44,7 +44,7 @@ export function AppPageHeroActions({
 }
 
 /**
- * Hero แบบ dark gradient — ใช้ทุกหน้าแอป (เทียบ Dashboard หน้าแรก)
+ * Hero แบบ dark gradient — ใช้ทุกหน้าแอป (Dashboard หน้าแรก)
  */
 export function AppPageHero({
   title,

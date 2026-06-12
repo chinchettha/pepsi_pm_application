@@ -150,7 +150,6 @@ export async function listPlanningForUser(
 
 /**
  * เพิ่ม assignment (มอบหมายช่าง) สำหรับ WO — รองรับ multi-assign (1 WO หลายคน)
- * เทียบ `AddPlan.php`:
  *   - mode='P' → INSERT (idiw37, wkctr) 1 แถว
  *   - mode='G' → expand `wkctr` (= idwkctrgroup) เป็น INSERT หลายแถวจาก `tbworkcenter.idwkctrgroup`
  *   - ON CONFLICT (idiw37, wkctr) DO NOTHING (ไม่ทับ comment เดิม)
@@ -224,8 +223,8 @@ export async function assignPlanningWork(
 }
 
 /**
- * ลบ assignment เฉพาะคู่ (idiw37, wkctr) — เทียบ `AddPlan.php` `st=Del`
- * (PHP รับ idplanw แต่ React API ใช้ key (idiw37, wkctr) เพื่อสอดคล้อง URL)
+ * ลบ assignment เฉพาะคู่ (idiw37, wkctr)
+ * API ใช้ key (idiw37, wkctr) เพื่อสอดคล้อง URL
  */
 export async function removePlanningAssignment(
   pool: Pool,
@@ -239,7 +238,7 @@ export async function removePlanningAssignment(
   return (r.rowCount ?? 0) > 0
 }
 
-/** ลบ idplanw ตรง ๆ (ใช้ภายในกรณีรู้ idplanw — เทียบ AddPlan.php `SQLdel` ที่ใช้ idplanw) */
+/** ลบ idplanw ตรง ๆ (ใช้ภายในกรณีรู้ idplanw) */
 export async function removePlanningAssignmentByIdplanw(
   pool: Pool,
   idplanw: number,

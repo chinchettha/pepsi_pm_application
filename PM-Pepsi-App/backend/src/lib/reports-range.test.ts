@@ -18,7 +18,7 @@ describe('reports-range', () => {
     expect(r.to).toBeGreaterThan(r.from)
   })
 
-  it('computes weekly percent totals like W_summary_weekly.php', () => {
+ it('computes weekly percent totals for weekly percent totals', () => {
     const p = computeSummaryWeeklyPercents(40, 10, 5, 8)
     expect(p.percentPm).toBe(25)
     expect(p.percentTotal).toBe(57.5)

@@ -1,11 +1,10 @@
-/** Business rules shared by ModalMHshow / W_manhours_hr / tbmanhours APIs */
+/** Business rules for manhour summary and HR / tbmanhours APIs */
 
 export function formatUntimeUnit(untime: string | number | null | undefined): 'H' | 'MIN' {
   if (untime == null || untime === '') return 'MIN'
   return String(untime).trim().toUpperCase() === 'H' ? 'H' : 'MIN'
 }
 
-/** เทียบ ModalMHshow.php — แปลง H เป็นหน่วยนาทีก่อนรวม */
 export function workValueToMinutes(
   value: number,
   untime: string | number | null | undefined,

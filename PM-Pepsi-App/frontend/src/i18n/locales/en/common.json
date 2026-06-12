@@ -196,7 +196,7 @@
     },
     "password": {
       "title": "Change password",
-      "hint": "Like `member_change_password.php` — work center and member accounts",
+      "hint": "Work center and member accounts",
       "success": "Password updated successfully",
       "current": "Current password",
       "new": "New password",
@@ -297,9 +297,9 @@
     "mainNavGroup": "Main menu"
   },
   "parity": {
-    "shellTitle": "PHP system parity (sap/pages)",
+    "shellTitle": "More details",
     "summaryWeeklyTitle": "Weekly summary",
-    "summaryWeeklyDesc": "Parity with `W_summary_weekly.php` and related charts",
+    "summaryWeeklyDesc": "Weekly summary and related charts",
     "summaryWeeklyLink": "Weekly summary"
   },
   "rbac": {

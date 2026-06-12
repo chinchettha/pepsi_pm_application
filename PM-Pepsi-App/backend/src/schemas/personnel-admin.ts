@@ -1,5 +1,5 @@
 /**
- * Admin CRUD ของ `tbworkcenter` — เทียบ PHP `M_personel.php`, `_form`, `_imports`
+ * Admin CRUD ของ `tbworkcenter`
  * field1..field25 + flow ภาพประจำตัวที่เปลี่ยนมาเก็บเป็น WebP ใน BYTEA
  */
 import { z } from 'zod'
@@ -118,7 +118,7 @@ export const personnelImageUploadResponseSchema = z.object({
 })
 
 /**
- * Lookup `workstatus` (tbwkctrstatus) — เทียบ legacy MySQL JOIN ใน `user.php` / `M_personel.php`
+ * Lookup `workstatus` (tbwkctrstatus)
  * - `is_active=true` => ยังทำงานอยู่ (default ใน filter)
  * - `is_active=false` => ลาออก / เกษียณ / พ้นสภาพ
  */

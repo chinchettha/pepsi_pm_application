@@ -1,5 +1,5 @@
 /**
- * Personnel Confirmation dashboard — เทียบ PHP `M_personel_confirm.php`
+ * Personnel Confirmation dashboard
  * แสดง WO ที่ยังเปิด (`syst CRTD/REL`) พร้อม progress bar % ของช่างที่ปิดงาน
  * (`view_countpersonelclose`) สำหรับ Admin
  */

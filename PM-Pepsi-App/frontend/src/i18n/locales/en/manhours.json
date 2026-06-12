@@ -72,7 +72,7 @@
     "dialogEdit": "Edit man hour",
     "dialogDelete": "Delete man hour",
     "dialogDeleteConfirm": "Confirm delete entry #{{id}} ({{hrId}})",
-    "dialogLegacyNote": "Legacy manhour form parity",
+    "dialogFormDesc": "Enter work center, date range, and hours.",
     "formHr": "HR ID",
     "formStartDate": "Start Date",
     "formEndDate": "End Date",

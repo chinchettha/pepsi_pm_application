@@ -156,7 +156,7 @@ export const workOrderFilterDetailTeamSchema = z.object({
   workSumMinutes: z.number(),
 })
 
-/** เทียบ `FilterDetail_AddTeam.php` (+ ส่วน team ใน `FilterDetail.php`) */
+/** Filter detail team assign schema */
 export const workOrderFilterDetailResponseSchema = z.object({
   totalOrders: z.number(),
   completionCount: z.number(),
@@ -182,7 +182,7 @@ export const workOrderTeamPatchResponseSchema = z.object({
   ok: z.literal(true),
 })
 
-/** Bulk assign Team A/B/EE/UT — เทียบ save ทั้งหน้าใน workorder.php / LEGACY B.4b */
+/** Bulk assign Team A/B/EE/UT */
 export const workOrderTeamBulkBodySchema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(100),
   team: pmPlanTeamFieldSchema,
@@ -485,7 +485,7 @@ export const workOrderPlanningUpsertBodySchema = z.object({
 export const workOrderPlanningBatchBodySchema = z.object({
   /** wkctr (รหัส workcenter) หลายคน — backend dedupe + กรอง not-found ให้ */
   wkctrs: z.array(z.string().min(1)).min(1).max(200),
-  /** หมายเหตุการจ่ายงาน (ใช้ร่วมกันทุกคน) — เทียบ legacy `pwcomment` */
+  /** หมายเหตุการจ่ายงาน (ใช้ร่วมกันทุกคน) */
   comment: z.string().max(255).optional(),
 })
 

@@ -1,6 +1,3 @@
-/**
- * เทียบ `sap/modalPages/ModalMHshow.php` — เปิดเมื่อเลือกช่วงวันบนปฏิทิน backlog/calendar
- */
 import { kpiStatToneClass } from '@/components/kpi/kpi-tone'
 import {
   Dialog,
@@ -22,6 +19,7 @@ import {
 import { formatManhourDate } from '@/features/manhours/format-manhour-date'
 import { postBacklogManhourSummary } from '@/lib/api-public'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 function formatRangeLabel(from: string, to: string): string {
   if (!from) return ''
@@ -42,6 +40,7 @@ export function ManhourSummaryDialog({
   fromDate: string
   toDate: string
 }) {
+  const { t } = useTranslation('scheduling')
   const enabled = open && Boolean(fromDate && toDate)
 
   const q = useQuery({
@@ -57,14 +56,12 @@ export function ManhourSummaryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="lg" className="max-h-[90vh] overflow-y-auto">
         <DialogHeader className="text-left">
-          <DialogTitle>Man Hours Date {rangeLabel}</DialogTitle>
-          <DialogDescription className="sr-only">
-            สรุป manhour จาก view_order — เทียบ ModalMHshow.php
-          </DialogDescription>
+          <DialogTitle>{t('manhourSummary.title', { range: rangeLabel })}</DialogTitle>
+          <DialogDescription className="sr-only">{t('manhourSummary.description')}</DialogDescription>
         </DialogHeader>
 
         {!fromDate || !toDate ? (
-          <p className="text-caption">เลือกช่วงวันบนปฏิทินก่อน</p>
+          <p className="text-caption">{t('manhourSummary.selectDatesFirst')}</p>
         ) : q.isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-16 w-full rounded-card" />
@@ -74,25 +71,23 @@ export function ManhourSummaryDialog({
         ) : q.isError ? (
           <p className="text-body-sm text-form-error">{(q.error as Error).message}</p>
         ) : !q.data || q.data.totalOrders === 0 ? (
-          <p className="text-caption">
-            ไม่มี Work Order ในวันที่เลือก (เทียบ PHP ที่ไม่เปิด modal เมื่อไม่มีข้อมูล)
-          </p>
+          <p className="text-caption">{t('manhourSummary.empty')}</p>
         ) : (
           <div className="space-y-4">
             <div className={cn(kpiStatToneClass('info'))}>
               <p>
-                <strong>Man Hour Plan</strong> {q.data.plannedMinutes} MIN (
+                <strong>{t('manhourSummary.plan')}</strong> {q.data.plannedMinutes} MIN (
                 {q.data.plannedHours.toFixed(2)} H)
               </p>
               <p className="mt-1">
-                <strong>Man Hour Action</strong> {q.data.actualMinutes} MIN (
+                <strong>{t('manhourSummary.action')}</strong> {q.data.actualMinutes} MIN (
                 {q.data.actualHours.toFixed(2)} H)
               </p>
             </div>
 
             <div className={cn(kpiStatToneClass('amber'))}>
               <div className="flex flex-wrap items-center gap-2">
-                <strong>Work Order</strong>
+                <strong>{t('manhourSummary.workOrder')}</strong>
                 <span>{q.data.totalOrders}</span>
                 {q.data.byWkzb.map((x) => (
                   <span key={x.code} className="inline-flex items-center gap-1">
@@ -102,7 +97,7 @@ export function ManhourSummaryDialog({
                   </span>
                 ))}
                 <span className="text-app-muted">/</span>
-                <strong>completion</strong>
+                <strong>{t('manhourSummary.completion')}</strong>
                 <span>{q.data.completionCount}</span>
               </div>
               <div className="mt-2 h-5 overflow-hidden rounded bg-app-subtle">
@@ -122,11 +117,11 @@ export function ManhourSummaryDialog({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[var(--app-text)] hover:bg-[var(--app-text)]">
-                    <TableHead className="text-[var(--app-surface)]">Work Order/Type</TableHead>
-                    <TableHead className="text-[var(--app-surface)]">Status</TableHead>
-                    <TableHead className="text-right text-[var(--app-surface)]">Plan</TableHead>
-                    <TableHead className="text-right text-[var(--app-surface)]">Action</TableHead>
-                    <TableHead className="text-[var(--app-surface)]">Unit</TableHead>
+                    <TableHead className="text-[var(--app-surface)]">{t('manhourSummary.colWoType')}</TableHead>
+                    <TableHead className="text-[var(--app-surface)]">{t('manhourSummary.colStatus')}</TableHead>
+                    <TableHead className="text-right text-[var(--app-surface)]">{t('manhourSummary.colPlan')}</TableHead>
+                    <TableHead className="text-right text-[var(--app-surface)]">{t('manhourSummary.colAction')}</TableHead>
+                    <TableHead className="text-[var(--app-surface)]">{t('manhourSummary.colUnit')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -148,8 +143,7 @@ export function ManhourSummaryDialog({
 
             {!singleDay ? (
               <p className="text-xs text-app-muted">
-                ช่วง {fromDate} → {toDate} — เลือกวันเดียวบนปฏิทินเพื่อเทียบ ModalMHshow แบบวันเดียว (bscstart/cday
-                ตรงวัน)
+                {t('manhourSummary.rangeHint', { from: fromDate, to: toDate })}
               </p>
             ) : null}
           </div>

@@ -887,7 +887,7 @@ export const healthResponseSchema = z.object({
   db: z.enum(['ok', 'error']).optional(),
 })
 
-/** POST /api/v1/auth/login — workcenter (login.php) | member (login-bk.php) */
+/** POST /api/v1/auth/login — workcenter | member */
 export const loginModeSchema = z.enum(['workcenter', 'member'])
 
 export const loginRequestSchema = z.object({
@@ -1518,7 +1518,7 @@ export const personnelDashboardResponseSchema = z.object({
 export type PersonnelRole = z.infer<typeof personnelRoleSchema>
 export type PersonnelDashboardResponse = z.infer<typeof personnelDashboardResponseSchema>
 
-/** Admin CRUD `M_personel.php` — แถวสำหรับตาราง/ฟอร์ม */
+/** Admin CRUD personnel — แถวสำหรับตาราง/ฟอร์ม */
 export const personnelAdminItemSchema = z.object({
   idwkctr: z.string(),
   titlewkctr: z.string().nullable(),
@@ -1669,7 +1669,7 @@ export type PersonnelImportResponse = z.infer<typeof personnelImportResponseSche
 export type PersonnelWorkstatusOption = z.infer<typeof personnelWorkstatusOptionSchema>
 export type PersonnelImageUploadResponse = z.infer<typeof personnelImageUploadResponseSchema>
 
-/** Personnel Confirmation row (M_personel_confirm.php → view_countpersonelclose) */
+/** Personnel Confirmation row (view_countpersonelclose) */
 export const personnelConfirmRowSchema = z.object({
   idiw37: z.number().int(),
   wkorder: z.string(),
@@ -1744,7 +1744,7 @@ export const masterDataItemGenericSchema = z.object({
   active: z.boolean(),
 })
 
-/** เทียบ `tbactivitytype` — M_activitytype.php */
+/** Activity type master */
 export const activityTypeItemSchema = z.object({
   id: z.string(),
   mat: z.string(),
@@ -1752,14 +1752,14 @@ export const activityTypeItemSchema = z.object({
   matcheck: z.string(),
 })
 
-/** เทียบ `tbdepartment` — M_department.php */
+/** Department master */
 export const departmentItemSchema = z.object({
   id: z.string(),
   iddepartment: z.string(),
   department: z.string(),
 })
 
-/** เทียบ `tbequipment` — M_equipment.php */
+/** Equipment master */
 export const equipmentItemSchema = z.object({
   id: z.string(),
   equipment: z.string(),
@@ -1771,7 +1771,7 @@ export const equipmentItemSchema = z.object({
   equea: z.string(),
 })
 
-/** เทียบ `tbfunctional` — M_functional.php */
+/** Functional location master */
 export const functionalItemSchema = z.object({
   id: z.string(),
   functionalloc: z.string(),

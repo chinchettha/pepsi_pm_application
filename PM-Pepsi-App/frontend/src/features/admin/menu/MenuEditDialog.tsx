@@ -156,12 +156,12 @@ export function MenuEditDialog({ open, onOpenChange, initial, onSaved }: MenuEdi
                 />
               </div>
               <div>
-                <Label htmlFor="menulink">Legacy menulink (PHP)</Label>
+                <Label htmlFor="menulink">{t('menu.menulinkLabel')}</Label>
                 <Input
                   id="menulink"
                   value={menulink}
                   onChange={(e) => setMenulink(e.target.value)}
-                  placeholder="index2.php?module=..."
+                  placeholder={t('menu.menulinkPlaceholder')}
                 />
               </div>
               <div>

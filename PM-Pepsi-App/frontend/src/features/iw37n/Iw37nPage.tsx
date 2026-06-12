@@ -435,7 +435,7 @@ export function Iw37nPage() {
     importMut.mutate(f)
   }
 
-  /** นำเข้าทันที — เทียบ M_iw37n_imports.php (ไม่มีขั้น preview) */
+  /** นำเข้าทันที (ไม่มีขั้น preview) */
   const runDirectImport = () => {
     const f = pickFile()
     if (!f) return

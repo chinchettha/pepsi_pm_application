@@ -44,7 +44,7 @@ export function adminMenuRowsToNavEntries(rows: AdminMenuRow[]): NavEntry[] {
   return entries
 }
 
-/** รวม permCode ที่ role นั้นได้ grant จาก matrix (ใช้กับ preview เทียบ /admin/roles) */
+/** รวม permCode ที่ role นั้นได้ grant จาก matrix (ใช้กับ preview บน /admin/roles) */
 export function permissionsForRoleFromMatrix(
   matrix: AdminRoleMatrixResponse,
   roleCode: string,
@@ -62,7 +62,7 @@ export function permissionsForRoleFromMatrix(
 
 /**
  * Preview เมนูตาม role — ถ้ามี `permissions` (จาก matrix) จะกรองตาม RBAC route;
- * ไม่มีจะใช้ menuright แบบ legacy (A:H:U:W) เทียบ userst
+ * ไม่มีจะใช้ menuright แบบ legacy (A:H:U:W) userst
  */
 export function previewNavForRole(
   rows: AdminMenuRow[],

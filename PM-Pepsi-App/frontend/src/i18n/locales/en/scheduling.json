@@ -507,6 +507,22 @@
     "listDesc": "PO, posting date, amount, and movement type",
     "rowCount": "{{count}} rows"
   },
+  "manhourSummary": {
+    "title": "Man Hours — {{range}}",
+    "description": "Work order manhour summary for the selected date range",
+    "selectDatesFirst": "Select a date range on the calendar first",
+    "empty": "No work orders for the selected date(s)",
+    "plan": "Man Hour Plan",
+    "action": "Man Hour Action",
+    "workOrder": "Work Order",
+    "completion": "completion",
+    "colWoType": "Work Order/Type",
+    "colStatus": "Status",
+    "colPlan": "Plan",
+    "colAction": "Action",
+    "colUnit": "Unit",
+    "rangeHint": "Range {{from}} → {{to}} — select a single day on the calendar for a day-level summary"
+  },
   "woMachine": {
     "emptyTitle": "No machine data",
     "emptyDesc": "This work order has no product line or machine list yet",

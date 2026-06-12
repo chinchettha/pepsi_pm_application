@@ -4,7 +4,7 @@ import type { Pool } from 'pg'
  * รายการ wkctr ในสมาชิกกลุ่ม — รองรับทั้ง:
  * - tbworkcenter.idwkctrgroup = id ตัวเลขจาก tbwkctrgroup (นำเข้า Personel.xlsx)
  * - legacy: idwkctrgroup เก็บ wkctrgroup code ตรง ๆ
- * - groupCode = wkctrgroup จาก dropdown (AddPlan.php / M_planwork_view_form)
+ * - groupCode = wkctrgroup จาก dropdown (planning dropdown)
  */
 export async function loadWorkcenterCodesForPlanningGroup(
   pool: Pool,

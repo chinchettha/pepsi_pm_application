@@ -38,7 +38,7 @@ export function WeekToWeekTable({ rows }: Props) {
         <TableHeader>
           <TableRow>
             <TableHead>สัปดาห์</TableHead>
-            <TableHead>เทียบกับ</TableHead>
+ <TableHead>เทียบกับ</TableHead>
             <TableHead className="text-right">Util %</TableHead>
             <TableHead className="text-right">Δ Util</TableHead>
             <TableHead className="text-right">Backlog ชม.</TableHead>

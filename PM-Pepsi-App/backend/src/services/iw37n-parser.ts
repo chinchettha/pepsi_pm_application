@@ -6,7 +6,7 @@ import {
 } from './iw37n-column-map.js'
 import { ensureFactoryScopeFunctionalloc } from './iw37n-factory-scope.js'
 
-/** แมปคอลัมน์ Excel ตาม M_iw37n.php ($Row[0]..$Row[18]) */
+/** แมปคอลัมน์ Excel ตาม IW37N import ($Row[0]..$Row[18]) */
 export type Iw37nImportRow = {
   mntplan: string
   wkorder: string
@@ -46,7 +46,7 @@ function cellStr(v: unknown): string {
   return String(v).trim()
 }
 
-/** dd.mm.yyyy → unix วินาที (เทียบ mktime ใน PHP) */
+/** dd.mm.yyyy → unix วินาที () */
 export function parseDdMmYyyy(value: string): number | null {
   const t = value.trim()
   if (!t) return null
@@ -100,7 +100,7 @@ function rowLooksLikeHeader(wkorder: string, opac: string): boolean {
 }
 
 /**
- * อ่าน $Row[n] แบบ M_iw37n.php
+ * อ่าน $Row[n] ตาม IW37N import layout
  * - legacy: คอลัมน์ A = index 0
  * - SAP ALV (คอลัมน์ S): ฟิลด์ 0–14 เลื่อน +2, ฟิลด์ 15–18 ยังอ้าง index เดิมจากคอลัมน์ A (PHP ใช้ $Row[17],$Row[18] ตรง index)
  */
@@ -114,7 +114,7 @@ function phpRowRaw(cells: unknown[], phpCol: number, colOffset: number): unknown
   return cells[idx]
 }
 
-/** ตรวจค่าว่างตาม M_iw37n.php บรรทัด 83 */
+/** ตรวจค่าว่างตาม IW37N import rules import rules */
 export function rowFailsPhpImportValidation(cells: unknown[], colOffset: number): boolean {
   return (
     !phpRowCell(cells, 1, colOffset) ||
@@ -350,7 +350,7 @@ function sheetToMatrix(buffer: Buffer, fileName: string): unknown[][] {
   return matrix
 }
 
-/** ข้ามแถวนำ / header ตาม layout (เทียบ M_iw37n.php + SAP ALV) */
+/** ข้ามแถวนำ / header ตาม layout */
 export function parseIw37nFile(buffer: Buffer, fileName: string): Iw37nImportRow[] {
   return parseIw37nFileWithMeta(buffer, fileName).rows
 }

@@ -1,5 +1,5 @@
 /**
- * กราฟขยายเต็มจอ — เทียบ `W_summary_weekly_chart_full.php`, `W_summary_weekly_chart2_full.php`
+ * กราฟขยายเต็มจอ
  * เปิดแท็บใหม่จาก `/summary-weekly` (ลิงก์ "ดูกราฟแบบขยาย")
  */
 import {

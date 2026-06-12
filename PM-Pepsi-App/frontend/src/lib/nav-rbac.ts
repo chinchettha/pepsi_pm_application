@@ -4,7 +4,7 @@ import { permissionForRoute } from '@/lib/nav-route-permissions'
 import { hasPermission } from '@/lib/permissions-core'
 import { getRbacPreviewSnapshot } from '@/lib/rbac-preview'
 
-/** เทียบ `$_SESSION['UserST']` และ `menuright` แบบ `A:U:W` ใน `left_menu.php` */
+/** menuright (A:U:W) vs UserST */
 export type UserSt = 'A' | 'U' | 'W'
 
 export function parseUserSt(value: string | undefined): UserSt | null {
@@ -12,7 +12,7 @@ export function parseUserSt(value: string | undefined): UserSt | null {
   return null
 }
 
-/** เทียบ backend `canAccessMenuright` — รองรับ userst จาก DB โดยตรง (ไม่บังคับ parse แค่ A|U|W) */
+/** backend `canAccessMenuright` — รองรับ userst จาก DB โดยตรง (ไม่บังคับ parse แค่ A|U|W) */
 export function canAccessByMenuright(userst: string, menuright: string): boolean {
   const role = userst.trim()
   if (!role) return false

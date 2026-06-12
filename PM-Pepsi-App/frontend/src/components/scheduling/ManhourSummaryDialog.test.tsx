@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 import '@testing-library/jest-dom/vitest'
+import '@/i18n'
 import { ManhourSummaryDialog } from '@/components/scheduling/ManhourSummaryDialog'
 import { postBacklogManhourSummary } from '@/lib/api-public'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -58,7 +59,7 @@ describe('ManhourSummaryDialog', () => {
 
     renderDialog()
 
-    expect(await screen.findByText(/Man Hours Date/)).toBeInTheDocument()
+    expect(await screen.findByText(/Man Hours/)).toBeInTheDocument()
     expect(await screen.findByText(/Man Hour Plan/)).toBeInTheDocument()
     expect(screen.getByText(/480/)).toBeInTheDocument()
     expect(screen.getByText('1001 / ZB01')).toBeInTheDocument()
@@ -86,7 +87,7 @@ describe('ManhourSummaryDialog', () => {
     renderDialog()
 
     expect(
-      await screen.findByText(/ไม่มี Work Order ในวันที่เลือก/),
+      await screen.findByText(/No work orders for the selected date/),
     ).toBeInTheDocument()
   })
 

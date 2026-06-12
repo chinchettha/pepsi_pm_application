@@ -1,10 +1,10 @@
 /**
- * Admin CRUD ของ `tbworkcenter` — เทียบ PHP `M_personel.php` + `_form` + `_imports`
+ * Admin CRUD ของ `tbworkcenter`
  * - ตารางผู้ใช้ทั้งหมด (search) + ปุ่ม Import Excel + ปุ่มเพิ่มข้อมูล
  * - Modal create/edit แบบ 2 แท็บ (ข้อมูลส่วนตัว / ข้อมูลงาน) — แท็บ 3 (รหัสผ่าน) รวมในฟอร์มเดียว
  * - Upload `imgmember`: รับภาพอะไรก็ได้ → backend แปลงเป็น **WebP** (resize 600px) เก็บลง `imgmember_data` BYTEA
  *   ใช้ `<img src=/api/v1/personnel/:idwkctr/image>` (ส่ง cookie auth อัตโนมัติ)
- * - Excel import: skip 2 rows แรก (เทียบ PHP `$n > 2`) + แสดงผลทีละแถว
+ * - Excel import: skip 2 rows แรก (`$n > 2`) + แสดงผลทีละแถว
  */
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
 import { PersonnelAdminPhotoGoLiveBanner } from '@/features/admin/users/PersonnelAdminPhotoGoLiveBanner'
@@ -296,7 +296,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   const [qInput, setQInput] = useState('')
   /**
    * Filter "สถานะใช้งาน"
-   * - `active` (default) = ทำงานปกติ + แถวเก่าที่ยังไม่กำหนด workstatus (กันคนหาย) — เทียบ legacy `M_personel.php` ที่ซ่อนคนลาออก
+ * - `active` (default) = ทำงานปกติ + แถวเก่าที่ยังไม่กำหนด workstatus (กันคนหาย)
    * - `inactive` = ลาออก / เกษียณ / พ้นสภาพ
    * - `all` = ทุกคน
    * - `<code>` = match แม่นยำ เช่น `RESIGNED`
@@ -335,7 +335,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
     placeholderData: keepPreviousData,
   })
 
-  // Lookup สำหรับ select ในฟอร์ม — เทียบ legacy `personel_form_tab2.php` ที่ join 5 ตาราง
+ // Lookup สำหรับ select ในฟอร์ม
   const lookupsQ = useQuery({
     queryKey: ['personnel', 'admin', 'lookups'],
     queryFn: fetchPersonnelLookups,
@@ -344,7 +344,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   })
   const lookups = lookupsQ.data
 
-  // Lookup workstatus — เทียบ legacy `tbwkctrstatus` (M_personel.php ฟิลด์ filed24)
+ // Lookup workstatus
   const workstatusOptionsQ = useQuery({
     queryKey: ['personnel', 'admin', 'workstatus-options'],
     queryFn: fetchPersonnelWorkstatusOptions,
@@ -1945,7 +1945,7 @@ function PersonnelRow({
 }
 
 /**
- * Badge สีของ workstatus — ใช้สีจาก tbwkctrstatus.wkstcolor (เทียบ tbwkstatus.wkstcolor)
+ * Badge สีของ workstatus — ใช้สีจาก tbwkctrstatus.wkstcolor (tbwkstatus.wkstcolor)
  * - ถ้า workstatus ของ row ไม่อยู่ใน lookup (data เก่าก่อน 039) แสดงเป็น outline สีเทา
  * - ถ้า workstatus เป็น null/ว่าง แสดง "—" + tooltip
  */
@@ -2162,7 +2162,7 @@ function Field({
 }
 
 /**
- * Native <select> ดึงรายชื่อจาก master data — เทียบ legacy `personel_form_tab2.php`
+ * Native <select> ดึงรายชื่อจาก master data
  * - แสดง placeholder "—" เมื่อยังไม่เลือก
  * - ถ้า value ปัจจุบันไม่ match กับ options (เช่น import เข้ามาด้วย id เก่า) จะ insert option fallback
  *   เพื่อไม่ทำให้ค่าหายตอน edit

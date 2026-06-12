@@ -32,7 +32,7 @@
   },
   "import": {
     "selectFile": "Select file",
-    "pasteCsvLegacy": "Or paste CSV (same column order as legacy export)",
+    "pasteCsvLegacy": "Or paste CSV (same column order as export)",
     "resultFull": "Inserted {{inserted}} · Updated {{updated}} · Failed {{failed}} · Skipped {{skipped}}",
     "resultShort": "Inserted {{inserted}} · Updated {{updated}} · Failed {{failed}}"
   },
@@ -47,7 +47,7 @@
       "edit": "Edit equipment",
       "delete": "Delete equipment",
       "import": "Import equipment (CSV/Excel)",
-      "importDesc": "Upload file export: equipment, description, equipmentsub, functionalloc, equl, equ1, equea. For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "Upload file export: equipment, description, equipmentsub, functionalloc, equl, equ1, equea. For Excel files, the first 2 rows are skipped. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "Or paste CSV: equipment,equdescrip,equipmentsub,functionalloc,equl,equ1,equea"
     },
     "functional": {
@@ -55,7 +55,7 @@
       "edit": "Edit functional location",
       "delete": "Delete functional location",
       "import": "Import functional locations (CSV/Excel)",
-      "importDesc": "Upload file export: functionalloc, funldescrip, functionallocsub. For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "Upload file export: functionalloc, funldescrip, functionallocsub. For Excel files, the first 2 rows are skipped. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "Or paste CSV: functionalloc,funldescrip,functionallocsub"
     },
     "reason": {
@@ -93,7 +93,7 @@
       "edit": "Edit task list",
       "delete": "Delete task list",
       "import": "Import task list (CSV/Excel)",
-      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "For Excel files, the first 2 rows are skipped. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "Or paste CSV"
     },
     "workstatus": {
@@ -106,7 +106,7 @@
       "edit": "Edit production line",
       "delete": "Delete production line",
       "import": "Import production lines (CSV/Excel)",
-      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "For Excel files, the first 2 rows are skipped. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "Or paste CSV: productline,prolinedescrip"
     },
     "lineschdul": {
@@ -115,7 +115,7 @@
       "delete": "Delete line schedule",
       "confirmDelete": "This action cannot be undone. Delete this line schedule?",
       "import": "Import line schedules (CSV/Excel)",
-      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "For Excel files, the first 2 rows are skipped. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "Or paste CSV: productline,lineday(DD.MM.YYYY),uptime,linereason"
     },
     "zone": {
@@ -123,7 +123,7 @@
       "edit": "Edit zone",
       "delete": "Delete zone",
       "import": "Import zones (CSV/Excel)",
-      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "For Excel files, the first 2 rows are skipped. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "Or paste CSV: zone,zonedescrip,productline"
     },
     "machine": {
@@ -131,7 +131,7 @@
       "edit": "Edit machine",
       "delete": "Delete machine",
       "import": "Import machines (CSV/Excel)",
-      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "importDesc": "For Excel files, the first 2 rows are skipped. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
       "pasteColumns": "Or paste CSV: machine,zone,wkctrtype"
     },
     "material": {
@@ -140,8 +140,8 @@
       "delete": "Delete material",
       "confirmDelete": "This action cannot be undone. Delete material row?",
       "import": "Import materials (CSV/Excel)",
-      "importDesc": "For Excel files, the first 2 rows are skipped (PHP parity). Dates are stored as date in PostgreSQL. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
-      "pasteColumns": "Or paste CSV (same column order as legacy export)"
+      "importDesc": "For Excel files, the first 2 rows are skipped. Dates are stored as date in PostgreSQL. Supported: .csv, .xls, .xlsx, .xlsm, .xlsb",
+      "pasteColumns": "Or paste CSV (same column order as export)"
     }
   },
   "aria": {

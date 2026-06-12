@@ -55,7 +55,7 @@ function adjustBucket(
 
 /**
  * ปรับ Team A/B/EE/UT จากค่า server โดยใช้ delta ของแถวในตารางที่เปลี่ยน team ชั่วคราว (radio ก่อน Save).
- * เทียบ LEGACY B.4c — ไม่ refresh ทั้งหน้า
+ * B.4c — ไม่ refresh ทั้งหน้า
  */
 export function applyPendingTeamToFilterDetail(
   base: FilterDetailData,

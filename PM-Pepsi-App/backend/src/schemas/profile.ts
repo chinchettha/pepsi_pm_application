@@ -19,7 +19,7 @@ export const userProfileSchema = z.object({
   hasImage: z.boolean().optional(),
   birthdayLabel: z.string().optional(),
   workAgeLabel: z.string().optional(),
-  /** รวมชั่วโมงทั้งหมด — เทียบ worktime_count.php */
+  /** รวมชั่วโมงทั้งหมด */
   worktimeTotalHours: z.number().optional(),
   worktimeBreakdown: worktimeBreakdownSchema.optional(),
   idcard: z.string().optional(),

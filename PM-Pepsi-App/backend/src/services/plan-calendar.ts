@@ -27,7 +27,7 @@ type PlanWorkRow = {
   confirm_qc_status: string | null
 }
 
-/** วันที่แสดงบนปฏิทิน — เทียบ `M_plan_calendar.php` (cday ถ้าย้ายแผน ไม่งั้น bscstart) */
+/** วันที่แสดงบนปฏิทิน (cday ถ้าย้ายแผน ไม่งั้น bscstart) */
 function pickPlanDisplayUnix(row: PlanWorkRow): number | null {
   const cday = row.cday != null && row.cday !== '' ? Number(row.cday) : null
   if (cday != null && cday > 0) return cday
@@ -37,7 +37,7 @@ function pickPlanDisplayUnix(row: PlanWorkRow): number | null {
   return null
 }
 
-/** ย้ายข้ามเดือน — เทียบ `$MoveMc1 <> $MoveMc2` ใน `M_plan_calendar.php` */
+/** ย้ายข้ามเดือนเมื่อ cday กับ bscstart คนละเดือน */
 function isCrossMonthMove(row: PlanWorkRow): boolean {
   const cday = row.cday != null && row.cday !== '' ? Number(row.cday) : null
   const bscstart =
@@ -98,7 +98,7 @@ export function mapPlanWorkRowToEvent(
 }
 
 /**
- * ปฏิทินจ่ายงานช่าง — เทียบ `M_plan_calendar.php`
+ * ปฏิทินจ่ายงานช่าง
  * `view_planwork` กรอง `idwkctr` = session — รวมงานปิดแล้วในเดือน
  */
 export async function listPlanCalendarEvents(

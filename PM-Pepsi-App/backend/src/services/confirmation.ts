@@ -214,7 +214,7 @@ async function idiw37InFactory(pool: Pool | PoolClient, idiw37: number): Promise
 }
 
 /**
- * ปิดงาน (confirm) หลาย WO ในคำขอเดียว — เทียบ Mass Confirm 44 ของ SAP
+ * ปิดงาน (confirm) หลาย WO ในคำขอเดียว — ตาม Mass Confirm 44 ของ SAP
  */
 export async function addConfirmationCloseBatch(
   pool: Pool,
@@ -278,7 +278,7 @@ export async function addConfirmationCloseBatch(
   return { succeeded, failed }
 }
 
-// ----- Import (M_Confirm.php) -----
+// ----- Confirmation import -----
 
 export type ConfirmImportRowResult = {
   rowNo: number
@@ -882,7 +882,7 @@ export async function readConfirmationImageBuffer(
     }
   }
 
-  for (const dir of CONFIRM_IMAGE_LEGACY_DIRS) {
+ for (const dir of CONFIRM_IMAGE_LEGACY_DIRS) {
     const abs = path.join(dir, row.cfilename)
     try {
       const data = await fs.readFile(abs)
@@ -900,7 +900,7 @@ export async function readConfirmationImageBuffer(
 
 /** ลบไฟล์ legacy บนดิสก์ (ถ้ามี) หลังลบแถวใน DB */
 export async function unlinkLegacyConfirmationImageFile(fileName: string): Promise<void> {
-  for (const dir of CONFIRM_IMAGE_LEGACY_DIRS) {
+ for (const dir of CONFIRM_IMAGE_LEGACY_DIRS) {
     await fs.unlink(path.join(dir, fileName)).catch(() => {})
   }
 }

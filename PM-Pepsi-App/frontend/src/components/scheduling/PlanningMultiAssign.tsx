@@ -1,7 +1,7 @@
 /**
  * PlanningMultiAssign — UI "เพิ่ม assignee" หลายคนในคลิกเดียว
  *
- * เทียบ legacy `AddPlan.php`/`M_personel` ที่ต้องคลิกทีละช่าง — เราขยายเป็น
+ * Supports multi-select instead of one-by-one ที่ต้องคลิกทีละช่าง — เราขยายเป็น
  * batch upsert ผ่าน `POST /api/v1/work-orders/:id/planning/batch`.
  *
  * รับข้อมูล workcenters + รายชื่อที่ถูกจ่ายแล้ว (เพื่อ disable),

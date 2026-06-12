@@ -1,6 +1,6 @@
 import type { Pool } from 'pg'
 
-/** เทียบ `ChackStatus.php` + suffix ใน `calendar.php` title (`STwork` + `STwork2` + …) */
+/** WO status suffix for calendar event title */
 export type WorkOrderWorkflowStep = {
   step: 1 | 2 | 3
   key: 'team' | 'assign' | 'worktime'
@@ -64,7 +64,7 @@ export async function getWorkOrderWorkflowSteps(
   ]
 }
 
-/** Suffix สำหรับ title ปฏิทิน — เทียบ `wkorder / wktype / 1234` ใน PHP */
+/** Suffix สำหรับ title ปฏิทิน — */
 export async function loadWorkflowSuffixMap(
   pool: Pool,
   idiw37List: number[],

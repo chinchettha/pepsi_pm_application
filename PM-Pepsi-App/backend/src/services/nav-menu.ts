@@ -77,7 +77,7 @@ export async function listNavMenuForUser(pool: Pool, userst: string): Promise<Na
   return { items }
 }
 
-/** แปลง legacy `index.php?module=…` → path React */
+/** แปลง menulink URL → path React */
 export function legacyMenulinkToRoute(menulink: string | null): string | null {
   if (!menulink?.trim()) return null
   const raw = menulink.trim()

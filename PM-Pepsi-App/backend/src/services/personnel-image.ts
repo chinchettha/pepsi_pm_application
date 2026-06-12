@@ -1,9 +1,5 @@
 /**
- * แปลงภาพที่อัปโหลดเข้ามา → WebP (resize กว้าง 600px) ก่อนเก็บลง DB
- * เทียบ PHP `M_personel.php`:
- *   $width = 600;
- *   ImageJPEG($images_fin, "./imgMember/".$new_images);
- * แต่เปลี่ยนเป็น WebP เก็บใน BYTEA ของ tbworkcenter เพื่อประหยัด storage
+ * แปลงภาพที่อัปโหลดเข้ามา → WebP (resize กว้าง 600px) ก่อนเก็บลง DB (BYTEA)
  */
 import sharp from 'sharp'
 

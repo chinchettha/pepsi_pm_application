@@ -43,7 +43,7 @@ describe('nav-config sidebar coverage', () => {
     expect(home?.kind === 'item' && home.end).toBe(true)
   })
 
-  it('covers core operational routes from PHP parity', () => {
+  it('covers core operational routes', () => {
     for (const path of [
       '/',
       '/plan-calendar',

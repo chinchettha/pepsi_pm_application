@@ -507,6 +507,22 @@
     "listDesc": "PO, วันที่ posting, มูลค่า และ movement type",
     "rowCount": "{{count}} แถว"
   },
+  "manhourSummary": {
+    "title": "Man Hours — {{range}}",
+    "description": "สรุป manhour ตามใบงานในช่วงวันที่เลือก",
+    "selectDatesFirst": "เลือกช่วงวันบนปฏิทินก่อน",
+    "empty": "ไม่มี Work Order ในวันที่เลือก",
+    "plan": "Man Hour Plan",
+    "action": "Man Hour Action",
+    "workOrder": "Work Order",
+    "completion": "completion",
+    "colWoType": "Work Order/Type",
+    "colStatus": "Status",
+    "colPlan": "Plan",
+    "colAction": "Action",
+    "colUnit": "Unit",
+    "rangeHint": "ช่วง {{from}} → {{to}} — เลือกวันเดียวบนปฏิทินเพื่อดูสรุปรายวัน"
+  },
   "woMachine": {
     "emptyTitle": "ไม่พบข้อมูลเครื่องจักร",
     "emptyDesc": "ใบงานนี้ยังไม่มีข้อมูลสายการผลิตหรือรายการเครื่อง",

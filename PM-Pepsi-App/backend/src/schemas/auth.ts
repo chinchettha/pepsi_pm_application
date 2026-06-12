@@ -8,7 +8,7 @@ export const loginModeSchema = z.enum(['workcenter', 'member'])
 export const loginRequestSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
-  /** workcenter = login.php (tbworkcenter); member = login-bk.php (tbl_member) */
+ /** workcenter (tbworkcenter) | member (tbl_member) */
   mode: loginModeSchema.optional().default('workcenter'),
 })
 
@@ -60,7 +60,7 @@ export const logoutResponseSchema = z.object({
   ok: z.literal(true),
 })
 
-/** เทียบ member_change_password_process.php */
+/** Password change request */
 export const changePasswordBodySchema = z
   .object({
     currentPassword: z.string().min(1),

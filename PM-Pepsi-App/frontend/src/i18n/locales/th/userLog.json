@@ -1,6 +1,6 @@
 {
   "title": "ประวัติการใช้งาน",
-  "description": "เทียบ M_UserLog.php — IP ผู้ใช้ (userIp) และเครื่องเซิร์ฟเวอร์ (myIp)",
+  "description": "IP ผู้ใช้ (userIp) และเครื่องเซิร์ฟเวอร์ (myIp)",
   "noAccess": "ไม่มีสิทธิ์เข้าถึง",
   "noAccessDesc": "ต้องมีสิทธิ์",
   "hints": ["Login", "Logout", "IP ผู้ใช้", "เซิร์ฟเวอร์"],

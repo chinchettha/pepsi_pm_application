@@ -1,5 +1,5 @@
 /**
- * Personnel Confirmation service — เทียบ PHP `M_personel_confirm.php`
+ * Personnel Confirmation service
  *
  * อ่าน `app.view_countpersonelclose` กรอง syst IN (CRTD,REL) เรียงตาม countwkctr ASC
  * เพื่อให้รายการที่ยังปิดน้อยขึ้นก่อน + สรุปยอด open/in-progress/done

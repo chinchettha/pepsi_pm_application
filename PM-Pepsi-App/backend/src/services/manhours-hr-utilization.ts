@@ -39,7 +39,7 @@ const MH_HOURS_SQL = `COALESCE(SUM(m.wh + m.ot1 + m.ot15 + m.ot1hol + m.ot2 + m.
 
 /**
  * % Utilization = Confirm ชม. ÷ HR ชม. (Summary/W)
- * เทียบ `M_manhour_chart_performance.php` และ KPI `/reports` (Confirm/HR รายสัปดาห์)
+ * ใช้ร่วมกับ KPI `/reports` (Confirm/HR รายสัปดาห์)
  */
 export async function getManhoursHrUtilization(
   pool: Pool,

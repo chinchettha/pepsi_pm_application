@@ -377,7 +377,7 @@ export async function searchWorkOrders(
   })
 }
 
-/** สรุปตัวกรอง + Team A/B/P — เทียบ `FilterDetail_AddTeam.php` / `#OrderDetail` ใน `M_filter_iw37.php` */
+/** สรุปตัวกรอง + Team A/B/P */
 export async function getWorkOrderFilterDetail(
   pool: Pool,
   body: WorkOrderSearch,
@@ -532,7 +532,7 @@ export type WorkOrderTeamBulkResult = {
 }
 
 /**
- * ตั้ง team หลาย WO ในคำขอเดียว (Phase 3 / LEGACY B.4b).
+ * ตั้ง team หลาย WO ในคำขอเดียว (bulk team assign).
  * รับ `idiw37` เป็นตัวเลขใน `ids` เท่านั้น — dedupe และจำกัดที่ caller/schema.
  */
 export async function updateWorkOrderTeamBatch(
@@ -930,7 +930,7 @@ export async function getWorkOrderModalDetail(
      ORDER BY wkctr ASC`,
   )
 
-  // Multi-assign — เทียบ legacy `AddPlan.php`: 1 WO มีช่างหลายคนได้
+ // Multi-assign
   const assignedR = await pool.query<
     PlanningAssignedRow & {
       ack_status?: string | null
@@ -1067,7 +1067,7 @@ export async function getWorkOrderModalDetail(
 /**
  * เพิ่ม assignment ของ WO — multi-assign:
  *   - mode='P' → INSERT (idiw37, wkctr) 1 แถว
- *   - mode='G' → expand เป็นช่างทั้งกลุ่ม (เทียบ AddPlan.php $sqlG)
+ * - mode='G' → expand เป็นช่างทั้งกลุ่ม
  *   - ON CONFLICT (idiw37, wkctr) DO NOTHING → ไม่ทับ comment เดิม
  */
 export async function upsertWorkOrderPlanning(
@@ -1178,7 +1178,7 @@ export async function assignWorkOrderPlanningBatch(
 
 /**
  * ลบ assignment ของ WO:
- *   - ถ้าระบุ `wkctr` → ลบเฉพาะคู่ (idiw37, wkctr) — เทียบ AddPlan.php `st=Del`
+ * - ถ้าระบุ `wkctr` → ลบเฉพาะคู่ (idiw37, wkctr)
  *   - ถ้าไม่ระบุ → ลบทั้งหมดของ WO (รีเซ็ตการมอบหมาย — back-compat)
  */
 export async function deleteWorkOrderPlanning(

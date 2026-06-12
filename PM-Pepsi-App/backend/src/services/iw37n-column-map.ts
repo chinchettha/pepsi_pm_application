@@ -1,4 +1,4 @@
-/** แมปคอลัมน์จากชื่อ header SAP / legacy (เทียบ FACTORY-FUNCTIONALLOC-7151.md) */
+/** แมปคอลัมน์จากชื่อ header SAP / legacy (FACTORY-FUNCTIONALLOC-7151.md) */
 
 export type Iw37nColumnMap = {
   mntplan: number

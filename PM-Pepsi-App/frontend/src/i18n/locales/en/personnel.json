@@ -340,7 +340,7 @@
       "workstatus": "Status",
       "selectStatus": "— Select status —",
       "userst": "System access (userst)",
-      "userstHint": "Legacy menuright menu mapping (A/U/W)",
+      "userstHint": "menuright menu mapping (A/U/W)",
       "userrole": "Dashboard/RBAC role (userrole)",
       "userroleHint": "Source of truth for Personal Dashboard and future permissions",
       "passwordNew": "New password (leave blank to keep)",
@@ -352,10 +352,10 @@
       "saveAdd": "Add record"
     },
     "userst": {
-      "A": "A — Admin (legacy)",
-      "H": "H — Head / Manager (legacy)",
-      "U": "U — User / Planner (legacy)",
-      "W": "W — Work center / Technician (legacy)"
+      "A": "A — Admin",
+      "H": "H — Head / Manager",
+      "U": "U — User / Planner",
+      "W": "W — Work center / Technician"
     },
     "userrole": {
       "admin": "Admin — System administrator",
@@ -379,7 +379,7 @@
     },
     "page": {
       "title": "Personnel admin",
-      "description": "Full work center table — legacy personnel admin parity"
+      "description": "Full work center table — personnel administration"
     },
     "workstatus": {
       "notSet": "Status not set",

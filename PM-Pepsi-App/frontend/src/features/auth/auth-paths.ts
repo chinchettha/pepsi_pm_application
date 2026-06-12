@@ -9,7 +9,7 @@ import { resolvePostLoginPathForUserst } from '@/lib/primary-roles'
 /** หลัง login work center — default ช่าง → plan-calendar (หรือ /portal เมื่อเปิด portal) */
 export const POST_LOGIN_PATH_WORKCENTER = '/plan-calendar'
 
-/** หลัง login สมาชิก (login-bk) — เทียบ `?module=info` → หน้าแรก React */
+/** หลัง login สมาชิก — ไปหน้าแรก */
 export const POST_LOGIN_PATH_MEMBER = '/'
 
 function roleDefaultPath(mode: LoginMode, userst?: string | null): string {

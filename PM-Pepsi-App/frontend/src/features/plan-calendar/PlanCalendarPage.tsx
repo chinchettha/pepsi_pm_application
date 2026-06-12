@@ -22,7 +22,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 /**
- * เทียบ `sap/pages/M_plan_calendar.php` — ปฏิทินงานเปิดของช่าง (view_planwork + idwkctr)
+ * — ปฏิทินงานเปิดของช่าง (view_planwork + idwkctr)
  */
 export function PlanCalendarPage() {
   const { t } = useTranslation('scheduling')

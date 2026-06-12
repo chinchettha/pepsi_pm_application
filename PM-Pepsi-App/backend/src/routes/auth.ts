@@ -329,7 +329,7 @@ export function registerAuthRoutes(app: Express, pool: Pool, sessionSecret: stri
 
 
 
-  /** เทียบ `?module=logout` — ใช้ cookie + redirect จาก frontend `/logout` */
+ /** — ใช้ cookie + redirect จาก frontend `/logout` */
 
   app.get('/api/v1/auth/logout', requireAuth, async (req, res: Response) => {
 

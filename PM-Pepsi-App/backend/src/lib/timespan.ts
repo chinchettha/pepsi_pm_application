@@ -1,4 +1,4 @@
-/** เทียบ sap/include/function_calc_birthday.php — timespan() */
+/** Age/work duration helper (timespan) */
 export function timespanThai(fromUnixSec: number, toUnixSec: number = Math.floor(Date.now() / 1000)): string {
   if (!Number.isFinite(fromUnixSec) || fromUnixSec <= 0) return '—'
   let seconds = toUnixSec - fromUnixSec

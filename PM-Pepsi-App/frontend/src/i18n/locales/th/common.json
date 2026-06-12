@@ -196,7 +196,7 @@
     },
     "password": {
       "title": "เปลี่ยนรหัสผ่าน",
-      "hint": "เทียบ `member_change_password.php` — รองรับบัญชี Work center และสมาชิก (member)",
+      "hint": "รองรับบัญชี Work center และสมาชิก (member)",
       "success": "บันทึกรหัสผ่านใหม่เรียบร้อย",
       "current": "รหัสผ่านเดิม",
       "new": "รหัสผ่านใหม่",
@@ -297,9 +297,9 @@
     "mainNavGroup": "เมนูหลัก"
   },
   "parity": {
-    "shellTitle": "Parity กับระบบ PHP (sap/pages)",
+    "shellTitle": "รายละเอียดเพิ่มเติม",
     "summaryWeeklyTitle": "สรุปรายสัปดาห์",
-    "summaryWeeklyDesc": "เทียบ `W_summary_weekly.php` และชุด chart ที่เกี่ยวข้อง",
+    "summaryWeeklyDesc": "สรุปรายสัปดาห์และกราฟที่เกี่ยวข้อง",
     "summaryWeeklyLink": "สรุปรายสัปดาห์"
   },
   "rbac": {

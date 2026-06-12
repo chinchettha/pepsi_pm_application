@@ -111,7 +111,7 @@ export const calendarSearchBodySchema = z.object({
   toDate: isoDateSchema.optional(),
 })
 
-/** เทียบ `FilterDetail.php` + `FilterDetail_AddTeam.php` บน W_calendar.php */
+/** Calendar filter detail schema */
 export const calendarFilterDetailTeamSchema = z.object({
   count: z.number(),
   workSumMinutes: z.number(),

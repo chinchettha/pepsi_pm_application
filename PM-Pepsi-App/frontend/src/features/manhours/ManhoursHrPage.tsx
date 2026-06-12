@@ -1,5 +1,5 @@
 /**
- * Manhour HR — เทียบ PHP `W_manhours_hr.php` + % Utilization จาก `M_manhour_chart_performance.php`
+ * Manhour HR
  */
 import { AppCard } from '@/components/layout/AppCard'
 import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'

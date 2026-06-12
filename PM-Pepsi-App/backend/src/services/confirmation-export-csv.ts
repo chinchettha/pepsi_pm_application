@@ -1,7 +1,7 @@
 import { csvAttachmentBody, escapeCsvCell } from '../lib/csv.js'
 import type { ConfirmationExportRow } from './confirmation.js'
 
-/** Column headers aligned with `M_Export_confirm_excel.php` / `export.xlsx`. */
+/** Column headers aligned with SAP export.xlsx template. */
 const SAP_HEADERS = [
   '',
   'Comfirmation',

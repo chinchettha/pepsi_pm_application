@@ -23,7 +23,7 @@ function unixToIsoDate(sec: string | number | null): string | null {
 }
 
 /**
- * ตารางมอบหมายงานของช่าง — เทียบ `W_worktime_view.php` (join tbplangingwork + tbiw37n)
+ * ตารางมอบหมายงานของช่าง
  */
 export async function listWorktimePlanningAssignments(
   pool: Pool,

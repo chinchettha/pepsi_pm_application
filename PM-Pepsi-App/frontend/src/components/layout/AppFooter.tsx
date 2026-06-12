@@ -2,7 +2,7 @@ import { useAppVersion } from '@/lib/use-app-version'
 import { usePublicSettings } from '@/providers/SettingsProvider'
 import { useTranslation } from 'react-i18next'
 
-/** เทียบ sap/pages/footer.php */
+/** App footer */
 export function AppFooter() {
   const { t } = useTranslation('common')
   const { settings } = usePublicSettings()

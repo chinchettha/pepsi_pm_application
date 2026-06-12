@@ -95,7 +95,7 @@ export async function loadWorkcenterRow(
   return r.rows[0] ?? null
 }
 
-/** Legacy login.php — รองรับ plain text และ bcrypt ใน `pass` */
+/** Work center login — รองรับ plain text และ bcrypt ใน `pass` */
 export async function findWorkcenterByCredentials(
   pool: Pool,
   idwkctr: string,
@@ -162,7 +162,7 @@ async function loadPassMustChangeFlag(
   }
 }
 
-/** login-bk.php — tbl_member */
+/** Member login — tbl_member */
 export async function findMemberByCredentials(
   pool: Pool,
   username: string,

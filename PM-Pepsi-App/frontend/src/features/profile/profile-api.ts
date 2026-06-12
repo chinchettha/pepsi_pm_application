@@ -9,7 +9,7 @@ export async function fetchProfile() {
   return userProfileSchema.parse(json)
 }
 
-/** โหลดโปรไฟล์จาก GET /api/v1/auth/profile (เทียบ navbar.php + calc_birthday / calc_worktime) */
+/** โหลดโปรไฟล์จาก GET /api/v1/auth/profile */
 export function useProfileQuery(enabled = true) {
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn())
 

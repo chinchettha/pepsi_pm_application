@@ -34,7 +34,7 @@ export function calendarTodayStartSec(now: Date = new Date()): number {
   )
 }
 
-/** แสดงวันบนปฏิทิน — เทียบ pickDisplayUnix */
+/** แสดงวันบนปฏิทิน — same as calendar display date */
 export function sqlCalendarDisplayUnix(alias: string): string {
   const c = alias ? `${alias}.` : ''
   return `COALESCE(NULLIF(${c}cday, 0), NULLIF(${c}actfinish, 0), ${c}bscstart)`

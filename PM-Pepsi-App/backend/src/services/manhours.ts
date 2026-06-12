@@ -292,7 +292,7 @@ export async function deleteManhour(pool: Pool, idmanhour: number): Promise<bool
   return (r.rowCount ?? 0) > 0
 }
 
-/** เทียบ worktime_count.php — รวม wh + OT ทุกแถวของ idwkctr */
+/** Sum wh + OT for all rows of idwkctr */
 export async function getWorktimeTotal(
   pool: Pool,
   idwkctr: string,

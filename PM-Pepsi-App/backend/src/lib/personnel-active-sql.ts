@@ -1,5 +1,5 @@
 /**
- * เงื่อนไข "บุคลากรยังใช้งาน" — เทียบ `listPersonnelAdmin` filter `status=active`
+ * เงื่อนไข "บุคลากรยังใช้งาน"
  * (NULL/ว่าง นับว่ายังใช้งาน — data เก่าก่อน migration 039)
  */
 export function personnelIsActiveSql(wcAlias = 'wc'): string {

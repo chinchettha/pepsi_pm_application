@@ -292,7 +292,7 @@ export async function deleteWorkOrderPlanning(id: string) {
   return workOrderPlanningOkResponseSchema.parse(json)
 }
 
-/** ลบ assignment เฉพาะคู่ (idiw37, wkctr) — เทียบ AddPlan.php `st=Del` (multi-assign) */
+/** ลบ assignment เฉพาะคู่ (idiw37, wkctr) */
 export async function deleteWorkOrderPlanningAssignee(id: string, wkctr: string) {
   const json = await fetchApi<unknown>(
     `/api/v1/work-orders/${encodeURIComponent(id)}/planning/${encodeURIComponent(wkctr)}`,
@@ -407,7 +407,7 @@ export async function postCalendarFilterDetail(body: CalendarSearchInput) {
   return workOrderFilterDetailResponseSchema.parse(json)
 }
 
-/** เทียบ `M_plan_calendar.php` — events จาก `view_planwork` ตาม idwkctr */
+/** Plan calendar events from view_planwork by idwkctr */
 export async function fetchPlanCalendarEvents(year: number, month: number) {
   const json = await fetchApi<unknown>(
     `/api/v1/plan-calendar/events?year=${year}&month=${month}`,
@@ -568,7 +568,7 @@ export async function fetchMasterDataMeta(entity: string): Promise<{
 }
 
 /**
- * รวม lookup ทั้ง 5 ตัวที่ใช้ในฟอร์ม Admin Personnel — เทียบ legacy `personel_form_tab2.php`
+ * รวม lookup ทั้ง 5 ตัวที่ใช้ในฟอร์ม Admin Personnel
  * ส่งคู่ขนานเพื่อให้ TanStack Query cache ง่าย
  */
 export type PersonnelLookupOption = { value: string; label: string }
@@ -857,7 +857,7 @@ export async function fetchEngUtilizationDaily(opts: {
   return engUtilizationDailyResponseSchema.parse(json)
 }
 
-/** เทียบ `W_worktime_view.php` — ตารางมอบหมายงาน (tbplangingwork) */
+/** Work assignment table (tbplangingwork) */
 export async function fetchWorktimePlanning(opts: { idwkctr?: string; limit?: number } = {}) {
   const qs = new URLSearchParams()
   if (opts.idwkctr) qs.set('idwkctr', opts.idwkctr)
@@ -879,7 +879,7 @@ export async function fetchPersonnelDashboard() {
   return personnelDashboardResponseSchema.parse(json)
 }
 
-/** Admin CRUD `M_personel.php` — list + upsert + delete + import + image */
+/** Admin CRUD personnel — list + upsert + delete + import + image */
 export async function fetchPersonnelAdminList(
   opts: {
     q?: string
@@ -900,7 +900,7 @@ export async function fetchPersonnelAdminList(
 }
 
 /**
- * Lookup ตัวเลือก workstatus สำหรับ Admin form/filter — เทียบ legacy MySQL `tbwkctrstatus`
+ * Lookup ตัวเลือก workstatus สำหรับ Admin form/filter
  */
 export async function fetchPersonnelWorkstatusOptions() {
   const json = await fetchApi<unknown>(
@@ -969,7 +969,7 @@ export function personnelImageUrl(idwkctr: string, ver?: number | string) {
   return base ? `${base}${path}` : path
 }
 
-/** Personnel Confirmation dashboard — `M_personel_confirm.php` (Admin) */
+/** Personnel Confirmation dashboard (Admin) */
 export async function fetchPersonnelConfirm(opts: {
   q?: string
   status?: 'all' | 'not_started' | 'in_progress' | 'done' | 'qc_pending'
@@ -1098,7 +1098,7 @@ export async function fetchConfirmationExportXlsx(idiw37n?: number[]): Promise<B
   return res.blob()
 }
 
-/** SAP outbound CSV — same columns as `export.xlsx` / `M_Export_confirm_excel.php`. */
+/** SAP outbound CSV — same columns as export.xlsx template */
 export async function fetchConfirmationExportCsv(idiw37n?: number[]): Promise<Blob> {
   const base = getApiBaseUrl()
   const p = `/api/v1/confirmation/export.csv${confirmExportQuery(idiw37n)}`

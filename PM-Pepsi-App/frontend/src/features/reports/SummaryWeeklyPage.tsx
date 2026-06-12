@@ -1,5 +1,5 @@
 /**
- * Eng Utilization + สรุปรายสัปดาห์ — เทียบ `Eng Utilization 2026.xlsx` + `W_summary_weekly.php`
+ * Eng Utilization + สรุปรายสัปดาห์
  */
 import { AppCard } from '@/components/layout/AppCard'
 import { AppPageSection, AppPageShell } from '@/components/layout/AppPageShell'

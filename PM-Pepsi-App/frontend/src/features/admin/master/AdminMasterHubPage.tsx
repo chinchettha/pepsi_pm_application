@@ -119,9 +119,6 @@ export function AdminMasterHubPage() {
                       <TableCell>
                         <div className="font-medium text-app">{entity.label}</div>
                         <p className="font-mono text-xs text-app-muted">{entity.id}</p>
-                        {entity.legacy ? (
-                          <p className="text-xs text-app-muted">Legacy: {entity.legacy}</p>
-                        ) : null}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {q?.isLoading && !q.data ? (

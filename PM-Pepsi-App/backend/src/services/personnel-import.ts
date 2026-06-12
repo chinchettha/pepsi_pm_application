@@ -1,5 +1,5 @@
 /**
- * Parser สำหรับ Excel/CSV นำเข้า `Personel.xlsx` — เทียบ `M_personel.php` (sap/pages/M_personel.php)
+ * Parser สำหรับ Excel/CSV นำเข้า `Personel.xlsx`
  *
  * - Skip 2 rows แรก (PHP: `if ($n > 2)`)
  * - คอลัมน์ที่ใช้: Row[0]=idwkctr, Row[1]=titlewkctr, Row[2]=namewkctr, Row[3]=surnamewkctr,

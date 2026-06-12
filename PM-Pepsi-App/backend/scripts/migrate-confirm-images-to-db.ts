@@ -15,7 +15,7 @@ import { convertConfirmImageToWebp } from '../services/confirm-image.js'
 const dryRun = process.argv.includes('--dry-run')
 
 async function readLegacyFile(fileName: string): Promise<Buffer | null> {
-  for (const dir of CONFIRM_IMAGE_LEGACY_DIRS) {
+ for (const dir of CONFIRM_IMAGE_LEGACY_DIRS) {
     const abs = path.join(dir, fileName)
     try {
       return await fs.readFile(abs)

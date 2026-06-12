@@ -1,9 +1,9 @@
 import * as XLSX from 'xlsx'
 
 /**
- * แมปคอลัมน์ Excel ตาม M_Confirm.php + SAP ALV (Dynamic List Display)
+ * แมปคอลัมน์ Excel ตาม confirmation import + SAP ALV (Dynamic List Display)
  *
- * Legacy (M_Confirm): skip 2 แถว, index คงที่
+ * Fixed-column layout: skip 2 แถว, index คงที่
  * SAP ALV: หาแถว header (Confirm. + Order), แมปตามชื่อคอลัมน์
  */
 

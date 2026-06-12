@@ -1,5 +1,5 @@
 /**
- * Personnel routes — Personal Dashboard ของ user ปัจจุบัน + Admin CRUD (`M_personel*.php`)
+ * Personnel routes — Personal Dashboard ของ user ปัจจุบัน + Admin CRUD (personnel admin)
  * รวมถึง upload ภาพ (แปลงเป็น WebP เก็บใน DB) และ Excel import
  */
 import { getMulterFileSizeLimit } from '../lib/upload-settings.js'
@@ -145,7 +145,7 @@ export function registerPersonnelRoutes(
     },
   )
 
-  /* ─────── Personnel Confirmation Dashboard (M_personel_confirm.php) ─────── */
+ /* ─────── Personnel Confirmation Dashboard ─────── */
 
   app.get(
     '/api/v1/personnel/admin/confirm',
@@ -311,7 +311,7 @@ export function registerPersonnelRoutes(
     },
   )
 
-  /* ───────────────────────── Import (M_personel_imports.php) ───────────────────────── */
+ /* ───────────────────────── Import ───────────────────────── */
 
   app.post(
     '/api/v1/personnel/admin/import',
@@ -434,7 +434,7 @@ export function registerPersonnelRoutes(
     },
   )
 
-  // เปิดให้ทุก user ที่ login แล้วโหลดภาพได้ (เห็นกันได้ในระบบ) — เทียบ <img src="imgMember/..."> ของ PHP
+ // เปิดให้ทุก user ที่ login แล้วโหลดภาพได้ (เห็นกันได้ในระบบ) — <img src="imgMember/..."> ของ PHP
   app.get(
     '/api/v1/personnel/:idwkctr/image',
     requireAuthOnly,

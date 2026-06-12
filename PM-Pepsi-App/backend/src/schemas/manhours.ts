@@ -119,7 +119,7 @@ export const worktimeMeResponseSchema = z.object({
   items: z.array(worktimeDailyItemSchema),
 })
 
-/** เทียบ `W_worktime_view.php` — แถวมอบหมายจาก tbplangingwork */
+/** — แถวมอบหมายจาก tbplangingwork */
 export const worktimePlanningItemSchema = z.object({
   idplanw: z.number().int(),
   idiw37: z.number().int(),
