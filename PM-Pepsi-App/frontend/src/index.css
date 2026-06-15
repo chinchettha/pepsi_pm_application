@@ -4053,6 +4053,14 @@ html.dark .sidebar-tooltip {
 
 /* U4g.7 — Sheet nav drawer: sidebar shell over dialog glass · z above banners (z-15) */
 .app-sidebar-sheet.macos-sidebar {
+  /* .macos-sidebar sets position:relative — must win over Sheet fixed for full-viewport drawer */
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  height: 100svh;
+  max-height: 100svh;
+  min-height: 100svh;
   border-radius: 0;
   color: var(--app-sidebar-fg);
   background: linear-gradient(

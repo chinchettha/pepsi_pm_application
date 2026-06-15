@@ -50,7 +50,6 @@
     "hello": "สวัสดี {{name}}",
     "signInTitle": "เข้าสู่ระบบ",
     "signInTo": "เข้าสู่ระบบ {{app}}",
-    "signInHint": "ใช้บัญชี Work center หรือสมาชิกที่หัวหน้างานมอบให้",
     "signingIn": "กำลังเข้าสู่ระบบ…",
     "backHome": "กลับหน้าแรก",
     "openBoard": "จอ Engineering Board (kiosk)",

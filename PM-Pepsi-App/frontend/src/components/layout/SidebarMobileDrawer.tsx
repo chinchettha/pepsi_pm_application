@@ -24,7 +24,7 @@ export function SidebarMobileDrawer({
   onOpenChange,
   menuTriggerRef,
   responsiveHideClass,
-  drawerWidthClass = 'w-[min(100vw-2rem,18rem)] max-w-[min(100vw-2rem,18rem)]',
+  drawerWidthClass = 'w-[min(100vw,18rem)] max-w-[min(100vw,18rem)]',
   sidebarDensity = 'comfortable',
   children,
 }: SidebarMobileDrawerProps) {
@@ -43,8 +43,8 @@ export function SidebarMobileDrawer({
         )}
         className={cn(
           'app-sidebar-sheet app-sidebar macos-sidebar app-sidebar--drawer',
-          'z-[60] gap-0 border-0 border-r border-[var(--app-sidebar-border)] p-0',
-          'h-full overscroll-contain shadow-none',
+          'z-[60] min-h-0 gap-0 border-0 border-r border-[var(--app-sidebar-border)] p-0',
+          'overscroll-contain shadow-none',
           drawerWidthClass,
           'pb-[env(safe-area-inset-bottom,0px)]',
           responsiveHideClass,
@@ -74,7 +74,9 @@ export function SidebarMobileDrawer({
             <X className="size-5" />
           </Button>
         </div>
-        {children}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {children}
+        </div>
       </SheetContent>
     </Sheet>
   )

@@ -84,12 +84,12 @@ export function sidebarWidthClasses(width: SidebarWidth): {
     return {
       expanded: 'w-64',
       collapsed: 'w-14',
-      drawer: 'w-[min(100vw-2rem,20rem)] max-w-[min(100vw-2rem,20rem)]',
+      drawer: 'w-[min(100vw,20rem)] max-w-[min(100vw,20rem)]',
     }
   }
   return {
     expanded: 'w-60',
     collapsed: 'w-14',
-    drawer: 'w-[min(100vw-2rem,18rem)] max-w-[min(100vw-2rem,18rem)]',
+    drawer: 'w-[min(100vw,18rem)] max-w-[min(100vw,18rem)]',
   }
 }

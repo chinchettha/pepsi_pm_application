@@ -35,11 +35,16 @@ if (-not $DatabaseUrl) {
 
 $psql = Get-Command psql -ErrorAction SilentlyContinue
 if (-not $psql) {
-  $pg11 = 'C:\Program Files\PostgreSQL\11\bin\psql.exe'
-  if (Test-Path $pg11) { $psql = Get-Command $pg11 }
+  foreach ($candidate in @(
+      'C:\Program Files\PostgreSQL\18\bin\psql.exe',
+      'C:\Program Files\PostgreSQL\17\bin\psql.exe',
+      'C:\Program Files\PostgreSQL\11\bin\psql.exe'
+    )) {
+    if (Test-Path $candidate) { $psql = Get-Command $candidate; break }
+  }
 }
 if (-not $psql) {
-  Write-Error 'psql not in PATH. Use DBeaver to run files in database/migrations/ in order.'
+  Write-Error 'psql not in PATH. Run SQL files in database/migrations/ in order via pgAdmin.'
 }
 
 $files =
@@ -54,7 +59,7 @@ $files =
 
 Write-Host "Target: $($DatabaseUrl -replace ':[^:@]+@', ':***@')"
 $lastNum = ($files | ForEach-Object { if ($_.Name -match '^(\d{3})_') { [int]$Matches[1] } } | Measure-Object -Maximum).Maximum
-Write-Host "Running $($files.Count) migrations (001–$('{0:000}' -f $lastNum))..."
+Write-Host "Running $($files.Count) migrations (001-$('{0:000}' -f $lastNum))..."
 
 foreach ($f in $files) {
   Write-Host "  -> $($f.Name)"

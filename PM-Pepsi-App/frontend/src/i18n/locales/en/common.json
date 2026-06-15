@@ -50,7 +50,6 @@
     "hello": "Hello, {{name}}",
     "signInTitle": "Sign in",
     "signInTo": "Sign in to {{app}}",
-    "signInHint": "Use your work center or member account from your supervisor.",
     "signingIn": "Signing in…",
     "backHome": "Back to home",
     "openBoard": "Engineering Board (kiosk)",

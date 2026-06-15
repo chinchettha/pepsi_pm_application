@@ -197,7 +197,7 @@ export function WorkOrderDetailDialog({
     open &&
     typeof idiw37 === 'number' &&
     Number.isFinite(idiw37) &&
-    (activeTab === 'confirm' || (assignedLayout && activeTab === 'task-list'))
+    activeTab === 'confirm'
 
   const imagesQ = useQuery({
     queryKey: ['confirmation', 'images', idiw37],
@@ -635,13 +635,6 @@ export function WorkOrderDetailDialog({
                         pmExecution={modalQ.data.pmExecution}
                         onPmSaved={() => void modalQ.refetch()}
                       />
-                      {assignedLayout && typeof idiw37 === 'number' ? (
-                        <ConfirmationImagesPanel
-                          idiw37={idiw37}
-                          enabled={open && activeTab === 'task-list'}
-                          readOnly={!canConfirmWrite}
-                        />
-                      ) : null}
                     </div>
                   ) : null}
                 </WoModalTabFade>
@@ -983,6 +976,13 @@ export function WorkOrderDetailDialog({
                         void qc.invalidateQueries({ queryKey: ['work-order', orderId] })
                       }}
                     />
+                    {typeof idiw37 === 'number' ? (
+                      <ConfirmationImagesPanel
+                        idiw37={idiw37}
+                        enabled={open && activeTab === 'confirm'}
+                        readOnly={!canConfirmWrite}
+                      />
+                    ) : null}
                     <WorkOrderSupervisorCloseSection
                       readOnly={!canConfirmWrite}
                       closeWkctr={closeWkctr}

@@ -6,7 +6,7 @@ describe('sidebar-prefs', () => {
     expect(sidebarWidthClasses('narrow')).toEqual({
       expanded: 'w-60',
       collapsed: 'w-14',
-      drawer: 'w-[min(100vw-2rem,18rem)] max-w-[min(100vw-2rem,18rem)]',
+      drawer: 'w-[min(100vw,18rem)] max-w-[min(100vw,18rem)]',
     })
     expect(sidebarWidthClasses('wide').expanded).toBe('w-64')
     expect(sidebarWidthClasses('wide').drawer).toContain('20rem')

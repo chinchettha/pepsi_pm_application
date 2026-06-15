@@ -143,16 +143,9 @@ export function LoginPage() {
               <h1 className="login-page__title text-heading-page font-semibold">
                 {t('auth.signInTitle')}
               </h1>
-              <p id="login-hint" className="mt-2 text-caption text-app-muted">
-                {t('auth.signInHint')}
-              </p>
             </div>
 
-            <form
-              onSubmit={onSubmit}
-              className="login-page__form mt-6 space-y-4"
-              aria-describedby="login-hint"
-            >
+            <form onSubmit={onSubmit} className="login-page__form mt-6 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="login-username" className="login-page__label">
                   {t('auth.username')}
