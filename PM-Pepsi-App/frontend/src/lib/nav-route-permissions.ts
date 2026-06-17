@@ -16,6 +16,7 @@ export const NAV_ROUTE_PERMISSION: Record<string, string> = {
   '/planning': 'planning.read',
   '/integration': 'iw37n.read',
   '/iw37n': 'iw37n.read',
+  '/master-plan': 'master-data.read',
   '/master-data': 'master-data.read',
   '/manhours': 'manhours.read',
   '/worktime': 'manhours.read',

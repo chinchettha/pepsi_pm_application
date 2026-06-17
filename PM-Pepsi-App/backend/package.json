@@ -16,7 +16,9 @@
     "uat:phase2-zb02all": "tsx scripts/phase2-uat-zb02all.ts",
     "uat:reset-iw37n": "tsx scripts/uat-reset-iw37n.ts",
     "probe:functionalloc": "tsx scripts/probe-functionalloc-7151.ts",
-    "migrate:confirm-images": "tsx scripts/migrate-confirm-images-to-db.ts"
+    "migrate:confirm-images": "tsx scripts/migrate-confirm-images-to-db.ts",
+    "seed:master-plan": "tsx scripts/seed-master-plan.ts",
+    "verify:master-plan": "tsx scripts/verify-master-plan-fidelity.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

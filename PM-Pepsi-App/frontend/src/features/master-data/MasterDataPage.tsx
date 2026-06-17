@@ -21,7 +21,6 @@ import {
   type ZoneItem,
 } from '@/api/schemas'
 import { ActivityTypePanel } from '@/features/master-data/ActivityTypePanel'
-import { PmMasterProcessPanel } from '@/features/master-data/PmMasterProcessPanel'
 import {
   MasterDataConfirmDelete,
   MasterDataEntityDialogTitle,
@@ -135,7 +134,7 @@ import {
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 const TAB_IDS = [
@@ -151,9 +150,6 @@ const TAB_IDS = [
   'level',
   'position',
   'activitytype',
-  'pm-master-ee',
-  'pm-master-me',
-  'pm-master-pk',
   'workstatus',
   'reason',
   'group',
@@ -4270,12 +4266,15 @@ function GenericMasterTable({
   )
 }
 
+const PM_MASTER_ENTITY_TO_DISCIPLINE: Record<string, string> = {
+  'pm-master-ee': 'EE',
+  'pm-master-me': 'ME',
+  'pm-master-pk': 'PK',
+}
+
 function MasterTable({ entity }: { entity: string }) {
   const enableGenericQuery =
     entity !== 'activitytype' &&
-    entity !== 'pm-master-ee' &&
-    entity !== 'pm-master-me' &&
-    entity !== 'pm-master-pk' &&
     entity !== 'department' &&
     entity !== 'equipment' &&
     entity !== 'functional' &&
@@ -4301,18 +4300,6 @@ function MasterTable({ entity }: { entity: string }) {
 
   if (entity === 'activitytype') {
     return <ActivityTypePanel />
-  }
-
-  if (entity === 'pm-master-ee') {
-    return <PmMasterProcessPanel discipline="EE" />
-  }
-
-  if (entity === 'pm-master-me') {
-    return <PmMasterProcessPanel discipline="ME" />
-  }
-
-  if (entity === 'pm-master-pk') {
-    return <PmMasterProcessPanel discipline="PK" />
   }
 
   if (entity === 'department') {
@@ -4400,21 +4387,26 @@ export function MasterDataPage() {
   }))
   const [searchParams, setSearchParams] = useSearchParams()
   const entityFromUrl = searchParams.get('entity')?.trim() ?? ''
+  const redirectDiscipline = PM_MASTER_ENTITY_TO_DISCIPLINE[entityFromUrl]
   const [tab, setTab] = useState<string>('activitytype')
 
   useEffect(() => {
     if (!entityFromUrl) return
     if (!tabsLocalized.some((row) => row.id === entityFromUrl)) return
     setTab((prev) => (prev === entityFromUrl ? prev : entityFromUrl))
-  }, [entityFromUrl])
+  }, [entityFromUrl, tabsLocalized])
 
-  const pageHints = t('page.hints', { returnObjects: true }) as string[]
+  if (redirectDiscipline) {
+    return <Navigate to={`/master-plan?discipline=${redirectDiscipline}`} replace />
+  }
+
+  const pageHints = t('referencePage.hints', { returnObjects: true }) as string[]
 
   if (!canRead) {
     return (
       <AppPageShell
-        title={t('page.title')}
-        description={t('page.description')}
+        title={t('referencePage.title')}
+        description={t('referencePage.description')}
         hints={pageHints}
       >
         <EmptyState
@@ -4436,14 +4428,17 @@ export function MasterDataPage() {
 
   return (
     <AppPageShell
-      title={t('page.title')}
-      description={t('page.description')}
+      title={t('referencePage.title')}
+      description={t('referencePage.description')}
       hints={pageHints}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs tabular-nums">
-            {t('page.tabCount', { count: tabsLocalized.length })}
+            {t('referencePage.tabCount', { count: tabsLocalized.length })}
           </Badge>
+          <Button type="button" variant="outline" size="sm" asChild>
+            <Link to="/master-plan">{t('referencePage.openMasterPlan')}</Link>
+          </Button>
           <Button type="button" variant="outline" size="sm" asChild>
             <Link to="/admin/master">{t('page.masterHub')}</Link>
           </Button>

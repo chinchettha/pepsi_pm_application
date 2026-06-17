@@ -216,7 +216,7 @@
   "iw37nPage": {
     "title": "IW37N",
     "description": "นำเข้า Excel/CSV จาก SAP · แก้รายแถว · ประวัติ batch · สแกนโฟลเดอร์ inbound",
-    "hints": ["นำเข้า Excel", "ประวัติ batch", "แก้รายแถว", "Master PM → ข้อมูลหลัก"],
+    "hints": ["นำเข้า Excel", "ประวัติ batch", "แก้รายแถว", "Master PM → Master Plan"],
     "noAccess": "ไม่มีสิทธิ์เข้าถึง",
     "noAccessDesc": "ต้องมีสิทธิ์",
     "badgeSap": "นำเข้า SAP",
@@ -232,7 +232,7 @@
     "importMasterBefore": "ไฟล์ ",
     "importMasterStrong": "MASTER PM",
     "importMasterMid": " ให้อัปโหลดที่ ",
-    "importMasterLink": "ข้อมูลหลัก",
+    "importMasterLink": "Master Plan",
     "selectFileLabel": "เลือกไฟล์",
     "importNow": "นำเข้าเลย",
     "importing": "กำลังนำเข้า…",

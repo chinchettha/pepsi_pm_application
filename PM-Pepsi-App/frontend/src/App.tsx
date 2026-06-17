@@ -12,6 +12,7 @@ import { ManhoursHrPage } from '@/features/manhours/ManhoursHrPage'
 import { ManhoursPage } from '@/features/manhours/ManhoursPage'
 import { WorktimePage } from '@/features/manhours/WorktimePage'
 import { MasterDataPage } from '@/features/master-data/MasterDataPage'
+import { MasterPlanPage } from '@/features/master-plan/MasterPlanPage'
 import { PersonnelConfirmPage } from '@/features/personnel/PersonnelConfirmPage'
 import { PersonnelPage } from '@/features/personnel/PersonnelPage'
 import { PlanCalendarPage } from '@/features/plan-calendar/PlanCalendarPage'
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="planning" element={<PlanningPage />} />
           <Route path="integration" element={<IntegrationPage />} />
           <Route path="iw37n" element={<Iw37nPage />} />
+          <Route path="master-plan" element={<MasterPlanPage />} />
           <Route path="master-data" element={<MasterDataPage />} />
           <Route path="manhours" element={<ManhoursPage />} />
           <Route path="manhours/admin" element={<Navigate to="/manhours" replace />} />

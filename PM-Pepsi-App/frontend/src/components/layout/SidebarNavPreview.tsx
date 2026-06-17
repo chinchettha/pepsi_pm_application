@@ -20,7 +20,7 @@ export const SIDEBAR_PREVIEW_MOCK_NAV: NavEntry[] = [
   { kind: 'item', to: '/work-orders', label: 'Work orders', icon: ClipboardList, menuright: 'A:U:W' },
   { kind: 'item', to: '/confirmation', label: 'Export', icon: Home, menuright: 'A:U:W' },
   { kind: 'heading', label: 'ADMIN' },
-  { kind: 'item', to: '/master-data', label: 'Master data', icon: Wrench, menuright: 'A' },
+  { kind: 'item', to: '/master-plan', label: 'Master Plan', icon: Wrench, menuright: 'A' },
   { kind: 'item', to: '/', label: 'Dashboard', icon: Home, menuright: 'A:U:W', end: true },
 ]
 

@@ -98,7 +98,7 @@
 | `confirmation.read` / `.import` / `.export` | `/confirmation`, export |
 | `planning.read` / `.assign` | `/planning`, `/plan-calendar` |
 | `iw37n.read` / `.import` / `.write` | `/iw37n`, `/integration` |
-| `master-data.read` / `.write` | `/master-data`, `/admin/master` |
+| `master-data.read` / `.write` | `/master-plan`, `/master-data`, `/admin/master` |
 | `manhours.read` / `manhours.admin` | `/manhours`, `/manhours/admin`, `/worktime` |
 | `personnel.read` / `.confirm.read` | `/personnel`, `/personnel/confirm` |
 | `reports.read` | รายงานทุกหน้าในกลุ่มรายงาน |
@@ -371,21 +371,81 @@
 
 ---
 
-### 6.4 ข้อมูลหลัก Master Data (`/master-data`)
+### 6.4 Master Plan (`/master-plan`) และ Master Data SAP (`/master-data`)
 
 | รายการ | รายละเอียด |
 |--------|------------|
-| **สิทธิ์** | `master-data.read` · แก้ `master-data.write` |
-| **จุดประสงค์** | จัดการตาราง master ~17 กลุ่ม (department, equipment, task list, wktype, ฯลฯ) |
+| **Master Plan** | `/master-plan` — แผน PM ประจำปี EE / ME / PK จาก Excel ลูกค้า |
+| **Master Data (SAP)** | `/master-data` — ตารางอ้างอิง SAP (~17 กลุ่ม) |
+| **สิทธิ์** | `master-data.read` · แก้ master SAP ใช้ `master-data.write` |
+| **เมนู sidebar** | Master Plan → `/master-plan` · Master Data (SAP) → `/master-data` |
 
-**ขั้นตอนทั่วไป (ทุกแท็บ)**
+**Master Plan — ดูและแก้ไข (Phase 2)**
 
-1. เลือก **แท็บ** ประเภทข้อมูล
-2. **ค้นหา/กรอง** ในรายการ
-3. **เพิ่ม** / **แก้** / **ลบ** (ถ้ามีสิทธิ์ write)
-4. บางแท็บรองรับ **นำเข้า CSV/Excel** (เช่น Equipment, Activity type — ข้าม 2 แถวแรกสำหรับ Excel ตาม PHP)
+1. เปิด **`/master-plan`** (เมนู Master Plan)
+2. เลือกแท็บ:
+   - **Process · ไฟฟ้า (EE)** — แผน PM ไฟฟ้า ฝั่งหน้าเตา
+   - **Process · เครื่องกล (ME)** — แผน PM เครื่องกล ฝั่งหน้าเตา
+   - **Packing (PK)** — แผน PM ห้องแพ็ค
+3. เลือก **แท็บ sheet** ตามชื่อใน Excel ลูกค้า (เช่น SCHAAF#1, BCP, STAX) — EE/ME ใช้แท็บเลื่อน · PK ใช้ช่องค้นหา sheet
+4. ดูตาราง PM — คอลัมน์ต่อ sheet · Zone / Machine List แสดง fill-down เหมือน Excel · scroll แนวนอนแล้ว Zone/Machine List ติดซ้าย
+5. **แก้ไขเซลล์** (ต้องมี `master-data.write`) — ดับเบิลคลิกเซลล์บน detail sheet · Zone / Machine List อ่านอย่างเดียว · ไอคอน **?** ที่หัวคอลัมน์ = คำอธิบาย (EN/TH) · Enter บันทึก · Esc ยกเลิก
+6. **ประวัติการแก้ไข** — ปุ่ม **Change history** (สีน้ำเงิน) เปิดแผงกลางจอ · กรองตาม sheet / วันที่ / ผู้แก้ / ชื่อคอลัมน์ · แสดง before/after · **Go to row** กระโดดไปแถว · **Export CSV** ดาวน์โหลด log
+7. **ลิงก์แถว** (คอลัมน์ **ลิงก์** ด้านขวา) — เปิดเมนูเพื่อไป IW37N (กรอง mntplan) · เปิด WO modal · PM 3-phase · Task list / Equipment master · badge แสดงจำนวน WO ที่ match
 
-**Hub สรุป:** `/admin/master` — ลิงก์และ KPI ตาราง master (ไม่แทนที่การแก้ใน `/master-data`)
+**Master Plan — นำเข้า / ส่งออก / เผยแพร่ (Phase 4)**
+
+ปุ่มที่หัวหน้า (ต้องมี `master-data.write` สำหรับ Import / Publish):
+
+| ปุ่ม | หน้าที่ |
+|------|--------|
+| **Import Excel** | อัปโหลดไฟล์ `.xlsx` จากลูกค้า → บันทึกเป็น **draft** (version ใหม่) · แสดงสรุป diff ถ้าโครง sheet ไม่ตรงจะ reject |
+| **Export Excel** | ดาวน์โหลด workbook **published** ปัจจุบันเป็น `.xlsx` (round-trip ตามข้อมูลใน DB) |
+| **Export draft** | แสดงเมื่อมี draft — ดาวน์โหลด draft ก่อนเผยแพร่ |
+| **Publish to task list** | เลื่อน draft เป็น published (ถ้ามี) · sync แถว detail ไป **`tbtasklist`** · แถวที่ข้อมูลไม่ครบถูกข้าม |
+
+**สถานะ sync (badge หัวหน้า):**
+
+| Badge | ความหมาย |
+|-------|----------|
+| **Task list in sync** | เคย Publish แล้ว · ไม่มี draft ค้าง |
+| **Draft pending** | มี draft จาก Import รอ Publish |
+| **Not published to task list yet** | ยังไม่เคย Publish ไป task list |
+| **Draft vN** | มี workbook draft version N |
+
+**วงจรอัปเดตแผนประจำปี (แนะนำ):** ลูกค้าส่ง Excel ใหม่ → **Import** → ตรวจ diff บนจอ → **Publish** → ตรวจ Task list ที่ `/master-data` แท็บ Task list
+
+**ภาษาและความเหมือนต้นฉบับ (Fidelity — ไม่แปลข้อมูล Excel)**
+
+| รายการ | พฤติกรรม |
+|--------|----------|
+| **ชื่อคอลัมน์** | แสดงตามไฟล์ Excel ของ sheet นั้น (เช่น `Zone`, `PM list`, `freq (day)`) — เก็บใน DB เป็น `column_headers_json` · **ไม่แปล** เมื่อสลับ EN/ไทย |
+| **ค่าในเซลล์** | ข้อความ PM list ภาษาไทย/อังกฤษ แสดง **ตามที่ seed จาก Excel** · ไม่ผ่าน i18n |
+| **ชื่อ sheet** | ตรงไฟล์ลูกค้า (เช่น `PK1 (Production)`) |
+| **สิ่งที่แปลได้** | ปุ่ม เมนู ข้อความช่วยเหลือ ตัวกรอง changelog — คีย์ `masterPlan.*` / `masterPlanPage.*` · ไอคอน **?** ที่หัวคอลัมน์ |
+
+**UAT Phase 1.5–4 (ตรวจแล้วใน dev):**
+
+| รายการ | ผล |
+|--------|-----|
+| หน้า Master Plan ไม่มีแท็บ Equipment / Material | ✅ แยก route `/master-plan` — SAP อยู่ `/master-data` |
+| สลับ sheet STAX → BCP (EE) ≤ 3 คลิก | ✅ 2 คลิก (แท็บ sheet) |
+| PK ค้นหา `PK1 (Production)` | ✅ dropdown + search บน PK (37 sheets) |
+| แก้เซลล์ + changelog who/when/before/after | ✅ Phase 2 |
+| ลิงก์แถว → IW37N / WO / PM 3-phase | ✅ Phase 3 |
+| Import draft · Export xlsx · Publish → task list | ✅ Phase 4 |
+
+**ลิงก์เก่า:** `/master-data?entity=pm-master-ee|me|pk` → redirect ไป `/master-plan?discipline=EE|ME|PK`
+
+**Dev — โหลดข้อมูลครั้งแรก:** `cd PM-Pepsi-App/backend && npm run seed:master-plan`
+
+**Master Data (SAP)** — `/master-data`
+
+1. เลือกแท็บประเภทข้อมูล (ไม่มีแท็บ Master Plan · ปุ่ม **เปิด Master Plan** ที่หัวหน้า)
+2. **ค้นหา/กรอง** · **เพิ่ม/แก้/ลบ** (ถ้ามีสิทธิ์ write)
+3. บางแท็บรองรับ **นำเข้า CSV/Excel**
+
+**Hub สรุป:** `/admin/master` — ลิงก์และ KPI ตาราง master
 
 ---
 

@@ -341,7 +341,8 @@
     "metaLoadFailed": "โหลด meta ไม่สำเร็จ",
     "totalLoaded": "รวม ({{loaded}}/{{total}} ตารางโหลดแล้ว)",
     "footerHint": "ลิงก์เปิดแท็บ entity ที่ตรงกัน ·",
-    "goMasterData": "ไปหน้า Master Data",
+    "goMasterData": "ไปหน้า Master Plan",
+    "goReferenceData": "ตารางอ้างอิง SAP",
     "adminConsole": "ศูนย์ผู้ดูแลระบบ"
   },
   "announcements": {

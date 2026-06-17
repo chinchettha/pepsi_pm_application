@@ -48,9 +48,9 @@ import {
   Table2,
   Upload,
 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { TFunction } from 'i18next'
 
@@ -62,6 +62,7 @@ function duplicateToastMsg(t: TFunction<'integration'>, batchId: string | null):
 
 export function Iw37nPage() {
   const { t } = useTranslation('integration')
+  const [searchParams] = useSearchParams()
   const canRead = usePermission('iw37n.read')
   const canWrite = usePermission('iw37n.write')
   const canImport = useAnyPermission(['iw37n.import', 'iw37n.write'])
@@ -277,6 +278,14 @@ export function Iw37nPage() {
   const [itemQ, setItemQ] = useState('')
   const [itemOffset, setItemOffset] = useState(0)
   const itemLimit = 100
+
+  useEffect(() => {
+    const q = searchParams.get('q')?.trim() ?? ''
+    if (q) {
+      setItemQ(q)
+      setItemOffset(0)
+    }
+  }, [searchParams])
 
   const itemsQ = useQuery({
     queryKey: ['iw37n-items', itemQ, itemLimit, itemOffset],
@@ -537,7 +546,7 @@ export function Iw37nPage() {
                   {t('iw37nPage.importMasterBefore')}
                   <strong>{t('iw37nPage.importMasterStrong')}</strong>
                   {t('iw37nPage.importMasterMid')}
-                  <Link to="/master-data" className="font-medium underline underline-offset-2">
+                  <Link to="/master-plan" className="font-medium underline underline-offset-2">
                     {t('iw37nPage.importMasterLink')}
                   </Link>
                 </p>

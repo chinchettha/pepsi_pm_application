@@ -10,6 +10,7 @@ const ROUTE_HINT_KEYS: Record<string, string> = {
   '/confirmation': 'confirmation',
   '/planning': 'planning',
   '/iw37n': 'iw37n',
+  '/master-plan': 'masterPlan',
   '/master-data': 'masterData',
   '/manhours': 'manhours',
   '/worktime': 'worktime',

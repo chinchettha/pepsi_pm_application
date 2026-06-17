@@ -341,7 +341,8 @@
     "metaLoadFailed": "Could not load meta",
     "totalLoaded": "Total ({{loaded}}/{{total}} tables loaded)",
     "footerHint": "Links open the matching entity tab ·",
-    "goMasterData": "Go to Master Data",
+    "goMasterData": "Go to Master Plan",
+    "goReferenceData": "SAP reference tables",
     "adminConsole": "Admin Console"
   },
   "announcements": {

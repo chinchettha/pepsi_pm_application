@@ -13,6 +13,7 @@ import { registerCalendarRoutes } from './routes/calendar.js'
 import { registerIw37nRoutes } from './routes/iw37n.js'
 import { registerIntegrationRoutes } from './routes/integration.js'
 import { registerMasterDataRoutes } from './routes/master-data.js'
+import { registerMasterPlanRoutes } from './routes/master-plan.js'
 import { registerSchedulingRoutes } from './routes/scheduling.js'
 import { registerWorkOrderRoutes } from './routes/work-orders.js'
 import { registerManhoursRoutes } from './routes/manhours.js'
@@ -100,6 +101,7 @@ export function createApp(opts: {
   registerNavRoutes(app, opts.pool, opts.sessionSecret)
   registerProfileRoutes(app, opts.pool, opts.sessionSecret)
   registerMasterDataRoutes(app, opts.pool, opts.sessionSecret)
+  registerMasterPlanRoutes(app, opts.pool, opts.sessionSecret)
   registerWorkOrderRoutes(app, opts.pool, opts.sessionSecret)
   registerSchedulingRoutes(app, opts.pool, opts.sessionSecret)
   registerDashboardRoutes(app, opts.pool, opts.sessionSecret)

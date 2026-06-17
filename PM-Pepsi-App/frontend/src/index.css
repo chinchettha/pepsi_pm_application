@@ -2516,6 +2516,55 @@ html.dark .app-table-shell {
   background: color-mix(in srgb, var(--app-accent) 6%, var(--app-surface));
 }
 
+/* Master Plan — sticky Zone + Machine List column offsets */
+.master-plan-excel-table {
+  --mp-sticky-col1-width: 4.5rem;
+}
+
+.master-plan-excel-table .app-table-sticky--col-2 {
+  left: var(--mp-sticky-col1-width);
+}
+
+.master-plan-excel-table tbody tr.bg-\[\#f5f8fc\] .app-table-sticky,
+.master-plan-excel-table tbody tr.bg-\[\#f5f8fc\] .app-table-sticky--col-2 {
+  background: #f5f8fc;
+}
+
+.master-plan-excel-table tbody tr.bg-white .app-table-sticky,
+.master-plan-excel-table tbody tr.bg-white .app-table-sticky--col-2 {
+  background: #fff;
+}
+
+.master-plan-excel-table tbody tr:hover .app-table-sticky,
+.master-plan-excel-table tbody tr:hover .app-table-sticky--col-2 {
+  background: #e9eff7;
+}
+
+.master-plan-excel-table thead th.app-table-sticky,
+.master-plan-excel-table thead th.app-table-sticky--col-2 {
+  background: #2f5597;
+}
+
+@keyframes master-plan-cell-flash-keyframes {
+  0%,
+  20% {
+    background-color: #c6efce;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.master-plan-cell-flash {
+  animation: master-plan-cell-flash-keyframes 2.5s ease-out;
+}
+
+.master-plan-row-focus {
+  outline: 2px solid #2f5597;
+  outline-offset: -2px;
+  background: #e9eff7 !important;
+}
+
 /* Planning list — single-row feedback after assign (PRE-UAT U4c) */
 @keyframes planning-row-assign-highlight {
   0% {

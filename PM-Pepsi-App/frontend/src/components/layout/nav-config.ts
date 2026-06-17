@@ -75,7 +75,8 @@ export const appNav: NavEntry[] = [
     menuright: 'A',
   },
   { kind: 'item', to: '/iw37n', label: 'IW37N Import', icon: Database, menuright: 'A' },
-  { kind: 'item', to: '/master-data', label: 'Master Data', icon: Boxes, menuright: 'A' },
+  { kind: 'item', to: '/master-plan', label: 'Master Plan', icon: Boxes, menuright: 'A' },
+  { kind: 'item', to: '/master-data', label: 'Master Data (SAP)', icon: Database, menuright: 'A' },
 
   { kind: 'heading', label: 'Hours & Personnel' },
   { kind: 'item', to: '/manhours', label: 'Manhours', icon: Timer, menuright: 'A' },

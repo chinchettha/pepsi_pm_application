@@ -40,6 +40,7 @@ import {
 import { useMemo, useRef, useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 type DraftRow = {
@@ -123,6 +124,7 @@ const EMPTY_WO_HEADER = {
 
 export function PmVibrationPage() {
   const { t } = useTranslation('pmVibration')
+  const [searchParams] = useSearchParams()
   const canWrite = usePermission('confirmation.write')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -143,6 +145,15 @@ export function PmVibrationPage() {
     completedBy: '',
   })
   const [importing, setImporting] = useState(false)
+
+  useEffect(() => {
+    const wk = searchParams.get('wkorder')?.trim()
+    if (wk) {
+      setOrderId(wk)
+      setWkorderLabel(wk)
+      setSearchQ(wk)
+    }
+  }, [searchParams])
 
   const modalQ = useQuery({
     queryKey: ['work-order', 'modal-detail', orderId, 'pm-vibration'],

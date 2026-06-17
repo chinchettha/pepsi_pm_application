@@ -15,7 +15,7 @@
 | **นำเข้า Confirm IN คู่ ZB02All** | **ยังไม่ผ่าน** | ไม่มีไฟล์ Confirm ในโฟลเดอร์ที่ **Order ตรง** กับ ZB02All |
 | **ไฟล์ ZB02All 1** | **ไม่ใช่ Confirm** | เนื้อหา **เหมือน ZB02All ทุก Order** — ใช้นำเข้า IW37N ได้ แต่ **ไม่ใช่** แท็บ Confirm IN |
 | **Export_Confirm (26May).xlsx** | **ยัง parse ไม่ได้** | 0 แถว Confirm — รูปแบบคอลัมน์ไม่ตรง parser ปัจจุบัน |
-| **Master PM / Task List / Eng Time** | **อ้างอิง** | ไม่ใช่ไฟล์ IW37N/Confirm — ใช้วางแผน/อ้างอิง master แยกต่างหาก |
+| **Master PM / Task List / Eng Time** | **อ้างอิง + Master Plan** | Master PM 3 ไฟล์ → `/master-plan` (อ่าน/แก้/import/export/publish) · Eng Time = UAT แยก |
 | **IW37N & MB51 template (SAP)** | **อ้างอิง** | 5 sheets — ข้อมูล WO อยู่ **IW37N Excel** · MB51 = วัสดุ |
 | **Template PM ค่าวัด (กระแส 3 เฟส)** | **ผ่าน** | Template ในระบบ parse ได้ 9 แถว · 0 error (แก้ตาม feedback ลูกค้า) |
 
@@ -30,9 +30,9 @@
 | 1 | `Templete IW37N on PM App - ZB02All.xlsx` | **IW37N (ZB02)** | **ผ่าน** — 522 แถว · Order `4001570392` … `4001570931` (516 Order) | ใช้ที่ `/integration` หรือ `/iw37n` → แท็บ **นำเข้า IW37N** |
 | 2 | `Templete IW37N on PM App - ZB02All 1.xlsx` | **IW37N (ซ้ำ #1)** | **Identical กับ #1** | **ไม่ใช่ Confirm IN** — ไม่ต้องอัปที่แท็บ Confirm |
 | 3 | `Export_Confirm (26May).xlsx` | คาดว่า Confirm IN | **ไม่ผ่าน** — parser ได้ 0 แถว | ขอ export SAP รูปแบบ ALV Confirm / IW47 ที่มี Order ตรง ZB02All |
-| 4 | `01-MASTER PM PROCESS EE 2026.xlsx` | Master แผน PM (EE) | ไม่ใช่ IW37N | อ้างอิง task/เครื่อง — ยังไม่ import อัตโนมัติ |
-| 5 | `02-MASTER PM PROCESS ME 2026.xlsx` | Master แผน PM (ME) | ไม่ใช่ IW37N | อ้างอิง master |
-| 6 | `03-MASTER PM PACKING 2026.xlsx` | Master แผน PM (Packing) | ไม่ใช่ IW37N | อ้างอิง master |
+| 4 | `01-MASTER PM PROCESS EE 2026.xlsx` | Master แผน PM (EE) | ไม่ใช่ IW37N | **Phase 1–4 ✅** — seed + UI `/master-plan` · แก้/log/import/export/publish |
+| 5 | `02-MASTER PM PROCESS ME 2026.xlsx` | Master แผน PM (ME) | ไม่ใช่ IW37N | **Phase 1–4 ✅** — `/master-plan?discipline=ME` |
+| 6 | `03-MASTER PM PACKING 2026.xlsx` | Master แผน PM (Packing) | ไม่ใช่ IW37N | **Phase 1–4 ✅** — `/master-plan?discipline=PK` (37 sheets) |
 | 7 | `PMTaskList (Test PK1DC).xlsx` | Task list ทดสอบ | ไม่ใช่ IW37N/Confirm | อ้างอิง PK1 DC |
 | 8 | `LPN Engineer Time 2026.04.xlsx` | Man-hour / Utilization | ไม่ใช่ IW37N | ใช้เทียบรายงาน Eng Utilization (UAT แยก) |
 | 9 | `Code ช่าง Eng.xls` | รหัสช่าง / Work center | ไม่ใช่ IW37N | อ้างอิง mapping ช่าง |
@@ -110,6 +110,24 @@ npm run uat:phase2-zb02all -- --reset
 - โครง 10 คอลัมน์ · Sheet **กระแส 3 เฟส** (Phase R/S/T) · Sheet **Vibration 3 แกน** (แกน X/Y/Z)
 - รายละเอียด: [`PM-MEASUREMENTS-3PHASE-CURRENT.md`](PM-MEASUREMENTS-3PHASE-CURRENT.md)
 
+### 4.4 Master Plan EE / ME / PK (ไฟล์ `01`–`03-MASTER PM … 2026.xlsx`)
+
+**หน้า:** `/master-plan` (เมนู **Master Plan** — แยกจาก Master Data SAP ที่ `/master-data`)
+
+| ลำดับ | รายการ UAT | ผ่าน | หมายเหตุ |
+|------|------------|:----:|----------|
+| 1 | เปิด EE — แท็บ sheet ชื่อและลำดับตรง Excel | ☐ | 15 sheets |
+| 2 | เปิด ME — รวม `legend`, `Total Master plan` | ☐ | 16 sheets |
+| 3 | เปิด PK — มีทั้ง `PK1` และ `PK1 (Production)` | ☐ | 37 sheets · ค้นหา sheet |
+| 4 | Zone / Machine List fill-down ตรง Excel | ☐ | เทียบแถวที่เซลล์ว่าง |
+| 5 | ดับเบิลคลิกแก้ PM list / days / Min → refresh ยังอยู่ | ☐ | ต้องมี `master-data.write` |
+| 6 | Change history แสดง who / when / before / after | ☐ | ปุ่ม Change history |
+| 7 | ลิงก์แถว → IW37N / WO | ☐ | คอลัมน์ Links |
+| 8 | Export Excel แล้วเปรียบจำนวนแถวต่อ sheet | ☐ | ปุ่ม Export Excel |
+| 9 | Import Excel ใหม่ → draft + Publish → Task list | ☐ | วงจรประจำปี |
+
+**Dev verify:** `cd PM-Pepsi-App/backend && npm run verify:master-plan`
+
 ---
 
 ## 6) Template SAP โดยตรง — `IW37N & MB51 template.xlsx`
@@ -153,6 +171,8 @@ npm run uat:phase2-zb02all -- --reset
 - [`UAT-ZB02ALL-TEMPLATE.md`](UAT-ZB02ALL-TEMPLATE.md) — รายละเอียด technical ZB02All
 - [`PM-MEASUREMENTS-3PHASE-CURRENT.md`](PM-MEASUREMENTS-3PHASE-CURRENT.md) — สเปก PM กระแส 3 เฟส
 - [`MEETING-SUMMARY-REQUIREMENTS.md`](MEETING-SUMMARY-REQUIREMENTS.md) — checklist ความต้องการรวม
+- [`../superpowers/specs/2026-06-09-master-plan-design.md`](../superpowers/specs/2026-06-09-master-plan-design.md) — สเปก Master Plan + ข้อความตอบลูกค้า §13
+- [`../USER-MANUAL-TH.md`](../USER-MANUAL-TH.md) §6.4 — คู่มือ Master Plan
 
 ---
 

@@ -34,7 +34,7 @@ describe('nav-config sidebar coverage', () => {
   })
 
   it('keeps parent items without end for nested child routes (U4g.10)', () => {
-    const nestedParents = ['/work-orders', '/planning', '/confirmation', '/master-data']
+    const nestedParents = ['/work-orders', '/planning', '/confirmation', '/master-data', '/master-plan']
     for (const path of nestedParents) {
       const entry = appNav.find((e) => e.kind === 'item' && e.to === path)
       expect(entry?.kind === 'item' && entry.end, `${path} should not use end`).toBeFalsy()
@@ -68,6 +68,7 @@ describe('nav-config sidebar coverage', () => {
       '/planning',
       '/integration',
       '/iw37n',
+      '/master-plan',
       '/master-data',
       '/manhours',
       '/personnel',

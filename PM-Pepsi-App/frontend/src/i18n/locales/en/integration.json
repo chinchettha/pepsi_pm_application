@@ -216,7 +216,7 @@
   "iw37nPage": {
     "title": "IW37N",
     "description": "Import Excel/CSV from SAP · edit rows · batch history · scan inbound folder",
-    "hints": ["Import Excel", "Batch history", "Edit rows", "Master PM → Master data"],
+    "hints": ["Import Excel", "Batch history", "Edit rows", "Master PM → Master Plan"],
     "noAccess": "No access",
     "noAccessDesc": "Requires",
     "badgeSap": "SAP import",
@@ -232,7 +232,7 @@
     "importMasterBefore": "Files ",
     "importMasterStrong": "MASTER PM",
     "importMasterMid": " upload at ",
-    "importMasterLink": "Master data",
+    "importMasterLink": "Master Plan",
     "selectFileLabel": "Choose file",
     "importNow": "Import now",
     "importing": "Importing…",

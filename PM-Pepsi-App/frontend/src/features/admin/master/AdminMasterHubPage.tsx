@@ -172,8 +172,12 @@ export function AdminMasterHubPage() {
           ) : null}
           <p className="mt-3 text-xs text-app-muted">
             {t('master.footerHint')}{' '}
-            <Link to="/master-data" className="text-[var(--app-accent)] underline">
+            <Link to="/master-plan" className="text-[var(--app-accent)] underline">
               {t('master.goMasterData')}
+            </Link>
+            {' · '}
+            <Link to="/master-data" className="text-[var(--app-accent)] underline">
+              {t('master.goReferenceData')}
             </Link>
             {' · '}
             <Link to="/admin" className="text-[var(--app-accent)] underline">
