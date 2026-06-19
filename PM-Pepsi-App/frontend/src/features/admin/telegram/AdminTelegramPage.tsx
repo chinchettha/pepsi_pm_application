@@ -1,4 +1,5 @@
 import type { TelegramGroupItem, TelegramLinkType, TelegramNotifyKind } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminKpiCard } from '@/components/admin/AdminKpiCard'
@@ -223,7 +224,7 @@ export function AdminTelegramPage() {
       tourTarget="admin-telegram"
       title={t('telegram.title')}
       description={t('telegram.description')}
-      hints={t('telegram.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'telegram.hints')}
       headerActions={
         <>
           <Button

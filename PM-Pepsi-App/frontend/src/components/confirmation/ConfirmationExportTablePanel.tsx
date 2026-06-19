@@ -1,4 +1,9 @@
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
+import {
+  ConfirmationSapTable,
+  ConfirmationSapTableHeaderRow,
+  confirmationRowMatchesSearch,
+} from '@/components/confirmation/ConfirmationSapTable'
 import { FilterSearchField } from '@/components/scheduling/SchedulingFilterLayout'
 import {
   SchedulingCalendarPanel,
@@ -13,19 +18,14 @@ import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
   Table,
   TableBody,
-  TableCell,
-  TableHead,
   TableHeader,
-  TableRow,
 } from '@/components/ui/table'
-import type { ConfirmationExportRow } from '@/api/schemas'
 import {
   confirmationSapCsvFilename,
   fetchConfirmationExport,
   fetchConfirmationExportCsv,
   fetchConfirmationExportXlsx,
 } from '@/lib/api-public'
-import { cn } from '@/lib/utils'
 import {
   listKpiStaggerItemMotion,
   listKpiStaggerRootMotion,
@@ -38,79 +38,6 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 const PAGE_SIZES = [25, 50, 100, 200] as const
-
-const EXPORT_COLUMN_KEYS = [
-  { key: 'wkorder', labelKey: 'export.columns.order' as const },
-  { key: 'opac', labelKey: 'export.columns.operation' as const },
-  { key: 'wkctr', labelKey: 'export.columns.wrkCtr' as const },
-  { key: 'timewk', labelKey: 'export.columns.actWork' as const, align: 'right' as const },
-  { key: 'unitc', labelKey: 'export.columns.unit' as const },
-  { key: 'startDateExe', labelKey: 'export.columns.startDateExe' as const },
-  { key: 'endDateExe', labelKey: 'export.columns.endDateExe' as const },
-  { key: 'startExecute', labelKey: 'export.columns.startExecute' as const },
-  { key: 'endExecute', labelKey: 'export.columns.endExecute' as const },
-] as const
-
-function formatActWork(value: number): string {
-  if (!Number.isFinite(value)) return '0.00'
-  return value.toFixed(2)
-}
-
-function rowMatchesSearch(row: ConfirmationExportRow, q: string): boolean {
-  const needle = q.trim().toLowerCase()
-  if (!needle) return true
-  return [
-    row.wkorder,
-    row.opac,
-    row.wkctr,
-    row.unitc,
-    row.startDateExe,
-    row.endDateExe,
-    row.startExecute,
-    row.endExecute,
-    formatActWork(row.timewk),
-  ].some((part) => part.toLowerCase().includes(needle))
-}
-
-function ExportTableHeaderRow() {
-  const { t } = useTranslation('confirmation')
-  return (
-    <TableRow className="border-0 bg-[color-mix(in_srgb,var(--app-accent)_88%,var(--app-text))] hover:bg-[color-mix(in_srgb,var(--app-accent)_88%,var(--app-text))]">
-      {EXPORT_COLUMN_KEYS.map((col) => (
-        <TableHead
-          key={col.key}
-          className={cn(
-            'whitespace-nowrap text-[11px] font-semibold tracking-wide text-white/95',
-            'align' in col && col.align === 'right' ? 'text-right' : undefined,
-          )}
-        >
-          {t(col.labelKey)}
-        </TableHead>
-      ))}
-    </TableRow>
-  )
-}
-
-function ExportTableDataRow({ row, index }: { row: ConfirmationExportRow; index: number }) {
-  return (
-    <TableRow
-      className={cn(
-        'border-app/40 transition-colors hover:bg-[color-mix(in_srgb,var(--status-info)_8%,var(--app-surface))]',
-        index % 2 === 1 ? 'bg-app-subtle/25' : undefined,
-      )}
-    >
-      <TableCell className="tabular-nums text-xs font-medium text-app">{row.wkorder}</TableCell>
-      <TableCell className="tabular-nums text-xs">{row.opac}</TableCell>
-      <TableCell className="tabular-nums text-xs">{row.wkctr}</TableCell>
-      <TableCell className="text-right tabular-nums text-xs">{formatActWork(row.timewk)}</TableCell>
-      <TableCell className="text-xs">{row.unitc}</TableCell>
-      <TableCell className="tabular-nums text-xs">{row.startDateExe}</TableCell>
-      <TableCell className="tabular-nums text-xs">{row.endDateExe}</TableCell>
-      <TableCell className="tabular-nums text-xs">{row.startExecute}</TableCell>
-      <TableCell className="tabular-nums text-xs">{row.endExecute}</TableCell>
-    </TableRow>
-  )
-}
 
 export type ConfirmationExportTablePanelProps = {
   enabled?: boolean
@@ -146,7 +73,7 @@ export function ConfirmationExportTablePanel({
   const actorWkctr = exportQ.data?.actorWkctr ?? ''
 
   const filtered = useMemo(
-    () => items.filter((row) => rowMatchesSearch(row, search)),
+    () => items.filter((row) => confirmationRowMatchesSearch(row, search)),
     [items, search],
   )
 
@@ -284,10 +211,10 @@ export function ConfirmationExportTablePanel({
             >
               <Table embedded stickyHeader className="min-w-[56rem]">
                 <TableHeader>
-                  <ExportTableHeaderRow />
+                  <ConfirmationSapTableHeaderRow />
                 </TableHeader>
                 <TableBody>
-                  <TableSkeletonRows rows={10} columns={EXPORT_COLUMN_KEYS.length} />
+                  <TableSkeletonRows rows={10} columns={9} />
                 </TableBody>
               </Table>
             </div>
@@ -305,33 +232,7 @@ export function ConfirmationExportTablePanel({
             />
           ) : (
             <>
-              <div className="overflow-x-auto rounded-xl border border-app/70 shadow-sm">
-                <Table embedded stickyHeader className="min-w-[56rem]">
-                  <TableHeader>
-                    <ExportTableHeaderRow />
-                  </TableHeader>
-                  <TableBody>
-                    {pageRows.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={EXPORT_COLUMN_KEYS.length}
-                          className="py-12 text-center text-xs text-app-muted"
-                        >
-                          {t('export.noResults')}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      pageRows.map((row, index) => (
-                        <ExportTableDataRow
-                          key={`${row.wkorder}-${row.opac}-${row.wkctr}-${row.no}`}
-                          row={row}
-                          index={index}
-                        />
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+              <ConfirmationSapTable rows={pageRows} emptyMessage={t('export.noResults')} />
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-app/40 pt-3 text-xs text-app-muted">
                 <p className="tabular-nums">

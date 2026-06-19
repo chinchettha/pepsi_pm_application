@@ -1785,6 +1785,8 @@ export async function importTasklists(
     plan?: string
   }[],
 ): Promise<{ inserted: number; updated: number; skipped: number; failed: number }> {
+  const clip128 = (v: string) => v.slice(0, 128)
+
   let inserted = 0
   let updated = 0
   let skipped = 0
@@ -1794,11 +1796,11 @@ export async function importTasklists(
     const wkctrtypeText = (row.wkctrtype ?? '').trim()
     const zoneText = (row.zone ?? '').trim()
     const machineList = (row.machineList ?? '').trim()
-    const mntplan = (row.mntplan ?? '').trim()
-    const tasklist = (row.tasklist ?? '').trim()
-    const legacy = (row.legacy ?? '').trim()
-    const machine = (row.machine ?? '').trim()
-    const pmlist = (row.pmlist ?? '').trim()
+    const mntplan = clip128((row.mntplan ?? '').trim())
+    const tasklist = clip128((row.tasklist ?? '').trim())
+    const legacy = clip128((row.legacy ?? '').trim())
+    const machine = clip128((row.machine ?? '').trim())
+    const pmlist = clip128((row.pmlist ?? '').trim())
 
     if (!wkctrtypeText || !zoneText || !machineList || !mntplan || !tasklist || !legacy || !machine || !pmlist) {
       failed++

@@ -26,6 +26,8 @@ export function legacyHasPermission(userst: string | undefined, perm: string): b
       perm === 'work-orders.import' ||
       perm === 'work-orders.export' ||
       perm === 'confirmation.read' ||
+      perm === 'confirmation.import' ||
+      perm === 'confirmation.export' ||
       perm === 'master-data.read' ||
       perm === 'dashboard.read' ||
       perm === 'calendar.read' ||

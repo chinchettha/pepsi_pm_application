@@ -11,6 +11,7 @@ const DEPRECATED_NAV_ROUTES = new Set([
   '/line-calendar',
   '/manhours/admin',
   '/personnel/admin',
+  '/personnel/confirm',
 ])
 
 function isDeprecatedNavItem(to: string, menulink: string | null): boolean {

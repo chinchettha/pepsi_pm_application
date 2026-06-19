@@ -5139,6 +5139,10 @@ html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
   --cal-status-overdue: #ff3b30;
   --cal-status-moved: var(--brand-logo-orange);
   --cal-status-completed: var(--brand-logo-green-light);
+  --cal-pipeline-unassigned: #ff3b30;
+  --cal-pipeline-assigned: #7b61ff;
+  --cal-pipeline-in-progress: var(--brand-logo-sky);
+  --cal-pipeline-closed: var(--brand-logo-green-light);
   --cal-team-a: color-mix(in srgb, var(--status-success) 88%, white);
   --cal-team-b: color-mix(in srgb, var(--status-danger) 82%, white);
   --cal-team-ee: color-mix(in srgb, var(--status-info) 85%, white);
@@ -5501,6 +5505,10 @@ html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
   --cal-status-overdue: #ff3b30;
   --cal-status-moved: var(--brand-logo-orange);
   --cal-status-completed: var(--brand-logo-green-light);
+  --cal-pipeline-unassigned: #ff3b30;
+  --cal-pipeline-assigned: #7b61ff;
+  --cal-pipeline-in-progress: var(--brand-logo-sky);
+  --cal-pipeline-closed: var(--brand-logo-green-light);
   --cal-team-a: color-mix(in srgb, var(--status-success) 88%, white);
   --cal-team-b: color-mix(in srgb, var(--status-danger) 82%, white);
   --cal-team-ee: color-mix(in srgb, var(--status-info) 85%, white);
@@ -5548,6 +5556,26 @@ html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
   border-color: color-mix(in srgb, var(--cal-status-completed) 75%, black) !important;
 }
 
+.pm-fullcalendar--modern .fc .pm-cal-event--pipeline-unassigned {
+  background-color: var(--cal-pipeline-unassigned) !important;
+  border-color: color-mix(in srgb, var(--cal-pipeline-unassigned) 80%, black) !important;
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--pipeline-assigned {
+  background-color: var(--cal-pipeline-assigned) !important;
+  border-color: color-mix(in srgb, var(--cal-pipeline-assigned) 80%, black) !important;
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--pipeline-in-progress {
+  background-color: var(--cal-pipeline-in-progress) !important;
+  border-color: color-mix(in srgb, var(--cal-pipeline-in-progress) 80%, black) !important;
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--pipeline-closed {
+  background-color: var(--cal-pipeline-closed) !important;
+  border-color: color-mix(in srgb, var(--cal-pipeline-closed) 75%, black) !important;
+}
+
 .pm-fullcalendar--modern .fc .pm-cal-event--team-a {
   box-shadow:
     inset -3px 0 0 var(--cal-team-a),
@@ -5592,6 +5620,26 @@ html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
   border: 1px solid color-mix(in srgb, var(--cal-status-completed) 75%, black);
 }
 
+.pm-cal-gantt__bar.pm-cal-event--pipeline-unassigned {
+  background-color: var(--cal-pipeline-unassigned) !important;
+  border: 1px solid color-mix(in srgb, var(--cal-pipeline-unassigned) 80%, black);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--pipeline-assigned {
+  background-color: var(--cal-pipeline-assigned) !important;
+  border: 1px solid color-mix(in srgb, var(--cal-pipeline-assigned) 80%, black);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--pipeline-in-progress {
+  background-color: var(--cal-pipeline-in-progress) !important;
+  border: 1px solid color-mix(in srgb, var(--cal-pipeline-in-progress) 80%, black);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--pipeline-closed {
+  background-color: var(--cal-pipeline-closed) !important;
+  border: 1px solid color-mix(in srgb, var(--cal-pipeline-closed) 75%, black);
+}
+
 .pm-cal-gantt__bar.pm-cal-event--team-a {
   box-shadow: inset -3px 0 0 var(--cal-team-a);
 }
@@ -5633,5 +5681,21 @@ html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
   font-size: 0.65rem;
   line-height: 1;
   pointer-events: none;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.35));
+}
+
+.pm-cal-pipeline-badges {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  z-index: 3;
+  display: flex;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.pm-cal-pipeline-badge {
+  font-size: 0.6rem;
+  line-height: 1;
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.35));
 }

@@ -4,8 +4,7 @@ import { ConfirmQcPanel } from '@/components/confirmation/ConfirmQcPanel'
 import { PersonnelClosePanel } from '@/components/confirmation/PersonnelClosePanel'
 import { MovePlanDialog } from '@/components/scheduling/MovePlanDialog'
 import { WoPmPhaseBadge } from '@/components/scheduling/WoPmPhaseBadge'
-import { PlanningMultiAssign } from '@/components/scheduling/PlanningMultiAssign'
-import { PlanningQuickAssign } from '@/components/scheduling/PlanningQuickAssign'
+import { PlanningTechnicianCards } from '@/components/scheduling/PlanningTechnicianCards'
 import { WorkOrderSummaryPanel } from '@/components/scheduling/WorkOrderSummaryPanel'
 import type { ConfirmSubTab } from '@/components/scheduling/WorkOrderConfirmPanel'
 import { WorkOrderConfirmPanel } from '@/components/scheduling/WorkOrderConfirmPanel'
@@ -46,6 +45,7 @@ import {
   deleteWorkOrderPlanningAssignee,
   postConfirmationClose,
   postConfirmationComment,
+  postPlanningOrderAck,
   postWorkOrderPlanningBatch,
   putWorkOrderPlanning,
   putWorkOrderTeam,
@@ -61,7 +61,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { Loader2, Maximize2, Minimize2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { usePermission } from '@/lib/use-permission'
 import { cn } from '@/lib/utils'
@@ -130,7 +130,6 @@ export function WorkOrderDetailDialog({
   const open = Boolean(orderId)
   const assignedLayout = tabLayout === 'assigned'
   const canPlan = usePermission('planning.assign')
-  const canConfirmWrite = usePermission('confirmation.write')
   const planningEditable = canPlan
   const canEditTeam = usePermission('work-orders.write')
   const [moveOpen, setMoveOpen] = useState(false)
@@ -167,13 +166,30 @@ export function WorkOrderDetailDialog({
   })
 
   const personAssignees = useMemo(
-    () => modalQ.data?.planning.assignees.filter((a) => a.pwteam !== 'G' && a.kind === 'person') ?? [],
-    [modalQ.data?.planning.assignees],
+    () =>
+      (modalQ.data?.planning?.assignees ?? []).filter(
+        (a) => a.pwteam !== 'G' && a.kind === 'person',
+      ),
+    [modalQ.data?.planning?.assignees],
   )
   const groupAssignees = useMemo(
-    () => modalQ.data?.planning.assignees.filter((a) => a.pwteam === 'G' || a.kind === 'group') ?? [],
-    [modalQ.data?.planning.assignees],
+    () =>
+      (modalQ.data?.planning?.assignees ?? []).filter(
+        (a) => a.pwteam === 'G' || a.kind === 'group',
+      ),
+    [modalQ.data?.planning?.assignees],
   )
+
+  const closeWoAccess = modalQ.data?.planning.closeWoAccess
+  const canShowCloseWoTab = assignedLayout && Boolean(closeWoAccess?.canView)
+  const assignedCloseCanWrite = Boolean(closeWoAccess?.canWrite)
+  const showPendingAckBanner =
+    assignedLayout && closeWoAccess?.reason === 'pending_ack'
+  const canAckMyAssignment =
+    assignedLayout &&
+    closeWoAccess?.reason === 'pending_ack' &&
+    closeWoAccess.myAssignment?.ackStatus === 'pending' &&
+    typeof idiw37 === 'number'
 
   const closesQ = useQuery({
     queryKey: ['confirmation', 'by-wkorder', d?.wkorder],
@@ -328,6 +344,7 @@ export function WorkOrderDetailDialog({
       await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
       await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
       await qc.invalidateQueries({ queryKey: ['planning'] })
+      await qc.invalidateQueries({ queryKey: ['calendar'] })
     },
     onError: (e: Error) => toast.error(e.message || t('woDialog.toastAssignFailed')),
   })
@@ -351,6 +368,8 @@ export function WorkOrderDetailDialog({
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['work-order', 'modal-detail', orderId] })
       await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
+      await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
+      await qc.invalidateQueries({ queryKey: ['calendar'] })
     },
   })
 
@@ -359,6 +378,8 @@ export function WorkOrderDetailDialog({
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['work-order', 'modal-detail', orderId] })
       await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
+      await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
+      await qc.invalidateQueries({ queryKey: ['calendar'] })
     },
   })
 
@@ -373,7 +394,20 @@ export function WorkOrderDetailDialog({
       await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
       await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
       await qc.invalidateQueries({ queryKey: ['planning'] })
+      await qc.invalidateQueries({ queryKey: ['calendar'] })
     },
+  })
+
+  const ackMut = useMutation({
+    mutationFn: () => postPlanningOrderAck(idiw37!),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['work-order', 'modal-detail', orderId] })
+      await qc.invalidateQueries({ queryKey: ['planning'] })
+      await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
+      await qc.invalidateQueries({ queryKey: ['calendar'] })
+      toast.success(t('woDialog.ackSuccess'))
+    },
+    onError: (err) => toast.error((err as Error).message || t('woDialog.ackFailed')),
   })
 
   useEffect(() => {
@@ -386,6 +420,12 @@ export function WorkOrderDetailDialog({
     }
     wasOpenRef.current = open
   }, [open, orderId, initialTab])
+
+  useEffect(() => {
+    if (assignedLayout && activeTab === 'confirm' && !canShowCloseWoTab) {
+      setActiveTab('task-list')
+    }
+  }, [assignedLayout, activeTab, canShowCloseWoTab])
 
   useEffect(() => {
     if (!d) return
@@ -554,9 +594,11 @@ export function WorkOrderDetailDialog({
                     <TabsTrigger value="planning" className={woTabTriggerClass}>
                       {t('woDialog.tabPlanning')}
                     </TabsTrigger>
-                    <TabsTrigger value="confirm" className={woTabTriggerClass}>
-                      {t('woDialog.tabCloseWo')}
-                    </TabsTrigger>
+                    {canShowCloseWoTab ? (
+                      <TabsTrigger value="confirm" className={woTabTriggerClass}>
+                        {t('woDialog.tabCloseWo')}
+                      </TabsTrigger>
+                    ) : null}
                   </>
                 ) : (
                   <>
@@ -621,7 +663,12 @@ export function WorkOrderDetailDialog({
                     />
                   ) : modalQ.data ? (
                     <div className="space-y-4">
-                      {orderId ? (
+                      {showPendingAckBanner ? (
+                        <div className="app-tone-info-callout rounded-card border px-3 py-2 text-body-sm">
+                          <p>{t('woDialog.closeWoLockedPendingAck')}</p>
+                        </div>
+                      ) : null}
+                      {!assignedLayout && orderId ? (
                         <WorkOrderPmCommentSection
                           orderId={orderId}
                           wkorderLabel={d?.wkorder}
@@ -631,10 +678,32 @@ export function WorkOrderDetailDialog({
                       ) : null}
                       <WorkOrderTaskListPanel
                         taskList={modalQ.data.taskList}
-                        orderId={orderId ?? undefined}
-                        pmExecution={modalQ.data.pmExecution}
+                        plannerLayout={assignedLayout}
+                        woContext={
+                          assignedLayout && d
+                            ? {
+                                wkorder: d.wkorder,
+                                plannedDate: modalDate ? isoToDdMmYyyy(modalDate) : '',
+                                status: d.status,
+                                mntplan: modalQ.data.taskList.mntplan,
+                              }
+                            : null
+                        }
+                        canAssign={canPlan}
+                        onGoPlanning={() => setActiveTab('planning')}
+                        orderId={assignedLayout ? undefined : (orderId ?? undefined)}
+                        pmExecution={assignedLayout ? undefined : modalQ.data.pmExecution}
+                        showMeasurements={!assignedLayout}
                         onPmSaved={() => void modalQ.refetch()}
                       />
+                      {assignedLayout && orderId ? (
+                        <WorkOrderPmCommentSection
+                          orderId={orderId}
+                          wkorderLabel={d?.wkorder}
+                          pmExecution={modalQ.data.pmExecution}
+                          onSaved={() => void modalQ.refetch()}
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </WoModalTabFade>
@@ -668,6 +737,23 @@ export function WorkOrderDetailDialog({
                   <p className="app-tone-warning-callout rounded-card border px-3 py-2 text-body-sm">
                     {t('woDialog.readOnlyPlanning')}
                   </p>
+                ) : null}
+                {canAckMyAssignment ? (
+                  <div className="app-tone-info-callout rounded-card border px-3 py-2 text-body-sm">
+                    <p>{t('woDialog.closeWoLockedPendingAck')}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="mt-2"
+                      disabled={ackMut.isPending}
+                      onClick={() => ackMut.mutate()}
+                    >
+                      {ackMut.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                      ) : null}
+                      {t('woDialog.acknowledgeAssignment')}
+                    </Button>
+                  </div>
                 ) : null}
                 {d && modalQ.data?.date ? (
                   <p className="app-tone-info-callout rounded-card border px-3 py-2 text-xs">
@@ -867,13 +953,12 @@ export function WorkOrderDetailDialog({
 
                         {planningEditable ? (
                           <>
-                        <PlanningMultiAssign
+                        <PlanningTechnicianCards
                           workcenters={modalQ.data.planning.workcenters}
-                          assignedCodes={modalQ.data.planning.assignees.map((a) => a.code)}
-                          comment={planComment}
-                          onCommentChange={setPlanComment}
+                          assignedCodes={personAssignees.map((a) => a.code)}
+                          woTeam={d.team}
                           submitting={batchAssignMut.isPending}
-                          onAssign={async (codes) => {
+                          onBatchAssign={async (codes) => {
                             const res = await batchAssignMut.mutateAsync(codes)
                             return {
                               assigned: res.assigned,
@@ -881,18 +966,6 @@ export function WorkOrderDetailDialog({
                               notFound: res.notFound,
                             }
                           }}
-                        />
-
-                        <PlanningQuickAssign
-                          workcenters={modalQ.data.planning.workcenters}
-                          assignedCodes={modalQ.data.planning.assignees.map((a) => a.code)}
-                          submitting={assignPlanMut.isPending}
-                          assigningCode={
-                            assignPlanMut.isPending && assignPlanMut.variables?.mode === 'P'
-                              ? assignPlanMut.variables.code
-                              : null
-                          }
-                          onAssign={(code) => assignPlanMut.mutate({ mode: 'P', code })}
                         />
 
                         <div className="rounded-card border border-app bg-[var(--app-surface)] p-3">
@@ -961,7 +1034,7 @@ export function WorkOrderDetailDialog({
                   <WoModalTabSkeleton />
                 ) : assignedLayout ? (
                   <div className="space-y-4">
-                    {!canConfirmWrite ? (
+                    {!assignedCloseCanWrite ? (
                       <p className="app-tone-warning-callout rounded-card border px-3 py-2 text-body-sm">
                         {t('woDialog.readOnlyCloseWo')}
                       </p>
@@ -970,7 +1043,7 @@ export function WorkOrderDetailDialog({
                       idiw37={idiw37}
                       enabled={open && typeof idiw37 === 'number'}
                       closeBlockedMessage={closeBlockedMessage}
-                      canWrite={canConfirmWrite}
+                      canWrite={assignedCloseCanWrite}
                       onAppliedToSupervisor={applyPersonnelToSupervisorClose}
                       onChanged={() => {
                         void qc.invalidateQueries({ queryKey: ['work-order', orderId] })
@@ -980,11 +1053,11 @@ export function WorkOrderDetailDialog({
                       <ConfirmationImagesPanel
                         idiw37={idiw37}
                         enabled={open && activeTab === 'confirm'}
-                        readOnly={!canConfirmWrite}
+                        readOnly={!assignedCloseCanWrite}
                       />
                     ) : null}
                     <WorkOrderSupervisorCloseSection
-                      readOnly={!canConfirmWrite}
+                      readOnly={!assignedCloseCanWrite}
                       closeWkctr={closeWkctr}
                       onCloseWkctrChange={setCloseWkctr}
                       startDate={startDate}
@@ -1006,7 +1079,7 @@ export function WorkOrderDetailDialog({
                       }}
                       submitPending={addCloseMut.isPending}
                       submitDisabled={
-                        !canConfirmWrite ||
+                        !assignedCloseCanWrite ||
                         !startDate ||
                         !endDate ||
                         !startTime ||

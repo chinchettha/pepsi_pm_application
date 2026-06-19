@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const confirmQcStatusSchema = z.enum(['pending', 'approved', 'rejected']).nullable()
 
 export const confirmQcSnapshotSchema = z.object({
-  idiw37: z.number().int(),
+  idiw37: z.coerce.number().int(),
   wkorder: z.string(),
   status: confirmQcStatusSchema,
   statusLabel: z.string(),

@@ -1,4 +1,6 @@
 import { AppCard } from '@/components/layout/AppCard'
+import { hintsFromT } from '@/lib/i18n-hints'
+import { arrayLength } from '@/lib/coerce-array'
 import {
   AppPageSection,
   AppPageSectionCard,
@@ -97,7 +99,7 @@ export function AuditorHubPage() {
     <AppPageShell
       title={t('auditor.title')}
       description={t('auditor.description')}
-      hints={t('auditor.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'auditor.hints')}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">
@@ -153,11 +155,11 @@ export function AuditorHubPage() {
               <KpiCard title={t('auditor.kpiWorkOrders')} value={data.totals.workOrders} />
             </div>
 
-            {data.byPrefix.length > 0 ? (
+            {arrayLength(data.byPrefix) > 0 ? (
               <AppCard pad="default" className="mt-4">
                 <h3 className="text-base font-semibold text-app">{t('auditor.byAction')}</h3>
                 <ul className="mt-3 flex flex-wrap gap-2">
-                  {data.byPrefix.map((p) => (
+                  {(data.byPrefix ?? []).map((p) => (
                     <li
                       key={p.prefix}
                       className="rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body-sm"
@@ -233,8 +235,8 @@ export function AuditorHubPage() {
           collapsible
           defaultOpen
           collapsedHint={
-            data?.recentRevisions.length
-              ? t('auditor.revisionCollapsed', { count: data.recentRevisions.length })
+            arrayLength(data?.recentRevisions) > 0
+              ? t('auditor.revisionCollapsed', { count: arrayLength(data?.recentRevisions) })
               : undefined
           }
         >

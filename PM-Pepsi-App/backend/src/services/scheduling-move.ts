@@ -58,12 +58,13 @@ export async function moveWorkOrderPlan(
 
   const wo = await pool.query<{
     syst: string | null
+    wkorder: string | null
     bscstart: string | number | null
     actfinish: string | number | null
     cday: string | number | null
     mpcount: number | null
   }>(
-    `SELECT o.syst, o.bscstart, o.actfinish, mp.cday, mp.mpcount
+    `SELECT o.syst, o.wkorder, o.bscstart, o.actfinish, mp.cday, mp.mpcount
      FROM app.tbiw37n o
      LEFT JOIN app.tbmoveplan mp ON mp.idiw37 = o.idiw37
      WHERE o.idiw37 = $1 AND ${sqlFactoryScope('o', '$2')}`,
@@ -98,6 +99,7 @@ export async function moveWorkOrderPlan(
   const reasonRequired = resolveCalendarMoveReasonRequired({
     syst: row.syst,
     displayUnix,
+    wkorder: row.wkorder,
     cday: row.cday,
     mpcount: row.mpcount,
   })

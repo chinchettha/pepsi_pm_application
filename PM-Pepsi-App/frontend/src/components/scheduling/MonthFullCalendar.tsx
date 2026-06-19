@@ -10,6 +10,7 @@ import { calendarEventHoverDetailSchema, type CalendarEventHoverDetail } from '@
 import { CalendarDayGantt } from '@/components/scheduling/CalendarDayGantt'
 import { CalendarEventHoverCard } from '@/components/scheduling/CalendarEventHoverCard'
 import { mountCalendarTecoBell } from '@/lib/calendar-event-bell'
+import { mountCalendarPipelineBadges } from '@/lib/calendar-pipeline-badge'
 
 import {
   eventFromClickArg,
@@ -535,6 +536,13 @@ export function MonthFullCalendar({
             }
             if (props.tecoBellAlert === true) {
               mountCalendarTecoBell(arg.el)
+            }
+            const pipelineBadges = props.pipelineBadges
+            if (Array.isArray(pipelineBadges) && pipelineBadges.length > 0) {
+              mountCalendarPipelineBadges(
+                arg.el,
+                pipelineBadges as Parameters<typeof mountCalendarPipelineBadges>[1],
+              )
             }
           }}
           eventWillUnmount={(arg) => {

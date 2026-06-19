@@ -11,6 +11,7 @@ import {
 import { resolveWoPmPhase, type WoPmPhase } from './wo-pm-phase.js'
 import {
   hasCalendarPlanMove,
+  hasCalendarWorkOrderNumber,
   isCalendarDisplayDateOverdue,
   resolveCalendarMoveReasonRequired,
   resolveCalendarTecoBellAlert,
@@ -24,15 +25,23 @@ import {
 } from '../services/scheduling-shared.js'
 
 import { BRAND_CALENDAR } from './brand-palette.js'
+import {
+  resolvePlannerPipeline,
+  type PlannerPipelineBadge,
+  type PlannerPipelineStatus,
+} from './planner-pipeline.js'
 
-/** สีปฏิทิน Work scheduling — พาเลตโลโก้ใหม่ (2026-06) */
+/** สีปฏิทิน Work scheduling — สไลด์ลูกค้า (แดง/ส้ม/น้ำเงิน/เขียว) */
 export const CALENDAR_STATUS_COLORS = {
-  inProgress: BRAND_CALENDAR.inProgress,
-  moved: BRAND_CALENDAR.moved,
+  /** น้ำเงิน — ประมาณการ · ยังไม่มีเลข WO */
+  estimate: BRAND_CALENDAR.inProgress,
+  /** ส้ม — ยังไม่ถึงวัน · มีเลข WO แล้ว */
+  upcomingWo: BRAND_CALENDAR.moved,
   completed: BRAND_CALENDAR.completed,
   overdue: BRAND_CALENDAR.overdue,
 } as const
 
+/** `in_progress` = estimate (blue) · `moved` = upcoming WO (orange) — legacy enum names */
 export type CalendarEventDisplayStatus = 'in_progress' | 'overdue' | 'moved' | 'completed'
 
 export type CalendarOrderRow = {
@@ -62,6 +71,10 @@ export type CalendarOrderRow = {
   percent_close?: string | number | null
   has_confirm?: string | number | null
   confirm_qc_status?: string | null
+  assign_count?: number | string | null
+  worktime_count?: number | string | null
+  ack_pending?: number | string | null
+  ack_acknowledged?: number | string | null
   work?: string | number | null
   untime?: string | number | null
 }
@@ -207,6 +220,8 @@ export function resolveCalendarEventColor(
   })
 
   const moved = hasPlanMove(row)
+  const hasWo = hasCalendarWorkOrderNumber(row.wkorder)
+
   if (pmExecutionStatus === 'done' || pmExecutionStatus === 'closed') {
     return {
       color: CALENDAR_STATUS_COLORS.completed,
@@ -226,20 +241,38 @@ export function resolveCalendarEventColor(
       displayStatus: 'overdue',
     }
   }
-  if (moved) {
+  if (isPlanMovableStatus(row.syst) && hasWo) {
     return {
-      color: moveColor || CALENDAR_STATUS_COLORS.moved,
+      color: moveColor || CALENDAR_STATUS_COLORS.upcomingWo,
       pmExecutionStatus,
       moved,
       displayStatus: 'moved',
     }
   }
   return {
-    color: CALENDAR_STATUS_COLORS.inProgress,
+    color: CALENDAR_STATUS_COLORS.estimate,
     pmExecutionStatus,
     moved,
     displayStatus: 'in_progress',
   }
+}
+
+export function resolveCalendarEventPipeline(row: CalendarOrderRow): {
+  status: PlannerPipelineStatus
+  badges: PlannerPipelineBadge[]
+  color: string
+} {
+  return resolvePlannerPipeline({
+    syst: row.syst,
+    assignCount: Number(row.assign_count ?? 0),
+    worktimeCount: Number(row.worktime_count ?? 0),
+    hasSupervisorClose: Number(row.has_confirm ?? 0) > 0,
+    percentClose: row.percent_close,
+    hasConfirm: row.has_confirm,
+    confirmQcStatus: row.confirm_qc_status,
+    ackPending: Number(row.ack_pending ?? 0),
+    ackAcknowledged: Number(row.ack_acknowledged ?? 0),
+  })
 }
 
 /** เลข WO เต็ม + ประเภท (Maint Code · ZB · ZD) + /N เมื่อย้ายแผน */
@@ -367,14 +400,15 @@ export function mapCalendarOrderRowToEvent(
   if (displayUnix == null) return null
 
   const syst = (row.syst ?? '').trim()
-  const { color, pmExecutionStatus, moved, displayStatus } = resolveCalendarEventColor(
-    row,
-    moveColor,
-    displayUnix,
-  )
+  const scheduling = resolveCalendarEventColor(row, moveColor, displayUnix)
+  const pipeline = resolveCalendarEventPipeline(row)
+  const usePipelineColor = isPlanMovableStatus(syst)
+  const { pmExecutionStatus, moved, displayStatus } = scheduling
+  const color = usePipelineColor ? pipeline.color : scheduling.color
   const moveReasonRequired = resolveCalendarMoveReasonRequired({
     syst: row.syst,
     displayUnix,
+    wkorder: row.wkorder,
     cday: row.cday,
     mpcount: row.mpcount,
   })
@@ -420,5 +454,7 @@ export function mapCalendarOrderRowToEvent(
     planEndIso: planTimes.planEndIso,
     moveReasonRequired,
     tecoBellAlert: tecoBellAlert || undefined,
+    pipelineStatus: pipeline.status,
+    pipelineBadges: pipeline.badges,
   }
 }

@@ -1,4 +1,6 @@
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
+import { hintsFromT } from '@/lib/i18n-hints'
+import { arrayLength } from '@/lib/coerce-array'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { FailedLoginChart } from './FailedLoginChart'
 import {
@@ -62,7 +64,7 @@ export function AdminSecurityPage() {
   }
 
   const data = q.data
-  const hints = t('security.hints', { returnObjects: true }) as string[]
+  const hints = hintsFromT(t, 'security.hints')
 
   const kpiBody =
     q.isLoading && !data ? (
@@ -99,7 +101,7 @@ export function AdminSecurityPage() {
           icon={Ban}
           label={t('security.rateLimitKpi')}
           value={String(data.rateLimitHits)}
-          hint={t('security.rateLimitIpHint', { count: data.rateLimitedIps.length })}
+          hint={t('security.rateLimitIpHint', { count: arrayLength(data?.rateLimitedIps) })}
         />
       </AdminKpiGrid>
     ) : null
@@ -289,7 +291,7 @@ export function AdminSecurityPage() {
             </p>
             {q.isLoading && !data ? (
               <Skeleton className="m-4 h-32" />
-            ) : (data?.denied.items.length ?? 0) === 0 ? (
+            ) : arrayLength(data?.denied?.items) === 0 ? (
               <p className="p-4 text-caption">{t('security.rbacDenyEmpty')}</p>
             ) : (
               <div className="app-table-shell overflow-x-auto">

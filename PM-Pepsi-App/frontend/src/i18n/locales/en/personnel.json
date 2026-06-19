@@ -24,7 +24,7 @@
       "worktime": "Worktime",
       "exportConfirmation": "Export Confirmation",
       "assignWork": "Assign work",
-      "perPersonClose": "Per-person closeout",
+      "perPersonClose": "Confirmation",
       "manageUsers": "Manage users"
     },
     "statsSectionTitle": "My work summary",
@@ -223,7 +223,7 @@
     "refresh": "Refresh",
     "systemSettings": "System settings",
     "backDashboard": "Back to Dashboard",
-    "personnelConfirmation": "Personnel Confirmation",
+    "personnelConfirmation": "Confirmation",
     "importExcel": "Import Excel",
     "importing": "Importing…",
     "addPersonnel": "Add personnel",

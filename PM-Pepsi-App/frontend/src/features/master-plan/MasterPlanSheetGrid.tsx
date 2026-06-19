@@ -36,6 +36,8 @@ type MasterPlanSheetGridProps = {
   onOpenWorkOrder?: (wkorder: string) => void
   onLoadMore?: () => void
   loadingMore?: boolean
+  searchQuery?: string
+  loadedRowCount?: number
 }
 
 export function MasterPlanSheetGrid({
@@ -47,9 +49,14 @@ export function MasterPlanSheetGrid({
   onOpenWorkOrder,
   onLoadMore,
   loadingMore,
+  searchQuery = '',
+  loadedRowCount,
 }: MasterPlanSheetGridProps) {
   const { t } = useTranslation('masterData')
-  const columns = data.displayColumns.length > 0 ? data.displayColumns : data.columnHeaders
+  const rows = data.rows ?? []
+  const displayColumns = data.displayColumns ?? []
+  const columnHeaders = data.columnHeaders ?? []
+  const columns = displayColumns.length > 0 ? displayColumns : columnHeaders
   const bannerTitle = extractSheetBannerTitle(data.titleRows)
   const metaLines = extractSheetMetaLines(data.titleRows)
   const useSummaryLayout =
@@ -82,7 +89,7 @@ export function MasterPlanSheetGrid({
       }
     }
 
-    if (!data.rows.some((r) => r.id === focusRowId)) return
+    if (!rows.some((r) => r.id === focusRowId)) return
 
     const raf = requestAnimationFrame(() => {
       tryFocus()
@@ -91,22 +98,22 @@ export function MasterPlanSheetGrid({
       cancelAnimationFrame(raf)
       if (highlightTimer != null) window.clearTimeout(highlightTimer)
     }
-  }, [focusRowId, data.rows, onFocusRowHandled])
+  }, [focusRowId, rows, onFocusRowHandled])
 
   const summarySections = useMemo(() => {
     if (!useSummaryLayout) return []
-    return splitGenericSheetSections(data.rows, columns)
-  }, [columns, data.rows, useSummaryLayout])
+    return splitGenericSheetSections(rows, columns)
+  }, [columns, rows, useSummaryLayout])
 
   const rowspansByColumn = useMemo(() => {
     const map = new Map<string, Array<number | 'skip'>>()
     for (const col of columns) {
       if (shouldRowspanColumn(col)) {
-        map.set(col, computeColumnRowspans(data.rows, col))
+        map.set(col, computeColumnRowspans(rows, col))
       }
     }
     return map
-  }, [columns, data.rows])
+  }, [columns, rows])
 
   const markFlash = useCallback((rowId: number, column: string) => {
     const key = `${rowId}:${column}`
@@ -135,7 +142,8 @@ export function MasterPlanSheetGrid({
     [markFlash, onPatchCell],
   )
 
-  const hasMore = data.total > data.rows.length
+  const hasMore = data.total > (loadedRowCount ?? rows.length)
+  const searchActive = searchQuery.trim().length > 0
   const editEnabled = canWrite && data.sheetKind === 'detail' && onPatchCell != null
   const linksEnabled = data.sheetKind === 'detail' && onOpenWorkOrder != null
 
@@ -159,7 +167,12 @@ export function MasterPlanSheetGrid({
       <div className="flex flex-wrap items-center justify-between gap-2 px-1 py-2 text-xs text-app-muted">
         <span>
           {data.sheetName} · {t('masterPlan.rowCount', { count: data.total })}
-          {hasMore ? ` · ${t('masterPlan.showing', { count: data.rows.length })}` : ''}
+          {hasMore
+            ? ` · ${t('masterPlan.showing', { count: loadedRowCount ?? rows.length })}`
+            : ''}
+          {searchActive
+            ? ` · ${t('masterPlan.rowSearchFiltered', { count: rows.length })}`
+            : ''}
           {editEnabled ? ` · ${t('masterPlan.editModeHint')}` : ''}
           {!canWrite && data.sheetKind === 'detail' ? ` · ${t('masterPlan.noWritePermission')}` : ''}
           {data.sheetKind !== 'detail' ? ` · ${t('masterPlan.readOnlySheet')}` : ''}
@@ -176,7 +189,11 @@ export function MasterPlanSheetGrid({
         ) : null}
       </div>
 
-      {useSummaryLayout ? (
+      {searchActive && rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-[#2f5597]/30 px-4 py-8 text-center text-body-sm text-app-muted">
+          {t('masterPlan.rowSearchEmptySheet')}
+        </p>
+      ) : useSummaryLayout ? (
         <div
           className={`rounded-lg border border-[#2f5597]/30 bg-white p-3 ${
             bannerTitle ? '' : 'mt-0'
@@ -214,7 +231,7 @@ export function MasterPlanSheetGrid({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.rows.length === 0 ? (
+              {rows.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={Math.max(columns.length + (linksEnabled ? 1 : 0), 1)}
@@ -224,7 +241,7 @@ export function MasterPlanSheetGrid({
                   </TableCell>
                 </TableRow>
               ) : (
-                data.rows.map((row, rowIdx) => (
+                rows.map((row, rowIdx) => (
                   <TableRow
                     key={row.rowIndex}
                     data-master-plan-row-id={row.id}

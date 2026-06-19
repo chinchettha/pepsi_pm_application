@@ -26,6 +26,10 @@ export type ScheduleCalendarEvent = {
   tecoBellAlert?: boolean
   displayStatus?: 'in_progress' | 'overdue' | 'moved' | 'completed'
   team?: 'A' | 'B' | 'EE' | 'UT'
+  pipelineStatus?: 'unassigned' | 'assigned' | 'in_progress' | 'closed'
+  pipelineBadges?: Array<
+    'ack_pending' | 'ack_done' | 'qc_pending' | 'qc_approved' | 'qc_rejected'
+  >
 }
 
 export function toFullCalendarEvents(items: ScheduleCalendarEvent[]): EventInput[] {
@@ -56,6 +60,8 @@ export function toFullCalendarEvents(items: ScheduleCalendarEvent[]): EventInput
         tecoBellAlert: e.tecoBellAlert,
         displayStatus: e.displayStatus,
         team: e.team,
+        pipelineStatus: e.pipelineStatus,
+        pipelineBadges: e.pipelineBadges,
         surfaceClasses: calendarEventSurfaceClasses(e),
       },
     }

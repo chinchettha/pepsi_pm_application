@@ -1,4 +1,6 @@
 import { AppCard } from '@/components/layout/AppCard'
+import { arrayLength } from '@/lib/coerce-array'
+import { hintsFromT } from '@/lib/i18n-hints'
 
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 
@@ -173,8 +175,8 @@ export function ActivityLogPage() {
   )
 
   const w2wHint =
-    kpiQ.data && kpiQ.data.weekToWeek.length > 0
-      ? t('activity.w2wCollapsed', { count: kpiQ.data.weekToWeek.length })
+    arrayLength(kpiQ.data?.weekToWeek) > 0
+      ? t('activity.w2wCollapsed', { count: arrayLength(kpiQ.data?.weekToWeek) })
       : undefined
 
 
@@ -220,7 +222,7 @@ export function ActivityLogPage() {
 
       description={t('activity.description')}
 
-      hints={t('activity.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'activity.hints')}
 
       headerActions={
 
@@ -389,7 +391,7 @@ export function ActivityLogPage() {
             <p className="text-caption">
 
               {t('activity.resultCount', {
-                shown: q.data.items.length.toLocaleString(),
+                shown: arrayLength(q.data.items).toLocaleString(),
                 total: q.data.total.toLocaleString(),
                 from: submitted.from,
                 to: submitted.to,
@@ -433,9 +435,9 @@ export function ActivityLogPage() {
 
                   <TableBody>
 
-                    {q.data.items.length ? (
+                    {arrayLength(q.data.items) ? (
 
-                      q.data.items.map((row, i) => (
+                      (q.data.items ?? []).map((row, i) => (
 
                         <TableRow key={`${row.source}-${row.id}-${row.createdAt}-${i}`}>
 

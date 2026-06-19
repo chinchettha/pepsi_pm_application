@@ -21,6 +21,7 @@ import {
   suggestsPm3Phase,
 } from '../lib/master-plan-row-links.js'
 import { detailSheetRowsToTasklist } from '../lib/master-plan-tasklist.js'
+import { buildMasterPlanSearchLabel, escapeIlikePattern } from '../lib/master-plan-search.js'
 import { auditLogFromRequest } from '../lib/audit-log.js'
 import { importTasklists } from './master-data.js'
 import type { Request } from 'express'
@@ -251,6 +252,76 @@ export async function getSheetRows(
       display: r.display,
     })),
   }
+}
+
+export async function searchMasterPlanRows(
+  pool: Pool,
+  discipline: MasterPlanDiscipline,
+  query: string,
+  limit = 50,
+): Promise<{
+  query: string
+  items: Array<{
+    rowId: number
+    rowIndex: number
+    sheetId: number
+    sheetName: string
+    label: string
+  }>
+}> {
+  const q = query.trim()
+  if (!q) return { query: '', items: [] }
+
+  const wb = await getPublishedWorkbook(pool, discipline)
+  if (!wb) return { query: q, items: [] }
+
+  const safeLimit = Math.min(100, Math.max(1, limit))
+  const pattern = `%${escapeIlikePattern(q)}%`
+
+  const rowsRes = await pool.query<{
+    row_id: number
+    row_index: number
+    sheet_id: number
+    sheet_name: string
+    column_headers_json: string[]
+    cells_json: Record<string, string>
+  }>(
+    `SELECT r.id AS row_id, r.row_index, s.id AS sheet_id, s.sheet_name,
+            s.column_headers_json, r.cells_json
+     FROM app.tb_master_plan_row r
+     INNER JOIN app.tb_master_plan_sheet s ON s.id = r.sheet_id
+     INNER JOIN app.tb_master_plan_workbook w ON w.id = s.workbook_id
+     WHERE w.discipline = $1 AND w.plan_year = $2 AND w.status = 'published'
+       AND (
+         s.sheet_name ILIKE $3 ESCAPE '\\'
+         OR EXISTS (
+           SELECT 1 FROM jsonb_each_text(r.cells_json) kv
+           WHERE kv.value ILIKE $3 ESCAPE '\\'
+         )
+       )
+     ORDER BY s.sort_order ASC, r.row_index ASC
+     LIMIT $4`,
+    [discipline, PLAN_YEAR, pattern, safeLimit],
+  )
+
+  const items = rowsRes.rows.map((row) => {
+    const columnHeaders = Array.isArray(row.column_headers_json) ? row.column_headers_json : []
+    const cells = row.cells_json ?? {}
+    const withDisplay = applyFillDownDisplay(
+      [{ rowIndex: row.row_index, cells }],
+      columnHeaders,
+    )
+    const display = withDisplay[0]?.display ?? cells
+    return {
+      rowId: Number(row.row_id),
+      rowIndex: row.row_index,
+      sheetId: Number(row.sheet_id),
+      sheetName: row.sheet_name,
+      label: buildMasterPlanSearchLabel(columnHeaders, cells, display),
+    }
+  })
+
+  return { query: q, items }
 }
 
 export async function sheetBelongsToDiscipline(

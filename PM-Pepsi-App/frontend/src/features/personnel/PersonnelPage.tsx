@@ -6,6 +6,7 @@
  * ของ user ปัจจุบันให้ทุกคนเปิดเองได้ (`/personnel` menuright `A:U:W`).
  */
 import { CanPermission } from '@/components/auth/CanPermission'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AppCard } from '@/components/layout/AppCard'
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
@@ -172,7 +173,7 @@ export function PersonnelPage() {
     )
   }
 
-  const hints = t('dashboard.hints', { returnObjects: true }) as string[]
+  const hints = hintsFromT(t, 'dashboard.hints')
 
   return (
     <AppPageShell
@@ -202,7 +203,7 @@ export function PersonnelPage() {
           {isAdmin ? (
             <>
               <Button asChild size="sm" variant="outline">
-                <Link to="/personnel/confirm">{t('dashboard.actions.perPersonClose')}</Link>
+                <Link to="/confirmation">{t('dashboard.actions.perPersonClose')}</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
                 <Link to="/admin/users">{t('dashboard.actions.manageUsers')}</Link>

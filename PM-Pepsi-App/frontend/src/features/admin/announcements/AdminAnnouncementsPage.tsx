@@ -1,4 +1,5 @@
 import type { AnnouncementItem, CreateAnnouncementBody } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
@@ -209,7 +210,7 @@ export function AdminAnnouncementsPage() {
       tourTarget="admin-announcements"
       title={t('announcements.title')}
       description={t('announcements.pageDescription')}
-      hints={t('announcements.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'announcements.hints')}
       headerActions={
         <>
           <Button

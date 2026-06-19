@@ -38,6 +38,21 @@ export const masterPlanSheetRowsResponseSchema = z.object({
   rows: z.array(masterPlanSheetRowSchema),
 })
 
+export const masterPlanSearchItemSchema = z.object({
+  rowId: z.number().int(),
+  rowIndex: z.number().int(),
+  sheetId: z.number().int(),
+  sheetName: z.string(),
+  label: z.string(),
+})
+
+export const masterPlanSearchResponseSchema = z.object({
+  query: z.string(),
+  items: z.array(masterPlanSearchItemSchema),
+})
+
+export type MasterPlanSearchResponse = z.infer<typeof masterPlanSearchResponseSchema>
+
 export type MasterPlanWorkbookResponse = z.infer<typeof masterPlanWorkbookResponseSchema>
 export type MasterPlanSheetRowsResponse = z.infer<typeof masterPlanSheetRowsResponseSchema>
 

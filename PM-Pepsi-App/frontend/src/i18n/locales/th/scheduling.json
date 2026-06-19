@@ -37,8 +37,12 @@
   "colors": {
     "inProgress": "กำลังดำเนินการ",
     "inProgressTitle": "งานเปิด CRTD/REL — ยังไม่เสร็จ",
+    "estimate": "ประมาณการ (ไม่มี WO)",
+    "estimateTitle": "ยังไม่ถึงวัน · ยังไม่มีเลข WO — Reason ไม่บังคับเมื่อย้าย",
+    "upcomingWo": "มีเลข WO",
+    "upcomingWoTitle": "ยังไม่ถึงวัน · มีเลข WO แล้ว — Reason บังคับเมื่อย้าย",
     "moved": "โอนย้ายแผน",
-    "movedTitle": "มีการย้ายวันแผน",
+    "movedTitle": "มีการย้ายวันแผน (แสดง /N บน title)",
     "done": "เสร็จแล้ว",
     "doneTitle": "ปิดงานครบ / QC / TECO",
     "sunday": "อาทิตย์",
@@ -74,10 +78,10 @@
   },
   "planCalendar": {
     "title": "ปฏิทินจ่ายงาน",
-    "description": "งานที่จ่ายให้ศูนย์งานของคุณ — สีแสดงสถานะ กำลังทำ · เสร็จแล้ว · ปิดงาน · คลิกรายการเพื่อดูใบงาน",
+    "description": "สี Pipeline ทั้งโรงงาน (Planner/Admin) · ช่างเห็นเฉพาะงานที่จ่ายให้ตัวเอง",
     "hints": {
-      "assigned": "งานจ่ายแล้ว",
-      "colors": "สีสถานะ PM",
+      "assigned": "Planner เห็นทุก WO ในเดือน · ช่างเห็นเฉพาะงานจ่ายให้ตัวเอง",
+      "colors": "สี Pipeline (จ่ายงาน → ปิดงาน)",
       "hours": "สรุปชั่วโมง",
       "wo": "เปิด WO"
     },
@@ -172,8 +176,10 @@
     "tecoWarningTitle": "TECO ใน SAP แต่ยังไม่ปิดงาน/confirm ในระบบ",
     "overdue": "เลยกำหนด",
     "overdueTitle": "เลยวันแผน — ย้ายแผนต้องระบุ Reason Code",
+    "estimateTitle": "ประมาณการ · ยังไม่มีเลข WO — Reason ไม่บังคับ",
+    "upcomingWoTitle": "ยังไม่ถึงวัน · มีเลข WO — Reason บังคับ · /N = จำนวนครั้งที่ย้าย",
     "inProgressTitleExt": "งานเปิด CRTD/REL — ยังไม่เสร็จ · Reason ไม่บังคับเมื่อย้าย",
-    "movedTitleExt": "มีการย้ายวันแผน — แสดง /N · Reason บังคับ",
+    "movedTitleExt": "มีเลข WO — Reason บังคับเมื่อย้าย",
     "doneTitleExt": "ปิดงานครบ / QC อนุมัติ — ลากย้ายไม่ได้"
   },
   "workCenterFilter": {
@@ -228,6 +234,23 @@
     "closed": {
       "label": "ปิดงาน",
       "title": "ปิดใน SAP แล้ว (TECO/CLSD ฯลฯ)"
+    }
+  },
+  "pipeline": {
+    "title": "Pipeline จ่ายงาน",
+    "badgesTitle": "ป้ายย่อย",
+    "status": {
+      "unassigned": { "label": "ยังไม่จ่าย", "title": "ยังไม่มอบหมายช่าง" },
+      "assigned": { "label": "จ่ายแล้ว", "title": "จ่ายแล้ว — รอช่างเริ่มทำ" },
+      "in_progress": { "label": "กำลังทำ", "title": "บันทึกเวลาแล้ว — ยังไม่ปิด supervisor" },
+      "closed": { "label": "ปิดแล้ว", "title": "ปิด supervisor แล้ว — รอ Planner Confirm" }
+    },
+    "badge": {
+      "ack_pending": { "label": "รอรับทราบ", "title": "ช่างยังไม่กดรับทราบ" },
+      "ack_done": { "label": "รับทราบแล้ว", "title": "ช่างรับทราบแล้ว (Telegram/Web)" },
+      "qc_pending": { "label": "รอ Confirm", "title": "รอ Planner Confirm/Reject" },
+      "qc_approved": { "label": "อนุมัติแล้ว", "title": "Planner อนุมัติแล้ว" },
+      "qc_rejected": { "label": "ส่งกลับ", "title": "Planner ส่งกลับแก้ไข" }
     }
   },
   "confirmLegend": {
@@ -331,6 +354,11 @@
     "planningGroup": "Planning GROUP",
     "add": "Add",
     "readOnlyCloseWo": "ดูอย่างเดียว — ไม่มีสิทธิ์แก้ไข Close WO (ต้องมี confirmation.write)",
+    "closeWoLockedNotAssigned": "คุณไม่ได้รับมอบหมายงานนี้ — ยังไม่เห็นแท็บ Close WO",
+    "closeWoLockedPendingAck": "กรุณากดรับงานก่อน (Telegram หรือหน้า Planning) เพื่อเปิดแท็บ Close WO",
+    "acknowledgeAssignment": "รับทราบงาน",
+    "ackSuccess": "รับทราบงานแล้ว",
+    "ackFailed": "รับทราบงานไม่สำเร็จ",
     "closeBlockedDefault": "กรุณาบันทึกรายละเอียดและแนบรูปหลังทำ PM เสร็จก่อนปิดงาน",
     "toastCloseSaved": "บันทึกการปิดงานแล้ว",
     "toastCloseFailed": "บันทึกปิดงานไม่สำเร็จ",
@@ -410,6 +438,16 @@
     "deleteDescription": "ลบรายการปิดงานของหัวหน้างานรายการนี้"
   },
   "planning": {
+    "cardsTitle": "มอบหมายช่าง",
+    "cardsDesc": "เลือกการ์ดแล้วจ่ายครั้งเดียว — ว่าง {{count}} คน",
+    "categoryTitle": "หมวดงาน",
+    "categoryAA": "กะกลางวัน (Shift Day)",
+    "categoryBB": "กะกลางคืน (Shift Night)",
+    "categoryEE": "ช่างไฟฟ้า (Electrical)",
+    "categoryUT": "ช่างยูทิลิตี้ (Utility)",
+    "assignSelected": "มอบหมายที่เลือก ({{count}})",
+    "woTeamShift": "กะทีม WO: {{label}}",
+    "fullscreenCardsDesc": "ว่าง {{available}} · เลือก {{selected}}",
     "multiTitle": "จ่ายงานหลายคน (Multi-assign)",
     "multiDesc": "ติ๊กช่างที่ต้องการ แล้วกด \"เพิ่ม Assignee\" เพื่อจ่ายงานพร้อมกันหลายคนในคลิกเดียว",
     "selectedCount": "{{count}} เลือก",
@@ -478,14 +516,27 @@
   },
   "taskList": {
     "headerTitle": "PM Task List",
+    "maintenancePlan": "แผนบำรุงรักษา",
+    "taskListCode": "Task list",
     "notFoundTitle": "ไม่พบ PM Task List",
     "notFoundDesc": "ใบงานนี้ยังไม่มีรายการ task list ในระบบ",
+    "emptyNoMntplan": {
+      "title": "ใบงานไม่มี Maintenance plan",
+      "desc": "WO นี้ไม่มีฟิลด์ Maintenance plan (mntplan) จาก IW37N — โหลด task list ไม่ได้"
+    },
+    "emptyNotPublished": {
+      "title": "ยังไม่มี Task list สำหรับแผนนี้",
+      "desc": "mntplan {{mntplan}} ยังไม่มีข้อมูลหลัง Publish — กรุณา Publish จาก Master Plan ก่อน"
+    },
+    "searchMasterPlan": "ค้นหาใน Master Plan",
+    "goPlanning": "ไปมอบหมายงาน (Planning)",
+    "itemCountStopped": "หยุด {{stopped}}",
     "pmPlan": "แผน PM",
     "productLine": "Product Line",
     "zone": "Zone",
     "wkctrType": "Work Center Type",
     "itemsTitle": "รายการงาน PM",
-    "itemsDesc": "งานตาม task list ของใบงานนี้",
+    "itemsDesc": "งานจาก Master Plan ที่ Publish แล้ว (ผูกด้วย mntplan)",
     "runningStopped": "เดิน {{running}} · หยุด {{stopped}}",
     "headerOnly": "มีหัว task list แต่ยังไม่มีรายการงาน",
     "machine": "เครื่องจักร",

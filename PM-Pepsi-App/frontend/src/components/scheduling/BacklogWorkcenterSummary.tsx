@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { backlogFilterDetailResponseSchema } from '@/api/schemas'
+import { arrayLength } from '@/lib/coerce-array'
 import { APP_INTERACTIVE_MOTION_SUBTLE } from '@/lib/app-motion'
 import { useI18nFormat } from '@/lib/use-i18n-format'
 import { Users } from 'lucide-react'
@@ -42,7 +43,7 @@ export function BacklogWorkcenterSummary({
     if (data) {
       return t('backlog.wcSummary.collapsedSummary', {
         orders: data.totalOrders.toLocaleString(bcp47),
-        techs: data.byWorkcenter.length.toLocaleString(bcp47),
+        techs: arrayLength(data.byWorkcenter).toLocaleString(bcp47),
       })
     }
     return t('backlog.wcSummary.collapsedDefault')
@@ -83,7 +84,7 @@ export function BacklogWorkcenterSummary({
             footer={
               <p className="text-app-muted">
                 {t('backlog.wcSummary.totalFooter', {
-                  techCount: data.byWorkcenter.length.toLocaleString(bcp47),
+                  techCount: arrayLength(data.byWorkcenter).toLocaleString(bcp47),
                   closed: data.completionCount.toLocaleString(bcp47),
                   percent: data.completionPercent,
                 })}
@@ -91,9 +92,9 @@ export function BacklogWorkcenterSummary({
             }
           />
 
-          {data.byWorkcenter.length > 0 ? (
+          {arrayLength(data.byWorkcenter) > 0 ? (
             <KpiStatGrid className="sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {data.byWorkcenter.map((wc) => (
+              {(data.byWorkcenter ?? []).map((wc) => (
                 <KpiStatCard
                   key={wc.code}
                   tone="info"

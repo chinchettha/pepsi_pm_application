@@ -19,6 +19,7 @@ import { registerWorkOrderRoutes } from './routes/work-orders.js'
 import { registerManhoursRoutes } from './routes/manhours.js'
 import { registerPersonnelRoutes } from './routes/personnel.js'
 import { registerReportsRoutes } from './routes/reports.js'
+import { registerNotificationRoutes } from './routes/notifications.js'
 import { registerAdminBrandingRoutes } from './routes/admin-branding.js'
 import { registerAdminSettingsRoutes } from './routes/admin-settings.js'
 import { registerAdminAuditRoutes } from './routes/admin-audit.js'
@@ -113,6 +114,7 @@ export function createApp(opts: {
   registerManhoursRoutes(app, opts.pool, opts.sessionSecret)
   registerPersonnelRoutes(app, opts.pool, opts.sessionSecret)
   registerReportsRoutes(app, opts.pool, opts.sessionSecret)
+  registerNotificationRoutes(app, opts.pool, opts.sessionSecret)
 
   return app
 }

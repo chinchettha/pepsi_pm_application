@@ -56,6 +56,21 @@ export const workOrderSearchBodySchema = z.object({
 export const woPmPhaseSchema = z.enum(['create', 'rel', 'confirm'])
 export const pmExecutionStatusSchema = z.enum(['in_progress', 'done', 'closed'])
 
+export const plannerPipelineStatusSchema = z.enum([
+  'unassigned',
+  'assigned',
+  'in_progress',
+  'closed',
+])
+
+export const plannerPipelineBadgeSchema = z.enum([
+  'ack_pending',
+  'ack_done',
+  'qc_pending',
+  'qc_approved',
+  'qc_rejected',
+])
+
 export const workOrderSearchRowSchema = z.object({
   id: z.string(),
   wkorder: z.string(),
@@ -237,6 +252,7 @@ export const workOrderTaskListItemSchema = z.object({
   tasklist: z.string(),
   machine: z.string(),
   pmlist: z.string(),
+  displayLine: z.string(),
   machinestatus: z.number().nullable(),
   mat: z.string(),
   matdescrip: z.string(),
@@ -252,6 +268,7 @@ export const workOrderTaskListSchema = z.object({
   summary: z
     .object({
       tasklist: z.string(),
+      legacy: z.string(),
       productline: z.string(),
       zone: z.string(),
       wkctrtype: z.string(),
@@ -300,6 +317,19 @@ export const workOrderPlanningAssignedSchema = z.object({
   ackChannel: z.enum(['telegram', 'web']).nullable().optional(),
 })
 
+export const closeWoAccessSchema = z.object({
+  canView: z.boolean(),
+  canWrite: z.boolean(),
+  reason: z.enum(['not_technician', 'not_assigned', 'pending_ack']).optional(),
+  myAssignment: z
+    .object({
+      ackStatus: z.enum(['pending', 'acknowledged', 'declined']).optional(),
+      ackChannel: z.enum(['telegram', 'web']).nullable().optional(),
+      ackAt: z.string().nullable().optional(),
+    })
+    .optional(),
+})
+
 export const workOrderPlanningSchema = z.object({
   canAssign: z.boolean(),
   assigned: workOrderPlanningAssignedSchema.nullable(),
@@ -311,9 +341,12 @@ export const workOrderPlanningSchema = z.object({
       hrHours: z.number().nullable().optional(),
       plannedHours: z.number().nullable().optional(),
       availableHours: z.number().nullable().optional(),
+      shiftTags: z.array(z.enum(['AA', 'BB'])).optional(),
+      craftTags: z.array(z.enum(['EE', 'UT'])).optional(),
     }),
   ),
   groups: z.array(workOrderPlanningGroupSchema),
+  closeWoAccess: closeWoAccessSchema,
 })
 
 export const workOrderModalDetailSchema = z.object({
@@ -591,6 +624,8 @@ export const calendarEventItemSchema = z.object({
   tecoBellAlert: z.boolean().optional(),
   displayStatus: z.enum(['in_progress', 'overdue', 'moved', 'completed']).optional(),
   team: z.enum(['A', 'B', 'EE', 'UT']).optional(),
+  pipelineStatus: plannerPipelineStatusSchema.optional(),
+  pipelineBadges: z.array(plannerPipelineBadgeSchema).optional(),
 })
 
 export const calendarEventsResponseSchema = z.object({
@@ -2821,7 +2856,19 @@ export const confirmationExportResponseSchema = z.object({
   items: z.array(confirmationExportRowSchema),
 })
 
+export const confirmationPreviewRowSchema = confirmationExportRowSchema.extend({
+  idiw37: z.number().int(),
+  confirmQcStatus: z.enum(['pending', 'rejected']),
+  source: z.enum(['personnel', 'supervisor']),
+})
+
+export const confirmationPreviewResponseSchema = z.object({
+  totalRows: z.number().int(),
+  items: z.array(confirmationPreviewRowSchema),
+})
+
 export type ConfirmationExportRow = z.infer<typeof confirmationExportRowSchema>
+export type ConfirmationPreviewRow = z.infer<typeof confirmationPreviewRowSchema>
 export type ConfirmationExportResponse = z.infer<typeof confirmationExportResponseSchema>
 
 export const backupTriggerSchema = z.enum(['manual', 'schedule'])
@@ -3066,9 +3113,28 @@ export const patchUserPrefBodySchema = z.object({
 
 export type PatchUserPrefBody = z.infer<typeof patchUserPrefBodySchema>
 
+export const appNotificationItemSchema = z.object({
+  id: z.number().int().positive(),
+  notifyKind: z.string(),
+  title: z.string(),
+  body: z.string().nullable(),
+  linkRoute: z.string().nullable(),
+  idiw37: z.number().int().positive().nullable(),
+  read: z.boolean(),
+  createdAt: z.string(),
+})
+
+export const appNotificationsResponseSchema = z.object({
+  items: z.array(appNotificationItemSchema),
+  unreadCount: z.number().int().nonnegative(),
+})
+
+export type AppNotificationsResponse = z.infer<typeof appNotificationsResponseSchema>
+
 export const telegramNotifyKindSchema = z.enum([
   'assignment_to_tech',
   'ack_to_planner',
+  'close_to_planner',
   'ack_summary',
   'confirm_reminder',
   'custom',

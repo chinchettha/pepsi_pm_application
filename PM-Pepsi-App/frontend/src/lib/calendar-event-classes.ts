@@ -1,4 +1,6 @@
 import type { ScheduleCalendarEvent } from '@/lib/schedule-calendar'
+import { isPlanMovableStatus } from '@/lib/plan-movable'
+import type { PlannerPipelineStatus } from '@/lib/planner-pipeline'
 
 export type CalendarEventDisplayStatus = 'in_progress' | 'overdue' | 'moved' | 'completed'
 
@@ -15,13 +17,22 @@ export function inferCalendarDisplayStatus(
   if (e.pmExecutionStatus === 'done' || e.pmExecutionStatus === 'closed') {
     return 'completed'
   }
-  if (e.moveCount != null && e.moveCount >= 1) return 'moved'
-  if (e.moveReasonRequired === true) return 'overdue'
+  if (e.moveReasonRequired === false) return 'in_progress'
+  if (e.moveReasonRequired === true) return 'moved'
   return 'in_progress'
 }
 
 export function calendarDisplayStatusClass(status: CalendarEventDisplayStatus): string {
   return `pm-cal-event--status-${status.replace(/_/g, '-')}`
+}
+
+export function calendarPipelineStatusClass(status: PlannerPipelineStatus): string {
+  return `pm-cal-event--pipeline-${status.replace(/_/g, '-')}`
+}
+
+/** CRTD/REL on /calendar — pipeline colors override SAP scheduling displayStatus */
+export function usesPipelineSurfaceColor(e: Pick<ScheduleCalendarEvent, 'syst' | 'pipelineStatus'>): boolean {
+  return isPlanMovableStatus(e.syst) && e.pipelineStatus != null
 }
 
 export function calendarTeamClass(team?: PmPlanTeam | string): string | null {
@@ -33,7 +44,11 @@ export function calendarTeamClass(team?: PmPlanTeam | string): string | null {
 }
 
 export function calendarEventSurfaceClasses(e: ScheduleCalendarEvent): string[] {
-  const classes = [calendarDisplayStatusClass(inferCalendarDisplayStatus(e))]
+  const classes = [
+    usesPipelineSurfaceColor(e) && e.pipelineStatus
+      ? calendarPipelineStatusClass(e.pipelineStatus)
+      : calendarDisplayStatusClass(inferCalendarDisplayStatus(e)),
+  ]
   const teamClass = calendarTeamClass(e.team)
   if (teamClass) classes.push(teamClass)
   return classes

@@ -14,6 +14,7 @@ import {
   masterPlanPublishBodySchema,
   masterPlanPublishResponseSchema,
   masterPlanRowLinksResponseSchema,
+  masterPlanSearchResponseSchema,
   masterPlanSheetRowsResponseSchema,
   masterPlanStatusResponseSchema,
   masterPlanWorkbookResponseSchema,
@@ -29,6 +30,7 @@ import {
   listMasterPlanRowChanges,
   patchMasterPlanRow,
   publishMasterPlanToTasklist,
+  searchMasterPlanRows,
   sheetBelongsToDiscipline,
 } from '../services/master-plan.js'
 
@@ -237,6 +239,23 @@ export function registerMasterPlanRoutes(app: Express, pool: Pool, sessionSecret
       }
 
       res.json(masterPlanSheetRowsResponseSchema.parse(payload))
+    },
+  )
+
+  app.get(
+    '/api/v1/master-plan/:discipline/search',
+    ...requireRead,
+    async (req: Request, res: Response) => {
+      const parsed = masterPlanDisciplineSchema.safeParse(String(req.params.discipline ?? '').toUpperCase())
+      if (!parsed.success) {
+        res.status(400).json({ error: 'INVALID_DISCIPLINE', message: 'Use EE, ME, or PK' })
+        return
+      }
+
+      const q = typeof req.query.q === 'string' ? req.query.q : ''
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50) || 50))
+      const payload = await searchMasterPlanRows(pool, parsed.data, q, limit)
+      res.json(masterPlanSearchResponseSchema.parse(payload))
     },
   )
 

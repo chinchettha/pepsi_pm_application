@@ -1,4 +1,5 @@
 import type { ConfirmationImportPreviewResponse, Iw37nImportPreviewResponse } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { CanPermission } from '@/components/auth/CanPermission'
 import { ConfirmImportReviewPanel } from '@/components/confirmation/ConfirmImportReviewPanel'
 import { IntegrationJobStatusBadge } from '@/components/integration/IntegrationJobStatusBadge'
@@ -96,7 +97,7 @@ export function IntegrationPage() {
     <AppPageShell
       title={t('title')}
       description={t('description')}
-      hints={t('hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'hints')}
       headerActions={
         <>
           <Badge variant="secondary" className="gap-1 text-xs">

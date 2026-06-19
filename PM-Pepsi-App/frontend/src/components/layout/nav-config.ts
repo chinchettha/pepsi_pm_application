@@ -22,8 +22,6 @@ import {
   Users,
   Wrench,
 } from 'lucide-react'
-
-/** Sidebar group heading — English defaults; `localize-nav` applies `nav` locale */
 export type NavHeading = { kind: 'heading'; label: string }
 
 export type NavLinkEntry = {
@@ -63,7 +61,7 @@ export const appNav: NavEntry[] = [
     menuright: 'A:U:W',
     permission: 'confirmation.read',
   },
-  { kind: 'item', to: '/confirmation', label: 'Export Confirmation', icon: BadgeCheck, menuright: 'A:U:W' },
+  { kind: 'item', to: '/confirmation', label: 'Confirmation', icon: BadgeCheck, menuright: 'A:U', permission: 'confirmation.read' },
 
   { kind: 'heading', label: 'Planning & SAP Import' },
   { kind: 'item', to: '/planning', label: 'PM/CM Planning', icon: Wrench, menuright: 'A' },
@@ -89,7 +87,6 @@ export const appNav: NavEntry[] = [
     menuright: 'A:U:W',
     end: true,
   },
-  { kind: 'item', to: '/personnel/confirm', label: 'Personnel Confirmation', icon: ShieldCheck, menuright: 'A' },
 
   { kind: 'heading', label: 'Reports' },
   {

@@ -3,6 +3,7 @@
  * - Summary Over all → รายงานสรุปแนว report ลูกค้า
  */
 import { CanPermission } from '@/components/auth/CanPermission'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AppCard } from '@/components/layout/AppCard'
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
@@ -600,7 +601,7 @@ export function WorktimePage() {
     <AppPageShell
       title={t('worktime.title')}
       description={t('worktime.description')}
-      hints={t('worktime.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'worktime.hints')}
       headerActions={
         <>
           <Badge variant="secondary" className="gap-1 text-xs">

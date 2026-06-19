@@ -1,23 +1,9 @@
 import { csvAttachmentBody, escapeCsvCell } from '../lib/csv.js'
+import { CONFIRMATION_SAP_HEADERS } from '../lib/confirmation-export-format.js'
 import type { ConfirmationExportRow } from './confirmation.js'
 
 /** Column headers aligned with SAP export.xlsx template. */
-const SAP_HEADERS = [
-  '',
-  'Comfirmation',
-  'Order',
-  'Operation',
-  'SubO',
-  'Ca..',
-  'Split',
-  'Wrk Ctr',
-  'Act.Work',
-  'unit',
-  'Start date Exe.',
-  'End Date Exe.',
-  'Start Execute',
-  'End Execute',
-] as const
+const SAP_HEADERS = CONFIRMATION_SAP_HEADERS
 
 export function buildConfirmationExportSapCsv(rows: ConfirmationExportRow[]): string {
   const lines: string[] = [SAP_HEADERS.map(escapeCsvCell).join(',')]

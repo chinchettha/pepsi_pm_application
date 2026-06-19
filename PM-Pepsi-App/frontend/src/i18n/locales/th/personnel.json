@@ -24,7 +24,7 @@
       "worktime": "Worktime",
       "exportConfirmation": "Export Confirmation",
       "assignWork": "จ่ายงาน",
-      "perPersonClose": "ปิดงานรายบุคคล",
+      "perPersonClose": "Confirmation",
       "manageUsers": "จัดการผู้ใช้"
     },
     "statsSectionTitle": "สรุปงานของฉัน",
@@ -223,7 +223,7 @@
     "refresh": "รีเฟรช",
     "systemSettings": "ตั้งค่าระบบ",
     "backDashboard": "กลับ Dashboard",
-    "personnelConfirmation": "Personnel Confirmation",
+    "personnelConfirmation": "Confirmation",
     "importExcel": "นำเข้า Excel",
     "importing": "Importing…",
     "addPersonnel": "เพิ่มบุคลากร",

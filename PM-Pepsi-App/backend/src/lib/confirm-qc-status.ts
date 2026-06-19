@@ -1,4 +1,13 @@
-/** Admin QC ชุดปิดงาน (รูป + เวลา + confirm) ก่อนเข้า dashboard */
+/** Planner ตรวจชุดปิดงาน (รูป + เวลา + confirm) ก่อนเข้า dashboard */
+export function isPlannerReviewerRole(userst: string | null | undefined): boolean {
+  return (userst ?? '').trim().toUpperCase() === 'U'
+}
+
+export function assertPlannerReviewerRole(userst: string | null | undefined): void {
+  if (!isPlannerReviewerRole(userst)) {
+    throw new Error('PLANNER_REVIEW_REQUIRED')
+  }
+}
 export const CONFIRM_QC_STATUSES = ['pending', 'approved', 'rejected'] as const
 export type ConfirmQcStatus = (typeof CONFIRM_QC_STATUSES)[number]
 
@@ -16,7 +25,7 @@ export function isConfirmQcApproved(status: string | null | undefined): boolean 
 export function confirmQcStatusLabel(status: string | null | undefined): string {
   switch (status) {
     case 'pending':
-      return 'รอ Admin ตรวจ'
+      return 'รอ Planner ตรวจ'
     case 'approved':
       return 'อนุมัติแล้ว'
     case 'rejected':

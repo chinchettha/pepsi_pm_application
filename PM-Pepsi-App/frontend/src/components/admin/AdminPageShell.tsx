@@ -2,6 +2,7 @@ import { AdminPageContent } from '@/components/admin/AdminPageContent'
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { AppPageHeroHints } from '@/components/layout/AppPageHero'
+import { coerceStringArray } from '@/lib/coerce-array'
 import { SchedulingPageStack } from '@/components/scheduling/SchedulingPageLayout'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
@@ -37,10 +38,11 @@ export function AdminPageShell({
   stack?: boolean
   children: ReactNode
 }) {
+  const safeHints = coerceStringArray(hints)
   const meta =
-    hints && hints.length > 0 ? (
+    safeHints.length > 0 ? (
       <>
-        <AppPageHeroHints hints={hints} />
+        <AppPageHeroHints hints={safeHints} />
         {heroMeta}
       </>
     ) : (

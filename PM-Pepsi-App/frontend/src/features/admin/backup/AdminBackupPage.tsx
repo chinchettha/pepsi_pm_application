@@ -1,4 +1,5 @@
 import type { BackupHistoryItem, BackupListResponse, BackupScheduleResponse } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
@@ -247,7 +248,7 @@ export function AdminBackupPage() {
       tourTarget="admin-backup"
       title={t('backup.title')}
       description={t('backup.description')}
-      hints={t('backup.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'backup.hints')}
       headerActions={
         <>
           <Button

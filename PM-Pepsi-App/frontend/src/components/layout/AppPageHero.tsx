@@ -1,5 +1,6 @@
 import { PepsiStripe } from '@/components/brand/PepsiStripe'
 import { cn } from '@/lib/utils'
+import { coerceStringArray } from '@/lib/coerce-array'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -110,7 +111,9 @@ export function AppPageHero({
               </p>
             ) : null}
             <h1 className="dashboard-hero__title">{title}</h1>
-            {hints && hints.length > 0 ? <AppPageHeroHints hints={hints} /> : null}
+            {coerceStringArray(hints).length > 0 ? (
+              <AppPageHeroHints hints={hints} />
+            ) : null}
             {meta}
             {description ? (
               <p className="dashboard-hero__subtitle">{description}</p>
@@ -125,11 +128,12 @@ export function AppPageHero({
 }
 
 /** chip คำอธิบายสั้นบน hero (scheduling hints) */
-export function AppPageHeroHints({ hints }: { hints: string[] }) {
-  if (hints.length === 0) return null
+export function AppPageHeroHints({ hints }: { hints?: string[] | null }) {
+  const list = coerceStringArray(hints)
+  if (list.length === 0) return null
   return (
     <ul className="mt-2 flex flex-wrap gap-1.5">
-      {hints.map((hint) => (
+      {list.map((hint) => (
         <li key={hint} className="app-page-hero__hint">
           {hint}
         </li>

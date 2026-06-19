@@ -1,3 +1,4 @@
+import { arrayLength } from '@/lib/coerce-array'
 import { AppCard } from '@/components/layout/AppCard'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -242,7 +243,7 @@ export function ManhourHrConfirmPanel({ enabled }: Props) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {q.data.rows.length === 0 ? (
+                    {arrayLength(q.data.rows) === 0 ? (
                       <TableRow>
                         <TableCell colSpan={11} className="p-0">
                           <EmptyState

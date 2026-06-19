@@ -2,6 +2,8 @@
  * Eng Utilization + สรุปรายสัปดาห์
  */
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
+import { arrayLength } from '@/lib/coerce-array'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -132,7 +134,7 @@ export function SummaryWeeklyPage() {
     <AppPageShell
       title={t('engUtil.title')}
       description={t('engUtil.description')}
-      hints={t('engUtil.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'engUtil.hints')}
       headerActions={
         <>
           {q.data?.rows ? (
@@ -200,7 +202,7 @@ export function SummaryWeeklyPage() {
         {q.data?.importCoverage ? (
           <SummaryWeeklyImportHint
             coverage={q.data.importCoverage}
-            rowCount={q.data.rows.length}
+            rowCount={arrayLength(q.data.rows)}
             onApplySapRange={(from, to) => setSubmitted({ from, to })}
           />
         ) : null}
@@ -335,8 +337,8 @@ export function SummaryWeeklyPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {q.data.rows.length ? (
-                      q.data.rows.map((row, i) => {
+                    {arrayLength(q.data.rows) ? (
+                      (q.data.rows ?? []).map((row, i) => {
                         const excelTotal = excelStylePercentTotal(
                           row.percentPm,
                           row.percentReactive,

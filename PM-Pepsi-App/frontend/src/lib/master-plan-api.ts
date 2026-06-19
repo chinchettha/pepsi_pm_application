@@ -66,6 +66,31 @@ export async function fetchMasterPlanSheetRows(
   return masterPlanSheetRowsSchema.parse(data)
 }
 
+const masterPlanSearchItemSchema = z.object({
+  rowId: z.number().int(),
+  rowIndex: z.number().int(),
+  sheetId: z.number().int(),
+  sheetName: z.string(),
+  label: z.string(),
+})
+
+const masterPlanSearchResponseSchema = z.object({
+  query: z.string(),
+  items: z.array(masterPlanSearchItemSchema),
+})
+
+export type MasterPlanSearchItem = z.infer<typeof masterPlanSearchItemSchema>
+
+export async function fetchMasterPlanSearch(
+  discipline: MasterPlanDiscipline,
+  query: string,
+  limit = 50,
+): Promise<{ query: string; items: MasterPlanSearchItem[] }> {
+  const qs = new URLSearchParams({ q: query, limit: String(limit) })
+  const data = await fetchApi<unknown>(`/api/v1/master-plan/${discipline}/search?${qs}`)
+  return masterPlanSearchResponseSchema.parse(data)
+}
+
 const masterPlanPatchRowResponseSchema = z.object({
   rowId: z.number().int(),
   sheetId: z.number().int(),

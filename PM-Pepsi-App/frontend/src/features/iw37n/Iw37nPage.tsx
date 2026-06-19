@@ -1,4 +1,5 @@
 import type { Iw37nImportPreviewResponse } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { CanPermission } from '@/components/auth/CanPermission'
 import { ImportReviewActionBadge } from '@/components/integration/ImportReviewActionBadge'
 import { Iw37nImportReviewPanel } from '@/components/iw37n/Iw37nImportReviewPanel'
@@ -274,6 +275,7 @@ export function Iw37nPage() {
     enabled: batchViewOpen && Boolean(batchViewId),
     placeholderData: keepPreviousData,
   })
+  const batchViewItems = batchViewRowsQ.data?.items ?? []
 
   const [itemQ, setItemQ] = useState('')
   const [itemOffset, setItemOffset] = useState(0)
@@ -502,7 +504,7 @@ export function Iw37nPage() {
     <AppPageShell
       title={t('iw37nPage.title')}
       description={t('iw37nPage.description')}
-      hints={t('iw37nPage.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'iw37nPage.hints')}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">
@@ -1238,8 +1240,8 @@ export function Iw37nPage() {
               ) : batchViewRowsQ.data ? (
                 <div className="space-y-2">
                   <p className="text-xs text-app-muted">
-                    {t('iw37nPage.batchViewRows', { count: batchViewRowsQ.data.items.length })}
-                    {batchViewRowsQ.data.items.length >= 2000 ? t('iw37nPage.batchViewRowCap') : ''}
+                    {t('iw37nPage.batchViewRows', { count: batchViewItems.length })}
+                    {batchViewItems.length >= 2000 ? t('iw37nPage.batchViewRowCap') : ''}
                   </p>
                   <div className="app-table-shell overflow-x-auto">
                     <Table embedded stickyHeader zebra>
@@ -1255,7 +1257,7 @@ export function Iw37nPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {batchViewRowsQ.data.items.length === 0 ? (
+                        {batchViewItems.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={7} className="p-0">
                               <EmptyState
@@ -1266,7 +1268,7 @@ export function Iw37nPage() {
                             </TableCell>
                           </TableRow>
                         ) : (
-                          batchViewRowsQ.data.items.map((r) => (
+                          batchViewItems.map((r) => (
                             <TableRow key={`${r.rowNo}-${r.createdAt}`}>
                               <TableCell className="text-center tabular-nums">{r.rowNo}</TableCell>
                               <TableCell className="whitespace-nowrap">

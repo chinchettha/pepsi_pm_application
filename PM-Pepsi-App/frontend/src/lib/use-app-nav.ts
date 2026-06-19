@@ -13,6 +13,7 @@ import { useAuthUser } from '@/lib/use-permission'
 import type { NavEntry } from '@/components/layout/nav-config'
 import { useQuery } from '@tanstack/react-query'
 import { localizeNavEntries } from '@/lib/localize-nav'
+import { arrayLength } from '@/lib/coerce-array'
 import { useAppLocale } from '@/providers/I18nProvider'
 import { useMemo, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,8 +41,8 @@ export function useAppNav() {
   const entries: NavEntry[] = useMemo(() => {
     if (!authUser) return []
     const base =
-      q.data && q.data.items.length > 0
-        ? supplementNavFromFallback(apiNavItemsToEntries(q.data.items), getFallbackNav())
+      arrayLength(q.data?.items) > 0
+        ? supplementNavFromFallback(apiNavItemsToEntries(q.data!.items), getFallbackNav())
         : getFallbackNav()
     const navUserst = preview?.roleCode ?? authUser.userst
     return stripDeprecatedNavEntries(
@@ -63,6 +64,6 @@ export function useAppNav() {
     allowedPaths,
     isLoading: q.isLoading,
     isError: q.isError,
-    source: q.data && q.data.items.length > 0 ? ('api' as const) : ('fallback' as const),
+    source: arrayLength(q.data?.items) > 0 ? ('api' as const) : ('fallback' as const),
   }
 }

@@ -75,7 +75,11 @@ export async function setConfirmQcStatus(
   )
   if (!r.rows[0]) return null
   if (status === 'approved') {
-    await applyTecoSystemStatus(pool, idiw37)
+    try {
+      await applyTecoSystemStatus(pool, idiw37)
+    } catch (err) {
+      console.error('[confirm-qc] applyTecoSystemStatus failed (QC still approved):', err)
+    }
   }
   return getConfirmQcSnapshot(pool, idiw37)
 }
@@ -138,7 +142,7 @@ export async function getConfirmQcSnapshot(
   const readyForReview = imageCount > 0 || closeCount > 0 || worktimeCount > 0
 
   return {
-    idiw37: row.idiw37,
+    idiw37: Number(row.idiw37),
     wkorder: row.wkorder?.trim() ?? '',
     status,
     statusLabel: confirmQcStatusLabel(status),

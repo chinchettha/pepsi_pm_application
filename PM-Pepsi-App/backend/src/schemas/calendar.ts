@@ -1,5 +1,9 @@
 /** รูปแบบเดียวกับ frontend calendarEventsResponseSchema */
 import { z } from 'zod'
+import {
+  plannerPipelineBadgeSchema,
+  plannerPipelineStatusSchema,
+} from '../lib/planner-pipeline.js'
 import { pmExecutionStatusSchema } from '../lib/wo-pm-execution.js'
 import { woPmPhaseSchema } from '../lib/wo-pm-phase.js'
 
@@ -56,6 +60,9 @@ export const calendarEventSchema = z.object({
     .optional(),
   /** PM Plan team A / B / EE / UT */
   team: z.enum(['A', 'B', 'EE', 'UT']).optional(),
+  /** Pipeline จ่ายงาน — unassigned / assigned / in_progress / closed */
+  pipelineStatus: z.enum(plannerPipelineStatusSchema).optional(),
+  pipelineBadges: z.array(z.enum(plannerPipelineBadgeSchema)).optional(),
 })
 
 export const calendarEventsResponseSchema = z.object({

@@ -300,19 +300,6 @@
     "confirmTitle": "Deactivate technicians without photos?",
     "confirmDescription": "Sets workstatus=TERMINATED for {{count}} active user(s) without imgmember_data — they disappear from Eng Utilization until a photo is uploaded and status is re-enabled"
   },
-  "backup": {
-    "title": "Backup & restore",
-    "description": "pg_dump → .sql.gz · cron + retention · SHA256",
-    "saved": "Backup settings saved",
-    "saveFailed": "Save failed",
-    "deleteFailed": "Delete failed",
-    "backupOk": "Backup completed",
-    "backupFailed": "Backup failed",
-    "deleted": "Backup file deleted",
-    "restoreOk": "Restore completed ({{seconds}}s)",
-    "restoreFromOk": "Restored from backup #{{id}}",
-    "historyLoadFailed": "Could not load backup history"
-  },
   "audit": {
     "title": "Audit log",
     "description": "Login, mutations, RBAC denied — filter and CSV export",
@@ -341,6 +328,12 @@
     "metaLoadFailed": "Could not load meta",
     "totalLoaded": "Total ({{loaded}}/{{total}} tables loaded)",
     "footerHint": "Links open the matching entity tab ·",
+    "publishCalloutTitle": "Master Plan — Publish after yearly import",
+    "publishCalloutDesc": "Task list in WO modal stays empty until you Publish each line (EE / ME / PK).",
+    "publishStep1": "Import or edit plans on Master Plan",
+    "publishStep2": "Review mntplan binding in a test WO (Task tab)",
+    "publishStep3": "Click Publish per line before planners assign work",
+    "publishCta": "Open Master Plan",
     "goMasterData": "Go to Master Plan",
     "goReferenceData": "SAP reference tables",
     "adminConsole": "Admin Console"
@@ -774,6 +767,17 @@
     "emptyRows": "No rows match filters"
   },
   "backup": {
+    "title": "Backup & restore",
+    "description": "pg_dump → .sql.gz · cron + retention · SHA256",
+    "saved": "Backup settings saved",
+    "saveFailed": "Save failed",
+    "deleteFailed": "Delete failed",
+    "backupOk": "Backup completed",
+    "backupFailed": "Backup failed",
+    "deleted": "Backup file deleted",
+    "restoreOk": "Restore completed ({{seconds}}s)",
+    "restoreFromOk": "Restored from backup #{{id}}",
+    "historyLoadFailed": "Could not load backup history",
     "startFailed": "Could not start backup",
     "restoreFailed": "Restore failed",
     "selectSqlGz": "Select a .sql.gz file",
@@ -937,6 +941,7 @@
     "notifyKinds": {
       "assignment_to_tech": "Assignment → technician DM",
       "ack_to_planner": "Ack → planner group",
+      "close_to_planner": "Work closed → planner group",
       "ack_summary": "Daily ack summary",
       "confirm_reminder": "QC / confirm reminder",
       "custom": "Custom"

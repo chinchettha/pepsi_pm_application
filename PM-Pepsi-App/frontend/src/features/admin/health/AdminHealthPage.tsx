@@ -1,4 +1,5 @@
 import type { AdminHealthResponse } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
@@ -405,7 +406,7 @@ export function AdminHealthPage() {
       tourTarget="admin-health"
       title={t('health.title')}
       description={t('health.description')}
-      hints={t('health.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'health.hints')}
       headerActions={
         <>
           {data ? (

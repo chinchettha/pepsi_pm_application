@@ -6,26 +6,30 @@ import { Link } from 'react-router-dom'
 
 export type UnexpectedErrorPageProps = {
   error: Error
+  componentStack?: string | null
   onReset: () => void
 }
 
-export function UnexpectedErrorPage({ error, onReset }: UnexpectedErrorPageProps) {
+export function UnexpectedErrorPage({ error, componentStack, onReset }: UnexpectedErrorPageProps) {
   const { t } = useTranslation('errors')
   const showStack = import.meta.env.DEV
 
-  const detail = showStack && error.stack ? (
+  const detail = (
     <details className="error-page__stack">
       <summary className="cursor-pointer text-caption font-medium text-app">
         {error.name}: {error.message}
       </summary>
-      <pre className="mt-2 max-h-40 overflow-auto rounded-button bg-[var(--app-text)] p-3 text-caption leading-relaxed text-[var(--app-surface)]">
-        {error.stack}
-      </pre>
+      {componentStack ? (
+        <pre className="mt-2 max-h-32 overflow-auto rounded-button bg-[var(--app-subtle)] p-3 text-caption leading-relaxed text-app-muted">
+          {componentStack}
+        </pre>
+      ) : null}
+      {showStack && error.stack ? (
+        <pre className="mt-2 max-h-40 overflow-auto rounded-button bg-[var(--app-text)] p-3 text-caption leading-relaxed text-[var(--app-surface)]">
+          {error.stack}
+        </pre>
+      ) : null}
     </details>
-  ) : (
-    <p className="error-page__dev-msg text-center font-mono text-caption text-app-muted">
-      {error.name}: {error.message}
-    </p>
   )
 
   return (

@@ -1,4 +1,5 @@
 import type { AuditFilters, AuditLogItem } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
@@ -209,7 +210,7 @@ export function AdminAuditPage() {
       tourTarget="admin-audit"
       title={t('audit.title')}
       description={t('audit.description')}
-      hints={t('audit.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'audit.hints')}
       headerActions={
         <>
           <Badge variant="secondary">

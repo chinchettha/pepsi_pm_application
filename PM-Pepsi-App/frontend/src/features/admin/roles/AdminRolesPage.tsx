@@ -1,4 +1,5 @@
 import type { AdminRole } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
@@ -181,7 +182,7 @@ export function AdminRolesPage() {
       tourTarget="admin-roles"
       title={t('roles.title')}
       description={t('roles.description')}
-      hints={t('roles.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'roles.hints')}
       headerActions={
         <>
           <Button

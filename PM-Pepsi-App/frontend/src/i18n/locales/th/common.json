@@ -20,6 +20,13 @@
     "showFilters": "แสดงตัวกรอง",
     "hideFilters": "ย่อตัวกรอง"
   },
+  "notifications": {
+    "title": "การแจ้งเตือน",
+    "aria": "การแจ้งเตือน",
+    "ariaUnread": "การแจ้งเตือน — ยังไม่อ่าน {{count}} รายการ",
+    "empty": "ไม่มีการแจ้งเตือน",
+    "markAllRead": "อ่านทั้งหมด"
+  },
   "confirmDelete": {
     "confirm": "ลบ",
     "cannotUndo": "ไม่สามารถย้อนกลับได้"

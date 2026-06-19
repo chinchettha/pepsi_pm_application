@@ -11,6 +11,7 @@ import {
   planningResponseSchema,
 } from '../schemas/planning.js'
 import { listPlanCalendarEvents } from '../services/plan-calendar.js'
+import { resolvePlanCalendarScope } from '../lib/plan-calendar-scope.js'
 import {
   acknowledgePlanningAssignment,
   getPlanningAckSummary,
@@ -60,7 +61,15 @@ export function registerPlanningRoutes(
         Math.max(1, Number(req.query.month) || now.getMonth() + 1),
       )
       try {
-        const items = await listPlanCalendarEvents(pool, idwkctr, year, month, wkctr)
+        const scope = resolvePlanCalendarScope(req.authUser?.userst)
+        const items = await listPlanCalendarEvents(
+          pool,
+          idwkctr,
+          year,
+          month,
+          wkctr,
+          scope,
+        )
         res.json(calendarEventsResponseSchema.parse({ items, year, month }))
       } catch (err) {
         if (isSchemaMissing(err)) {

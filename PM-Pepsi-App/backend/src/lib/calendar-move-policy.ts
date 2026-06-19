@@ -1,5 +1,15 @@
 import { isPlanMovableStatus } from '../services/scheduling-shared.js'
 
+const NO_WO_PLACEHOLDERS = new Set(['0', '-', '—', 'N/A', 'NA', 'TBD', 'NONE', 'NULL'])
+
+/** มีเลข WO จริง (สไลด์ลูกค้า — ส้ม · Reason บังคับเมื่อย้าย) */
+export function hasCalendarWorkOrderNumber(wkorder: string | null | undefined): boolean {
+  const w = (wkorder ?? '').trim()
+  if (!w) return false
+  if (NO_WO_PLACEHOLDERS.has(w.toUpperCase())) return false
+  return true
+}
+
 /** วันที่แสดงบนปฏิทินเลยกำหนดแล้ว (เทียบสไลด์ — สีแดง) */
 export function isCalendarDisplayDateOverdue(
   displayUnix: number,
@@ -53,17 +63,20 @@ export function hasCalendarPlanMove(input: {
 }
 
 /**
- * เหตุผลย้ายแผน — บังคับเมื่อส้ม/แดง (ย้ายแล้วหรือเลยกำหนด)
- * ไม่บังคับเมื่องานม่วง/น้ำเงิน (CRTD/REL ปกติ)
+ * เหตุผลย้ายแผน — สไลด์ลูกค้า:
+ * · แดง (เลยกำหนด) → บังคับ
+ * · ส้ม (ยังไม่ถึงวัน + มีเลข WO) → บังคับ
+ * · น้ำเงิน (ประมาณการ · ยังไม่มี WO) → ไม่บังคับ
  */
 export function resolveCalendarMoveReasonRequired(input: {
   syst?: string | null
   displayUnix: number
+  wkorder?: string | null
   cday?: string | number | null
   mpcount?: number | null
 }): boolean {
   if (!isPlanMovableStatus(input.syst)) return false
-  if (hasCalendarPlanMove(input)) return true
   if (isCalendarDisplayDateOverdue(input.displayUnix)) return true
+  if (hasCalendarWorkOrderNumber(input.wkorder)) return true
   return false
 }

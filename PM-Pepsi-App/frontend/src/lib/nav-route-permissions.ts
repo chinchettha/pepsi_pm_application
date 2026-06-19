@@ -22,7 +22,7 @@ export const NAV_ROUTE_PERMISSION: Record<string, string> = {
   '/worktime': 'manhours.read',
   '/personnel': 'personnel.read',
   '/personnel/admin': 'personnel.write',
-  '/personnel/confirm': 'personnel.confirm.read',
+  '/personnel/confirm': 'confirmation.read',
   '/reports': 'reports.read',
   '/reports/audit': 'reports.read',
   '/activity-log': 'reports.read',

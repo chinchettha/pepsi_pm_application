@@ -37,8 +37,12 @@
   "colors": {
     "inProgress": "In progress",
     "inProgressTitle": "Open CRTD/REL — not finished",
+    "estimate": "Estimate (no WO)",
+    "estimateTitle": "Not due yet · no WO number — Reason optional when moving",
+    "upcomingWo": "Has WO number",
+    "upcomingWoTitle": "Not due yet · WO assigned — Reason required when moving",
     "moved": "Plan moved",
-    "movedTitle": "Plan date was moved",
+    "movedTitle": "Plan date moved (/N on title)",
     "done": "Completed",
     "doneTitle": "Closed / QC / TECO",
     "sunday": "Sunday",
@@ -74,10 +78,10 @@
   },
   "planCalendar": {
     "title": "Plan calendar",
-    "description": "Jobs assigned to your work center — colors: in progress · done · closed · click for WO",
+    "description": "Pipeline colors — Planner/Admin: all factory WOs in month · Technicians: assigned to self only",
     "hints": {
-      "assigned": "Assigned jobs",
-      "colors": "PM status colors",
+      "assigned": "Planner sees all WOs in month · Technicians see assigned work only",
+      "colors": "Pipeline status colors (assignment → close)",
       "hours": "Hour summary",
       "wo": "Open WO"
     },
@@ -172,8 +176,10 @@
     "tecoWarningTitle": "TECO in SAP but not closed/confirmed in app",
     "overdue": "Overdue",
     "overdueTitle": "Past plan date — Reason Code required when moving",
+    "estimateTitle": "Estimate · no WO number — Reason optional",
+    "upcomingWoTitle": "Not due · has WO number — Reason required · /N = move count",
     "inProgressTitleExt": "Open CRTD/REL — not finished · Reason optional when moving",
-    "movedTitleExt": "Plan date moved — shows /N · Reason required",
+    "movedTitleExt": "Has WO number — Reason required when moving",
     "doneTitleExt": "Closed / QC approved — cannot drag"
   },
   "workCenterFilter": {
@@ -228,6 +234,23 @@
     "closed": {
       "label": "Closed",
       "title": "Closed in SAP (TECO/CLSD etc.)"
+    }
+  },
+  "pipeline": {
+    "title": "Assignment pipeline",
+    "badgesTitle": "Badges",
+    "status": {
+      "unassigned": { "label": "Unassigned", "title": "Not yet assigned to technicians" },
+      "assigned": { "label": "Assigned", "title": "Assigned — waiting for technician to start" },
+      "in_progress": { "label": "In progress", "title": "Work time recorded — not yet supervisor closed" },
+      "closed": { "label": "Closed", "title": "Supervisor closed — awaiting Planner Confirm" }
+    },
+    "badge": {
+      "ack_pending": { "label": "Awaiting ack", "title": "Technician has not acknowledged yet" },
+      "ack_done": { "label": "Acknowledged", "title": "Technician acknowledged (Telegram or Web)" },
+      "qc_pending": { "label": "Awaiting Confirm", "title": "Waiting for Planner Confirm/Reject" },
+      "qc_approved": { "label": "Confirmed", "title": "Planner approved" },
+      "qc_rejected": { "label": "Rejected", "title": "Planner sent back for correction" }
     }
   },
   "confirmLegend": {
@@ -331,6 +354,11 @@
     "planningGroup": "Planning GROUP",
     "add": "Add",
     "readOnlyCloseWo": "View only — no permission to edit Close WO (requires confirmation.write)",
+    "closeWoLockedNotAssigned": "You are not assigned to this work order — Close WO is not available",
+    "closeWoLockedPendingAck": "Acknowledge the assignment first (Telegram or Planning page) to unlock Close WO",
+    "acknowledgeAssignment": "Acknowledge assignment",
+    "ackSuccess": "Assignment acknowledged",
+    "ackFailed": "Could not acknowledge assignment",
     "closeBlockedDefault": "Save details and attach after-PM photos before closing",
     "toastCloseSaved": "Close record saved",
     "toastCloseFailed": "Could not save close record",
@@ -410,6 +438,16 @@
     "deleteDescription": "Remove this supervisor close record."
   },
   "planning": {
+    "cardsTitle": "Assign technicians",
+    "cardsDesc": "Select cards then assign in one batch — {{count}} available",
+    "categoryTitle": "Work category",
+    "categoryAA": "Shift Day",
+    "categoryBB": "Shift Night",
+    "categoryEE": "Electrical",
+    "categoryUT": "Utility",
+    "assignSelected": "Assign selected ({{count}})",
+    "woTeamShift": "WO team shift: {{label}}",
+    "fullscreenCardsDesc": "{{available}} available · {{selected}} selected",
     "multiTitle": "Multi-assign",
     "multiDesc": "Check technicians then click \"Add Assignee\" to assign several at once",
     "selectedCount": "{{count}} selected",
@@ -478,14 +516,27 @@
   },
   "taskList": {
     "headerTitle": "PM Task List",
+    "maintenancePlan": "Maintenance plan",
+    "taskListCode": "Task list",
     "notFoundTitle": "No PM Task List",
     "notFoundDesc": "This work order has no task list in the system",
+    "emptyNoMntplan": {
+      "title": "No maintenance plan on work order",
+      "desc": "This work order has no Maintenance plan (mntplan) in IW37N — task list cannot be loaded."
+    },
+    "emptyNotPublished": {
+      "title": "No task list for this plan",
+      "desc": "mntplan {{mntplan}} has no published task list yet. Publish from Master Plan first."
+    },
+    "searchMasterPlan": "Search in Master Plan",
+    "goPlanning": "Assign work (Planning)",
+    "itemCountStopped": "Stopped {{stopped}}",
     "pmPlan": "PM plan",
     "productLine": "Product Line",
     "zone": "Zone",
     "wkctrType": "Work Center Type",
     "itemsTitle": "PM job list",
-    "itemsDesc": "Tasks from this work order's task list",
+    "itemsDesc": "Tasks from the published master plan for this maintenance plan",
     "runningStopped": "Running {{running}} · Stopped {{stopped}}",
     "headerOnly": "Task list header exists but no job items",
     "machine": "Machine",

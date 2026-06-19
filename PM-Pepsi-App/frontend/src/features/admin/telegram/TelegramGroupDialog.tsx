@@ -36,6 +36,7 @@ const selectClass =
 
 const NOTIFY_KINDS: TelegramNotifyKind[] = [
   'ack_to_planner',
+  'close_to_planner',
   'ack_summary',
   'confirm_reminder',
   'custom',

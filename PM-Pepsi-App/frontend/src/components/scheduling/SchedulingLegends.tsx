@@ -3,7 +3,7 @@ import {
   activityDisplayOptions,
   calendarColorLegendItems,
   weekendLegendItems,
-  woCalendarColorLegendItems,
+  plannerPipelineLegendItems,
 } from '@/lib/scheduling-i18n'
 import { WoPmPhaseLegend } from '@/components/scheduling/WoPmPhaseBadge'
 import {
@@ -38,7 +38,10 @@ export function SchedulingViewControls({
   const { t } = useTranslation('scheduling')
   const activityOptions = useMemo(() => activityDisplayOptions(t), [t])
   const colorItems = useMemo(
-    () => (legendMode === 'work' ? woCalendarColorLegendItems(t) : calendarColorLegendItems(t)),
+    () =>
+      legendMode === 'work'
+        ? plannerPipelineLegendItems(t)
+        : calendarColorLegendItems(t),
     [legendMode, t],
   )
   const weekendItems = useMemo(() => weekendLegendItems(t), [t])

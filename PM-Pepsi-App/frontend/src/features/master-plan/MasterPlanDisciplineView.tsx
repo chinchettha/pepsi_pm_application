@@ -4,14 +4,17 @@ import {
   MasterDataPanelSkeleton,
 } from '@/features/master-data/master-data-panel-ui'
 import { MasterPlanChangeLogPanel } from '@/features/master-plan/MasterPlanChangeLogPanel'
+import { MasterPlanSearchBar } from '@/features/master-plan/MasterPlanSearchBar'
 import { MasterPlanSheetGrid } from '@/features/master-plan/MasterPlanSheetGrid'
 import { MasterPlanSheetPicker } from '@/features/master-plan/MasterPlanSheetPicker'
+import { filterMasterPlanRows } from '@/features/master-plan/master-plan-row-filter'
 import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDialog'
 import {
   fetchMasterPlanSheetRows,
   fetchMasterPlanWorkbook,
   patchMasterPlanRow,
   type MasterPlanDiscipline,
+  type MasterPlanSearchItem,
 } from '@/lib/master-plan-api'
 import { useMasterDataPermissions } from '@/lib/master-data-permissions'
 import {
@@ -42,6 +45,7 @@ export function MasterPlanDisciplineView({
   const [activeSheetId, setActiveSheetId] = useState<number | null>(null)
   const [rowLimit, setRowLimit] = useState(ROWS_PAGE)
   const [changelogOpen, setChangelogOpen] = useState(false)
+  const [rowSearch, setRowSearch] = useState('')
   const [focusRowId, setFocusRowId] = useState<number | null>(null)
   const [woModalId, setWoModalId] = useState<string | null>(null)
 
@@ -73,6 +77,13 @@ export function MasterPlanDisciplineView({
     writeLastMasterPlanSheetId(discipline, sheetId)
     setRowLimit(ROWS_PAGE)
   }
+
+  const loadedRows = rowsQ.data?.rows ?? []
+  const filteredRows = useMemo(
+    () => filterMasterPlanRows(loadedRows, rowSearch),
+    [loadedRows, rowSearch],
+  )
+  const gridData = rowsQ.data ? { ...rowsQ.data, rows: filteredRows } : null
 
   const handleLoadMore = () => {
     setRowLimit((prev) => prev + ROWS_PAGE)
@@ -119,6 +130,13 @@ export function MasterPlanDisciplineView({
       setFocusRowId(rowId)
     },
     [discipline, rowLimit],
+  )
+
+  const handleSearchJump = useCallback(
+    (item: MasterPlanSearchItem) => {
+      handleJumpToRow(item.sheetId, item.rowId, item.rowIndex)
+    },
+    [handleJumpToRow],
   )
 
   if (workbookQ.isLoading && !workbookQ.data) return <MasterDataPanelSkeleton />
@@ -168,6 +186,15 @@ export function MasterPlanDisciplineView({
         </Button>
       </div>
 
+      <MasterPlanSearchBar
+        discipline={discipline}
+        value={rowSearch}
+        onChange={setRowSearch}
+        onJumpToResult={handleSearchJump}
+        currentSheetMatchCount={filteredRows.length}
+        loadedRowCount={loadedRows.length}
+      />
+
       <MasterPlanChangeLogPanel
         discipline={discipline}
         sheets={sheets}
@@ -180,16 +207,18 @@ export function MasterPlanDisciplineView({
         <MasterDataPanelSkeleton columns={8} rows={12} />
       ) : rowsQ.isError ? (
         <MasterDataPanelError error={rowsQ.error} onRetry={() => void rowsQ.refetch()} />
-      ) : rowsQ.data ? (
+      ) : gridData ? (
         <MasterPlanSheetGrid
-          data={rowsQ.data}
+          data={gridData}
           canWrite={canWrite}
           onPatchCell={canWrite ? handlePatchCell : undefined}
           focusRowId={focusRowId}
           onFocusRowHandled={() => setFocusRowId(null)}
           onOpenWorkOrder={(wkorder) => setWoModalId(wkorder)}
-          onLoadMore={rowsQ.data.total > rowsQ.data.rows.length ? handleLoadMore : undefined}
+          onLoadMore={rowsQ.data && rowsQ.data.total > loadedRows.length ? handleLoadMore : undefined}
           loadingMore={rowsQ.isFetching && rowLimit > ROWS_PAGE}
+          searchQuery={rowSearch}
+          loadedRowCount={loadedRows.length}
         />
       ) : null}
 

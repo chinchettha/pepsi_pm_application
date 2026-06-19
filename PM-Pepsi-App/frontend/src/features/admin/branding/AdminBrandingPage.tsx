@@ -1,4 +1,5 @@
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
 import { AdminPageShell } from '@/components/admin/AdminPageShell'
 import {
@@ -335,7 +336,7 @@ export function AdminBrandingPage() {
       tourTarget="admin-branding"
       title={t('branding.title')}
       description={t('branding.description')}
-      hints={t('branding.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'branding.hints')}
       headerActions={
         <>
           <Button

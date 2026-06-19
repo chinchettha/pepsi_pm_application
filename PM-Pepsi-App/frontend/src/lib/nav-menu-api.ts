@@ -9,12 +9,13 @@ const DEPRECATED_NAV_ROUTES = new Set([
   '/manhours/admin',
   /** Legacy CRUD route — redirects to `/admin/users` (see App.tsx) */
   '/personnel/admin',
+  /** Merged into `/confirmation` (see migration 111) */
+  '/personnel/confirm',
 ])
 
 /** ชื่อเมนูจาก tbmenu ที่ต้องการ override ฝั่ง React */
 const NAV_LABEL_OVERRIDES: Record<string, string> = {
   '/work-orders': 'WO/Confirmation',
-  '/confirmation': 'Export Confirmation',
 }
 
 export function stripDeprecatedNavEntries(entries: NavEntry[]): NavEntry[] {

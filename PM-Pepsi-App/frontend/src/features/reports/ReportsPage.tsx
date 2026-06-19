@@ -1,4 +1,5 @@
 import { CanPermission } from '@/components/auth/CanPermission'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { KpiStatGrid } from '@/components/kpi/KpiStatGrid'
 import { KpiStatCard } from '@/components/kpi/KpiStatCard'
@@ -65,7 +66,7 @@ export function ReportsPage() {
   })
 
   const avgUtil =
-    q.data && q.data.utilization.length
+    Array.isArray(q.data?.utilization) && q.data.utilization.length > 0
       ? Math.round(
           q.data.utilization.reduce((a, b) => a + b, 0) / q.data.utilization.length,
         )
@@ -92,7 +93,7 @@ export function ReportsPage() {
     <AppPageShell
       title={t('page.title')}
       description={t('page.description')}
-      hints={t('page.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'page.hints')}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">
@@ -146,12 +147,20 @@ export function ReportsPage() {
               <KpiStatCard label={t('page.kpiAvgUtil')} value={`${avgUtil}%`} />
               <KpiStatCard
                 label={t('page.kpiBacklogLatest')}
-                value={String(q.data.backlogHours[q.data.backlogHours.length - 1] ?? 0)}
+                value={String(
+                  Array.isArray(q.data.backlogHours) && q.data.backlogHours.length > 0
+                    ? q.data.backlogHours[q.data.backlogHours.length - 1]
+                    : 0,
+                )}
               />
               <KpiStatCard
                 label={t('page.kpiDataRange')}
-                value={`${q.data.range.fromDate} – ${q.data.range.toDate}`}
-                footer={`${q.data.labels[0]} – ${q.data.labels[q.data.labels.length - 1]}`}
+                value={`${q.data.range?.fromDate ?? '—'} – ${q.data.range?.toDate ?? '—'}`}
+                footer={
+                  Array.isArray(q.data.labels) && q.data.labels.length > 0
+                    ? `${q.data.labels[0]} – ${q.data.labels[q.data.labels.length - 1]}`
+                    : undefined
+                }
               />
             </KpiStatGrid>
             <AppPageSectionCard

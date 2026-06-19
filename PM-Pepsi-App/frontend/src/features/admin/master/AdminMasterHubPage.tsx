@@ -68,7 +68,7 @@ export function AdminMasterHubPage() {
       tourTarget="admin-master"
       title={t('master.hubTitle')}
       description={t('master.hubDescription')}
-      hints={['Master data', 'Hub', 'Import', 'Sync']}
+      hints={['Master data', 'Hub', 'Import', 'Sync', 'Publish']}
       headerActions={
         <Button
           type="button"
@@ -83,6 +83,26 @@ export function AdminMasterHubPage() {
         </Button>
       }
     >
+      <Card className="admin-card border-[var(--app-accent)]/30 bg-[var(--app-accent)]/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t('master.publishCalloutTitle')}</CardTitle>
+          <CardDescription>{t('master.publishCalloutDesc')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ol className="list-decimal space-y-1 pl-5 text-body-sm text-app-muted">
+            <li>{t('master.publishStep1')}</li>
+            <li>{t('master.publishStep2')}</li>
+            <li>{t('master.publishStep3')}</li>
+          </ol>
+          <Button type="button" size="sm" className="mt-3" asChild>
+            <Link to="/master-plan">
+              {t('master.publishCta')}
+              <ExternalLink className="ml-1 size-3.5" aria-hidden />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="admin-card">
         <CardHeader>
           <CardTitle className="text-base">

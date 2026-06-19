@@ -300,19 +300,6 @@
     "confirmTitle": "ปิดการใช้งานช่างที่ไม่มีรูป?",
     "confirmDescription": "ตั้ง workstatus=TERMINATED สำหรับ {{count}} คนที่ยังใช้งานและไม่มี imgmember_data — จะหายจาก Eng Utilization จนอัปโหลดรูปและเปิดสถานะใหม่"
   },
-  "backup": {
-    "title": "สำรอง & กู้คืน",
-    "description": "pg_dump → ไฟล์ .sql.gz · ตั้ง cron + retention · SHA256",
-    "saved": "บันทึกตั้งค่าสำรองแล้ว",
-    "saveFailed": "บันทึกไม่สำเร็จ",
-    "deleteFailed": "ลบไม่สำเร็จ",
-    "backupOk": "สำรองข้อมูลสำเร็จ",
-    "backupFailed": "สำรองข้อมูลล้มเหลว",
-    "deleted": "ลบไฟล์สำรองแล้ว",
-    "restoreOk": "กู้คืนสำเร็จ ({{seconds}} วินาที)",
-    "restoreFromOk": "กู้คืนจาก backup #{{id}} สำเร็จ",
-    "historyLoadFailed": "โหลดประวัติสำรองไม่สำเร็จ"
-  },
   "audit": {
     "title": "บันทึกกิจกรรม (Audit)",
     "description": "ประวัติ login, mutation, RBAC denied — กรองและส่งออก CSV",
@@ -341,6 +328,12 @@
     "metaLoadFailed": "โหลด meta ไม่สำเร็จ",
     "totalLoaded": "รวม ({{loaded}}/{{total}} ตารางโหลดแล้ว)",
     "footerHint": "ลิงก์เปิดแท็บ entity ที่ตรงกัน ·",
+    "publishCalloutTitle": "Master Plan — Publish หลัง import แผนปี",
+    "publishCalloutDesc": "Task list ใน WO modal จะว่างจนกว่าจะ Publish แต่ละสาย (EE / ME / PK)",
+    "publishStep1": "Import หรือแก้แผนที่ Master Plan",
+    "publishStep2": "ตรวจ mntplan ใน WO ทดสอบ (แท็บ Task)",
+    "publishStep3": "กด Publish แต่ละสายก่อนให้ Planner จ่ายงาน",
+    "publishCta": "เปิด Master Plan",
     "goMasterData": "ไปหน้า Master Plan",
     "goReferenceData": "ตารางอ้างอิง SAP",
     "adminConsole": "ศูนย์ผู้ดูแลระบบ"
@@ -774,6 +767,17 @@
     "emptyRows": "ไม่พบรายการในช่วงที่เลือก"
   },
   "backup": {
+    "title": "สำรอง & กู้คืน",
+    "description": "pg_dump → ไฟล์ .sql.gz · ตั้ง cron + retention · SHA256",
+    "saved": "บันทึกตั้งค่าสำรองแล้ว",
+    "saveFailed": "บันทึกไม่สำเร็จ",
+    "deleteFailed": "ลบไม่สำเร็จ",
+    "backupOk": "สำรองข้อมูลสำเร็จ",
+    "backupFailed": "สำรองข้อมูลล้มเหลว",
+    "deleted": "ลบไฟล์สำรองแล้ว",
+    "restoreOk": "กู้คืนสำเร็จ ({{seconds}} วินาที)",
+    "restoreFromOk": "กู้คืนจาก backup #{{id}} สำเร็จ",
+    "historyLoadFailed": "โหลดประวัติสำรองไม่สำเร็จ",
     "startFailed": "เริ่มสำรองไม่สำเร็จ",
     "restoreFailed": "กู้คืนไม่สำเร็จ",
     "selectSqlGz": "เลือกไฟล์ .sql.gz",
@@ -937,6 +941,7 @@
     "notifyKinds": {
       "assignment_to_tech": "จ่ายงาน → DM ช่าง",
       "ack_to_planner": "รับทราบ → กลุ่ม Planner",
+      "close_to_planner": "ปิดงาน → กลุ่ม Planner",
       "ack_summary": "สรุปรับทราบรายวัน",
       "confirm_reminder": "แจ้ง QC / Confirm ค้าง",
       "custom": "กำหนดเอง"

@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AppPageShell } from '@/components/layout/AppPageShell'
@@ -55,7 +56,7 @@ export function MasterPlanPage() {
     [setSearchParams],
   )
 
-  const pageHints = t('masterPlanPage.hints', { returnObjects: true }) as string[]
+  const pageHints = hintsFromT(t, 'masterPlanPage.hints')
 
   if (!canRead) {
     return (

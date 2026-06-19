@@ -1,4 +1,5 @@
 import { PlanningMultiAssign } from '@/components/scheduling/PlanningMultiAssign'
+import { arrayLength } from '@/lib/coerce-array'
 import { PlanningQuickAssign } from '@/components/scheduling/PlanningQuickAssign'
 import { Button } from '@/components/ui/button'
 import {
@@ -95,6 +96,7 @@ export function PlanningAssignDialog({
   const invalidatePlanningQueries = async (idiw37: number) => {
     await qc.invalidateQueries({ queryKey: ['planning'] })
     await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
+    await qc.invalidateQueries({ queryKey: ['calendar'] })
     await qc.invalidateQueries({ queryKey: ['work-orders'] })
     await qc.invalidateQueries({ queryKey: ['work-orders', 'modal-detail', idiw37] })
   }
@@ -131,7 +133,7 @@ export function PlanningAssignDialog({
     onSuccess: async (data, variables) => {
       await invalidatePlanningQueries(variables.idiw37)
       showAssignSuccess(data, variables.mode)
-      if (data.assigned.length > 0) {
+      if (arrayLength(data.assigned) > 0) {
         onAssignSuccess?.(variables.idiw37)
       }
     },
@@ -147,7 +149,7 @@ export function PlanningAssignDialog({
     onSuccess: async (data, variables) => {
       await invalidatePlanningQueries(variables.idiw37)
       showAssignSuccess(data, 'batch')
-      if (data.assigned.length > 0) {
+      if (arrayLength(data.assigned) > 0) {
         onAssignSuccess?.(variables.idiw37)
       }
     },

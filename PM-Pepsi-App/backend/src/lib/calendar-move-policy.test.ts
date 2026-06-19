@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   hasCalendarPlanMove,
+  hasCalendarWorkOrderNumber,
   isCalendarDisplayDateOverdue,
   resolveCalendarMoveReasonRequired,
   resolveCalendarTecoBellAlert,
@@ -18,6 +19,12 @@ describe('calendar-move-policy', () => {
         1000,
     )
     expect(isCalendarDisplayDateOverdue(tomorrow)).toBe(false)
+  })
+
+  it('detects assigned WO number', () => {
+    expect(hasCalendarWorkOrderNumber('4001558092')).toBe(true)
+    expect(hasCalendarWorkOrderNumber('')).toBe(false)
+    expect(hasCalendarWorkOrderNumber('TBD')).toBe(false)
   })
 
   it('shows TECO bell when not fully closed in app', () => {
@@ -38,37 +45,38 @@ describe('calendar-move-policy', () => {
     expect(resolveCalendarTecoBellAlert({ syst: 'REL', percentClose: 0 })).toBe(false)
   })
 
-  it('requires move reason for moved or overdue CRTD/REL', () => {
+  it('requires move reason for overdue or future WO (customer slide)', () => {
     const today = Math.floor(Date.now() / 1000)
     const past = Math.floor(
       new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 3).getTime() /
+        1000,
+    )
+    const future = Math.floor(
+      new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + 7).getTime() /
         1000,
     )
 
     expect(
       resolveCalendarMoveReasonRequired({
         syst: 'REL',
-        displayUnix: today,
-        cday: past,
-        mpcount: 1,
-      }),
-    ).toBe(true)
-
-    expect(
-      resolveCalendarMoveReasonRequired({
-        syst: 'REL',
         displayUnix: past,
-        cday: null,
-        mpcount: null,
+        wkorder: '4001558092',
       }),
     ).toBe(true)
 
     expect(
       resolveCalendarMoveReasonRequired({
         syst: 'REL',
-        displayUnix: today,
-        cday: null,
-        mpcount: null,
+        displayUnix: future,
+        wkorder: '4001558092',
+      }),
+    ).toBe(true)
+
+    expect(
+      resolveCalendarMoveReasonRequired({
+        syst: 'REL',
+        displayUnix: future,
+        wkorder: '',
       }),
     ).toBe(false)
 
@@ -76,13 +84,12 @@ describe('calendar-move-policy', () => {
       resolveCalendarMoveReasonRequired({
         syst: 'TECO',
         displayUnix: past,
-        cday: 1,
-        mpcount: 1,
+        wkorder: '4001558092',
       }),
     ).toBe(false)
   })
 
-  it('hasCalendarPlanMove matches CRTD/REL with mpcount', () => {
+  it('hasCalendarPlanMove still tracks tbmoveplan for /N title', () => {
     expect(
       hasCalendarPlanMove({ syst: 'REL', cday: 100, mpcount: 1 }),
     ).toBe(true)

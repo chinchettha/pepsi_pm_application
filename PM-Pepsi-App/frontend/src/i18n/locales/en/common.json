@@ -20,6 +20,13 @@
     "showFilters": "Show filters",
     "hideFilters": "Hide filters"
   },
+  "notifications": {
+    "title": "Notifications",
+    "aria": "Notifications",
+    "ariaUnread": "Notifications, {{count}} unread",
+    "empty": "No notifications",
+    "markAllRead": "Mark all read"
+  },
   "confirmDelete": {
     "confirm": "Delete",
     "cannotUndo": "This cannot be undone."

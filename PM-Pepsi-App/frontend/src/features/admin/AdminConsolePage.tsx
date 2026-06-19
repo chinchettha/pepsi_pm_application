@@ -1,4 +1,5 @@
 import { AdminKpiCard } from '@/components/admin/AdminKpiCard'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AdminKpiGrid } from '@/components/admin/AdminKpiGrid'
 import { AdminPageSection, AdminPageShell } from '@/components/admin/AdminPageShell'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -40,7 +41,7 @@ export function AdminConsolePage() {
       tourTarget="admin-console"
       title={t('console.title')}
       description={t('console.description')}
-      hints={t('console.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'console.hints')}
       headerActions={
         canHealth ? (
           <Button

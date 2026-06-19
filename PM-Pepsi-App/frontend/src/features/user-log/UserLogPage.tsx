@@ -1,4 +1,5 @@
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -74,7 +75,7 @@ export function UserLogPage() {
     <AppPageShell
       title={t('title')}
       description={t('description')}
-      hints={t('hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'hints')}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">

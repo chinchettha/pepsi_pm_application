@@ -220,6 +220,20 @@ function buildCalendarFilteredFrom(
     LEFT JOIN app.tbiw37n ti ON ti.idiw37 = o.idiw37
     LEFT JOIN app.tbworkcenter wc ON wc.wkctr = o.wkctr
     LEFT JOIN app.view_countpersonelclose v ON v.idiw37 = o.idiw37
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS n FROM app.tbplangingwork p WHERE p.idiw37 = o.idiw37
+    ) ac ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS n FROM app.tbwrkclose w WHERE w.idiw37 = o.idiw37
+    ) wc_pipe ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS n FROM app.tbplangingwork p
+      WHERE p.idiw37 = o.idiw37 AND p.ack_status = 'pending'
+    ) ap ON true
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS n FROM app.tbplangingwork p
+      WHERE p.idiw37 = o.idiw37 AND p.ack_status = 'acknowledged'
+    ) aa ON true
     WHERE ${sqlFactoryScope('o', '$3')}
       AND o.bscstart IS NOT NULL
       AND o.bscstart > 0
@@ -421,7 +435,11 @@ export async function listCalendarEventsFiltered(
            mp.mpcount, mp.mday, mp.resoncom,
            wc.namewkctr, wc.surnamewkctr,
            COALESCE(v.percent_close, 0) AS percent_close,
-           COALESCE(v.has_confirm, 0) AS has_confirm
+           COALESCE(v.has_confirm, 0) AS has_confirm,
+           COALESCE(ac.n, 0) AS assign_count,
+           COALESCE(wc_pipe.n, 0) AS worktime_count,
+           COALESCE(ap.n, 0) AS ack_pending,
+           COALESCE(aa.n, 0) AS ack_acknowledged
     ${where}
     ORDER BY o.bscstart DESC LIMIT 2500`
 

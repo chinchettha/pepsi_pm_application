@@ -6,6 +6,8 @@
  *   ใช้ `<img src=/api/v1/personnel/:idwkctr/image>` (ส่ง cookie auth อัตโนมัติ)
  * - Excel import: skip 2 rows แรก (`$n > 2`) + แสดงผลทีละแถว
  */
+import { hintsFromT } from '@/lib/i18n-hints'
+import { arrayLength } from '@/lib/coerce-array'
 import {
   AdminPageSection,
   AdminPageSectionCard,
@@ -644,7 +646,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         </Button>
       )}
       <Button asChild variant="outline" size="sm">
-        <Link to="/personnel/confirm">{t('admin.personnelConfirmation')}</Link>
+        <Link to="/confirmation">{t('admin.personnelConfirmation')}</Link>
       </Button>
       <input
         ref={importInputRef}
@@ -1649,7 +1651,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         tourTarget="admin-users"
         title={t('admin.shell.title')}
         description={t('admin.shell.description')}
-        hints={t('admin.shell.hints', { returnObjects: true }) as string[]}
+        hints={hintsFromT(t, 'admin.shell.hints')}
         headerActions={headerActions}
       >
         {body}
@@ -2169,7 +2171,7 @@ function ImportResultBlock({ data }: { data: PersonnelImportResponse }) {
           {t('admin.import.errors', { n: data.errors })}
         </Badge>
       </div>
-      {data.rows.length > 0 ? (
+      {arrayLength(data.rows) > 0 ? (
         <div className="mt-3 app-table-shell overflow-hidden">
           <Table>
             <TableHeader>

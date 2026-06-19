@@ -24,6 +24,7 @@ import {
   manhourListResponseSchema,
   manhourOkResponseSchema,
   activityLogListResponseSchema,
+  appNotificationsResponseSchema,
   auditHubResponseSchema,
   kpiResponseSchema,
   summaryWeeklyResponseSchema,
@@ -63,6 +64,7 @@ import {
   massConfirmExportSummarySchema,
   qcApproveBatchResponseSchema,
   confirmationExportResponseSchema,
+  confirmationPreviewResponseSchema,
   confirmQcPendingItemSchema,
   confirmQcSnapshotSchema,
   userLogResponseSchema,
@@ -1074,6 +1076,14 @@ export async function fetchConfirmationExport() {
   return confirmationExportResponseSchema.parse(json)
 }
 
+export type ConfirmationPreviewStatus = 'pending' | 'rejected' | 'all'
+
+export async function fetchConfirmationPreview(status: ConfirmationPreviewStatus = 'pending') {
+  const qs = status === 'pending' ? '' : `?status=${encodeURIComponent(status)}`
+  const json = await fetchApi<unknown>(`/api/v1/confirmation/preview${qs}`)
+  return confirmationPreviewResponseSchema.parse(json)
+}
+
 function confirmExportQuery(idiw37n?: number[]): string {
   if (!idiw37n?.length) return ''
   return `?idiw37n=${encodeURIComponent(idiw37n.join(','))}`
@@ -1348,4 +1358,19 @@ export async function postConfirmQcReject(idiw37: number, note?: string) {
     body: JSON.stringify({ note: note ?? '' }),
   })
   return z.object({ qc: confirmQcSnapshotSchema }).parse(json).qc
+}
+
+export async function fetchNotifications() {
+  const json = await fetchApi<unknown>('/api/v1/notifications')
+  return appNotificationsResponseSchema.parse(json)
+}
+
+export async function markNotificationRead(id: number) {
+  const json = await fetchApi<unknown>(`/api/v1/notifications/${id}/read`, { method: 'POST' })
+  return z.object({ ok: z.boolean() }).parse(json)
+}
+
+export async function markAllNotificationsRead() {
+  const json = await fetchApi<unknown>('/api/v1/notifications/read-all', { method: 'POST' })
+  return z.object({ ok: z.literal(true), count: z.number().int().nonnegative() }).parse(json)
 }

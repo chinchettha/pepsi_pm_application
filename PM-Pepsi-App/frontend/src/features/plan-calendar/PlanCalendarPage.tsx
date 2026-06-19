@@ -5,8 +5,8 @@ import {
 } from '@/components/layout/AppPageShell'
 import { ManhourSummaryDialog } from '@/components/scheduling/ManhourSummaryDialog'
 import { MonthFullCalendar } from '@/components/scheduling/MonthFullCalendar'
+import { PlannerPipelineLegend } from '@/components/scheduling/PlannerPipelineLegend'
 import { SchedulingCalendarPanel, schedulingHeroBadgeClass } from '@/components/scheduling/SchedulingPageLayout'
-import { WoPmExecutionLegend } from '@/components/scheduling/WoPmExecutionBadge'
 import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -97,7 +97,7 @@ export function PlanCalendarPage() {
         }
       >
         <AppPageSection index={0}>
-          <WoPmExecutionLegend collapsible defaultOpen={false} className="mb-3" />
+          <PlannerPipelineLegend collapsible defaultOpen={false} className="mb-3" />
           {q.isLoading ? (
             <Skeleton
               className="h-[28rem] w-full rounded-card"

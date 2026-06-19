@@ -3,6 +3,7 @@ import path from 'node:path'
 import type { Pool, PoolClient } from 'pg'
 import type { ConfirmImagePhase } from '../lib/confirm-image-phase.js'
 import { touchConfirmQcPending } from './confirm-qc.js'
+import { notifyPlannerWorkClosed } from './planner-close-notify.js'
 import { SAP_MASS_CONFIRM_MAX, assertMassConfirmBatchSize } from '../lib/mass-confirm-limit.js'
 import type { ConfirmationExportScope } from '../lib/confirmation-export-scope.js'
 import { FACTORY_CODE } from './scheduling-shared.js'
@@ -12,6 +13,11 @@ import {
   engTechnicianDisplayName,
 } from '../data/eng-technician-codes.js'
 import { personnelIsActiveSql } from '../lib/personnel-active-sql.js'
+import {
+  buildConfirmationExportRow,
+  formatDdMmYyyyCompact,
+  formatHhMm,
+} from '../lib/confirmation-export-format.js'
 
 export { SAP_MASS_CONFIRM_MAX as MASS_CONFIRM_MAX_ITEMS }
 
@@ -183,6 +189,12 @@ export async function addConfirmationClose(
 
   const timeclose = Math.floor(Date.now() / 1000)
 
+  const qcBeforeR = await pool.query<{ confirm_qc_status: string | null }>(
+    `SELECT confirm_qc_status FROM app.tbiw37n WHERE idiw37 = $1`,
+    [opts.idiw37],
+  )
+  const qcBefore = (qcBeforeR.rows[0]?.confirm_qc_status ?? '').trim().toLowerCase()
+
   // unique key หลัง migration 032: (idiw37, wkctr, confirmation, timeclose)
   // การกดบันทึกซ้ำในวินาทีเดียวกัน + ช่างเดิม + WO เดิม จะถูก upsert
   // ส่วน confirmation จากหน้าแอป (ไม่ใช่ import) จะเป็น '' เสมอ
@@ -196,6 +208,12 @@ export async function addConfirmationClose(
     [opts.idiw37, opts.wkctr, stdate, endate, opts.cwkctr, timeclose, timewk],
   )
   await touchConfirmQcPending(pool, opts.idiw37)
+
+  if (qcBefore !== 'pending') {
+    void notifyPlannerWorkClosed(pool as Pool, opts.idiw37, opts.wkctr).catch((err) => {
+      console.error('[planner-close-notify]', opts.idiw37, err)
+    })
+  }
 }
 
 export type ConfirmationMassCloseFail = { idiw37: number; message: string }
@@ -517,22 +535,13 @@ export type ConfirmationExportRow = {
   endExecute: string
 }
 
-function formatDdMmYyyyCompact(sec: number): string {
-  if (!Number.isFinite(sec) || sec <= 0) return ''
-  const d = new Date(sec * 1000)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yyyy = String(d.getFullYear())
-  return `${dd}${mm}${yyyy}`
+export type ConfirmationPreviewRow = ConfirmationExportRow & {
+  idiw37: number
+  confirmQcStatus: 'pending' | 'rejected'
+  source: 'personnel' | 'supervisor'
 }
 
-function formatHhMm(sec: number): string {
-  if (!Number.isFinite(sec) || sec <= 0) return ''
-  const d = new Date(sec * 1000)
-  const hh = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${hh}:${min}`
-}
+export { formatDdMmYyyyCompact, formatHhMm }
 
 export async function listConfirmationExportRows(
   pool: Pool,
@@ -541,47 +550,162 @@ export async function listConfirmationExportRows(
   scope: ConfirmationExportScope = 'OWN',
 ): Promise<ConfirmationExportRow[]> {
   const wkctr = (actorWkctr ?? '').trim()
+  const hasWrkclose = await hasTbwrkcloseTable(pool)
   const params: unknown[] = []
-  const where: string[] = [
+  const parts: string[] = []
+
+  const supervisorWhere: string[] = [
     `e.syst IN ('CRTD', 'REL')`,
     `i.confirm_qc_status = 'approved'`,
   ]
   if (idiw37n?.length) {
     params.push(idiw37n)
-    where.push(`e.idiw37 = ANY($${params.length}::int[])`)
+    supervisorWhere.push(`e.idiw37 = ANY($${params.length}::int[])`)
   }
   if (scope === 'OWN') {
     params.push(wkctr)
-    where.push(`e.cwkctr = $${params.length}`)
+    supervisorWhere.push(`e.cwkctr = $${params.length}`)
   }
-
-  const r = await pool.query<ConfirmationExportRowDb>(
+  parts.push(
     `SELECT e.wkorder, e.opac, e.wkctr, e.timewk, e.unitc, e.stdate, e.endate
      FROM app.view_exportconfirm e
      JOIN app.tbiw37n i ON i.idiw37 = e.idiw37
-     WHERE ${where.join(' AND ')}
-     ORDER BY e.wkorder ASC`,
+     WHERE ${supervisorWhere.join(' AND ')}`,
+  )
+
+  if (hasWrkclose) {
+    const personnelWhere: string[] = [
+      `i.confirm_qc_status = 'approved'`,
+      `i.syst IN ('CRTD', 'REL')`,
+      `NOT EXISTS (
+         SELECT 1 FROM app.tbcofirm c
+         WHERE c.idiw37 = w.idiw37 AND c.wkctr = w.wkctr
+       )`,
+    ]
+    if (idiw37n?.length) {
+      personnelWhere.push(`w.idiw37 = ANY($${params.indexOf(idiw37n) + 1}::int[])`)
+    }
+    if (scope === 'OWN') {
+      const wkctrIdx = params.indexOf(wkctr) + 1
+      if (wkctrIdx > 0) personnelWhere.push(`w.wkctr = $${wkctrIdx}`)
+    }
+    parts.push(
+      `SELECT i.wkorder, i.opac, w.wkctr, w.wktimewk AS timewk, w.wkunit AS unitc,
+              w.cstdate AS stdate, w.cendate AS endate
+       FROM app.tbwrkclose w
+       JOIN app.tbiw37n i ON i.idiw37 = w.idiw37
+       WHERE ${personnelWhere.join(' AND ')}`,
+    )
+  }
+
+  const r = await pool.query<ConfirmationExportRowDb>(
+    `SELECT * FROM (${parts.join(' UNION ALL ')}) export_rows
+     ORDER BY wkorder ASC, wkctr ASC`,
+    params,
+  )
+
+  return r.rows.map((row, idx) =>
+    buildConfirmationExportRow(idx, {
+      wkorder: row.wkorder,
+      opac: row.opac,
+      wkctr: row.wkctr,
+      timewk: row.timewk,
+      unitc: row.unitc,
+      stdate: row.stdate,
+      endate: row.endate,
+    }),
+  )
+}
+
+export type ConfirmationPreviewStatus = 'pending' | 'rejected' | 'all'
+
+async function hasTbwrkcloseTable(pool: Pool): Promise<boolean> {
+  const r = await pool.query<{ reg: string | null }>(
+    `SELECT to_regclass('app.tbwrkclose')::text AS reg`,
+  )
+  return Boolean(r.rows[0]?.reg)
+}
+
+export async function listConfirmationPreviewRows(
+  pool: Pool,
+  opts: { status?: ConfirmationPreviewStatus } = {},
+): Promise<ConfirmationPreviewRow[]> {
+  const status = opts.status ?? 'pending'
+  const qcStatuses =
+    status === 'all' ? (['pending', 'rejected'] as const) : ([status] as const)
+
+  const hasWrkclose = await hasTbwrkcloseTable(pool)
+  const params: unknown[] = [qcStatuses]
+  const parts: string[] = []
+
+  if (hasWrkclose) {
+    parts.push(
+      `SELECT w.idiw37,
+              i.wkorder,
+              i.opac,
+              w.wkctr,
+              w.wktimewk AS timewk,
+              w.wkunit AS unitc,
+              w.cstdate AS stdate,
+              w.cendate AS endate,
+              i.confirm_qc_status,
+              'personnel'::text AS source
+       FROM app.tbwrkclose w
+       JOIN app.tbiw37n i ON i.idiw37 = w.idiw37
+       WHERE i.confirm_qc_status = ANY($1::text[])
+         AND i.syst IN ('CRTD', 'REL')`,
+    )
+  }
+
+  parts.push(
+    `SELECT c.idiw37,
+            i.wkorder,
+            i.opac,
+            c.wkctr,
+            c.timewk,
+            c.unitc,
+            c.stdate,
+            c.endate,
+            i.confirm_qc_status,
+            'supervisor'::text AS source
+     FROM app.tbcofirm c
+     JOIN app.tbiw37n i ON i.idiw37 = c.idiw37
+     WHERE i.confirm_qc_status = ANY($1::text[])
+       AND i.syst IN ('CRTD', 'REL')${
+         hasWrkclose
+           ? `
+       AND NOT EXISTS (
+         SELECT 1 FROM app.tbwrkclose w
+         WHERE w.idiw37 = c.idiw37 AND w.wkctr = c.wkctr
+       )`
+           : ''
+       }`,
+  )
+
+  const r = await pool.query<{
+    idiw37: number
+    wkorder: string | null
+    opac: string | number | null
+    wkctr: string | null
+    timewk: string | number | null
+    unitc: string | null
+    stdate: string | number | null
+    endate: string | number | null
+    confirm_qc_status: string | null
+    source: 'personnel' | 'supervisor'
+  }>(
+    `SELECT * FROM (${parts.join(' UNION ALL ')}) preview_rows
+     ORDER BY wkorder ASC, wkctr ASC`,
     params,
   )
 
   return r.rows.map((row, idx) => {
-    const stdate = row.stdate != null && row.stdate !== '' ? Number(row.stdate) : 0
-    const endate = row.endate != null && row.endate !== '' ? Number(row.endate) : 0
+    const qc = row.confirm_qc_status === 'rejected' ? 'rejected' : 'pending'
     return {
-      no: idx + 1,
-      confirmation: '',
-      wkorder: row.wkorder?.trim() ?? '',
-      opac: row.opac != null ? String(row.opac).trim() : '',
-      subO: '',
-      ca: '',
-      split: '',
-      wkctr: row.wkctr?.trim() ?? '',
-      timewk: row.timewk != null && row.timewk !== '' ? Number(row.timewk) : 0,
-      unitc: row.unitc?.trim() ?? '',
-      startDateExe: formatDdMmYyyyCompact(stdate),
-      endDateExe: formatDdMmYyyyCompact(endate),
-      startExecute: formatHhMm(stdate),
-      endExecute: formatHhMm(endate),
+      ...buildConfirmationExportRow(idx, row),
+      idiw37: Number(row.idiw37),
+      confirmQcStatus: qc,
+      source: row.source,
     }
   })
 }
@@ -639,8 +763,8 @@ export async function createConfirmationComment(
   )
   const row = r.rows[0]
   return {
-    idcom: row.idcom,
-    idiw37: row.idiw37,
+    idcom: Number(row.idcom),
+    idiw37: Number(row.idiw37),
     comdetail: row.comdetail ?? '',
     wkctr: row.wkctr ?? '',
     createdAt: row.created_at.toISOString(),
@@ -668,8 +792,8 @@ export async function updateConfirmationComment(
   const row = r.rows[0]
   if (!row) return null
   return {
-    idcom: row.idcom,
-    idiw37: row.idiw37,
+    idcom: Number(row.idcom),
+    idiw37: Number(row.idiw37),
     comdetail: row.comdetail ?? '',
     wkctr: row.wkctr ?? '',
     createdAt: row.created_at.toISOString(),
@@ -860,7 +984,7 @@ export async function readConfirmationImageBuffer(
   idcimg: number,
 ): Promise<{ idcimg: number; mime: string; data: Buffer } | null> {
   const r = await pool.query<{
-    idcimg: number
+    idcimg: string | number
     cfilename: string
     mime: string | null
     img_data: Buffer | null
@@ -876,7 +1000,7 @@ export async function readConfirmationImageBuffer(
 
   if (row.img_data?.length) {
     return {
-      idcimg: row.idcimg,
+      idcimg: Number(row.idcimg),
       mime: row.mime ?? 'image/webp',
       data: row.img_data,
     }
@@ -887,7 +1011,7 @@ export async function readConfirmationImageBuffer(
     try {
       const data = await fs.readFile(abs)
       return {
-        idcimg: row.idcimg,
+        idcimg: Number(row.idcimg),
         mime: row.mime ?? 'image/jpeg',
         data,
       }

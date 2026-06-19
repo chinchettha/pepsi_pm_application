@@ -2,6 +2,8 @@
  * Manhour HR
  */
 import { AppCard } from '@/components/layout/AppCard'
+import { arrayLength } from '@/lib/coerce-array'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -133,7 +135,7 @@ export function ManhoursHrPage() {
     <AppPageShell
       title={t('hr.title')}
       description={t('hr.description', { wc: wkctrLabel })}
-      hints={t('hr.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'hr.hints')}
       headerActions={
         <>
           <Badge variant="secondary" className="gap-1 text-xs">
@@ -318,8 +320,8 @@ export function ManhoursHrPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {q.data.items.length ? (
-                      q.data.items.map((row, i) => {
+                    {arrayLength(q.data.items) ? (
+                      (q.data.items ?? []).map((row, i) => {
                         const u =
                           personUtilMap.get(row.idwkctr) ??
                           (row.wkctr ? personUtilMap.get(row.wkctr) : undefined)

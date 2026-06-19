@@ -2,6 +2,8 @@
  * Admin CRUD + import
  */
 import type { ManhourImportResponse, ManhourItem } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
+import { arrayLength } from '@/lib/coerce-array'
 import { AppCard } from '@/components/layout/AppCard'
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
@@ -113,7 +115,7 @@ function ImportResultBlock({ data }: { data: ManhourImportResponse }) {
           </Badge>
         ) : null}
       </div>
-      {data.rows.length > 0 ? (
+      {arrayLength(data.rows) > 0 ? (
         <div className="mt-3 app-table-shell overflow-auto">
           <Table embedded stickyHeader zebra>
             <TableHeader>
@@ -310,7 +312,7 @@ export function ManhourAdminPage() {
     <AppPageShell
       title={t('admin.title')}
       description={t('admin.description')}
-      hints={t('admin.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'admin.hints')}
       headerActions={
         <>
           <Badge variant="secondary" className="text-xs">

@@ -34,6 +34,8 @@ import {
   confirmationImportPreviewResponseSchema,
   confirmationImportResponseSchema,
   confirmationExportResponseSchema,
+  confirmationPreviewQuerySchema,
+  confirmationPreviewResponseSchema,
   confirmationOkResponseSchema,
   workcentersResponseSchema,
   workOrderDetailSchema,
@@ -96,6 +98,7 @@ import {
   importConfirmFile,
   previewConfirmFile,
   listConfirmationExportRows,
+  listConfirmationPreviewRows,
   listConfirmationComments,
   listConfirmationImages,
   listWorkcenters,
@@ -105,6 +108,7 @@ import {
   buildConfirmationExportSapCsv,
   confirmationSapCsvFilename,
 } from '../services/confirmation-export-csv.js'
+import { buildConfirmationExportXlsxBuffer } from '../services/confirmation-export-xlsx.js'
 import {
   addPersonnelClose,
   deletePersonnelClose,
@@ -247,6 +251,7 @@ export function registerWorkOrderRoutes(
         const data = await listWorkOrderFilterOptions(pool)
         res.json(workOrderFilterOptionsResponseSchema.parse(data))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -277,6 +282,7 @@ export function registerWorkOrderRoutes(
         const items = await searchWorkOrders(pool, parsed.data)
         res.json(workOrderSearchResponseSchema.parse({ items }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -307,6 +313,7 @@ export function registerWorkOrderRoutes(
         const detail = await getWorkOrderFilterDetail(pool, parsed.data)
         res.json(workOrderFilterDetailResponseSchema.parse(detail))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -358,6 +365,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(workOrderTeamBulkResponseSchema.parse({ ok: true, ...result }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -398,6 +406,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(workOrderTeamPatchResponseSchema.parse({ ok: true }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -420,6 +429,7 @@ export function registerWorkOrderRoutes(
         const items = await listWorkOrders(pool, opts)
         res.json(workOrdersResponseSchema.parse({ items }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -445,6 +455,7 @@ export function registerWorkOrderRoutes(
         }
         res.json(workOrderDetailSchema.parse({ item }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -468,13 +479,22 @@ export function registerWorkOrderRoutes(
         return
       }
       try {
-        const payload = await getWorkOrderModalDetail(pool, id, { date: parsed.data.date }, req.authUser?.userst)
+        const user = req.authUser
+        const payload = await getWorkOrderModalDetail(
+          pool,
+          id,
+          { date: parsed.data.date },
+          user
+            ? { userst: user.userst, wkctr: user.wkctr || user.username || undefined }
+            : undefined,
+        )
         if (!payload) {
           res.status(404).json({ error: 'NOT_FOUND', message: 'Work order not found' })
           return
         }
         res.json(workOrderModalDetailResponseSchema.parse(payload))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -565,6 +585,7 @@ export function registerWorkOrderRoutes(
         )
         res.status(200).send(buf)
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -669,6 +690,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(workOrderPlanningOkResponseSchema.parse({ ok: true }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -748,6 +770,7 @@ export function registerWorkOrderRoutes(
           }),
         )
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -779,6 +802,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(workOrderPlanningOkResponseSchema.parse({ ok: true }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -815,6 +839,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(workOrderPlanningOkResponseSchema.parse({ ok: true }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -874,6 +899,7 @@ export function registerWorkOrderRoutes(
         const items = await listConfirmationComments(pool, parsed.data.idiw37)
         res.json(confirmationCommentsResponseSchema.parse({ items }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -919,6 +945,7 @@ export function registerWorkOrderRoutes(
         })
         res.status(201).json(confirmationCommentResponseSchema.parse({ item }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -959,6 +986,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(confirmationCommentResponseSchema.parse({ item }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -993,6 +1021,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(confirmationOkResponseSchema.parse({ ok: true }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1018,6 +1047,7 @@ export function registerWorkOrderRoutes(
         const items = await listConfirmationImages(pool, parsed.data.idiw37)
         res.json(confirmationImagesResponseSchema.parse({ items }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1039,6 +1069,7 @@ export function registerWorkOrderRoutes(
         const items = await listConfirmQcPending(pool, limit)
         res.json(confirmQcPendingResponseSchema.parse({ items }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1068,6 +1099,7 @@ export function registerWorkOrderRoutes(
         }
         res.json(confirmQcSnapshotResponseSchema.parse({ qc }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1087,6 +1119,16 @@ export function registerWorkOrderRoutes(
       const user = req.authUser
       if (!user) {
         res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      const { assertPlannerReviewerRole } = await import('../lib/confirm-qc-status.js')
+      try {
+        assertPlannerReviewerRole(user.userst)
+      } catch {
+        res.status(403).json({
+          error: 'PLANNER_REVIEW_REQUIRED',
+          message: 'เฉพาะ Planner ตรวจและอนุมัติงานปิด — Admin ใช้เมนูผู้ดูแลระบบเท่านั้น',
+        })
         return
       }
       const parsed = confirmationIwiwParamSchema.safeParse(req.params)
@@ -1129,6 +1171,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(confirmQcSnapshotResponseSchema.parse({ qc: out }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1148,6 +1191,16 @@ export function registerWorkOrderRoutes(
       const user = req.authUser
       if (!user) {
         res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      const { assertPlannerReviewerRole } = await import('../lib/confirm-qc-status.js')
+      try {
+        assertPlannerReviewerRole(user.userst)
+      } catch {
+        res.status(403).json({
+          error: 'PLANNER_REVIEW_REQUIRED',
+          message: 'เฉพาะ Planner ตรวจและปฏิเสธงานปิด — Admin ใช้เมนูผู้ดูแลระบบเท่านั้น',
+        })
         return
       }
       const parsed = confirmationIwiwParamSchema.safeParse(req.params)
@@ -1181,6 +1234,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(confirmQcSnapshotResponseSchema.parse({ qc: out }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1232,6 +1286,16 @@ export function registerWorkOrderRoutes(
         res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
         return
       }
+      const { assertPlannerReviewerRole } = await import('../lib/confirm-qc-status.js')
+      try {
+        assertPlannerReviewerRole(user.userst)
+      } catch {
+        res.status(403).json({
+          error: 'PLANNER_REVIEW_REQUIRED',
+          message: 'เฉพาะ Planner อนุมัติ QC แบบชุด — Admin ใช้เมนูผู้ดูแลระบบเท่านั้น',
+        })
+        return
+      }
       const parsed = qcApproveBatchBodySchema.safeParse(req.body ?? {})
       if (!parsed.success) {
         res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid body' })
@@ -1268,6 +1332,38 @@ export function registerWorkOrderRoutes(
   )
 
   app.get(
+    '/api/v1/confirmation/preview',
+    ...requireConfirmRead,
+    async (req: Request, res: Response) => {
+      const parsed = confirmationPreviewQuerySchema.safeParse(req.query)
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid query' })
+        return
+      }
+      try {
+        const items = await listConfirmationPreviewRows(pool, { status: parsed.data.status })
+        res.json(
+          confirmationPreviewResponseSchema.parse({
+            totalRows: items.length,
+            items,
+          }),
+        )
+      } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message:
+              'Run migrations 026_confirmation_tables.sql, 073_tbwrkclose.sql, 080_tbiw37n_confirm_qc.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
+  app.get(
     '/api/v1/confirmation/export',
     ...requireConfirmRead,
     async (req: Request, res: Response) => {
@@ -1293,6 +1389,7 @@ export function registerWorkOrderRoutes(
           }),
         )
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1324,51 +1421,7 @@ export function registerWorkOrderRoutes(
         const rows = batchIds?.length
           ? await listConfirmationExportRowsForBatch(pool, actor, batchIds, scope)
           : await listConfirmationExportRows(pool, actor, undefined, scope)
-        const data = [
-          [
-            '',
-            'Comfirmation',
-            'Order',
-            'Operation',
-            'SubO',
-            'Ca..',
-            'Split',
-            'Wrk Ctr',
-            'Act.Work',
-            'unit',
-            'Start date Exe.',
-            'End Date Exe.',
-            'Start Execute',
-            'End Execute',
-          ],
-          ...rows.map((row) => [
-            row.no,
-            row.confirmation,
-            row.wkorder,
-            row.opac,
-            row.subO,
-            row.ca,
-            row.split,
-            row.wkctr,
-            row.timewk,
-            row.unitc,
-            row.startDateExe,
-            row.endDateExe,
-            row.startExecute,
-            row.endExecute,
-          ]),
-        ]
-
-        const wb = XLSX.utils.book_new()
-        const ws = XLSX.utils.aoa_to_sheet(data)
-        for (const col of Array.from({ length: 14 }, (_, i) => i)) {
-          const letter = XLSX.utils.encode_col(col)
-          ws['!cols'] = ws['!cols'] ?? []
-          ws['!cols'][col] = { wch: Math.max(10, String(data[0][col] ?? '').length + 2) }
-          if (!ws[`${letter}1`]) continue
-        }
-        XLSX.utils.book_append_sheet(wb, ws, 'Export Confirm')
-        const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }) as Buffer
+        const buf = buildConfirmationExportXlsxBuffer(rows)
 
         res.setHeader(
           'Content-Type',
@@ -1377,6 +1430,7 @@ export function registerWorkOrderRoutes(
         res.setHeader('Content-Disposition', 'attachment; filename="Export_Confirm.xlsx"')
         res.status(200).send(buf)
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1511,6 +1565,7 @@ export function registerWorkOrderRoutes(
         })
         res.status(201).json(confirmationImagesResponseSchema.parse({ items: [item] }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1539,13 +1594,16 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND', message: 'Image data missing' })
           return
         }
-        res.json(
-          confirmationImageDataResponseSchema.parse({
-            idcimg: payload.idcimg,
-            mime: payload.mime,
-            base64: payload.data.toString('base64'),
-          }),
-        )
+        const body = confirmationImageDataResponseSchema.safeParse({
+          idcimg: payload.idcimg,
+          mime: payload.mime,
+          base64: payload.data.toString('base64'),
+        })
+        if (!body.success) {
+          res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Invalid image payload' })
+          return
+        }
+        res.json(body.data)
       } catch (err) {
         if (isSchemaMissing(err)) {
           res.status(503).json({
@@ -1582,6 +1640,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(confirmationOkResponseSchema.parse({ ok: true }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1700,6 +1759,24 @@ export function registerWorkOrderRoutes(
       }
 
       try {
+        const { assertTechnicianCloseWoAccess, CloseWoAccessDeniedError } = await import(
+          '../lib/close-wo-access.js'
+        )
+        try {
+          await assertTechnicianCloseWoAccess(pool, {
+            idiw37: idParsed.data.idiw37,
+            wkctr: bodyParsed.data.wkctr,
+            userst: user.userst,
+            loginWkctr: user.wkctr || user.username || null,
+          })
+        } catch (err) {
+          if (err instanceof CloseWoAccessDeniedError) {
+            res.status(403).json({ error: 'FORBIDDEN', message: err.message })
+            return
+          }
+          throw err
+        }
+
         await addConfirmationClose(pool, {
           idiw37: idParsed.data.idiw37,
           wkctr: bodyParsed.data.wkctr,
@@ -1758,6 +1835,7 @@ export function registerWorkOrderRoutes(
         const items = await listPersonnelCloses(pool, parsed.data.idiw37)
         res.json(personnelClosesResponseSchema.parse({ items }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1774,6 +1852,12 @@ export function registerWorkOrderRoutes(
     '/api/v1/confirmation/:idiw37/personnel-close',
     ...requireConfirmWrite,
     async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+
       const idParsed = confirmationIdParamSchema.safeParse(req.params)
       if (!idParsed.success) {
         res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid idiw37' })
@@ -1785,6 +1869,24 @@ export function registerWorkOrderRoutes(
         return
       }
       try {
+        const { assertTechnicianCloseWoAccess, CloseWoAccessDeniedError } = await import(
+          '../lib/close-wo-access.js'
+        )
+        try {
+          await assertTechnicianCloseWoAccess(pool, {
+            idiw37: idParsed.data.idiw37,
+            wkctr: bodyParsed.data.wkctr,
+            userst: user.userst,
+            loginWkctr: user.wkctr || user.username || null,
+          })
+        } catch (err) {
+          if (err instanceof CloseWoAccessDeniedError) {
+            res.status(403).json({ error: 'FORBIDDEN', message: err.message })
+            return
+          }
+          throw err
+        }
+
         await addPersonnelClose(pool, {
           idiw37: idParsed.data.idiw37,
           wkctr: bodyParsed.data.wkctr,
@@ -1824,6 +1926,7 @@ export function registerWorkOrderRoutes(
       try {
         await deletePersonnelClose(pool, parsed.data.idwrkclose)
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1878,6 +1981,7 @@ export function registerWorkOrderRoutes(
           }),
         )
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1933,6 +2037,7 @@ export function registerWorkOrderRoutes(
         })
         res.json(confirmationImportResponseSchema.parse({ fileName, ...summary }))
       } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',

@@ -6,6 +6,7 @@ import {
   AppPageHero,
   AppPageHeroHints,
 } from '@/components/layout/AppPageHero'
+import { coerceStringArray } from '@/lib/coerce-array'
 import { Button } from '@/components/ui/button'
 import { collapseHintSummary } from '@/lib/collapse-hint'
 import { APP_INTERACTIVE_MOTION, APP_INTERACTIVE_MOTION_SUBTLE } from '@/lib/app-motion'
@@ -405,6 +406,7 @@ export function SchedulingPageHeader({
   children,
   className,
 }: SchedulingPageHeaderProps) {
+  const safeHints = coerceStringArray(hints)
   return (
     <AppPageHero
       className={className}
@@ -414,7 +416,7 @@ export function SchedulingPageHeader({
           {badge ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">{badge}</div>
           ) : null}
-          <AppPageHeroHints hints={hints} />
+          {safeHints.length > 0 ? <AppPageHeroHints hints={safeHints} /> : null}
         </>
       }
       actions={children}

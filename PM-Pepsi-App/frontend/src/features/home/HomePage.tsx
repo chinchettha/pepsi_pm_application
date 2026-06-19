@@ -15,6 +15,7 @@ import {
   navItemsToQuickLinks,
 } from '@/features/home/dashboard-config'
 import { fetchDashboardSummary } from '@/lib/api-public'
+import { coerceNumberArray } from '@/lib/coerce-array'
 import { readCssVar } from '@/lib/css-tokens'
 import {
   listKpiStaggerItemMotion,
@@ -244,6 +245,7 @@ export function HomePage() {
   }
 
   const trends = dash.data?.trends
+  const importDaily = coerceNumberArray(trends?.importDaily)
 
   const kpis = useMemo(
     () =>
@@ -257,7 +259,7 @@ export function HomePage() {
             to: '/work-orders',
             icon: ClipboardList,
             tone: 'pepsi-blue' as const,
-            trend: trends.openDaily,
+            trend: coerceNumberArray(trends.openDaily),
             sparkTone: 'pepsi-blue' as const,
           },
           {
@@ -267,7 +269,7 @@ export function HomePage() {
             to: '/work-orders',
             icon: CheckCircle2,
             tone: 'pepsi-red' as const,
-            trend: trends.closedDaily,
+            trend: coerceNumberArray(trends.closedDaily),
             sparkTone: 'pepsi-red' as const,
           },
           {
@@ -277,7 +279,7 @@ export function HomePage() {
             to: '/planning',
             icon: UserRound,
             tone: 'pepsi-orange' as const,
-            trend: trends.pendingDaily,
+            trend: coerceNumberArray(trends.pendingDaily),
             sparkTone: 'pepsi-orange' as const,
           },
           {
@@ -288,16 +290,16 @@ export function HomePage() {
                 )
               : '—',
             hint: t('kpi.iw37nImportHint', {
-              count: trends.importDaily.reduce((a, b) => a + b, 0),
+              count: importDaily.reduce((a, b) => a + b, 0),
             }),
             to: '/iw37n',
             icon: Database,
             tone: 'pepsi-blue' as const,
-            trend: trends.importDaily,
+            trend: importDaily,
             sparkTone: 'pepsi-blue' as const,
           },
         ],
-    [dash.data, trends, t, locale],
+    [dash.data, trends, importDaily, t, locale],
   )
 
   const wkctrBadge =

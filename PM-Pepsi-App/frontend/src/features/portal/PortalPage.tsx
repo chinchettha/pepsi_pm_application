@@ -14,6 +14,7 @@ import {
   PORTAL_DEFERRED_PATH_KEY,
   PORTAL_PATH,
 } from '@/lib/portal-enabled'
+import { arrayLength } from '@/lib/coerce-array'
 import { useQuery } from '@tanstack/react-query'
 import { LayoutGrid } from 'lucide-react'
 import { useCallback, useEffect, useRef } from 'react'
@@ -102,7 +103,7 @@ export function PortalPage() {
       navigate(autoRedirect, { replace: true })
       return
     }
-    if (modules.length === 1) {
+    if (Array.isArray(modules) && modules.length === 1) {
       const only = modules[0]
       if (only?.ready && only.handoff === 'code_exchange') {
         void runExternalHandoff(only)
@@ -154,7 +155,7 @@ export function PortalPage() {
 
   if (
     q.isLoading ||
-    (isPortalAutoSkipEnabled() && q.data?.autoRedirect && q.data.modules.length === 1)
+    (isPortalAutoSkipEnabled() && q.data?.autoRedirect && arrayLength(q.data?.modules) === 1)
   ) {
     return (
       <PortalShell>

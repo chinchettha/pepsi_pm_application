@@ -13,7 +13,6 @@ import { ManhoursPage } from '@/features/manhours/ManhoursPage'
 import { WorktimePage } from '@/features/manhours/WorktimePage'
 import { MasterDataPage } from '@/features/master-data/MasterDataPage'
 import { MasterPlanPage } from '@/features/master-plan/MasterPlanPage'
-import { PersonnelConfirmPage } from '@/features/personnel/PersonnelConfirmPage'
 import { PersonnelPage } from '@/features/personnel/PersonnelPage'
 import { PlanCalendarPage } from '@/features/plan-calendar/PlanCalendarPage'
 import { PlanningPage } from '@/features/planning/PlanningPage'
@@ -84,7 +83,7 @@ export default function App() {
           <Route path="worktime" element={<WorktimePage />} />
           <Route path="personnel" element={<PersonnelPage />} />
           <Route path="personnel/admin" element={<Navigate to="/admin/users" replace />} />
-          <Route path="personnel/confirm" element={<PersonnelConfirmPage />} />
+          <Route path="personnel/confirm" element={<Navigate to="/confirmation" replace />} />
           <Route path="reports" element={<Outlet />}>
             <Route index element={<ReportsPage />} />
             <Route path="audit" element={<AuditorHubPage />} />

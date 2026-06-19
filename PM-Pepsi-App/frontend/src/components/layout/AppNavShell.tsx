@@ -4,6 +4,7 @@ import { SidebarBrandZone } from '@/components/layout/SidebarBrandZone'
 import { SidebarFooter } from '@/components/layout/SidebarFooter'
 import { SidebarMobileDrawer } from '@/components/layout/SidebarMobileDrawer'
 import { AppFooter } from '@/components/layout/AppFooter'
+import { AppNotificationBell } from '@/components/layout/AppNotificationBell'
 import { AppTopbarBrand } from '@/components/layout/AppTopbarBrand'
 import { AppNavbarUser } from '@/components/layout/AppNavbarUser'
 import type { NavEntry } from '@/components/layout/nav-config'
@@ -91,6 +92,7 @@ function TopBarActions({
           <CommandPaletteShortcutBadge className="hidden text-app-muted md:inline-flex" />
         </Button>
       ) : null}
+      {loggedIn ? <AppNotificationBell /> : null}
       <LanguageSwitcher />
       <ThemeToggle className="app-topbar-icon-btn size-11 shrink-0 rounded-xl border border-[color-mix(in_srgb,var(--app-border)_80%,transparent)] bg-[color-mix(in_srgb,var(--app-surface)_88%,white)] shadow-sm hover:bg-[var(--app-surface)] hover:shadow-md" />
       {loggedIn ? (

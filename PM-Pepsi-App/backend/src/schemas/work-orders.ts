@@ -202,6 +202,8 @@ export const workcenterItemSchema = z.object({
   hrHours: z.number().nullable().optional(),
   plannedHours: z.number().nullable().optional(),
   availableHours: z.number().nullable().optional(),
+  shiftTags: z.array(z.enum(['AA', 'BB'])).optional(),
+  craftTags: z.array(z.enum(['EE', 'UT'])).optional(),
 })
 
 export const workcentersResponseSchema = z.object({
@@ -285,8 +287,8 @@ export const personnelCloseIdParamSchema = z.object({
 })
 
 export const confirmationCommentItemSchema = z.object({
-  idcom: z.number(),
-  idiw37: z.number(),
+  idcom: z.coerce.number(),
+  idiw37: z.coerce.number(),
   comdetail: z.string(),
   wkctr: z.string(),
   createdAt: z.string(),
@@ -386,10 +388,26 @@ export const confirmationExportResponseSchema = z.object({
   items: z.array(confirmationExportRowSchema),
 })
 
+export const confirmationPreviewRowSchema = confirmationExportRowSchema.extend({
+  idiw37: z.number().int(),
+  confirmQcStatus: z.enum(['pending', 'rejected']),
+  source: z.enum(['personnel', 'supervisor']),
+})
+
+export const confirmationPreviewResponseSchema = z.object({
+  totalRows: z.number().int(),
+  items: z.array(confirmationPreviewRowSchema),
+})
+
+export const confirmationPreviewQuerySchema = z.object({
+  status: z.enum(['pending', 'rejected', 'all']).optional().default('pending'),
+})
+
 export const workOrderTaskListItemSchema = z.object({
   tasklist: z.string(),
   machine: z.string(),
   pmlist: z.string(),
+  displayLine: z.string(),
   machinestatus: z.number().nullable(),
   mat: z.string(),
   matdescrip: z.string(),
@@ -405,6 +423,7 @@ export const workOrderTaskListSchema = z.object({
   summary: z
     .object({
       tasklist: z.string(),
+      legacy: z.string(),
       productline: z.string(),
       zone: z.string(),
       wkctrtype: z.string(),
@@ -454,6 +473,19 @@ export const workOrderPlanningAssignedSchema = z.object({
   ackChannel: z.enum(['telegram', 'web']).nullable().optional(),
 })
 
+export const closeWoAccessSchema = z.object({
+  canView: z.boolean(),
+  canWrite: z.boolean(),
+  reason: z.enum(['not_technician', 'not_assigned', 'pending_ack']).optional(),
+  myAssignment: z
+    .object({
+      ackStatus: z.enum(['pending', 'acknowledged', 'declined']).optional(),
+      ackChannel: z.enum(['telegram', 'web']).nullable().optional(),
+      ackAt: z.string().nullable().optional(),
+    })
+    .optional(),
+})
+
 export const workOrderPlanningSchema = z.object({
   canAssign: z.boolean(),
   /** back-compat: ช่างคนแรก (legacy single-assign) */
@@ -462,6 +494,7 @@ export const workOrderPlanningSchema = z.object({
   assignees: z.array(workOrderPlanningAssignedSchema),
   workcenters: z.array(workcenterItemSchema),
   groups: z.array(workOrderPlanningGroupSchema),
+  closeWoAccess: closeWoAccessSchema,
 })
 
 export { woPmFormHeaderSchema } from '../lib/wo-pm-form-header.js'

@@ -1,4 +1,5 @@
 import type { AdminMenuRow } from '@/api/schemas'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
 import { AdminPageRoot } from '@/components/admin/AdminPageRoot'
@@ -278,7 +279,7 @@ export function AdminMenuPage() {
       tourTarget="admin-menu"
       title={t('menu.title')}
       description={t('menu.description')}
-      hints={t('menu.hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'menu.hints')}
       headerActions={
         <>
           <Button

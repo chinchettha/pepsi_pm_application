@@ -1,7 +1,8 @@
 # ปฏิทิน Work Scheduling — การแสดงผล event
 
-อัปเดต: **2026-06-02**  
-หน้า: `/calendar`
+อัปเดต: **9 มิ.ย. 2026**  
+หน้า: `/calendar`  
+อ้างอิง: สไลด์ลูกค้า Drag & Drop + Reason Code
 
 ---
 
@@ -15,15 +16,17 @@
 
 ---
 
-## สี event
+## สี event (สไลด์ลูกค้า)
 
 | สี | ความหมาย | เงื่อนไข |
 |----|----------|----------|
-| **ม่วง** `#9333ea` | กำลังดำเนินการ | CRTD/REL · ยังไม่เสร็จ · ย้ายแผน Reason **ไม่บังคับ** |
-| **แดง** `#dc2626` | เลยกำหนด | CRTD/REL · วันแผนผ่านมาแล้ว · ย้ายแผน Reason **บังคับ** |
-| **ส้ม** `#f97316` | โอนย้ายแผน | มี `cday` + `mpcount ≥ 1` ขณะ syst ยัง CRTD/REL · Reason **บังคับ** |
-| **เขียว** `#16a34a` | เสร็จแล้ว | QC อนุมัติ / % ปิด 100 — **ลากย้ายไม่ได้** |
+| **แดง** `#FF3B30` | เลยกำหนด | CRTD/REL · วันแผนผ่านมาแล้ว · Reason **บังคับ** |
+| **ส้ม** `#F7941D` | มีเลข WO | CRTD/REL · ยังไม่เลยกำหนด · มี `wkorder` · Reason **บังคับ** |
+| **น้ำเงิน** `#4DA6FF` | ประมาณการ | CRTD/REL · ยังไม่เลยกำหนด · **ไม่มี**เลข WO · Reason **ไม่บังคับ** |
+| **เขียว** `#7AC943` | เสร็จแล้ว | QC อนุมัติ / % ปิด 100 / TECO ปิด — **ลากย้ายไม่ได้** |
 | **🔔** | เตือน TECO | `syst = TECO` แต่ยังไม่ปิดงาน/confirm ในโปรแกรม |
+
+API `displayStatus`: `overdue` · `moved` (ส้ม = มี WO) · `in_progress` (น้ำเงิน = estimate) · `completed`
 
 Legend แสดงใต้ตัวกรองบนหน้า `/calendar`
 
@@ -42,8 +45,9 @@ Legend แสดงใต้ตัวกรองบนหน้า `/calendar`
 
 - **Reason Code** จาก `app.tbreason` (01–04, 99)
 - **Comment** → `tbmoveplan.resoncom`
-- **บังคับ** เมื่องานสีแดง/ส้ม · **ไม่บังคับ** เมื่องานม่วง (CRTD/REL ปกติ)
-- **สีเขียว / TECO ปิดแล้ว** — ห้ามลาก (`canMovePlan: false`)
+- **บังคับ** เมื่องาน **แดง** (เลยกำหนด) หรือ **ส้ม** (มีเลข WO)
+- **ไม่บังคับ** เมื่องาน **น้ำเงิน** (ประมาณการ · ไม่มี WO)
+- **เขียว / TECO ปิดแล้ว** — ห้ามลาก (`canMovePlan: false`)
 
 ---
 
@@ -63,6 +67,7 @@ Legend แสดงใต้ตัวกรองบนหน้า `/calendar`
 
 | ส่วน | ไฟล์ |
 |------|------|
+| กฎ Reason + WO | [`calendar-move-policy.ts`](../../PM-Pepsi-App/backend/src/lib/calendar-move-policy.ts) |
 | สร้าง title / สี / description | [`calendar-event-display.ts`](../../PM-Pepsi-App/backend/src/lib/calendar-event-display.ts) |
 | API events | [`calendar.ts`](../../PM-Pepsi-App/backend/src/services/calendar.ts) |
 | UI legend + Z1/Z2/Z5 | [`CalendarColorLegend.tsx`](../../PM-Pepsi-App/frontend/src/components/scheduling/CalendarColorLegend.tsx) · [`CalendarPage.tsx`](../../PM-Pepsi-App/frontend/src/features/calendar/CalendarPage.tsx) |

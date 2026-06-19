@@ -41,6 +41,9 @@ import {
   sqlFactoryScope,
 } from './scheduling-shared.js'
 import { formatUnixDate } from './scheduling-move.js'
+import {
+  derivePlanningWorkcenterTags,
+} from '../lib/planning-workcenter-tags.js'
 import { buildWoPmFormHeader } from '../lib/wo-pm-form-header.js'
 import {
   buildTaskMeasurementFields,
@@ -782,6 +785,7 @@ function isoToday(): string {
 
 type ModalDetailTaskRow = {
   tasklist: string
+  legacy: string
   machine: string
   pmlist: string
   machinestatus: number | null
@@ -829,8 +833,9 @@ export async function getWorkOrderModalDetail(
   pool: Pool,
   id: string,
   opts: { date?: string },
-  userst: string | undefined,
+  auth: { userst?: string; wkctr?: string } | undefined,
 ) {
+  const userst = auth?.userst
   const row = await getWorkOrderViewRow(pool, id)
   if (!row) return null
 
@@ -843,7 +848,7 @@ export async function getWorkOrderModalDetail(
   const taskR =
     mntplan && mntplan !== '-'
       ? await pool.query<ModalDetailTaskRow>(
-          `SELECT tl.tasklist, tl.machine, tl.pmlist, tl.machinestatus, tl.mat, at.matdescrip,
+          `SELECT tl.tasklist, tl.legacy, tl.machine, tl.pmlist, tl.machinestatus, tl.mat, at.matdescrip,
                   tl.mpoint, tl.ment,
                   tl.idzone, z.zone, tl.idwkctrtype, wt.wkctrtype,
                   z.idproductline, pl.prolinedescrip
@@ -864,6 +869,7 @@ export async function getWorkOrderModalDetail(
   const summary = firstTask
     ? {
         tasklist: firstTask.tasklist,
+        legacy: firstTask.legacy?.trim() ?? '',
         productline:
           firstTask.idproductline && firstTask.prolinedescrip
             ? `${firstTask.idproductline} = ${firstTask.prolinedescrip}`
@@ -924,10 +930,24 @@ export async function getWorkOrderModalDetail(
      ORDER BY wkctrgroup ASC`,
   )
 
-  const wcR = await pool.query<{ wkctr: string; titlewkctr: string | null; namewkctr: string | null; surnamewkctr: string | null }>(
-    `SELECT wkctr, titlewkctr, namewkctr, surnamewkctr
-     FROM app.tbworkcenter
-     ORDER BY wkctr ASC`,
+  const wcR = await pool.query<{
+    wkctr: string
+    titlewkctr: string | null
+    namewkctr: string | null
+    surnamewkctr: string | null
+    cat: string | null
+    idwkctrtype: string | null
+    wkctrtype_label: string | null
+  }>(
+    `SELECT wc.wkctr, wc.titlewkctr, wc.namewkctr, wc.surnamewkctr, wc.cat, wc.idwkctrtype,
+            wt.wkctrtype AS wkctrtype_label
+     FROM app.tbworkcenter wc
+     LEFT JOIN app.tbwkctrtype wt ON wt.idwkctrtype::text = wc.idwkctrtype::text
+     LEFT JOIN app.tbwkctrstatus ws ON ws.workstatus = wc.workstatus
+     WHERE COALESCE(wc.userrole, '') <> 'admin'
+       AND COALESCE(UPPER(wc.userst), '') <> 'A'
+       AND (ws.is_active IS DISTINCT FROM false)
+     ORDER BY wc.wkctr ASC`,
   )
 
  // Multi-assign
@@ -991,19 +1011,38 @@ export async function getWorkOrderModalDetail(
   const canAssign =
     !!userst?.trim() && (await hasPermission(pool, userst, 'planning.assign'))
 
-  const canEditPmExecution =
+  const hasConfirmWrite =
     !!userst?.trim() && (await hasPermission(pool, userst, 'confirmation.write'))
 
+  const canEditPmExecution = hasConfirmWrite
+
   const pmExecution = await loadWoPmExecution(pool, Number(row.idiw37), canEditPmExecution)
+
+  const { resolveCloseWoAccess } = await import('../lib/close-wo-access.js')
+  const closeWoAccess = resolveCloseWoAccess({
+    assignees,
+    wkctr: auth?.wkctr,
+    userst,
+    hasConfirmWrite,
+  })
 
   const hoursMap = await loadPlanningAvailableHoursByWkctr(pool, date, {
     excludeIdiw37: Number(row.idiw37),
   })
   const workcentersWithHours = mergeWorkcenterAvailableHours(
-    wcR.rows.map((w) => ({
-      wkctr: w.wkctr,
-      displayName: `${w.titlewkctr ?? ''}${w.namewkctr ?? ''} ${w.surnamewkctr ?? ''}`.trim(),
-    })),
+    wcR.rows.map((w) => {
+      const tags = derivePlanningWorkcenterTags({
+        cat: w.cat,
+        wkctrtype: w.wkctrtype_label,
+        idwkctrtype: w.idwkctrtype,
+      })
+      return {
+        wkctr: w.wkctr,
+        displayName: `${w.titlewkctr ?? ''}${w.namewkctr ?? ''} ${w.surnamewkctr ?? ''}`.trim(),
+        shiftTags: tags.shiftTags.length > 0 ? tags.shiftTags : undefined,
+        craftTags: tags.craftTags.length > 0 ? tags.craftTags : undefined,
+      }
+    }),
     hoursMap,
   )
 
@@ -1017,6 +1056,8 @@ export async function getWorkOrderModalDetail(
       mntplan,
       summary,
       items: taskRows.map((r) => {
+        const machine = r.machine?.trim() ?? ''
+        const pmlist = r.pmlist?.trim() ?? ''
         const measure = buildTaskMeasurementFields({
           pmlist: r.pmlist,
           mpoint: r.mpoint,
@@ -1026,6 +1067,7 @@ export async function getWorkOrderModalDetail(
           tasklist: r.tasklist?.trim() ?? '',
           machine: r.machine?.trim() ?? '',
           pmlist: r.pmlist?.trim() ?? '',
+          displayLine: machine && pmlist ? `${machine} — ${pmlist}` : machine || pmlist || '—',
           machinestatus: r.machinestatus != null ? Number(r.machinestatus) : null,
           mat: r.mat?.trim() ?? '',
           matdescrip: r.matdescrip?.trim() ?? '',
@@ -1050,6 +1092,7 @@ export async function getWorkOrderModalDetail(
         wkctrgroup: g.wkctrgroup,
         wkctrdescription: g.wkctrdescription?.trim() ?? '',
       })),
+      closeWoAccess,
     },
     materials: {
       items: matR.rows.map((m) => ({

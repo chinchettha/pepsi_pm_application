@@ -7,6 +7,7 @@
  *
  */
 import { AppCard } from '@/components/layout/AppCard'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -206,7 +207,7 @@ export function PersonnelConfirmPage() {
     })
   }
 
-  const hints = t('confirm.hints', { returnObjects: true }) as string[]
+  const hints = hintsFromT(t, 'confirm.hints')
 
   if (!canConfirmRead) {
     return (

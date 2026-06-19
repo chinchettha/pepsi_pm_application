@@ -92,6 +92,23 @@ const MIGRATION_PROBES: Record<string, { label: string; sql: string }> = {
       WHERE table_schema = 'app' AND table_name = 'view_planwork'
     ) AS ok`,
   },
+  '099_telegram_notify.sql': {
+    label: 'Telegram notify + ack_status',
+    sql: `SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'app' AND table_name = 'tbplangingwork' AND column_name = 'ack_status'
+    ) AND EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'app' AND table_name = 'tbl_telegram_notify_group'
+    ) AS ok`,
+  },
+  '100_telegram_link_token.sql': {
+    label: 'Telegram link token',
+    sql: `SELECT EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'app' AND table_name = 'tbl_telegram_link_token'
+    ) AS ok`,
+  },
 }
 
 function migrationIdFromFile(file: string): string {

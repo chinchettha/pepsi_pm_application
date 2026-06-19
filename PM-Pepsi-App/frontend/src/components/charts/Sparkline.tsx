@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { coerceNumberArray } from '@/lib/coerce-array'
 import { useId, useMemo } from 'react'
 
 export type SparklineTone =
@@ -39,7 +40,8 @@ export function Sparkline({
   fill = true,
 }: Props) {
   const gradId = useId().replace(/:/g, '')
-  const { points } = useMemo(() => normalizeSeries(data), [data])
+  const series = coerceNumberArray(data)
+  const { points } = useMemo(() => normalizeSeries(series), [series])
 
   if (points.length < 2) {
     return (
@@ -139,10 +141,11 @@ export function Sparkline({
 }
 
 /** เปอร์เซ็นต์เปลี่ยนแปลง first→last (สำหรับ badge เล็ก) */
-export function sparklineDelta(data: number[]): number | null {
-  if (data.length < 2) return null
-  const first = data[0]!
-  const last = data[data.length - 1]!
+export function sparklineDelta(data: number[] | undefined | null): number | null {
+  const series = coerceNumberArray(data)
+  if (series.length < 2) return null
+  const first = series[0]!
+  const last = series[series.length - 1]!
   if (first === 0) return last > 0 ? 100 : 0
   return Math.round(((last - first) / first) * 100)
 }

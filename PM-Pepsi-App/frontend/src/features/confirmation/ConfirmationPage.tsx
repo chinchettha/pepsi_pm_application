@@ -1,109 +1,134 @@
 import { CanPermission } from '@/components/auth/CanPermission'
-import { ConfirmQcPendingQueue } from '@/components/confirmation/ConfirmQcPendingQueue'
 import { ConfirmationExportTablePanel } from '@/components/confirmation/ConfirmationExportTablePanel'
+import {
+  ConfirmationReviewDialog,
+  type ConfirmationReviewTarget,
+} from '@/components/confirmation/ConfirmationReviewDialog'
+import {
+  ConfirmationSapTable,
+  confirmationRowMatchesSearch,
+} from '@/components/confirmation/ConfirmationSapTable'
+import { FilterSearchField } from '@/components/scheduling/SchedulingFilterLayout'
 import { AppPageContent } from '@/components/layout/AppPageContent'
 import {
+  SchedulingCalendarPanel,
   SchedulingPageHeader,
   SchedulingPageSection,
   SchedulingPageStack,
-  SchedulingSection,
   schedulingHeroLinkBtnClass,
   schedulingHeroLinkIconClass,
 } from '@/components/scheduling/SchedulingPageLayout'
 import { MassConfirmSearchCard } from '@/features/confirmation/MassConfirmSearchCard'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import type { ConfirmationImportResponse } from '@/api/schemas'
+import { QueryLoadErrorState } from '@/components/ui/query-load-error'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { ConfirmationExportRow, ConfirmationPreviewRow } from '@/api/schemas'
 import { getStoredAuthUser } from '@/features/auth/login-api'
-import { postConfirmationImport } from '@/lib/api-public'
 import {
-  listKpiStaggerItemMotion,
-  listKpiStaggerRootMotion,
-} from '@/lib/list-kpi-stagger'
+  fetchConfirmationExport,
+  fetchConfirmationPreview,
+  type ConfirmationPreviewStatus,
+} from '@/lib/api-public'
 import { usePermission } from '@/lib/use-permission'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { motion, useReducedMotion } from 'framer-motion'
-import { AlertCircle, BadgeCheck, ClipboardCheck, Upload } from 'lucide-react'
-import type { ChangeEvent } from 'react'
-import { useRef, useState } from 'react'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, BadgeCheck, ClipboardCheck, Eye, RotateCcw } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
+
+type ReviewTab = 'all' | 'pending' | 'approved' | 'rejected'
+
+function previewStatusForTab(tab: ReviewTab): ConfirmationPreviewStatus | null {
+  if (tab === 'all') return 'all'
+  if (tab === 'pending') return 'pending'
+  if (tab === 'rejected') return 'rejected'
+  return null
+}
+
+function rowToReviewTarget(row: ConfirmationExportRow & { idiw37?: number }): ConfirmationReviewTarget {
+  return {
+    idiw37: 'idiw37' in row && typeof row.idiw37 === 'number' ? row.idiw37 : 0,
+    wkorder: row.wkorder,
+  }
+}
 
 export function ConfirmationPage() {
   const { t } = useTranslation('confirmation')
-  const reduceMotion = useReducedMotion()
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const authUser = getStoredAuthUser()
   const isAdmin = (authUser?.userst ?? '').trim() === 'A'
   const canRead = usePermission('confirmation.read')
-  const canImportConfirm = usePermission('confirmation.import') || isAdmin
   const canExport =
     usePermission('confirmation.export') ||
     usePermission('confirmation.import') ||
     isAdmin
   const canMassConfirm = usePermission('confirmation.write') || isAdmin
 
-  const [importResult, setImportResult] = useState<ConfirmationImportResponse | null>(null)
-  const importFileRef = useRef<HTMLInputElement>(null)
+  const [activeTab, setActiveTab] = useState<ReviewTab>('pending')
+  const [search, setSearch] = useState('')
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [reviewTarget, setReviewTarget] = useState<ConfirmationReviewTarget | null>(null)
 
-  const pageHints = [
-    t('page.hintExportSap'),
-    t('page.hintMassConfirm'),
-    t('page.hintImportConfirm'),
-    t('page.hintQcQueue'),
-    t('page.hintCsv'),
-  ]
+  const previewStatus = previewStatusForTab(activeTab)
 
-  const importMut = useMutation({
-    mutationFn: (file: File) => postConfirmationImport(file),
-    onSuccess: async (res) => {
-      setImportResult(res)
-      const ok = res.inserted + res.updated
-      const failTotal = res.skipped + res.errors
-      if (failTotal === 0) {
-        toast.success(t('import.toastSuccess', { ok, total: res.totalRows }))
-      } else {
-        toast.warning(t('import.toastPartial', { ok, fail: failTotal }))
-      }
-      await qc.invalidateQueries({ queryKey: ['confirmation', 'export', 'preview'] })
-    },
-    onError: (err) => toast.error((err as Error).message),
+  const previewQ = useQuery({
+    queryKey: ['confirmation', 'preview', previewStatus],
+    queryFn: () => fetchConfirmationPreview(previewStatus!),
+    enabled: canRead && previewStatus != null,
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
   })
 
-  const onPickImportFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    if (!f) return
-    importMut.mutate(f)
-    e.target.value = ''
+  const approvedQ = useQuery({
+    queryKey: ['confirmation', 'export', 'approved-tab'],
+    queryFn: fetchConfirmationExport,
+    enabled: canRead && activeTab === 'approved',
+    placeholderData: keepPreviousData,
+  })
+
+  const tableRows: ConfirmationExportRow[] = useMemo(() => {
+    if (activeTab === 'approved') return approvedQ.data?.items ?? []
+    return previewQ.data?.items ?? []
+  }, [activeTab, approvedQ.data?.items, previewQ.data?.items])
+
+  const filteredRows = useMemo(
+    () => tableRows.filter((row) => confirmationRowMatchesSearch(row, search)),
+    [tableRows, search],
+  )
+
+  const openReview = (row: ConfirmationPreviewRow | ConfirmationExportRow) => {
+    const target =
+      'idiw37' in row && typeof row.idiw37 === 'number'
+        ? { idiw37: row.idiw37, wkorder: row.wkorder }
+        : rowToReviewTarget(row)
+    if (!target.idiw37) return
+    setReviewTarget(target)
+    setReviewOpen(true)
   }
+
+  const invalidateReviewData = async () => {
+    await qc.invalidateQueries({ queryKey: ['confirmation', 'preview'] })
+    await qc.invalidateQueries({ queryKey: ['confirmation', 'export'] })
+  }
+
+  const pageHints = [
+    t('page.hintReviewQueue'),
+    t('page.hintExportSap'),
+    t('page.hintConfirmReject'),
+  ]
 
   if (!canRead) {
     return (
       <>
-        <SchedulingPageHeader
-          title={t('page.title')}
-          icon={BadgeCheck}
-          hints={pageHints}
-        />
+        <SchedulingPageHeader title={t('page.title')} icon={BadgeCheck} hints={pageHints} />
         <AppPageContent>
           <EmptyState
             icon={AlertCircle}
             title={t('page.noAccessTitle')}
             description={
               <>
-                {t('page.noAccessDesc')}{' '}
-                <code className="text-xs">confirmation.read</code>
+                {t('page.noAccessDesc')} <code className="text-xs">confirmation.read</code>
               </>
             }
           />
@@ -112,15 +137,20 @@ export function ConfirmationPage() {
     )
   }
 
-  let sectionIndex = 0
+  const isLoading =
+    activeTab === 'approved'
+      ? approvedQ.isLoading && !approvedQ.data
+      : previewQ.isLoading && !previewQ.data
+  const isError = activeTab === 'approved' ? approvedQ.isError : previewQ.isError
+  const queryError = activeTab === 'approved' ? approvedQ.error : previewQ.error
+  const refetch = () => (activeTab === 'approved' ? approvedQ.refetch() : previewQ.refetch())
+  const isFetching = activeTab === 'approved' ? approvedQ.isFetching : previewQ.isFetching
+
+  const showReviewActions = activeTab !== 'approved'
 
   return (
     <>
-      <SchedulingPageHeader
-        title={t('page.title')}
-        icon={BadgeCheck}
-        hints={pageHints}
-      >
+      <SchedulingPageHeader title={t('page.title')} icon={BadgeCheck} hints={pageHints}>
         <CanPermission permission="work-orders.read">
           <Button
             type="button"
@@ -139,154 +169,125 @@ export function ConfirmationPage() {
 
       <AppPageContent className="scheduling-page pb-8">
         <SchedulingPageStack>
+          <SchedulingPageSection index={0}>
+            <SchedulingCalendarPanel
+              title={t('review.title')}
+              eventCount={filteredRows.length}
+              isRefreshing={isFetching && !isLoading}
+            >
+              <div className="space-y-4">
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(v) => {
+                    setActiveTab(v as ReviewTab)
+                    setSearch('')
+                  }}
+                >
+                  <TabsList className="h-auto flex-wrap gap-1 bg-app-subtle/50 p-1">
+                    <TabsTrigger value="all">{t('review.tabAll')}</TabsTrigger>
+                    <TabsTrigger value="pending">{t('review.tabPending')}</TabsTrigger>
+                    <TabsTrigger value="approved">{t('review.tabApproved')}</TabsTrigger>
+                    <TabsTrigger value="rejected">{t('review.tabRejected')}</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value={activeTab} className="mt-4 space-y-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                      <div className="w-full sm:max-w-sm">
+                        <FilterSearchField
+                          id="confirmation-review-search"
+                          label={t('export.search')}
+                          value={search}
+                          onChange={setSearch}
+                          placeholder={t('export.searchPlaceholder')}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        disabled={isFetching}
+                        onClick={() => void refetch()}
+                      >
+                        <RotateCcw className="size-3.5" aria-hidden />
+                        {t('export.refresh')}
+                      </Button>
+                    </div>
+
+                    {isLoading ? (
+                      <p className="py-8 text-center text-sm text-app-muted">{t('review.loading')}</p>
+                    ) : isError ? (
+                      <QueryLoadErrorState
+                        title={t('review.loadFailed')}
+                        error={queryError}
+                        action={{ label: t('export.refresh'), onClick: () => void refetch() }}
+                      />
+                    ) : filteredRows.length === 0 ? (
+                      <EmptyState
+                        icon={ClipboardCheck}
+                        title={t('review.empty')}
+                        description={t(`review.emptyHint.${activeTab}`)}
+                      />
+                    ) : (
+                      <ConfirmationSapTable
+                        rows={filteredRows}
+                        emptyMessage={t('export.noResults')}
+                        onRowClick={
+                          showReviewActions
+                            ? (row) => openReview(row as ConfirmationPreviewRow)
+                            : undefined
+                        }
+                        renderAction={
+                          showReviewActions
+                            ? (row) => (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 gap-1.5"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openReview(row as ConfirmationPreviewRow)
+                                  }}
+                                >
+                                  <Eye className="size-3.5" aria-hidden />
+                                  {t('review.openReview')}
+                                </Button>
+                              )
+                            : undefined
+                        }
+                      />
+                    )}
+
+                    {activeTab === 'approved' && filteredRows.length > 0 ? (
+                      <p className="text-xs text-app-muted">{t('review.approvedExportHint')}</p>
+                    ) : null}
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </SchedulingCalendarPanel>
+          </SchedulingPageSection>
+
           <ConfirmationExportTablePanel
             enabled={canRead}
             canExport={canExport}
-            sectionIndex={sectionIndex++}
+            sectionIndex={1}
           />
 
           {canMassConfirm ? (
-            <SchedulingPageSection index={sectionIndex++}>
-              <MassConfirmSearchCard collapsible defaultOpen />
-            </SchedulingPageSection>
-          ) : null}
-
-          {canImportConfirm ? (
-            <SchedulingPageSection index={sectionIndex++}>
-              <ConfirmQcPendingQueue
-                enabled
-                collapsible
-                defaultOpen={false}
-                onOpenWo={(wkorder) => {
-                  navigate(`/work-orders/${encodeURIComponent(wkorder)}`)
-                }}
-              />
-            </SchedulingPageSection>
-          ) : null}
-
-          {canImportConfirm ? (
-            <SchedulingPageSection index={sectionIndex++}>
-              <SchedulingSection
-                icon={Upload}
-                title={t('import.title')}
-                collapsible
-                defaultOpen={false}
-                actions={
-                  <>
-                    <input
-                      ref={importFileRef}
-                      type="file"
-                      accept=".xls,.xlsx,.csv"
-                      className="hidden"
-                      onChange={onPickImportFile}
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="gap-2 shadow-md"
-                      disabled={importMut.isPending}
-                      onClick={() => importFileRef.current?.click()}
-                    >
-                      <Upload className="size-4" aria-hidden />
-                      {importMut.isPending ? t('import.uploading') : t('import.uploadExcel')}
-                    </Button>
-                  </>
-                }
-              >
-                {importResult ? (
-                  <div className="space-y-3">
-                    <motion.div
-                      className="flex flex-wrap gap-2"
-                      {...listKpiStaggerRootMotion(reduceMotion)}
-                    >
-                      <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
-                        <Badge variant="outline">{importResult.fileName}</Badge>
-                      </motion.div>
-                      <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
-                        <Badge variant="outline">
-                          {importResult.totalRows} {t('import.rows')}
-                        </Badge>
-                      </motion.div>
-                      <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
-                        <Badge variant="secondary">+{importResult.inserted}</Badge>
-                      </motion.div>
-                      <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
-                        <Badge variant="secondary">~{importResult.updated}</Badge>
-                      </motion.div>
-                      {importResult.skipped > 0 ? (
-                        <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
-                          <Badge variant="destructive">
-                            {t('import.skip')} {importResult.skipped}
-                          </Badge>
-                        </motion.div>
-                      ) : null}
-                      {importResult.errors > 0 ? (
-                        <motion.div {...listKpiStaggerItemMotion(reduceMotion)}>
-                          <Badge variant="destructive">
-                            {t('import.err')} {importResult.errors}
-                          </Badge>
-                        </motion.div>
-                      ) : null}
-                    </motion.div>
-                    <div className="app-table-shell overflow-hidden rounded-xl border border-app/60">
-                      <Table embedded stickyHeader zebra>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-16 text-center">{t('import.colRow')}</TableHead>
-                            <TableHead className="w-28">{t('import.colStatus')}</TableHead>
-                            <TableHead>{t('import.colConfirm')}</TableHead>
-                            <TableHead>{t('import.colOrder')}</TableHead>
-                            <TableHead>{t('import.colWkctr')}</TableHead>
-                            <TableHead>{t('import.colStart')}</TableHead>
-                            <TableHead>{t('import.colFinish')}</TableHead>
-                            <TableHead>{t('import.colMessage')}</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {importResult.rows.length === 0 ? (
-                            <TableRow>
-                              <TableCell colSpan={8} className="py-8 text-center text-caption">
-                                {t('import.noRows')}
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            importResult.rows.map((r) => (
-                              <TableRow key={`${r.rowNo}-${r.confirmation}-${r.wkctr}`}>
-                                <TableCell className="text-center tabular-nums">{r.rowNo}</TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant={
-                                      r.action === 'inserted' || r.action === 'updated'
-                                        ? 'secondary'
-                                        : 'destructive'
-                                    }
-                                  >
-                                    {t(`import.action.${r.action}`, { defaultValue: r.action })}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="tabular-nums">{r.confirmation}</TableCell>
-                                <TableCell className="tabular-nums">{r.wkorder}</TableCell>
-                                <TableCell className="tabular-nums">{r.wkctr}</TableCell>
-                                <TableCell className="tabular-nums">
-                                  {r.stdate ? new Date(r.stdate * 1000).toLocaleString() : ''}
-                                </TableCell>
-                                <TableCell className="tabular-nums">
-                                  {r.endate ? new Date(r.endate * 1000).toLocaleString() : ''}
-                                </TableCell>
-                                <TableCell className="text-xs text-app-muted">{r.message}</TableCell>
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                ) : null}
-              </SchedulingSection>
+            <SchedulingPageSection index={2}>
+              <MassConfirmSearchCard collapsible defaultOpen={false} />
             </SchedulingPageSection>
           ) : null}
         </SchedulingPageStack>
       </AppPageContent>
+
+      <ConfirmationReviewDialog
+        target={reviewTarget}
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        onQcChange={() => void invalidateReviewData()}
+      />
     </>
   )
 }

@@ -6,6 +6,8 @@ export type PlanningWorkcenterHours = {
   hrHours?: number | null
   plannedHours?: number | null
   availableHours?: number | null
+  shiftTags?: ('AA' | 'BB')[]
+  craftTags?: ('EE' | 'UT')[]
 }
 
 export function formatPlanningHourValue(hours: number | null | undefined): string {

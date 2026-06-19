@@ -2,6 +2,7 @@
  * กราฟขยายเต็มจอ
  * เปิดแท็บใหม่จาก `/summary-weekly` (ลิงก์ "ดูกราฟแบบขยาย")
  */
+import { hintsFromT } from '@/lib/i18n-hints'
 import {
   AppPageHero,
   AppPageHeroActions,
@@ -88,7 +89,7 @@ export function SummaryWeeklyChartFullPage() {
         eyebrow={t('engUtil.fullEyebrow')}
         title={t('engUtil.fullTitle')}
         description={variantLabel}
-        hints={t('engUtil.fullHints', { returnObjects: true }) as string[]}
+        hints={hintsFromT(t, 'engUtil.fullHints')}
         meta={
           <p className="dashboard-hero__subtitle mt-1 flex items-center gap-2 text-sm opacity-90">
             <Maximize2 className="size-4 shrink-0" aria-hidden />

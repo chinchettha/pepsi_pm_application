@@ -3,6 +3,8 @@
  * คู่กับ WO modal แท็บ Task · เอกสารลูกค้า WO 4001565681
  */
 import { PmCustomerTrendPanel } from '@/components/pm-vibration/PmCustomerTrendPanel'
+import { arrayLength } from '@/lib/coerce-array'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { PmVibrationStatusBanner } from '@/components/pm-vibration/PmVibrationStatusBanner'
 import {
   WorkOrderPmSapPrintForm,
@@ -299,7 +301,7 @@ export function PmVibrationPage() {
   }
 
   useEffect(() => {
-    if (!modalQ.data?.taskList.items.length) return
+    if (arrayLength(modalQ.data?.taskList?.items) === 0) return
     setPaperRows(
       currentTasks.map((task) => ({
         key: `${task.machine}-${task.pmlist}`,
@@ -338,7 +340,7 @@ export function PmVibrationPage() {
   }, [modalQ.data?.pmExecution.readings, paperRows.length])
 
   useEffect(() => {
-    if (!modalQ.data?.taskList.items.length) return
+    if (arrayLength(modalQ.data?.taskList?.items) === 0) return
     setDraftRows((rows) => {
       if (rows.some((r) => r.v1.trim() !== '')) return rows
       const items = modalQ.data!.taskList.items
@@ -363,8 +365,8 @@ export function PmVibrationPage() {
   }, [modalQ.data])
 
   const fillAllMeasureTasks = () => {
-    if (!modalQ.data?.taskList.items.length) return
-    const items = modalQ.data.taskList.items
+    const items = modalQ.data?.taskList?.items ?? []
+    if (items.length === 0) return
     const measure = items.filter(
       (i) => i.measurementKind === 'current_3phase' || i.measurementKind === 'vibration_3axis',
     )
@@ -433,7 +435,7 @@ export function PmVibrationPage() {
       title={t('title')}
       description={t('description')}
       eyebrow={t('eyebrow')}
-      hints={t('hints', { returnObjects: true }) as string[]}
+      hints={hintsFromT(t, 'hints')}
     >
       <AppPageSection index={0}>
         <AppCard className="p-4">

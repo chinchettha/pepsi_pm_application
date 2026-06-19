@@ -1,4 +1,5 @@
 import { CanPermission } from '@/components/auth/CanPermission'
+import { hintsFromT } from '@/lib/i18n-hints'
 import { AppCard } from '@/components/layout/AppCard'
 import { AppPageShell } from '@/components/layout/AppPageShell'
 import {
@@ -4400,7 +4401,7 @@ export function MasterDataPage() {
     return <Navigate to={`/master-plan?discipline=${redirectDiscipline}`} replace />
   }
 
-  const pageHints = t('referencePage.hints', { returnObjects: true }) as string[]
+  const pageHints = hintsFromT(t, 'referencePage.hints')
 
   if (!canRead) {
     return (
