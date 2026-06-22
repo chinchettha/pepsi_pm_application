@@ -375,12 +375,18 @@
     },
     "photo": {
       "title": "Profile photo",
-      "hint": "Any image is converted to WebP and resized to max 600px before storing in the database",
+      "hint": "Drag to reposition and use the zoom slider — crop preview matches the circular avatar. Saved as WebP (max 600px) in the database.",
       "saveFirst": "Save the record first, then you can upload a photo",
-      "change": "Change photo (→ WebP)",
+      "change": "Change photo",
       "uploading": "Uploading…",
       "remove": "Remove photo",
-      "confirmDelete": "Remove photo for {{id}}?"
+      "confirmDelete": "Remove photo for {{id}}?",
+      "cropTitle": "Adjust profile photo",
+      "cropHint": "Drag to reposition · zoom to fit · rotate if needed. The circle shows how the avatar will look.",
+      "cropZoom": "Zoom",
+      "cropRotate": "Rotate 90°",
+      "cropSave": "Save photo",
+      "cropFailed": "Could not prepare the cropped image. Try another file."
     },
     "shell": {
       "title": "Users & WorkCntr",
@@ -420,7 +426,30 @@
     "lookup": {
       "loading": "Loading…",
       "placeholder": "— Select —",
-      "notInMaster": "{{value}} (not in master data)"
+      "notInMaster": "{{value}} (not in master data)",
+      "manageLink": "Manage options",
+      "manageHint": "Dropdown options are managed in Master Data — use Manage options below, or ask an admin with Master Data access.",
+      "emptyOptions": "No options yet — use Manage options to add entries.",
+      "contactAdmin": "Contact an administrator to add dropdown options.",
+      "quickAdd": {
+        "button": "Add",
+        "success": "Lookup option added",
+        "duplicate": "This code already exists — choose a different one",
+        "validation": "Check the fields and try again",
+        "failed": "Could not add lookup option"
+      },
+      "edit": {
+        "button": "Edit",
+        "success": "Lookup option updated",
+        "groupId": "Group ID"
+      },
+      "delete": {
+        "button": "Delete",
+        "title": "Delete lookup option?",
+        "description": "Remove “{{label}}” from master data. This cannot be undone.",
+        "success": "Lookup option deleted",
+        "inUse": "Cannot delete — used by {{count}} technician(s)"
+      }
     },
     "toast": {
       "saved": "Saved {{id}}",

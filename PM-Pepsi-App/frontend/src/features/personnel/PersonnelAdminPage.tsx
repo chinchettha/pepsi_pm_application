@@ -17,6 +17,7 @@ import { PersonnelAdminPhotoGoLiveBanner } from '@/features/admin/users/Personne
 import { ConfirmPhraseDialog } from '@/components/admin/ConfirmPhraseDialog'
 import { TelegramInviteDialog } from '@/components/telegram/TelegramInviteDialog'
 import { PersonnelAvatar } from '@/components/personnel/PersonnelAvatar'
+import { ProfilePhotoCropDialog } from '@/components/personnel/ProfilePhotoCropDialog'
 import { PageHeader } from '@/components/layout/PageHeader'
 import {
   AlertDialog,
@@ -83,7 +84,9 @@ import {
   postPersonnelAdminImport,
   upsertPersonnelAdmin,
   type PersonnelLookupOption,
+  type PersonnelLookups,
 } from '@/lib/api-public'
+import { useMasterDataPermissions } from '@/lib/master-data-permissions'
 import {
   createAdminTelegramLinkToken,
   unlinkAdminTelegram,
@@ -109,16 +112,51 @@ import {
 } from 'lucide-react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { isMissingEngWkctrCode, normalizeWkctrCode, resolveWorkCntr } from '@/lib/wkctr-code'
 import {
+  LookupSelect,
+  PersonnelLookupField,
+  PersonnelWorkInfoLookupHint,
+  type PersonnelLookupEntity,
+} from '@/features/personnel/PersonnelLookupField'
+import { PersonnelLookupQuickAddDialog } from '@/features/personnel/PersonnelLookupQuickAddDialog'
+import {
+  PersonnelLookupEditDialog,
+  type PersonnelLookupSelection,
+} from '@/features/personnel/PersonnelLookupEditDialog'
+import { PersonnelLookupDeleteDialog } from '@/features/personnel/PersonnelLookupDeleteDialog'
+import {
   normalizePrimaryRolePair,
   userroleToUserst,
   type PrimaryUserrole,
 } from '@/lib/primary-roles'
+
+function lookupOptionsForEntity(
+  entity: PersonnelLookupEntity,
+  data: PersonnelLookups | undefined,
+): PersonnelLookupOption[] | undefined {
+  if (!data) return undefined
+  switch (entity) {
+    case 'department':
+      return data.departments
+    case 'position':
+      return data.positions
+    case 'group':
+      return data.groups
+    case 'worktype':
+      return data.workTypes
+    case 'level':
+      return data.levels
+    default: {
+      const _exhaustive: never = entity
+      return _exhaustive
+    }
+  }
+}
 
 function unixToInputDate(sec: number | null | undefined): string {
   if (!sec || sec <= 0) return ''
@@ -270,6 +308,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   ])
   const canWriteUsers = useAnyPermission(['admin.users.write', 'personnel.write'])
   const canImpersonate = usePermission('admin.users.impersonate')
+  const { canRead: canReadMasterData, canWrite: canWriteMasterData } = useMasterDataPermissions()
   const isAdmin = variant === 'admin' ? canReadUsers : isLegacyAdmin
   const showAdminActions = variant === 'admin' && canWriteUsers
   const [accountTab, setAccountTab] = useState<'workcenter' | 'member'>('workcenter')
@@ -345,14 +384,6 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
     placeholderData: keepPreviousData,
   })
 
- // Lookup สำหรับ select ในฟอร์ม
-  const lookupsQ = useQuery({
-    queryKey: ['personnel', 'admin', 'lookups'],
-    queryFn: fetchPersonnelLookups,
-    enabled: isAdmin,
-    staleTime: 5 * 60_000,
-  })
-  const lookups = lookupsQ.data
 
  // Lookup workstatus
   const workstatusOptionsQ = useQuery({
@@ -383,14 +414,153 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
 
   const [open, setOpen] = useState(false)
   const [formTab, setFormTab] = useState('t1')
+  const [lookupQuickAdd, setLookupQuickAdd] = useState<PersonnelLookupEntity | null>(null)
+  const [lookupEdit, setLookupEdit] = useState<PersonnelLookupSelection | null>(null)
+  const [lookupDelete, setLookupDelete] = useState<PersonnelLookupSelection | null>(null)
+
+  // Lookup สำหรับ select ในฟอร์ม (staleTime 0 ขณะ modal เปิดเพื่อให้ refresh หลังแก้ master-data)
+  const lookupsQ = useQuery({
+    queryKey: ['personnel', 'admin', 'lookups'],
+    queryFn: fetchPersonnelLookups,
+    enabled: isAdmin,
+    staleTime: open ? 0 : 5 * 60_000,
+  })
+  const lookups = lookupsQ.data
+
+  useEffect(() => {
+    if (!open) return
+    const refreshLookups = () => {
+      void qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'lookups'] })
+    }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshLookups()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('focus', refreshLookups)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('focus', refreshLookups)
+    }
+  }, [open, qc])
+
+  const applyLookupQuickAddValue = useCallback((entity: PersonnelLookupEntity, value: string) => {
+    setForm((s) => {
+      switch (entity) {
+        case 'department':
+          return { ...s, iddepartment: value }
+        case 'position':
+          return { ...s, idposition: value }
+        case 'group':
+          return { ...s, idwkctrgroup: value }
+        case 'worktype':
+          return { ...s, idwkctrtype: value }
+        case 'level':
+          return { ...s, idwklevel: value }
+        default: {
+          const _exhaustive: never = entity
+          return _exhaustive
+        }
+      }
+    })
+  }, [])
+
+  const onLookupQuickAddSuccess = useCallback(
+    (entity: PersonnelLookupEntity, value: string) => {
+      void qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'lookups'] })
+      applyLookupQuickAddValue(entity, value)
+      setLookupQuickAdd(null)
+    },
+    [applyLookupQuickAddValue, qc],
+  )
+
+  const requestLookupQuickAdd = useCallback((entity: PersonnelLookupEntity) => {
+    setLookupQuickAdd(entity)
+  }, [])
+
+  const openLookupEdit = useCallback(
+    (entity: PersonnelLookupEntity, value: string) => {
+      const options = lookupOptionsForEntity(entity, lookups)
+      const label = options?.find((o) => o.value === value)?.label ?? value
+      setLookupEdit({ entity, value, label })
+    },
+    [lookups],
+  )
+
+  const openLookupDelete = useCallback(
+    (entity: PersonnelLookupEntity, value: string) => {
+      const options = lookupOptionsForEntity(entity, lookups)
+      const label = options?.find((o) => o.value === value)?.label ?? value
+      setLookupDelete({ entity, value, label })
+    },
+    [lookups],
+  )
+
+  const clearLookupFieldValue = useCallback((entity: PersonnelLookupEntity, value: string) => {
+    setForm((s) => {
+      switch (entity) {
+        case 'department':
+          return s.iddepartment === value ? { ...s, iddepartment: '' } : s
+        case 'position':
+          return s.idposition === value ? { ...s, idposition: '' } : s
+        case 'group':
+          return s.idwkctrgroup === value ? { ...s, idwkctrgroup: '' } : s
+        case 'worktype':
+          return s.idwkctrtype === value ? { ...s, idwkctrtype: '' } : s
+        case 'level':
+          return s.idwklevel === value ? { ...s, idwklevel: '' } : s
+        default: {
+          const _exhaustive: never = entity
+          return _exhaustive
+        }
+      }
+    })
+  }, [])
+
+  const onLookupEditSuccess = useCallback(
+    (entity: PersonnelLookupEntity, value: string) => {
+      void qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'lookups'] })
+      applyLookupQuickAddValue(entity, value)
+      setLookupEdit(null)
+    },
+    [applyLookupQuickAddValue, qc],
+  )
+
+  const onLookupDeleteSuccess = useCallback(
+    (entity: PersonnelLookupEntity, value: string) => {
+      void qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'lookups'] })
+      clearLookupFieldValue(entity, value)
+      setLookupDelete(null)
+    },
+    [clearLookupFieldValue, qc],
+  )
   const [form, setForm] = useState<FormState>(emptyForm)
   const [imageVersion, setImageVersion] = useState<Record<string, number>>({})
+  const [cropOpen, setCropOpen] = useState(false)
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null)
+  const [cropFileName, setCropFileName] = useState('')
+  const [cropTargetIdwkctr, setCropTargetIdwkctr] = useState('')
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<PersonnelImportResponse | null>(
     null,
   )
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
+
+  const closeCropDialog = useCallback(() => {
+    setCropOpen(false)
+    setCropImageSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    setCropFileName('')
+    setCropTargetIdwkctr('')
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (cropImageSrc) URL.revokeObjectURL(cropImageSrc)
+    }
+  }, [cropImageSrc])
 
   const apiItems = listQ.data?.items ?? []
   const items = useMemo(() => {
@@ -579,7 +749,24 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
       toast.error(t('admin.toast.saveBeforePhoto'))
       return
     }
-    imageMut.mutate({ idwkctr: form.idwkctr, file })
+    if (!file.type.startsWith('image/')) {
+      toast.error(t('admin.toast.uploadFailed'))
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setCropTargetIdwkctr(form.idwkctr)
+    setCropFileName(file.name)
+    setCropImageSrc(url)
+    setCropOpen(true)
+  }
+
+  function onCropConfirm(file: File) {
+    const idwkctr = cropTargetIdwkctr
+    if (!idwkctr) return
+    imageMut.mutate(
+      { idwkctr, file },
+      { onSuccess: () => closeCropDialog() },
+    )
   }
 
   function onPickImportFile(e: ChangeEvent<HTMLInputElement>) {
@@ -1284,6 +1471,18 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
         />
       ) : null}
 
+      <ProfilePhotoCropDialog
+        open={cropOpen}
+        imageSrc={cropImageSrc}
+        fileName={cropFileName}
+        saving={imageMut.isPending}
+        onOpenChange={(open) => {
+          if (!open) closeCropDialog()
+          else setCropOpen(true)
+        }}
+        onConfirm={onCropConfirm}
+      />
+
       <TelegramInviteDialog
         open={telegramInviteOpen}
         onOpenChange={setTelegramInviteOpen}
@@ -1317,6 +1516,33 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
           }}
         />
       ) : null}
+
+      <PersonnelLookupQuickAddDialog
+        entity={lookupQuickAdd}
+        open={lookupQuickAdd != null}
+        onOpenChange={(next) => {
+          if (!next) setLookupQuickAdd(null)
+        }}
+        onSuccess={onLookupQuickAddSuccess}
+      />
+
+      <PersonnelLookupEditDialog
+        selection={lookupEdit}
+        open={lookupEdit != null}
+        onOpenChange={(next) => {
+          if (!next) setLookupEdit(null)
+        }}
+        onSuccess={onLookupEditSuccess}
+      />
+
+      <PersonnelLookupDeleteDialog
+        selection={lookupDelete}
+        open={lookupDelete != null}
+        onOpenChange={(next) => {
+          if (!next) setLookupDelete(null)
+        }}
+        onSuccess={onLookupDeleteSuccess}
+      />
 
       <Dialog open={open} onOpenChange={(v) => !upsertMut.isPending && setOpen(v)}>
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
@@ -1437,6 +1663,7 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
               </TabsContent>
 
               <TabsContent value="t2" className="space-y-3 pt-2">
+                <PersonnelWorkInfoLookupHint />
                 <FormGrid>
                   <Field label={t('admin.form.workCntr')} required>
                     <Input
@@ -1469,53 +1696,85 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
                     />
                   </Field>
                   <Field label={t('admin.form.department')}>
-                    <LookupSelect
+                    <PersonnelLookupField
+                      entity="department"
                       value={form.iddepartment}
                       options={lookups?.departments}
                       loading={lookupsQ.isLoading}
+                      canReadMasterData={canReadMasterData}
+                      canWriteMasterData={canWriteMasterData}
+                      onRequestQuickAdd={requestLookupQuickAdd}
+                      onRequestEdit={openLookupEdit}
+                      onRequestDelete={openLookupDelete}
                       onChange={(next) =>
                         setForm((s) => ({ ...s, iddepartment: next }))
                       }
                     />
                   </Field>
                   <Field label={t('admin.form.position')}>
-                    <LookupSelect
+                    <PersonnelLookupField
+                      entity="position"
                       value={form.idposition}
                       options={lookups?.positions}
                       loading={lookupsQ.isLoading}
+                      canReadMasterData={canReadMasterData}
+                      canWriteMasterData={canWriteMasterData}
+                      onRequestQuickAdd={requestLookupQuickAdd}
+                      onRequestEdit={openLookupEdit}
+                      onRequestDelete={openLookupDelete}
                       onChange={(next) =>
                         setForm((s) => ({ ...s, idposition: next }))
                       }
                     />
                   </Field>
                   <Field label={t('admin.form.wcGroup')}>
-                    <LookupSelect
+                    <PersonnelLookupField
+                      entity="group"
                       value={form.idwkctrgroup}
                       options={lookups?.groups}
                       loading={lookupsQ.isLoading}
+                      canReadMasterData={canReadMasterData}
+                      canWriteMasterData={canWriteMasterData}
+                      onRequestQuickAdd={requestLookupQuickAdd}
+                      onRequestEdit={openLookupEdit}
+                      onRequestDelete={openLookupDelete}
                       onChange={(next) =>
                         setForm((s) => ({ ...s, idwkctrgroup: next }))
                       }
+                      hintBelow={
+                        <p className="text-[11px] leading-snug text-app-muted">
+                          {t('admin.form.wcGroupHint')}
+                        </p>
+                      }
                     />
-                    <p className="mt-1 text-[11px] leading-snug text-app-muted">
-                      {t('admin.form.wcGroupHint')}
-                    </p>
                   </Field>
                   <Field label={t('admin.form.techType')}>
-                    <LookupSelect
+                    <PersonnelLookupField
+                      entity="worktype"
                       value={form.idwkctrtype}
                       options={lookups?.workTypes}
                       loading={lookupsQ.isLoading}
+                      canReadMasterData={canReadMasterData}
+                      canWriteMasterData={canWriteMasterData}
+                      onRequestQuickAdd={requestLookupQuickAdd}
+                      onRequestEdit={openLookupEdit}
+                      onRequestDelete={openLookupDelete}
                       onChange={(next) =>
                         setForm((s) => ({ ...s, idwkctrtype: next }))
                       }
                     />
                   </Field>
                   <Field label={t('admin.form.level')}>
-                    <LookupSelect
+                    <PersonnelLookupField
+                      entity="level"
                       value={form.idwklevel}
                       options={lookups?.levels}
                       loading={lookupsQ.isLoading}
+                      canReadMasterData={canReadMasterData}
+                      canWriteMasterData={canWriteMasterData}
+                      onRequestQuickAdd={requestLookupQuickAdd}
+                      onRequestEdit={openLookupEdit}
+                      onRequestDelete={openLookupDelete}
                       onChange={(next) =>
                         setForm((s) => ({ ...s, idwklevel: next }))
                       }
@@ -2234,48 +2493,5 @@ function Field({
       </Label>
       {children}
     </div>
-  )
-}
-
-/**
- * Native <select> ดึงรายชื่อจาก master data
- * - แสดง placeholder "—" เมื่อยังไม่เลือก
- * - ถ้า value ปัจจุบันไม่ match กับ options (เช่น import เข้ามาด้วย id เก่า) จะ insert option fallback
- *   เพื่อไม่ทำให้ค่าหายตอน edit
- */
-function LookupSelect({
-  value,
-  options,
-  loading,
-  onChange,
-  placeholder,
-}: {
-  value: string
-  options: PersonnelLookupOption[] | undefined
-  loading: boolean
-  onChange: (next: string) => void
-  placeholder?: string
-}) {
-  const { t } = useTranslation('personnel')
-  const ph = placeholder ?? t('admin.lookup.placeholder')
-  const list = options ?? []
-  const hasCurrent = value === '' || list.some((o) => o.value === value)
-  return (
-    <select
-      value={value}
-      disabled={loading}
-      onChange={(e) => onChange(e.target.value)}
-      className="flex h-10 w-full rounded-button border border-app bg-[var(--app-surface)] px-3 py-2 text-body-sm text-app focus-app-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      <option value="">{loading ? t('admin.lookup.loading') : ph}</option>
-      {!hasCurrent ? (
-        <option value={value}>{t('admin.lookup.notInMaster', { value })}</option>
-      ) : null}
-      {list.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
   )
 }

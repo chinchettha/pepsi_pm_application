@@ -1,4 +1,5 @@
 import type { Pool } from 'pg'
+import { assertLookupNotInUse } from './lookup-in-use.js'
 import type {
   activityTypeItemSchema,
   departmentItemSchema,
@@ -191,6 +192,7 @@ export async function updateDepartment(
 }
 
 export async function deleteDepartment(pool: Pool, iddepartment: string): Promise<boolean> {
+  await assertLookupNotInUse(pool, 'department', iddepartment)
   const r = await pool.query(`DELETE FROM app.tbdepartment WHERE iddepartment = $1`, [
     iddepartment,
   ])
@@ -644,6 +646,7 @@ export async function updateWorkType(
 }
 
 export async function deleteWorkType(pool: Pool, idwkctrtype: string): Promise<boolean> {
+  await assertLookupNotInUse(pool, 'worktype', idwkctrtype)
   const r = await pool.query(`DELETE FROM app.tbwkctrtype WHERE idwkctrtype = $1`, [
     idwkctrtype,
   ])
@@ -1370,6 +1373,7 @@ export async function updateLevel(
 }
 
 export async function deleteLevel(pool: Pool, idwklevel: string): Promise<boolean> {
+  await assertLookupNotInUse(pool, 'level', idwklevel)
   const r = await pool.query(`DELETE FROM app.tbwklevel WHERE idwklevel = $1`, [idwklevel])
   return (r.rowCount ?? 0) > 0
 }
@@ -1419,6 +1423,7 @@ export async function updatePosition(
 }
 
 export async function deletePosition(pool: Pool, idposition: string): Promise<boolean> {
+  await assertLookupNotInUse(pool, 'position', idposition)
   const r = await pool.query(`DELETE FROM app.tbposition WHERE idposition = $1`, [idposition])
   return (r.rowCount ?? 0) > 0
 }
@@ -1481,6 +1486,7 @@ export async function updateGroup(
 }
 
 export async function deleteGroup(pool: Pool, idwkctrgroup: number): Promise<boolean> {
+  await assertLookupNotInUse(pool, 'group', idwkctrgroup)
   const r = await pool.query(`DELETE FROM app.tbwkctrgroup WHERE idwkctrgroup = $1`, [idwkctrgroup])
   return (r.rowCount ?? 0) > 0
 }

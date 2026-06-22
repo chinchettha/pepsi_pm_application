@@ -29,13 +29,6 @@ export function RequireAuth() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      if (!isLoggedIn()) {
-        if (!cancelled) {
-          setAuthed(false)
-          setChecking(false)
-        }
-        return
-      }
       const ok = await refreshAuthSession()
       if (!cancelled) {
         setAuthed(ok)

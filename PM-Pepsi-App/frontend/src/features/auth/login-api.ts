@@ -23,9 +23,8 @@ export function getAuthToken(): string | null {
 }
 
 export async function refreshAuthSession(): Promise<boolean> {
-  const token = getAuthToken()
-  if (!token) return false
   try {
+    // Cookie (httpOnly) หรือ Bearer จาก sessionStorage — รองรับแท็บใหม่ที่ไม่มี sessionStorage
     const json = await fetchApi<unknown>('/api/v1/auth/me')
     const data = authSessionResponseSchema.parse(json)
     sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user))
@@ -88,7 +87,7 @@ export function getStoredAuthUserSnapshot(): AuthUser | null {
 }
 
 export function isLoggedIn(): boolean {
-  return getAuthToken() !== null && getStoredAuthUser() !== null
+  return getStoredAuthUser() !== null
 }
 
 export async function logoutWithApi(): Promise<void> {

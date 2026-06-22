@@ -20,12 +20,19 @@ export type AuthFeedbackState = {
 export class AuthApiError extends Error {
   readonly code?: string
   readonly httpStatus: number
+  readonly meta?: Record<string, unknown>
 
-  constructor(httpStatus: number, code?: string, message?: string) {
+  constructor(
+    httpStatus: number,
+    code?: string,
+    message?: string,
+    meta?: Record<string, unknown>,
+  ) {
     super(message?.trim() || `HTTP ${httpStatus}`)
     this.name = 'AuthApiError'
     this.code = code
     this.httpStatus = httpStatus
+    this.meta = meta
   }
 }
 

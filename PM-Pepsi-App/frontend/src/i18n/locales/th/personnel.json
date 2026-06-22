@@ -375,12 +375,18 @@
     },
     "photo": {
       "title": "Profile photo",
-      "hint": "Any image is converted to WebP and resized to max 600px before storing in the database",
+      "hint": "ลากปรับตำแหน่งและใช้แถบซูม — วงกลมแสดงตัวอย่าง avatar จริง · บันทึกเป็น WebP (สูงสุด 600px) ใน database",
       "saveFirst": "Save the record first, then you can upload a photo",
-      "change": "Change photo (→ WebP)",
+      "change": "Change photo",
       "uploading": "Uploading…",
       "remove": "Remove photo",
-      "confirmDelete": "Remove photo for {{id}}?"
+      "confirmDelete": "Remove photo for {{id}}?",
+      "cropTitle": "Adjust profile photo",
+      "cropHint": "ลากเพื่อจัดตำแหน่ง · ซูมให้พอดี · หมุนได้ตามต้องการ · วงกลมคือตัวอย่าง avatar",
+      "cropZoom": "Zoom",
+      "cropRotate": "Rotate 90°",
+      "cropSave": "Save photo",
+      "cropFailed": "เตรียมรูปที่ crop ไม่สำเร็จ ลองไฟล์อื่น"
     },
     "shell": {
       "title": "Users & WorkCntr",
@@ -420,7 +426,30 @@
     "lookup": {
       "loading": "กำลังโหลด…",
       "placeholder": "— เลือก —",
-      "notInMaster": "{{value}} (ไม่มีใน master data)"
+      "notInMaster": "{{value}} (ไม่มีใน master data)",
+      "manageLink": "จัดการรายการ",
+      "manageHint": "รายการใน dropdown จัดการที่ Master Data — ใช้ลิงก์จัดการรายการด้านล่าง หรือติดต่อผู้ดูแลที่มีสิทธิ์ Master Data",
+      "emptyOptions": "ยังไม่มีรายการ — ใช้จัดการรายการเพื่อเพิ่มข้อมูล",
+      "contactAdmin": "ติดต่อผู้ดูแลระบบเพื่อเพิ่มรายการใน dropdown",
+      "quickAdd": {
+        "button": "เพิ่ม",
+        "success": "เพิ่มรายการใน dropdown แล้ว",
+        "duplicate": "รหัสนี้มีอยู่แล้ว — ใช้รหัสอื่น",
+        "validation": "ตรวจสอบข้อมูลแล้วลองอีกครั้ง",
+        "failed": "เพิ่มรายการไม่สำเร็จ"
+      },
+      "edit": {
+        "button": "แก้ไข",
+        "success": "อัปเดตรายการใน dropdown แล้ว",
+        "groupId": "รหัสกลุ่ม (ID)"
+      },
+      "delete": {
+        "button": "ลบ",
+        "title": "ลบรายการใน dropdown?",
+        "description": "ลบ “{{label}}” ออกจาก master data — ไม่สามารถย้อนกลับได้",
+        "success": "ลบรายการใน dropdown แล้ว",
+        "inUse": "ลบไม่ได้ — มีช่างใช้งานอยู่ {{count}} คน"
+      }
     },
     "toast": {
       "saved": "Saved {{id}}",

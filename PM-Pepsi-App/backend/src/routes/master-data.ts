@@ -156,6 +156,19 @@ import {
   updateActivityType,
   getMasterDataMeta,
 } from '../services/master-data.js'
+import { LookupInUseError } from '../services/lookup-in-use.js'
+
+function respondLookupInUse(res: Response, err: unknown): boolean {
+  if (err instanceof LookupInUseError) {
+    res.status(409).json({
+      error: 'IN_USE',
+      message: `Cannot delete — used by ${err.usageCount} technician(s)`,
+      usageCount: err.usageCount,
+    })
+    return true
+  }
+  return false
+}
 
 export function registerMasterDataRoutes(
   app: Express,
@@ -356,12 +369,17 @@ export function registerMasterDataRoutes(
     ...requireDelete,
     async (req: Request, res: Response) => {
       const iddepartment = String(req.params.iddepartment ?? '')
-      const ok = await deleteDepartment(pool, iddepartment)
-      if (!ok) {
-        res.status(404).json({ error: 'NOT_FOUND' })
-        return
+      try {
+        const ok = await deleteDepartment(pool, iddepartment)
+        if (!ok) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        res.status(204).send()
+      } catch (err) {
+        if (respondLookupInUse(res, err)) return
+        throw err
       }
-      res.status(204).send()
     },
   )
 
@@ -664,12 +682,17 @@ export function registerMasterDataRoutes(
     ...requireDelete,
     async (req: Request, res: Response) => {
       const idwkctrtype = String(req.params.idwkctrtype ?? '')
-      const ok = await deleteWorkType(pool, idwkctrtype)
-      if (!ok) {
-        res.status(404).json({ error: 'NOT_FOUND' })
-        return
+      try {
+        const ok = await deleteWorkType(pool, idwkctrtype)
+        if (!ok) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        res.status(204).send()
+      } catch (err) {
+        if (respondLookupInUse(res, err)) return
+        throw err
       }
-      res.status(204).send()
     },
   )
 
@@ -1055,12 +1078,17 @@ export function registerMasterDataRoutes(
     ...requireDelete,
     async (req: Request, res: Response) => {
       const idwklevel = String(req.params.idwklevel ?? '')
-      const ok = await deleteLevel(pool, idwklevel)
-      if (!ok) {
-        res.status(404).json({ error: 'NOT_FOUND' })
-        return
+      try {
+        const ok = await deleteLevel(pool, idwklevel)
+        if (!ok) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        res.status(204).send()
+      } catch (err) {
+        if (respondLookupInUse(res, err)) return
+        throw err
       }
-      res.status(204).send()
     },
   )
 
@@ -1111,12 +1139,17 @@ export function registerMasterDataRoutes(
     ...requireDelete,
     async (req: Request, res: Response) => {
       const idposition = String(req.params.idposition ?? '')
-      const ok = await deletePosition(pool, idposition)
-      if (!ok) {
-        res.status(404).json({ error: 'NOT_FOUND' })
-        return
+      try {
+        const ok = await deletePosition(pool, idposition)
+        if (!ok) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        res.status(204).send()
+      } catch (err) {
+        if (respondLookupInUse(res, err)) return
+        throw err
       }
-      res.status(204).send()
     },
   )
 
@@ -1175,12 +1208,17 @@ export function registerMasterDataRoutes(
         res.status(400).json({ error: 'VALIDATION_ERROR', message: 'idwkctrgroup must be a number' })
         return
       }
-      const ok = await deleteGroup(pool, idwkctrgroup)
-      if (!ok) {
-        res.status(404).json({ error: 'NOT_FOUND' })
-        return
+      try {
+        const ok = await deleteGroup(pool, idwkctrgroup)
+        if (!ok) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        res.status(204).send()
+      } catch (err) {
+        if (respondLookupInUse(res, err)) return
+        throw err
       }
-      res.status(204).send()
     },
   )
 

@@ -32,14 +32,20 @@ export async function fetchApi<T>(
     const text = await res.text().catch(() => '')
     if (text) {
       try {
-        const body = JSON.parse(text) as { error?: string; message?: string }
+        const body = JSON.parse(text) as {
+          error?: string
+          message?: string
+          usageCount?: number
+          [key: string]: unknown
+        }
         if (res.status === 503 && body.error === 'MAINTENANCE') {
           throw new MaintenanceModeError(
             body.message ?? i18n.t('api.maintenanceDefault', { ns: 'common' }),
           )
         }
         if (body.message || body.error) {
-          throw new AuthApiError(res.status, body.error, body.message)
+          const { error, message, ...meta } = body
+          throw new AuthApiError(res.status, error, message, meta)
         }
       } catch (e) {
         if (e instanceof MaintenanceModeError) throw e
@@ -50,6 +56,9 @@ export async function fetchApi<T>(
     throw new Error(text || `HTTP ${res.status}`)
   }
   const text = await res.text()
+  if (!text.trim()) {
+    return undefined as T
+  }
   try {
     return JSON.parse(text) as T
   } catch {
