@@ -63,3 +63,29 @@ export const planningAckSummaryResponseSchema = z.object({
   pending: z.number().int(),
   items: z.array(planningAckSummaryItemSchema),
 })
+
+export const planMoveRequestItemSchema = z.object({
+  id: z.number().int(),
+  idiw37: z.number().int(),
+  requesterWkctr: z.string(),
+  comment: z.string(),
+  preferredDate: z.string().nullable(),
+  status: z.enum(['pending', 'fulfilled', 'cancelled']),
+  createdAt: z.string(),
+  fulfilledAt: z.string().nullable(),
+  fulfilledByWkctr: z.string().nullable(),
+})
+
+export const planMoveRequestBodySchema = z.object({
+  idiw37: z.coerce.number().int().positive(),
+  comment: z.string().min(3).max(2000),
+  preferredDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+})
+
+export const planMoveRequestResponseSchema = z.object({
+  ok: z.literal(true),
+  item: planMoveRequestItemSchema,
+})

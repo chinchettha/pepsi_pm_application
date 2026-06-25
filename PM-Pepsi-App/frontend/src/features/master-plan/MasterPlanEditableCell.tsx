@@ -70,12 +70,12 @@ export function MasterPlanEditableCell({
       <td
         rowSpan={rowSpan}
         className={cn(
-          'border border-[#b4c6e7] px-2 py-1 align-top text-[11px] text-[#1f1f1f]',
+          'master-plan-cell border border-[#b4c6e7] px-2.5 py-1.5 text-xs text-[#333]',
           cellClassName,
           flashing && 'master-plan-cell-flash',
         )}
       >
-        {value}
+        <CellContent column={column} value={value} rowSpan={rowSpan} />
       </td>
     )
   }
@@ -85,7 +85,7 @@ export function MasterPlanEditableCell({
       <td
         rowSpan={rowSpan}
         className={cn(
-          'border border-[#2f5597]/50 bg-[#e9eff7] px-1 py-1 align-top',
+          'master-plan-cell border border-[#2f5597]/50 bg-[#e9eff7] px-2 py-1.5 align-top',
           cellClassName,
         )}
       >
@@ -146,15 +146,15 @@ export function MasterPlanEditableCell({
     <td
       rowSpan={rowSpan}
       className={cn(
-        'group/cell border border-[#b4c6e7] px-2 py-1 align-top text-[11px] text-[#1f1f1f]',
+        'master-plan-cell group/cell border border-[#b4c6e7] px-2.5 py-1.5 text-xs text-[#333]',
         cellClassName,
         flashing && 'master-plan-cell-flash',
         editable && 'cursor-text hover:bg-[#e9eff7]/80',
       )}
       onDoubleClick={startEdit}
     >
-      <div className="flex items-start justify-between gap-1">
-        <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{value}</span>
+      <div className="flex items-start justify-between gap-1.5">
+        <CellContent column={column} value={value} rowSpan={rowSpan} className="min-w-0 flex-1" />
         <IconButton
           aria-label={t('masterPlan.editCell')}
           className="size-6 shrink-0 opacity-0 transition-opacity group-hover/cell:opacity-100"
@@ -164,5 +164,36 @@ export function MasterPlanEditableCell({
         </IconButton>
       </div>
     </td>
+  )
+}
+
+function CellContent({
+  column,
+  value,
+  rowSpan,
+  className,
+}: {
+  column: string
+  value: string
+  rowSpan?: number
+  className?: string
+}) {
+  const merged = rowSpan != null && rowSpan > 1
+  const h = column.trim()
+  const centerMerged =
+    merged &&
+    /^zone$|sap code|maintenance plan|mnt\s*plan|task list|^mant$|^days$|^min$|^man$|legacy/i.test(h)
+
+  return (
+    <span
+      className={cn(
+        'block whitespace-pre-wrap break-words',
+        centerMerged && 'mx-auto w-full text-center',
+        /pm list/i.test(h) && 'leading-[1.55]',
+        className,
+      )}
+    >
+      {value}
+    </span>
   )
 }

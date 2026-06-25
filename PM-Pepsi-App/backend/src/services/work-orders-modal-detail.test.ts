@@ -21,7 +21,8 @@ function createModalDetailPoolMock() {
               wktype: 'ZB02',
               equipment: 'EQ1',
               equdescrip: 'SSN Dust Collector',
-              functionalloc: '7151-P17',
+              functionalloc: 'P17-HR-ME2 · ME · P17',
+              funcdescrip: 'Mechanical HR Zone 2',
               untime: '2',
               syst: 'CRTD',
               bscstart: 1780246800,
@@ -125,9 +126,11 @@ describe('getWorkOrderModalDetail taskList', () => {
     expect(result!.taskList.summary?.legacy).toBe('P17-HR-ME2')
     expect(result!.taskList.summary?.tasklist).toBe('596')
     expect(result!.taskList.items).toHaveLength(1)
+    expect(result!.taskList.items[0]!.description).toBe('Mechanical HR Zone 2')
     expect(result!.taskList.items[0]!.displayLine).toBe(
       'SSN Dust Collector — เปลี่ยน Bearing เพลาขับ',
     )
+    expect(result!.taskList.items[0]!.headerShortText).toBe('342596 & P17-HR-ME2')
     expect(result!.woHeader.wkorder).toBe('4001560529')
     expect(result!.planning.workcenters.some((w) => w.wkctr === 'ADMIN01')).toBe(false)
     expect(result!.planning.workcenters[0]?.shiftTags).toContain('AA')

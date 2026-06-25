@@ -41,20 +41,25 @@ describe('nav-rbac', () => {
     expect(paths).not.toContain('/admin/users')
   })
 
-  it('hides admin-only routes for technician permissions', () => {
+  it('hides admin-only routes, work calendar, and planner-only pages for technician permissions', () => {
     const techPerms = [
       'dashboard.read',
-      'calendar.read',
+      'plan-calendar.read',
       'work-orders.read',
       'confirmation.read',
       'manhours.read',
     ]
     const filtered = filterNavForUser('W', appNav, techPerms, { rbacStrict: true })
     const paths = filtered.filter((e) => e.kind === 'item').map((e) => e.to)
+    expect(paths).not.toContain('/calendar')
     expect(paths).not.toContain('/planning')
+    expect(paths).not.toContain('/reports/audit')
+    expect(paths).not.toContain('/activity-log')
+    expect(paths).not.toContain('/summary-weekly')
+    expect(paths).not.toContain('/user-log')
     expect(paths).not.toContain('/iw37n')
     expect(paths).not.toContain('/admin/roles')
-    expect(paths).toContain('/calendar')
+    expect(paths).toContain('/plan-calendar')
     expect(paths).toContain('/confirmation')
   })
 
@@ -78,5 +83,11 @@ describe('nav-rbac', () => {
     if (!item || item.kind !== 'item') return
     expect(canAccessNavItem('A', item, [])).toBe(true)
     expect(canAccessNavItem('W', item, [])).toBe(false)
+
+    const calendar = appNav.find((e) => e.kind === 'item' && e.to === '/calendar')
+    expect(calendar && calendar.kind === 'item').toBe(true)
+    if (!calendar || calendar.kind !== 'item') return
+    expect(canAccessNavItem('U', calendar, [])).toBe(true)
+    expect(canAccessNavItem('W', calendar, [])).toBe(false)
   })
 })

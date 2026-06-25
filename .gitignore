@@ -15,6 +15,11 @@ PM-Pepsi-App/PostgreSQL/
 
 # Generated / import dumps (customer data)
 database/seeds/generated/
+database/exports/*.dump
+database/exports/*.sql
+database/exports/*.sql.gz
+!database/exports/.gitkeep
+!database/exports/RESTORE-README.txt
 MySQL/
 
 # Legacy PHP dependencies (run composer in sap/ if needed)

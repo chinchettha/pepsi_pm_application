@@ -25,6 +25,7 @@ import { getStoredAuthUser } from '@/features/auth/login-api'
 import { PersonnelAvatar } from '@/components/personnel/PersonnelAvatar'
 import { WktypeDisplay } from '@/components/scheduling/WktypeDisplay'
 import { fetchPersonnelDashboard } from '@/lib/api-public'
+import { operationsLiveQueryOptions } from '@/lib/operations-live-sync'
 import { useAnyPermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
@@ -36,6 +37,7 @@ import {
   Inbox,
   Layers,
   Mail,
+  PieChart,
   Phone,
   ShieldCheck,
   Timer,
@@ -147,9 +149,9 @@ export function PersonnelPage() {
   const q = useQuery({
     queryKey: ['personnel', 'me', 'dashboard'],
     queryFn: fetchPersonnelDashboard,
-    staleTime: 30_000,
     enabled: canRead,
     placeholderData: keepPreviousData,
+    ...operationsLiveQueryOptions,
   })
 
   const role = q.data?.role ?? 'planner'
@@ -231,6 +233,7 @@ export function PersonnelPage() {
           data={q.data}
           showAdminGlobal={showAdminGlobal}
           showManagerTeam={showManagerTeam}
+          isTechnician={role === 'technician'}
         />
       ) : (
         <AppPageSection index={0}>
@@ -247,12 +250,15 @@ function PersonnelDashboardSections({
   data,
   showAdminGlobal,
   showManagerTeam,
+  isTechnician,
 }: {
   data: DashboardData
   showAdminGlobal: boolean
   showManagerTeam: boolean
+  isTechnician: boolean
 }) {
   const { t } = useTranslation('personnel')
+  const planLink = isTechnician ? '/plan-calendar' : '/planning'
   let sectionIndex = 0
   const profileIdx = sectionIndex++
   const statsIdx = sectionIndex++
@@ -283,22 +289,38 @@ function PersonnelDashboardSections({
         <AppPageSectionCard
           icon={ClipboardList}
           title={t('dashboard.statsSectionTitle')}
-          description={t('dashboard.statsSectionDesc')}
+          description={
+            isTechnician
+              ? t('dashboard.statsSectionDescTechnician')
+              : t('dashboard.statsSectionDesc')
+          }
         >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <StatCard
               label={t('dashboard.stats.openJobs')}
               value={data.planning.openCount}
-              hint={t('dashboard.stats.openJobsHint')}
-              to="/planning"
+              hint={
+                isTechnician
+                  ? t('dashboard.stats.openJobsHintTechnician')
+                  : t('dashboard.stats.openJobsHint')
+              }
+              to={planLink}
               icon={ClipboardList}
+              openModuleLabel={t('dashboard.openModule')}
+            />
+            <StatCard
+              label={t('dashboard.stats.partialJobs')}
+              value={data.planning.partialCount}
+              hint={t('dashboard.stats.partialJobsHint')}
+              to="/plan-calendar"
+              icon={PieChart}
               openModuleLabel={t('dashboard.openModule')}
             />
             <StatCard
               label={t('dashboard.stats.closedJobs')}
               value={data.planning.closedCount}
               hint={t('dashboard.stats.closedJobsHint')}
-              to="/planning"
+              to={planLink}
               icon={Briefcase}
               openModuleLabel={t('dashboard.openModule')}
             />
@@ -355,7 +377,7 @@ function PersonnelDashboardSections({
       ) : null}
 
       <AppPageSection index={planningIdx}>
-        <RecentPlanning data={data} />
+        <RecentPlanning data={data} isTechnician={isTechnician} />
       </AppPageSection>
 
       <AppPageSection index={confirmIdx}>
@@ -374,12 +396,12 @@ function GlobalOverviewCards({
 }) {
   const { t } = useTranslation('personnel')
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       <StatCard
         label={t('dashboard.stats.factoryOpenWo')}
         value={data.openTotal}
         hint={t('dashboard.stats.factoryOpenWoHint')}
-        to="/work-orders"
+        to="/confirmation"
         icon={ClipboardList}
         openModuleLabel={t('dashboard.openModule')}
       />
@@ -389,6 +411,14 @@ function GlobalOverviewCards({
         hint={t('dashboard.stats.assignedHint')}
         to="/planning"
         icon={ClipboardCheck}
+        openModuleLabel={t('dashboard.openModule')}
+      />
+      <StatCard
+        label={t('dashboard.stats.partialFactory')}
+        value={data.partialTotal}
+        hint={t('dashboard.stats.partialFactoryHint')}
+        to="/plan-calendar"
+        icon={PieChart}
         openModuleLabel={t('dashboard.openModule')}
       />
       <StatCard
@@ -660,17 +690,24 @@ function DataLine({ label, value }: { label: ReactNode; value: ReactNode }) {
 
 function RecentPlanning({
   data,
+  isTechnician,
 }: {
   data: Awaited<ReturnType<typeof fetchPersonnelDashboard>>
+  isTechnician: boolean
 }) {
   const { t } = useTranslation('personnel')
   const items = data.planning.recent
   const empty = items.length === 0
+  const planLink = isTechnician ? '/plan-calendar' : '/planning'
   return (
     <AppPageSectionCard
       icon={CalendarClock}
       title={t('dashboard.recentPlanning.title')}
-      description={t('dashboard.recentPlanning.subtitle')}
+      description={
+        isTechnician
+          ? t('dashboard.recentPlanning.subtitleTechnician')
+          : t('dashboard.recentPlanning.subtitle')
+      }
       collapsible
       defaultOpen={!empty}
       collapsedHint={
@@ -678,7 +715,11 @@ function RecentPlanning({
       }
       actions={
         <Button asChild size="sm" variant="outline">
-          <Link to="/planning">{t('dashboard.recentPlanning.goPlanning')}</Link>
+          <Link to={planLink}>
+            {isTechnician
+              ? t('dashboard.recentPlanning.goPlanCalendar')
+              : t('dashboard.recentPlanning.goPlanning')}
+          </Link>
         </Button>
       }
       bodyClassName="!p-0"

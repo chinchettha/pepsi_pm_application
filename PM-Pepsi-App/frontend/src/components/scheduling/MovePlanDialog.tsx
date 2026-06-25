@@ -72,6 +72,8 @@ export function MovePlanDialog({
       toast.success(data.message)
       void qc.invalidateQueries({ queryKey: ['calendar'] })
       void qc.invalidateQueries({ queryKey: ['backlog'] })
+      void qc.invalidateQueries({ queryKey: ['plan-calendar'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
       void qc.invalidateQueries({ queryKey: ['work-order', idiw37] })
       onSuccess?.()
       onOpenChange(false)

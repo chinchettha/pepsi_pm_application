@@ -1,4 +1,4 @@
-import type { Pool } from 'pg'
+import type { Pool, PoolClient } from 'pg'
 import {
   resolveCalendarMoveReasonRequired,
 } from '../lib/calendar-move-policy.js'
@@ -38,13 +38,15 @@ export class MovePlanError extends Error {
 }
 
 export async function moveWorkOrderPlan(
-  pool: Pool,
+  pool: Pool | PoolClient,
   input: {
     idiw37: string
     targetDate: string
     reasonCode: string
     comment?: string
     mwkctr: string
+    /** ไม่ส่งแจ้งเตือน — caller จัดการเอง (เช่น QC reject) */
+    skipNotify?: boolean
   },
 ): Promise<{
   mpcount: number
@@ -129,6 +131,12 @@ export async function moveWorkOrderPlan(
     [idNum],
   )
 
+  let result: {
+    mpcount: number
+    before: { displayDate: string; mpcount: number | null }
+    after: { targetDate: string; reasonCode: string; comment: string; mpcount: number }
+  }
+
   if (existing.rows[0]) {
     const mpcount = existing.rows[0].mpcount + 1
     await pool.query(
@@ -137,7 +145,7 @@ export async function moveWorkOrderPlan(
        WHERE idiw37 = $7`,
       [cday, mday, input.mwkctr, reasonCode, comment, mpcount, idNum],
     )
-    return {
+    result = {
       mpcount,
       before: { displayDate: beforeDisplayDate, mpcount: beforeMpcount },
       after: {
@@ -147,23 +155,40 @@ export async function moveWorkOrderPlan(
         mpcount,
       },
     }
+  } else {
+    await pool.query(
+      `INSERT INTO app.tbmoveplan (cday, idiw37, mday, mwkctr, reasoncode, resoncom, mpcount)
+       VALUES ($1, $2, $3, $4, $5, $6, 1)`,
+      [cday, idNum, mday, input.mwkctr, reasonCode, comment],
+    )
+    result = {
+      mpcount: 1,
+      before: { displayDate: beforeDisplayDate, mpcount: beforeMpcount },
+      after: {
+        targetDate: input.targetDate,
+        reasonCode,
+        comment,
+        mpcount: 1,
+      },
+    }
   }
 
-  await pool.query(
-    `INSERT INTO app.tbmoveplan (cday, idiw37, mday, mwkctr, reasoncode, resoncom, mpcount)
-     VALUES ($1, $2, $3, $4, $5, $6, 1)`,
-    [cday, idNum, mday, input.mwkctr, reasonCode, comment],
-  )
-  return {
-    mpcount: 1,
-    before: { displayDate: beforeDisplayDate, mpcount: beforeMpcount },
-    after: {
-      targetDate: input.targetDate,
-      reasonCode,
-      comment,
-      mpcount: 1,
-    },
+  const { notifyTechniciansPlanMoved } = await import('./technician-plan-moved-notify.js')
+  if (!input.skipNotify) {
+    await notifyTechniciansPlanMoved(pool as Pool, idNum, {
+      targetDateIso: input.targetDate,
+      beforeDateIso: beforeDisplayDate,
+      movedByWkctr: input.mwkctr,
+    })
   }
+
+  const { fulfillPendingPlanMoveRequests } = await import('./plan-move-request.js')
+  await fulfillPendingPlanMoveRequests(pool as Pool, idNum, input.mwkctr)
+
+  const { markMoveRequestNotificationsResolved } = await import('./app-notifications.js')
+  await markMoveRequestNotificationsResolved(pool as Pool, idNum)
+
+  return result
 }
 
 export async function searchWorkOrderSuggestions(

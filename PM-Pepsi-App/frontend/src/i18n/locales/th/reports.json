@@ -217,6 +217,7 @@
       "iw37nRange": "แผนงาน {{from}} – {{to}}",
       "manhourRange": "Manhour {{from}} – {{to}}",
       "woInRange": "WO ในช่วงที่เลือก {{count}} ใบ",
+      "woWithoutManhour": "มี WO {{woCount}} ใบในช่วงที่เลือก แต่ไม่มีชม. HR (manhour) ในช่วงเดียวกัน — ลอง preset รายเดือน หรือขยายช่วงวันที่ให้ครอบ manhour",
       "wrongRange": "ช่วงวันที่ที่เลือกไม่ทับข้อมูล SAP ใน DB (IW37N {{from}} – {{to}}) — รายงานสัปดาห์จึงว่างหรือไม่ตรงหลัง import",
       "applySapRange": "ใช้ช่วงข้อมูล SAP ({{from}} – {{to}})",
       "noManhour": "ยังไม่มี manhour — ตาราง %PM/%Reactive ต้องมี HR hour จาก manhour ในช่วงเดียวกัน"

@@ -3,6 +3,7 @@ import { hintsFromT } from '@/lib/i18n-hints'
 import { CanPermission } from '@/components/auth/CanPermission'
 import { ImportReviewActionBadge } from '@/components/integration/ImportReviewActionBadge'
 import { Iw37nImportReviewPanel } from '@/components/iw37n/Iw37nImportReviewPanel'
+import { Iw37nItemsTable } from '@/features/iw37n/Iw37nItemsTable'
 import { ReportExportButton } from '@/components/reports/ReportExportButton'
 import { AppCard } from '@/components/layout/AppCard'
 import { AppPageSection, AppPageSectionCard, AppPageShell } from '@/components/layout/AppPageShell'
@@ -45,7 +46,6 @@ import {
   ClipboardList,
   FolderSync,
   History,
-  Pencil,
   Table2,
   Upload,
 } from 'lucide-react'
@@ -63,14 +63,16 @@ function duplicateToastMsg(t: TFunction<'integration'>, batchId: string | null):
 
 export function Iw37nPage() {
   const { t } = useTranslation('integration')
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const canRead = usePermission('iw37n.read')
+  const canReadMasterPlan = usePermission('master-data.read')
   const canWrite = usePermission('iw37n.write')
   const canImport = useAnyPermission(['iw37n.import', 'iw37n.write'])
   const canIntegration = usePermission('integration.admin')
   const canRunFolderScan = canImport || canIntegration
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
+  const importSectionRef = useRef<HTMLDivElement>(null)
   const [lastImport, setLastImport] = useState<{
     batchId: string
     fileName: string
@@ -277,21 +279,47 @@ export function Iw37nPage() {
   })
   const batchViewItems = batchViewRowsQ.data?.items ?? []
 
-  const [itemQ, setItemQ] = useState('')
+  const qFromUrl = searchParams.get('q')?.trim() ?? ''
+  const idiw37FromUrl = searchParams.get('idiw37')?.trim() ?? ''
+  const focusFromUrl = searchParams.get('focus')?.trim() ?? ''
+
+  const [itemQInput, setItemQInput] = useState(qFromUrl)
+  const [searchQ, setSearchQ] = useState(qFromUrl)
   const [itemOffset, setItemOffset] = useState(0)
   const itemLimit = 100
+  const ITEM_SEARCH_DEBOUNCE_MS = 300
 
   useEffect(() => {
-    const q = searchParams.get('q')?.trim() ?? ''
-    if (q) {
-      setItemQ(q)
-      setItemOffset(0)
-    }
-  }, [searchParams])
+    const timer = window.setTimeout(() => {
+      setSearchQ(itemQInput.trim())
+    }, ITEM_SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [itemQInput])
+
+  useEffect(() => {
+    if (!qFromUrl) return
+    setItemQInput(qFromUrl)
+    setSearchQ(qFromUrl)
+    setItemOffset(0)
+  }, [qFromUrl])
+
+  const clearIw37nDeepLink = () => {
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev)
+        params.delete('q')
+        return params
+      },
+      { replace: true },
+    )
+    setItemQInput('')
+    setSearchQ('')
+    setItemOffset(0)
+  }
 
   const itemsQ = useQuery({
-    queryKey: ['iw37n-items', itemQ, itemLimit, itemOffset],
-    queryFn: () => fetchIw37nItems({ q: itemQ.trim(), limit: itemLimit, offset: itemOffset }),
+    queryKey: ['iw37n-items', searchQ, itemLimit, itemOffset],
+    queryFn: () => fetchIw37nItems({ q: searchQ.trim(), limit: itemLimit, offset: itemOffset }),
     placeholderData: keepPreviousData,
   })
 
@@ -376,6 +404,33 @@ export function Iw37nPage() {
       setEditingId(null)
     }
   }
+
+  useEffect(() => {
+    const raw = idiw37FromUrl
+    const id = Number(raw)
+    if (!raw || !Number.isFinite(id) || id <= 0) return
+
+    const shouldFocusImport = focusFromUrl === 'import'
+
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev)
+        params.delete('idiw37')
+        params.delete('focus')
+        return params
+      },
+      { replace: true },
+    )
+
+    if (shouldFocusImport) {
+      window.requestAnimationFrame(() => {
+        importSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+
+    toast.info(t('iw37nPage.moveRequestHint'), { duration: 8000 })
+    void openEdit(id)
+  }, [focusFromUrl, idiw37FromUrl, setSearchParams, t])
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -518,15 +573,16 @@ export function Iw37nPage() {
               <Link to="/planning">{t('iw37nPage.linkPlanning')}</Link>
             </Button>
           </CanPermission>
-          <CanPermission permission="work-orders.read">
+          {canReadMasterPlan ? (
             <Button type="button" variant="outline" size="sm" asChild>
-              <Link to="/work-orders">{t('iw37nPage.linkWorkOrders')}</Link>
+              <Link to="/master-plan">{t('iw37nPage.linkMasterPlan')}</Link>
             </Button>
-          </CanPermission>
+          ) : null}
         </>
       }
     >
       {(canImport || canRunFolderScan) ? (
+        <div ref={importSectionRef} id="iw37n-import-section">
         <AppPageSection index={0}>
           <AppPageSectionCard
             icon={canImport ? Upload : FolderSync}
@@ -668,6 +724,7 @@ export function Iw37nPage() {
             ) : null}
           </AppPageSectionCard>
         </AppPageSection>
+        </div>
       ) : (
         <AppPageSection index={0}>
           <AppCard pad="compact">
@@ -796,12 +853,13 @@ export function Iw37nPage() {
         <AppPageSectionCard
           icon={Table2}
           title={t('iw37nPage.itemsTitle')}
+          description={t('iw37nPage.itemsDesc')}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Input
-                value={itemQ}
+                value={itemQInput}
                 onChange={(e) => {
-                  setItemQ(e.target.value)
+                  setItemQInput(e.target.value)
                   setItemOffset(0)
                 }}
                 placeholder={t('iw37nPage.searchPlaceholder')}
@@ -827,28 +885,17 @@ export function Iw37nPage() {
               </Button>
             </div>
           }
-          bodyClassName="space-y-4"
+          bodyClassName="space-y-3"
         >
-          {itemsQ.isLoading && !itemsQ.data ? (
-            <div className="app-table-shell overflow-x-auto" aria-busy="true">
-              <Table embedded stickyHeader zebra>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-20 text-right">{t('iw37nPage.table.id')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.order')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.opAc')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.mntPlan')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.type')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.bscStart')}</TableHead>
-                    <TableHead className="text-right" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableSkeletonRows rows={8} columns={7} narrowFirstColumn />
-                </TableBody>
-              </Table>
+          {qFromUrl ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[#2f5597]/25 bg-[#dae3f3]/40 px-3 py-2 text-xs text-[#1f3864]">
+              <span>{t('iw37nPage.deepLinkFromMasterPlan', { q: qFromUrl })}</span>
+              <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={clearIw37nDeepLink}>
+                {t('iw37nPage.deepLinkClear')}
+              </Button>
             </div>
-          ) : itemsQ.isError ? (
+          ) : null}
+          {itemsQ.isError ? (
             <QueryLoadErrorState
               title={t('iw37nPage.itemsLoadFailed')}
               error={itemsQ.error}
@@ -856,64 +903,16 @@ export function Iw37nPage() {
               action={{ label: t('iw37n.retry'), onClick: () => void itemsQ.refetch() }}
             />
           ) : (
-            <div className="app-table-shell overflow-x-auto">
-              <Table embedded stickyHeader zebra>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-20 text-right">{t('iw37nPage.table.id')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.order')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.opAc')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.mntPlan')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.type')}</TableHead>
-                    <TableHead>{t('iw37nPage.table.bscStart')}</TableHead>
-                    <TableHead className="text-right" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(itemsQ.data?.length ?? 0) === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="p-0">
-                        <EmptyState
-                          className="border-0 bg-transparent py-10"
-                          title={t('iw37nPage.itemsEmpty')}
-                          description={
-                            itemQ.trim()
-                              ? t('iw37nPage.itemsEmptySearch')
-                              : t('iw37nPage.itemsEmptyHint')
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    itemsQ.data?.map((it) => (
-                      <TableRow key={it.idiw37}>
-                        <TableCell className="text-right tabular-nums">{it.idiw37}</TableCell>
-                        <TableCell className="font-mono text-xs">{it.wkorder}</TableCell>
-                        <TableCell className="font-mono text-xs">{it.opac}</TableCell>
-                        <TableCell className="font-mono text-xs">{it.mntplan}</TableCell>
-                        <TableCell className="font-mono text-xs">{it.wktype}</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {it.bscstart ? formatEpochSecondsToDdMmYyyy(it.bscstart) : ''}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {canWrite ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openEdit(it.idiw37)}
-                            >
-                              <Pencil className="mr-2 size-4" aria-hidden />
-                              {t('iw37nPage.edit')}
-                            </Button>
-                          ) : null}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            <Iw37nItemsTable
+              items={itemsQ.data}
+              loading={itemsQ.isLoading}
+              canWrite={canWrite}
+              emptyTitle={t('iw37nPage.itemsEmpty')}
+              emptyDescription={
+                searchQ.trim() ? t('iw37nPage.itemsEmptySearch') : t('iw37nPage.itemsEmptyHint')
+              }
+              onEdit={openEdit}
+            />
           )}
         </AppPageSectionCard>
       </AppPageSection>

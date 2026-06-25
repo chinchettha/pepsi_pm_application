@@ -31,7 +31,7 @@ function SummarySectionTable({ section }: { section: GenericSheetSection }) {
             {headerCells.map((cell, idx) => (
               <th
                 key={`${section.startCol}-h-${idx}`}
-                className="border border-[#2f5597]/60 px-2 py-1.5 text-left text-[11px] font-semibold text-white"
+                className="border border-[#2f5597]/60 px-2.5 py-2 text-left text-xs font-semibold leading-snug text-white"
               >
                 <MasterPlanColumnHeader column={cell} />
               </th>

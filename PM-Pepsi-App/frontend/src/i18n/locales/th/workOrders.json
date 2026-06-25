@@ -87,7 +87,9 @@
     "rejectPrompt": "เหตุผลส่งกลับ (ถ้ามี)",
     "rejectTitle": "ส่งกลับแก้ไข",
     "rejectNoteLabel": "เหตุผล (ถ้ามี)",
-    "rejectNotePlaceholder": "เช่น ยังไม่มีรูปหลัง PM · เวลาปิดไม่ถูกต้อง…"
+    "rejectNotePlaceholder": "เช่น ยังไม่มีรูปหลัง PM · เวลาปิดไม่ถูกต้อง…",
+    "rescheduleDateLabel": "เลื่อนงานไปวันที่",
+    "rescheduleDateHint": "งานจะไปแสดงบนปฏิทินแผนตามวันนี้ และแจ้งเตือนช่างที่ได้รับมอบหมาย"
   },
   "toast": {
     "approveSuccess": "อนุมัติ {{wkorder}} — สถานะ TECO บน Dashboard ช่าง",

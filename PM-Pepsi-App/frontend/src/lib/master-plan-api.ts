@@ -37,6 +37,13 @@ const masterPlanSheetRowsSchema = z.object({
       rowIndex: z.number().int(),
       cells: z.record(z.string(), z.string()),
       display: z.record(z.string(), z.string()),
+      pmStatus: z
+        .object({
+          lastClosedAt: z.number().nullable(),
+          nextDueAt: z.number().nullable(),
+          intervalDays: z.number().nullable(),
+        })
+        .optional(),
     }),
   ),
 })
@@ -46,8 +53,24 @@ export type MasterPlanSheetRows = z.infer<typeof masterPlanSheetRowsSchema>
 
 export async function fetchMasterPlanWorkbook(
   discipline: MasterPlanDiscipline,
-): Promise<MasterPlanWorkbook> {
-  const data = await fetchApi<unknown>(`/api/v1/master-plan/${discipline}`)
+): Promise<MasterPlanWorkbook | null> {
+  const base = getApiBaseUrl()
+  const p = `/api/v1/master-plan/${discipline}`
+  const url = base ? `${base}${p}` : p
+  const token = getAuthToken()
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (res.status === 404) return null
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+  const data = await res.json()
   return masterPlanWorkbookSchema.parse(data)
 }
 
@@ -72,6 +95,9 @@ const masterPlanSearchItemSchema = z.object({
   sheetId: z.number().int(),
   sheetName: z.string(),
   label: z.string(),
+  discipline: z.enum(['EE', 'ME', 'PK']).optional(),
+  maintenancePlan: z.string().optional(),
+  matchScore: z.number().optional(),
 })
 
 const masterPlanSearchResponseSchema = z.object({
@@ -88,6 +114,15 @@ export async function fetchMasterPlanSearch(
 ): Promise<{ query: string; items: MasterPlanSearchItem[] }> {
   const qs = new URLSearchParams({ q: query, limit: String(limit) })
   const data = await fetchApi<unknown>(`/api/v1/master-plan/${discipline}/search?${qs}`)
+  return masterPlanSearchResponseSchema.parse(data)
+}
+
+export async function fetchMasterPlanSearchGlobal(
+  query: string,
+  limit = 20,
+): Promise<{ query: string; items: MasterPlanSearchItem[] }> {
+  const qs = new URLSearchParams({ q: query, limit: String(limit) })
+  const data = await fetchApi<unknown>(`/api/v1/master-plan/search?${qs}`)
   return masterPlanSearchResponseSchema.parse(data)
 }
 
@@ -245,11 +280,23 @@ const masterPlanImportDiffSchema = z.object({
 })
 
 const masterPlanImportResponseSchema = z.object({
+  discipline: z.enum(['EE', 'ME', 'PK']),
   workbookId: z.number().int(),
   versionNo: z.number().int(),
-  status: z.literal('draft'),
+  status: z.enum(['draft', 'published']),
   rowCount: z.number().int(),
   diff: masterPlanImportDiffSchema,
+  tasklist: z
+    .object({
+      inserted: z.number().int(),
+      updated: z.number().int(),
+      skipped: z.number().int(),
+      failed: z.number().int(),
+    })
+    .optional(),
+  publishableRows: z.number().int().optional(),
+  skippedRows: z.number().int().optional(),
+  promotedDraft: z.boolean().optional(),
 })
 
 export type MasterPlanImportResponse = z.infer<typeof masterPlanImportResponseSchema>
@@ -301,12 +348,12 @@ export async function fetchMasterPlanStatus(
 }
 
 export async function importMasterPlanExcel(
-  discipline: MasterPlanDiscipline,
   file: File,
+  disciplineHint?: MasterPlanDiscipline,
 ): Promise<MasterPlanImportResponse> {
   const form = new FormData()
   form.append('file', file)
-  form.append('discipline', discipline)
+  if (disciplineHint) form.append('discipline', disciplineHint)
   const data = await fetchApi<unknown>('/api/v1/master-plan/import', {
     method: 'POST',
     body: form,

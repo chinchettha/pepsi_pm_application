@@ -1,3 +1,6 @@
+import type { AuthUser } from '@/api/schemas'
+import { hasPermission } from '@/lib/permissions-core'
+
 /**
  * Maps React routes to RBAC permission codes (tbl_permission).
  * Used when filtering sidebar fallback nav and API nav items client-side.
@@ -5,9 +8,14 @@
 /** เปิดได้โดยไม่ผ่าน NavRouteGuard (kiosk / public) */
 export const PUBLIC_NAV_PATHS = new Set<string>(['/board'])
 
+/** Routes where any listed permission is sufficient (e.g. planner planning.read → plan-calendar). */
+export const NAV_ROUTE_PERMISSION_ANY: Partial<Record<string, readonly string[]>> = {
+  '/plan-calendar': ['plan-calendar.read', 'planning.read'],
+}
+
 export const NAV_ROUTE_PERMISSION: Record<string, string> = {
   '/': 'dashboard.read',
-  '/plan-calendar': 'planning.read',
+  '/plan-calendar': 'plan-calendar.read',
   '/calendar': 'calendar.read',
   '/backlog': 'backlog.read',
   '/work-orders': 'work-orders.read',
@@ -47,12 +55,27 @@ export const NAV_ROUTE_PERMISSION: Record<string, string> = {
 }
 
 export function permissionForRoute(path: string): string | undefined {
-  if (NAV_ROUTE_PERMISSION[path]) return NAV_ROUTE_PERMISSION[path]
+  const perms = permissionsForRoute(path)
+  return perms[0]
+}
+
+export function permissionsForRoute(path: string): string[] {
+  if (NAV_ROUTE_PERMISSION_ANY[path]) return [...NAV_ROUTE_PERMISSION_ANY[path]!]
+  if (NAV_ROUTE_PERMISSION[path]) return [NAV_ROUTE_PERMISSION[path]]
   const sorted = Object.keys(NAV_ROUTE_PERMISSION).sort((a, b) => b.length - a.length)
   for (const prefix of sorted) {
     if (prefix !== '/' && path.startsWith(`${prefix}/`)) {
-      return NAV_ROUTE_PERMISSION[prefix]
+      const any = NAV_ROUTE_PERMISSION_ANY[prefix]
+      if (any) return [...any]
+      const single = NAV_ROUTE_PERMISSION[prefix]
+      if (single) return [single]
     }
   }
-  return undefined
+  return []
+}
+
+export function canAccessRoute(user: AuthUser | null | undefined, path: string): boolean {
+  const perms = permissionsForRoute(path)
+  if (perms.length === 0) return true
+  return perms.some((p) => hasPermission(user, p))
 }

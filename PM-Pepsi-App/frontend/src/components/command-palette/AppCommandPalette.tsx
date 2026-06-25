@@ -8,9 +8,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ADMIN_SECTIONS, getGroupedAdminSections } from '@/lib/admin-sections'
-import { permissionForRoute } from '@/lib/nav-route-permissions'
-import { useAppNav } from '@/lib/use-app-nav'
+import { canAccessRoute } from '@/lib/nav-route-permissions'
 import { hasPermission } from '@/lib/permissions'
+import { useAppNav } from '@/lib/use-app-nav'
 import { useAnyPermission, useAuthUser } from '@/lib/use-permission'
 import { useShowPortalLink } from '@/lib/use-portal-modules'
 import { cn } from '@/lib/utils'
@@ -83,11 +83,7 @@ export function AppCommandPalette({
   )
 
   const canAccess = useCallback(
-    (to: string) => {
-      const perm = permissionForRoute(to)
-      if (perm) return hasPermission(authUser, perm)
-      return true
-    },
+    (to: string) => canAccessRoute(authUser, to),
     [authUser],
   )
 

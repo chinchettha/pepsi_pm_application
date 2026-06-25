@@ -14,8 +14,10 @@ export function SummaryWeeklyImportHint({ coverage, rowCount, onApplySapRange }:
 
   const hasSap = coverage.iw37nCount > 0
   const hasMh = coverage.manhourCount > 0
-  const emptyInRange =
-    rowCount === 0 && coverage.workOrdersInRange === 0 && (hasSap || hasMh)
+  const noTechniciansInRange = rowCount === 0 && (hasSap || hasMh)
+  const emptyInRange = noTechniciansInRange && coverage.workOrdersInRange === 0
+  const woWithoutManhourInRange =
+    noTechniciansInRange && coverage.workOrdersInRange > 0
   const wrongRange = hasSap && !coverage.rangeOverlapsSap && coverage.suggestedSapRange
 
   if (!hasSap && !hasMh) {
@@ -26,7 +28,7 @@ export function SummaryWeeklyImportHint({ coverage, rowCount, onApplySapRange }:
     )
   }
 
-  if (!emptyInRange && !wrongRange) {
+  if (!emptyInRange && !wrongRange && !woWithoutManhourInRange) {
     return (
       <div className="app-callout app-callout--emerald space-y-1 text-sm">
         <p>
@@ -56,6 +58,29 @@ export function SummaryWeeklyImportHint({ coverage, rowCount, onApplySapRange }:
               count: coverage.workOrdersInRange.toLocaleString(),
             })}
           </p>
+        ) : null}
+      </div>
+    )
+  }
+
+  if (woWithoutManhourInRange) {
+    return (
+      <div className={cn('app-callout app-tone-warning-callout space-y-2 text-sm')}>
+        <p>
+          {t('summaryWeekly.importHint.woWithoutManhour', {
+            woCount: coverage.workOrdersInRange.toLocaleString(),
+          })}
+        </p>
+        {hasMh && coverage.manhourWorkdayFrom && coverage.manhourWorkdayTo ? (
+          <p className="text-xs text-app-muted">
+            {t('summaryWeekly.importHint.manhourRange', {
+              from: coverage.manhourWorkdayFrom,
+              to: coverage.manhourWorkdayTo,
+            })}
+          </p>
+        ) : null}
+        {!hasMh ? (
+          <p className="text-xs text-app-muted">{t('summaryWeekly.importHint.noManhour')}</p>
         ) : null}
       </div>
     )

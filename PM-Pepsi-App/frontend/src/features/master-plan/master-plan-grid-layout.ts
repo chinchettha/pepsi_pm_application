@@ -9,6 +9,11 @@ export type MasterPlanGridRow = {
 const ROWSPAN_PATTERNS = [
   /^zone$/i,
   /machine list/i,
+  /sap code/i,
+  /maintenance plan/i,
+  /^mant$/i,
+  /mnt\s*plan/i,
+  /task list/i,
   /^min$/i,
   /^man$/i,
   /man hour/i,
@@ -40,6 +45,7 @@ export function isMasterPlanCellEditable(
 export function computeColumnRowspans(
   rows: MasterPlanGridRow[],
   column: string,
+  storageKey = column,
 ): Array<number | 'skip'> {
   const out: Array<number | 'skip'> = new Array(rows.length).fill(1)
   if (!shouldRowspanColumn(column)) return out
@@ -47,7 +53,7 @@ export function computeColumnRowspans(
   let i = 0
   while (i < rows.length) {
     const anchor = rows[i]
-    const anchorDisplay = (anchor.display[column] ?? '').trim()
+    const anchorDisplay = (anchor.display[storageKey] ?? anchor.display[column] ?? '').trim()
     if (!anchorDisplay) {
       out[i] = 1
       i++
@@ -57,8 +63,9 @@ export function computeColumnRowspans(
     let span = 1
     while (i + span < rows.length) {
       const next = rows[i + span]
-      const rawEmpty = !(next.cells[column] ?? '').trim()
-      const sameDisplay = (next.display[column] ?? '').trim() === anchorDisplay
+      const rawEmpty = !(next.cells[storageKey] ?? next.cells[column] ?? '').trim()
+      const sameDisplay =
+        (next.display[storageKey] ?? next.display[column] ?? '').trim() === anchorDisplay
       if (rawEmpty && sameDisplay) span++
       else break
     }
@@ -154,20 +161,23 @@ function buildGenericSection(
 }
 
 const COLUMN_WIDTH_RULES: Array<{ pattern: RegExp; className: string }> = [
-  { pattern: /^zone$/i, className: 'w-[4.5rem] min-w-[4.5rem] max-w-[5.5rem]' },
-  { pattern: /machine list/i, className: 'w-[8rem] min-w-[8rem] max-w-[10rem]' },
-  { pattern: /pm list/i, className: 'min-w-[17.5rem] max-w-xl whitespace-normal' },
+  { pattern: /^zone$/i, className: 'w-[3.75rem] min-w-[3.75rem] max-w-[4.5rem]' },
+  { pattern: /machine list/i, className: 'w-[9.5rem] min-w-[9.5rem] max-w-[11rem]' },
+  { pattern: /pm list/i, className: 'min-w-[20rem] max-w-2xl' },
   {
-    pattern: /sap code|mnt plan|task list|legacy|^machine$/i,
-    className: 'min-w-[4.5rem] max-w-[7rem]',
+    pattern: /sap code|maintenance plan|mnt\s*plan|^mant$/i,
+    className: 'min-w-[8.75rem] max-w-[9.5rem]',
   },
+  { pattern: /task list/i, className: 'min-w-[5.5rem] max-w-[6.5rem]' },
+  { pattern: /legacy/i, className: 'min-w-[5.5rem] max-w-[7rem]' },
+  { pattern: /^m\/c$|^machine$/i, className: 'min-w-[8rem] max-w-[10rem]' },
   {
-    pattern: /^min$|^man$|man hour|pm day|pm min|freq|runhr|mpoint|gls|act code|craft|type|frequency/i,
-    className: 'w-[3.25rem] min-w-[3.25rem] max-w-[4.5rem] tabular-nums text-center',
+    pattern: /^days$|^min$|^man$|man hour|pm day|pm min|freq|runhr|mpoint|gls|act code|craft|type|frequency/i,
+    className: 'w-[3.5rem] min-w-[3.5rem] max-w-[4.5rem]',
   },
   {
     pattern: /machinestatus|stop|run|pm day/i,
-    className: 'min-w-[3.5rem] max-w-[5rem] text-center',
+    className: 'min-w-[3.5rem] max-w-[5rem]',
   },
 ]
 
@@ -189,14 +199,61 @@ export function masterPlanStickyColumn(column: string, columns: string[]): 1 | 2
   return null
 }
 
-export function masterPlanColumnCellClass(column: string, columns: string[]): string {
+/** Vertical alignment + wrap rules per column (Excel-like merged blocks stay centered). */
+export function masterPlanCellTypographyClass(column: string, rowSpan?: number): string {
+  const h = column.trim()
+  const merged = rowSpan != null && rowSpan > 1
+
+  if (/pm list/i.test(h)) {
+    return 'master-plan-cell-pm align-top leading-[1.55] whitespace-normal break-words'
+  }
+  if (/machine list/i.test(h)) {
+    return `${merged ? 'align-middle' : 'align-middle'} leading-snug whitespace-normal break-words font-medium text-[#1f3864]`
+  }
+  if (/^zone$/i.test(h)) {
+    return 'align-middle text-center text-sm font-bold tracking-wide text-[#2f5597]'
+  }
+  if (/sap code|maintenance plan|mnt\s*plan|^mant$/i.test(h)) {
+    return 'align-middle text-center tabular-nums text-[11px] font-semibold leading-tight tracking-tight text-[#1f3864]'
+  }
+  if (/task list/i.test(h)) {
+    return 'align-middle text-center tabular-nums text-xs font-semibold text-[#1f3864]'
+  }
+  if (/legacy/i.test(h)) {
+    return 'align-middle text-center text-[11px] font-medium tracking-tight text-[#505050]'
+  }
+  if (/^m\/c$|^machine$/i.test(h)) {
+    return 'align-middle leading-snug whitespace-normal break-words text-[#333]'
+  }
+  if (/^days$|frequency|freq|^min$|^man$|man hour/i.test(h)) {
+    return 'align-middle text-center tabular-nums font-medium'
+  }
+  return merged ? 'align-middle' : 'align-middle'
+}
+
+export function masterPlanColumnHeaderAlignClass(column: string): string {
+  const h = column.trim()
+  if (/^zone$|sap code|maintenance plan|mnt\s*plan|task list|legacy|^days$|^min$|^man$|man hour|frequency|freq/i.test(h)) {
+    return 'text-center'
+  }
+  return 'text-left'
+}
+
+export function masterPlanColumnCellClass(
+  column: string,
+  columns: string[],
+  rowSpan?: number,
+): string {
   const width = masterPlanColumnWidthClass(column)
   const sticky = masterPlanStickyColumn(column, columns)
   const stickyClass =
     sticky != null
-      ? `${tableStickyClass(sticky)} bg-inherit ${sticky === 1 ? 'font-medium' : ''}`
+      ? `${tableStickyClass(sticky)} bg-inherit ${sticky === 1 ? 'font-semibold' : ''}`
       : ''
-  const isPmList = /pm list/i.test(column)
-  const wrap = isPmList ? '' : 'whitespace-nowrap'
-  return `${width} ${stickyClass} ${wrap}`.trim()
+  const typography = masterPlanCellTypographyClass(column, rowSpan)
+  const h = column.trim()
+  const allowWrap =
+    /pm list|machine list|m\/c|^machine$|sap code|maintenance plan|mnt\s*plan|task list|^mant$/i.test(h)
+  const wrap = allowWrap ? 'whitespace-normal' : 'whitespace-nowrap'
+  return `${width} ${stickyClass} ${typography} ${wrap}`.trim()
 }

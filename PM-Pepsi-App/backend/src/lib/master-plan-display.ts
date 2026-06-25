@@ -1,3 +1,5 @@
+import { masterPlanColumnStorageKey } from './master-plan-column-keys.js'
+
 export type MasterPlanDisplayRow = {
   rowIndex: number
   cells: Record<string, string>
@@ -8,6 +10,11 @@ export type MasterPlanDisplayRow = {
 const FILL_DOWN_PATTERNS = [
   /^zone$/i,
   /machine list/i,
+  /sap code/i,
+  /maintenance plan/i,
+  /^mant$/i,
+  /mnt\s*plan/i,
+  /task list/i,
   /^min$/i,
   /^man$/i,
   /man hour/i,
@@ -25,16 +32,18 @@ export function applyFillDownDisplay(
 
   return rows.map((row) => {
     const display: Record<string, string> = { ...row.cells }
-    for (const header of columnHeaders) {
+    for (let colIdx = 0; colIdx < columnHeaders.length; colIdx++) {
+      const header = columnHeaders[colIdx] ?? ''
       if (!shouldFillDown(header)) continue
-      const raw = row.cells[header] ?? ''
+      const key = masterPlanColumnStorageKey(columnHeaders, colIdx)
+      const raw = row.cells[key] ?? row.cells[header] ?? ''
       if (raw) {
-        last[header] = raw
-        display[header] = raw
-      } else if (last[header]) {
-        display[header] = last[header]
+        last[key] = raw
+        display[key] = raw
+      } else if (last[key]) {
+        display[key] = last[key]
       } else {
-        display[header] = ''
+        display[key] = ''
       }
     }
     return { rowIndex: row.rowIndex, cells: row.cells, display }

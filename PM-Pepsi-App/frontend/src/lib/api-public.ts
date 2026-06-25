@@ -72,6 +72,8 @@ import {
   usersResponseSchema,
   movePlanReasonsResponseSchema,
   movePlanRequestSchema,
+  planMoveRequestBodySchema,
+  planMoveRequestResponseSchema,
   movePlanResponseSchema,
   workOrderFilterOptionsResponseSchema,
   workOrderDetailSchema,
@@ -85,6 +87,7 @@ import {
   woPmReadingResponseSchema,
   workOrderPlanningBatchBodySchema,
   workOrderPlanningBatchResponseSchema,
+  workOrderPlanningCommentBodySchema,
   workOrderPlanningOkResponseSchema,
   workOrderPlanningUpsertBodySchema,
   workOrderFilterDetailResponseSchema,
@@ -287,6 +290,22 @@ export async function postWorkOrderPlanningBatch(
   return workOrderPlanningBatchResponseSchema.parse(json)
 }
 
+export async function patchWorkOrderPlanningComment(
+  id: string,
+  body: z.infer<typeof workOrderPlanningCommentBodySchema>,
+) {
+  const payload = workOrderPlanningCommentBodySchema.parse(body)
+  const json = await fetchApi<unknown>(
+    `/api/v1/work-orders/${encodeURIComponent(id)}/planning/comment`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  )
+  return workOrderPlanningOkResponseSchema.parse(json)
+}
+
 export async function deleteWorkOrderPlanning(id: string) {
   const json = await fetchApi<unknown>(`/api/v1/work-orders/${encodeURIComponent(id)}/planning`, {
     method: 'DELETE',
@@ -365,6 +384,16 @@ export async function postMovePlan(body: z.infer<typeof movePlanRequestSchema>) 
     body: JSON.stringify(payload),
   })
   return movePlanResponseSchema.parse(json)
+}
+
+export async function postPlanMoveRequest(body: z.infer<typeof planMoveRequestBodySchema>) {
+  const payload = planMoveRequestBodySchema.parse(body)
+  const json = await fetchApi<unknown>('/api/v1/planning/move-request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return planMoveRequestResponseSchema.parse(json)
 }
 
 export async function fetchWorkOrderSuggestions(q: string) {
@@ -1215,6 +1244,8 @@ export async function postPersonnelClose(body: {
   startT: string
   endD: string
   endT: string
+  closeKind?: 'complete' | 'partial'
+  incompleteReason?: string
 }) {
   const json = await fetchApi<unknown>(`/api/v1/confirmation/${body.idiw37}/personnel-close`, {
     method: 'POST',
@@ -1225,6 +1256,8 @@ export async function postPersonnelClose(body: {
       startT: body.startT,
       endD: body.endD,
       endT: body.endT,
+      closeKind: body.closeKind ?? 'complete',
+      incompleteReason: body.incompleteReason,
     }),
   })
   const ok = z.object({ ok: z.literal(true) }).safeParse(json)
@@ -1351,11 +1384,17 @@ export async function postConfirmQcApprove(idiw37: number) {
   return z.object({ qc: confirmQcSnapshotSchema }).parse(json).qc
 }
 
-export async function postConfirmQcReject(idiw37: number, note?: string) {
+export async function postConfirmQcReject(
+  idiw37: number,
+  input: { note?: string; rescheduleDate: string },
+) {
   const json = await fetchApi<unknown>(`/api/v1/confirmation/${idiw37}/qc/reject`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ note: note ?? '' }),
+    body: JSON.stringify({
+      note: input.note ?? '',
+      rescheduleDate: input.rescheduleDate,
+    }),
   })
   return z.object({ qc: confirmQcSnapshotSchema }).parse(json).qc
 }

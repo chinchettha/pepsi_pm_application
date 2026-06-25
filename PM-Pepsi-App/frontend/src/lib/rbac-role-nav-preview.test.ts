@@ -16,7 +16,7 @@ const plannerPerms = [
 
 const technicianPerms = [
   'dashboard.read',
-  'calendar.read',
+  'plan-calendar.read',
   'work-orders.read',
   'confirmation.read',
   'confirmation.write',
@@ -43,10 +43,16 @@ describe('rbac-role-nav-preview', () => {
     expect(rolePreviewHidesAdminRoutes(plannerPerms)).toBe(true)
   })
 
-  it('technician W sees confirmation but not planning or admin', () => {
+  it('technician W sees plan calendar and confirmation but not restricted report or planning routes', () => {
     const paths = navPathsForRolePreview('W', technicianPerms)
     expect(paths).toContain('/confirmation')
+    expect(paths).toContain('/plan-calendar')
+    expect(paths).not.toContain('/calendar')
     expect(paths).not.toContain('/planning')
+    expect(paths).not.toContain('/reports/audit')
+    expect(paths).not.toContain('/activity-log')
+    expect(paths).not.toContain('/summary-weekly')
+    expect(paths).not.toContain('/user-log')
     expect(paths).not.toContain('/admin/roles')
   })
 

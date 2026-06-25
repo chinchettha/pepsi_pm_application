@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { planMoveRequestItemSchema } from './planning.js'
 import { woPmFormHeaderSchema } from '../lib/wo-pm-form-header.js'
 import { pmPlanTeamFieldSchema } from '../lib/pm-plan-team.js'
 import { woPmPhaseSchema } from '../lib/wo-pm-phase.js'
@@ -227,13 +228,28 @@ export const confirmationByWorkOrderResponseSchema = z.object({
   items: z.array(confirmationCloseItemSchema),
 })
 
-export const confirmationAddCloseBodySchema = z.object({
-  wkctr: z.string().min(1),
-  startD: z.string().min(1),
-  startT: z.string().min(1),
-  endD: z.string().min(1),
-  endT: z.string().min(1),
-})
+export const personnelCloseKindSchema = z.enum(['complete', 'partial'])
+
+export const confirmationAddCloseBodySchema = z
+  .object({
+    wkctr: z.string().min(1),
+    startD: z.string().min(1),
+    startT: z.string().min(1),
+    endD: z.string().min(1),
+    endT: z.string().min(1),
+    closeKind: personnelCloseKindSchema.optional().default('complete'),
+    incompleteReason: z.string().optional(),
+  })
+  .superRefine((body, ctx) => {
+    const reason = body.incompleteReason?.trim() ?? ''
+    if (body.closeKind === 'partial' && reason.length < 3) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'incompleteReason required for partial close',
+        path: ['incompleteReason'],
+      })
+    }
+  })
 
 export const confirmationAddCloseResponseSchema = z.object({
   ok: z.literal(true),
@@ -276,6 +292,8 @@ export const personnelCloseItemSchema = z.object({
   cendate: z.number(),
   wktimewk: z.number(),
   wkunit: z.string(),
+  closeKind: personnelCloseKindSchema,
+  incompleteReason: z.string().nullable(),
 })
 
 export const personnelClosesResponseSchema = z.object({
@@ -407,7 +425,9 @@ export const workOrderTaskListItemSchema = z.object({
   tasklist: z.string(),
   machine: z.string(),
   pmlist: z.string(),
+  description: z.string(),
   displayLine: z.string(),
+  headerShortText: z.string(),
   machinestatus: z.number().nullable(),
   mat: z.string(),
   matdescrip: z.string(),
@@ -495,6 +515,9 @@ export const workOrderPlanningSchema = z.object({
   workcenters: z.array(workcenterItemSchema),
   groups: z.array(workOrderPlanningGroupSchema),
   closeWoAccess: closeWoAccessSchema,
+  canRequestPlanMove: z.boolean().optional(),
+  myMoveRequest: planMoveRequestItemSchema.nullable().optional(),
+  moveRequestsPending: z.array(planMoveRequestItemSchema).optional(),
 })
 
 export { woPmFormHeaderSchema } from '../lib/wo-pm-form-header.js'
@@ -530,6 +553,10 @@ export const workOrderPlanningBatchResponseSchema = z.object({
   skipped: z.array(z.string()),
   /** wkctr ที่ไม่อยู่ใน tbworkcenter (เช่น พิมพ์ผิด) */
   notFound: z.array(z.string()),
+})
+
+export const workOrderPlanningCommentBodySchema = z.object({
+  comment: z.string().trim().min(1).max(255),
 })
 
 export const workOrderPlanningOkResponseSchema = z.object({

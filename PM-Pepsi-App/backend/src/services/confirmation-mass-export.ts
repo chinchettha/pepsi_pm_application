@@ -58,7 +58,6 @@ export async function getMassConfirmExportSummary(
               SELECT 1
               FROM app.view_exportconfirm e
               WHERE e.idiw37 = i.idiw37
-                AND e.syst IN ('CRTD', 'REL')
                 AND i.confirm_qc_status = 'approved'
             ) AS exportable
      FROM app.tbiw37n i

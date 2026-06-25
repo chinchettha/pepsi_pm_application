@@ -63,16 +63,30 @@ export const calendarEventSchema = z.object({
   /** Pipeline จ่ายงาน — unassigned / assigned / in_progress / closed */
   pipelineStatus: z.enum(plannerPipelineStatusSchema).optional(),
   pipelineBadges: z.array(z.enum(plannerPipelineBadgeSchema)).optional(),
+  /** Open WO completion % (plan calendar) */
+  workProgressPercent: z.number().int().min(1).max(100).optional(),
+})
+
+export const plannerPipelineCountsResponseSchema = z.object({
+  unassigned: z.number().int().nonnegative(),
+  assigned: z.number().int().nonnegative(),
+  in_progress: z.number().int().nonnegative(),
+  partial: z.number().int().nonnegative(),
+  closed: z.number().int().nonnegative(),
 })
 
 export const calendarEventsResponseSchema = z.object({
   items: z.array(calendarEventSchema),
   year: z.number(),
   month: z.number(),
+  /** assignee = ช่าง · planner = ทั้งโรงงาน */
+  scope: z.enum(['assignee', 'planner']).optional(),
   /** รวมชั่วโมงต่อวัน yyyy-mm-dd → ชั่วโมง */
   dayHourTotals: z.record(z.string(), z.number()).optional(),
   /** จำนวน WO ต่อวัน yyyy-mm-dd */
   dayOrderCounts: z.record(z.string(), z.number()).optional(),
+  /** สรุปสี Pipeline ในเดือนที่เลือก */
+  pipelineCounts: plannerPipelineCountsResponseSchema.optional(),
 })
 
 export const calendarFilterOptionSchema = z.object({

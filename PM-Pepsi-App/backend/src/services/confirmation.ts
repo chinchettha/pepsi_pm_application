@@ -554,10 +554,7 @@ export async function listConfirmationExportRows(
   const params: unknown[] = []
   const parts: string[] = []
 
-  const supervisorWhere: string[] = [
-    `e.syst IN ('CRTD', 'REL')`,
-    `i.confirm_qc_status = 'approved'`,
-  ]
+  const supervisorWhere: string[] = [`i.confirm_qc_status = 'approved'`]
   if (idiw37n?.length) {
     params.push(idiw37n)
     supervisorWhere.push(`e.idiw37 = ANY($${params.length}::int[])`)
@@ -576,7 +573,6 @@ export async function listConfirmationExportRows(
   if (hasWrkclose) {
     const personnelWhere: string[] = [
       `i.confirm_qc_status = 'approved'`,
-      `i.syst IN ('CRTD', 'REL')`,
       `NOT EXISTS (
          SELECT 1 FROM app.tbcofirm c
          WHERE c.idiw37 = w.idiw37 AND c.wkctr = w.wkctr

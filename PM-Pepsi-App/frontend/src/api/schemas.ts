@@ -60,12 +60,14 @@ export const plannerPipelineStatusSchema = z.enum([
   'unassigned',
   'assigned',
   'in_progress',
+  'partial',
   'closed',
 ])
 
 export const plannerPipelineBadgeSchema = z.enum([
   'ack_pending',
   'ack_done',
+  'partial_close',
   'qc_pending',
   'qc_approved',
   'qc_rejected',
@@ -252,7 +254,9 @@ export const workOrderTaskListItemSchema = z.object({
   tasklist: z.string(),
   machine: z.string(),
   pmlist: z.string(),
+  description: z.string(),
   displayLine: z.string(),
+  headerShortText: z.string(),
   machinestatus: z.number().nullable(),
   mat: z.string(),
   matdescrip: z.string(),
@@ -330,6 +334,32 @@ export const closeWoAccessSchema = z.object({
     .optional(),
 })
 
+export const planMoveRequestItemSchema = z.object({
+  id: z.number().int(),
+  idiw37: z.number().int(),
+  requesterWkctr: z.string(),
+  comment: z.string(),
+  preferredDate: z.string().nullable(),
+  status: z.enum(['pending', 'fulfilled', 'cancelled']),
+  createdAt: z.string(),
+  fulfilledAt: z.string().nullable(),
+  fulfilledByWkctr: z.string().nullable(),
+})
+
+export const planMoveRequestBodySchema = z.object({
+  idiw37: z.coerce.number().int().positive(),
+  comment: z.string().min(3).max(2000),
+  preferredDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+})
+
+export const planMoveRequestResponseSchema = z.object({
+  ok: z.literal(true),
+  item: planMoveRequestItemSchema,
+})
+
 export const workOrderPlanningSchema = z.object({
   canAssign: z.boolean(),
   assigned: workOrderPlanningAssignedSchema.nullable(),
@@ -347,6 +377,9 @@ export const workOrderPlanningSchema = z.object({
   ),
   groups: z.array(workOrderPlanningGroupSchema),
   closeWoAccess: closeWoAccessSchema,
+  canRequestPlanMove: z.boolean().optional(),
+  myMoveRequest: planMoveRequestItemSchema.nullable().optional(),
+  moveRequestsPending: z.array(planMoveRequestItemSchema).optional(),
 })
 
 export const workOrderModalDetailSchema = z.object({
@@ -492,6 +525,10 @@ export const workOrderPlanningBatchResponseSchema = z.object({
   notFound: z.array(z.string()),
 })
 
+export const workOrderPlanningCommentBodySchema = z.object({
+  comment: z.string().trim().min(1).max(255),
+})
+
 export const workOrderPlanningOkResponseSchema = z.object({
   ok: z.literal(true),
 })
@@ -573,6 +610,7 @@ export const dashboardSummarySchema = z.object({
   openOrders: z.number(),
   closedThisMonth: z.number(),
   pendingPersonnel: z.number(),
+  partialOpenOrders: z.number(),
   iw37nLastImport: z.string().nullable(),
   trends: z.object({
     openDaily: dashboardTrendSeriesSchema,
@@ -626,14 +664,25 @@ export const calendarEventItemSchema = z.object({
   team: z.enum(['A', 'B', 'EE', 'UT']).optional(),
   pipelineStatus: plannerPipelineStatusSchema.optional(),
   pipelineBadges: z.array(plannerPipelineBadgeSchema).optional(),
+  workProgressPercent: z.number().int().min(1).max(100).optional(),
+})
+
+export const plannerPipelineCountsResponseSchema = z.object({
+  unassigned: z.number().int().nonnegative(),
+  assigned: z.number().int().nonnegative(),
+  in_progress: z.number().int().nonnegative(),
+  partial: z.number().int().nonnegative(),
+  closed: z.number().int().nonnegative(),
 })
 
 export const calendarEventsResponseSchema = z.object({
   items: z.array(calendarEventItemSchema),
   year: z.number(),
   month: z.number(),
+  scope: z.enum(['assignee', 'planner']).optional(),
   dayHourTotals: z.record(z.string(), z.number()).optional(),
   dayOrderCounts: z.record(z.string(), z.number()).optional(),
+  pipelineCounts: plannerPipelineCountsResponseSchema.optional(),
 })
 
 export const backlogFilterOptionSchema = z.object({
@@ -701,6 +750,7 @@ export const backlogManhourSearchBodySchema = z.object({
 })
 
 export const backlogManhourRowSchema = z.object({
+  idiw37: z.number().int().positive(),
   wkorder: z.string(),
   wktype: z.string().nullable().optional(),
   syst: z.string().nullable().optional(),
@@ -708,6 +758,11 @@ export const backlogManhourRowSchema = z.object({
   actwork: z.number(),
   unit: z.string(),
   operationshorttext: z.string().nullable().optional(),
+  planDate: z.string().optional(),
+  dispatchStatus: z.enum(['unassigned', 'assigned']),
+  ackStatus: z.enum(['none', 'pending', 'partial', 'acknowledged']),
+  assigneeCount: z.number().int().nonnegative(),
+  ackCount: z.number().int().nonnegative(),
 })
 
 export const backlogManhourResponseSchema = z.object({
@@ -905,7 +960,20 @@ export const iw37nItemSchema = z.object({
   functionalloc: z.string(),
   funcdescrip: z.string(),
   team: z.string().nullable(),
+  sapCode: z.string(),
+  tasklist: z.string(),
+  legacy: z.string(),
+  zone: z.string(),
+  machineList: z.string(),
+  machineMc: z.string(),
+  pmlist: z.string(),
+  pmday: z.number().nullable(),
+  masterPlanLinked: z.boolean(),
+  masterPlanMntplan: z.string(),
+  masterPlanDiscipline: z.enum(['EE', 'ME', 'PK']).or(z.literal('')),
 })
+
+export type Iw37nItem = z.infer<typeof iw37nItemSchema>
 
 export const iw37nItemsResponseSchema = z.object({
   items: z.array(iw37nItemSchema),
@@ -1527,6 +1595,7 @@ export const personnelRoleDataSchema = z.object({
       openTotal: z.number().int(),
       closeToday: z.number().int(),
       assignedTotal: z.number().int(),
+      partialTotal: z.number().int(),
     })
     .nullable()
     .optional(),
@@ -1539,6 +1608,7 @@ export const personnelDashboardResponseSchema = z.object({
   planning: z.object({
     openCount: z.number().int(),
     closedCount: z.number().int(),
+    partialCount: z.number().int(),
     recent: z.array(personnelPlanningItemSchema),
   }),
   confirmation: z.object({
@@ -2683,6 +2753,8 @@ export const confirmationByWorkOrderResponseSchema = z.object({
   items: z.array(confirmationCloseItemSchema),
 })
 
+export const personnelCloseKindSchema = z.enum(['complete', 'partial'])
+
 export const personnelCloseItemSchema = z.object({
   idwrkclose: z.number(),
   idiw37: z.number(),
@@ -2692,6 +2764,8 @@ export const personnelCloseItemSchema = z.object({
   cendate: z.number(),
   wktimewk: z.number(),
   wkunit: z.string(),
+  closeKind: personnelCloseKindSchema,
+  incompleteReason: z.string().nullable(),
 })
 
 export const personnelClosesResponseSchema = z.object({
@@ -3135,6 +3209,8 @@ export const telegramNotifyKindSchema = z.enum([
   'assignment_to_tech',
   'ack_to_planner',
   'close_to_planner',
+  'move_request_to_planner',
+  'plan_moved_to_tech',
   'ack_summary',
   'confirm_reminder',
   'custom',

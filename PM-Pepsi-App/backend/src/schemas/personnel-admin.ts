@@ -4,8 +4,9 @@
  */
 import { z } from 'zod'
 
+export const personnelPrimaryUserroleSchema = z.enum(['planner', 'technician'])
 export const personnelUserroleSchema = z.enum(['admin', 'manager', 'planner', 'technician'])
-export const personnelUserstSchema = z.enum(['A', 'H', 'U', 'W'])
+export const personnelUserstSchema = z.enum(['U', 'W'])
 
 export const personnelAdminItemSchema = z.object({
   idwkctr: z.string(),
@@ -81,7 +82,7 @@ export const personnelAdminUpsertBodySchema = z.object({
   wkctrmail: z.string().max(255).nullable().optional(),
   labourcost: z.coerce.number().min(0).default(0),
   userst: personnelUserstSchema.default('U'),
-  userrole: personnelUserroleSchema.default('planner'),
+  userrole: personnelPrimaryUserroleSchema.default('planner'),
   pass: z.string().max(255).optional(),
   workstatus: z.string().max(64).nullable().optional(),
 })

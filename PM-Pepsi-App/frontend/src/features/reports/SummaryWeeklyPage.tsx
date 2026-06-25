@@ -103,15 +103,12 @@ export function SummaryWeeklyPage() {
     setSubmitted(resolveEngUtilizationDateRange(id))
   }
 
-  const rangeCaption =
-    q.data?.range
-      ? t('engUtil.rangeIso', {
-          from: q.data.range.fromDate,
-          to: q.data.range.toDate,
-          shown: String(displayChartRows.length),
-          total: hideWithoutPhoto ? ` / ${engChartRows.length}` : '',
-        })
-      : null
+  const rangeCaption = t('engUtil.rangeIso', {
+    from: submitted.from,
+    to: submitted.to,
+    shown: String(displayChartRows.length),
+    total: hideWithoutPhoto ? ` / ${engChartRows.length}` : '',
+  })
 
   if (!canRead) {
     return (

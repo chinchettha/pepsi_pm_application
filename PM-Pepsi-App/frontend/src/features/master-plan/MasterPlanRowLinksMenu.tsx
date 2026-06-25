@@ -7,6 +7,7 @@ import { Activity, Database, Link2, ListChecks, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
+import { buildIw37nHref } from '@/features/iw37n/iw37n-href'
 
 type MasterPlanRowLinksMenuProps = {
   rowId: number
@@ -64,7 +65,7 @@ export function MasterPlanRowLinksMenu({ rowId, onOpenWorkOrder }: MasterPlanRow
             {mntplan ? (
               <li>
                 <Link
-                  to={`/iw37n?q=${encodeURIComponent(mntplan)}`}
+                  to={buildIw37nHref(mntplan)}
                   className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-slate-100"
                   onClick={() => setOpen(false)}
                 >

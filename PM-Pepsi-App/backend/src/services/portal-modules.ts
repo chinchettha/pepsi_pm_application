@@ -20,6 +20,16 @@ type AppModuleRow = {
   handoff_mode: string
 }
 
+/** Hidden on /portal until store & repair apps are deployed (U4f handoff). */
+const PORTAL_MODULES_HIDDEN_UNTIL_READY = new Set(['store', 'repair'])
+
+export function isPortalModuleVisible(moduleCode: string, baseUrl: string): boolean {
+  if (PORTAL_MODULES_HIDDEN_UNTIL_READY.has(moduleCode) && baseUrl.trim().length === 0) {
+    return false
+  }
+  return true
+}
+
 function isRbacSchemaMissing(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err)
   return (
@@ -69,6 +79,7 @@ export async function listPortalModulesForUser(
 
     const modules: PortalModule[] = rows
       .filter((row) => permSet.has(row.perm_code))
+      .filter((row) => isPortalModuleVisible(row.module_code, row.base_url))
       .map((row) => {
         const externalUrl = row.base_url.trim()
         const isPm = row.module_code === 'pm'

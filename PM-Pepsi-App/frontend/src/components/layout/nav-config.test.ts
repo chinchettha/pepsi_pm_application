@@ -12,7 +12,7 @@ describe('nav-config sidebar coverage', () => {
 
   it('includes Plan Calendar (post-login WC path)', () => {
     expect(linkPaths).toContain('/plan-calendar')
-    expect(permissionForRoute('/plan-calendar')).toBe('planning.read')
+    expect(permissionForRoute('/plan-calendar')).toBe('plan-calendar.read')
   })
 
   it('maps every fallback nav route to an RBAC permission (except public kiosk)', () => {
@@ -34,7 +34,7 @@ describe('nav-config sidebar coverage', () => {
   })
 
   it('keeps parent items without end for nested child routes (U4g.10)', () => {
-    const nestedParents = ['/work-orders', '/planning', '/confirmation', '/master-data', '/master-plan']
+    const nestedParents = ['/planning', '/confirmation', '/master-data', '/master-plan']
     for (const path of nestedParents) {
       const entry = appNav.find((e) => e.kind === 'item' && e.to === path)
       expect(entry?.kind === 'item' && entry.end, `${path} should not use end`).toBeFalsy()
@@ -62,7 +62,6 @@ describe('nav-config sidebar coverage', () => {
       '/plan-calendar',
       '/calendar',
       '/backlog',
-      '/work-orders',
       '/confirmation',
       '/planning',
       '/integration',

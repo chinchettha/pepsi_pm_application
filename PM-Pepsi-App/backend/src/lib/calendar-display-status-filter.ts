@@ -1,6 +1,9 @@
 import { BRAND_CALENDAR } from './brand-palette.js'
 import { isPlanMovableStatus } from '../services/scheduling-shared.js'
-import { isCalendarDisplayDateOverdue } from './calendar-move-policy.js'
+import {
+  hasCalendarWorkOrderNumber,
+  isCalendarDisplayDateOverdue,
+} from './calendar-move-policy.js'
 
 /** ค่าตัวกรองสถานะบนปฏิทิน — เทียบสไลด์ลูกค้าข้อ 5 */
 export const CALENDAR_DISPLAY_STATUS_CODES = [
@@ -40,12 +43,11 @@ export function sqlCalendarDisplayUnix(alias: string): string {
   return `COALESCE(NULLIF(${c}cday, 0), NULLIF(${c}actfinish, 0), ${c}bscstart)`
 }
 
-function sqlHasPlanMove(alias: string): string {
-  const c = alias ? `${alias}.` : ''
+function sqlHasRealWorkOrder(alias: string): string {
+  const w = `${alias}.wkorder`
   return `(
-    ${c}cday IS NOT NULL AND ${c}cday > 0
-    AND COALESCE(${c}mpcount, 0) >= 1
-    AND ${c}syst IN ('CRTD', 'REL')
+    NULLIF(TRIM(COALESCE(${w}, '')), '') IS NOT NULL
+    AND UPPER(TRIM(${w})) NOT IN ('0', '-', '—', 'N/A', 'NA', 'TBD', 'NONE', 'NULL')
   )`
 }
 
@@ -69,22 +71,20 @@ export function sqlCalendarDisplayStatusMatch(
   const display = sqlCalendarDisplayUnix(alias)
   const open = `${alias}.syst IN ('CRTD', 'REL')`
   const completed = sqlIsCompleted(alias, viewAlias)
-  const tomorrowStart = todayStart + 86400
+  const overdue = `(${display} > 0 AND ${display} < ${todayStart})`
+  const hasWo = sqlHasRealWorkOrder(alias)
 
   switch (code) {
     case 'completed':
       return completed
-    case 'upcoming':
-      return `(${open} AND NOT (${completed}) AND ${display} >= ${tomorrowStart})`
     case 'overdue':
-      return `(${open} AND NOT (${completed}) AND ${display} > 0 AND ${display} < ${todayStart})`
+      return `(${open} AND NOT (${completed}) AND ${overdue})`
+    case 'upcoming':
+      // Blue cards with WO# (displayStatus moved) — not overdue
+      return `(${open} AND NOT (${completed}) AND NOT ${overdue} AND ${hasWo})`
     case 'in_progress':
-      return `(
-        ${open}
-        AND NOT (${completed})
-        AND ${display} >= ${todayStart}
-        AND ${display} < ${tomorrowStart}
-      )`
+      // Orange estimate cards — open without real WO#
+      return `(${open} AND NOT (${completed}) AND NOT ${overdue} AND NOT ${hasWo})`
     default:
       return 'FALSE'
   }
@@ -111,6 +111,7 @@ export function matchesCalendarDisplayStatus(
   code: CalendarDisplayStatusCode,
   input: {
     syst?: string | null
+    wkorder?: string | null
     displayUnix: number
     cday?: number | null
     mpcount?: number | null
@@ -119,8 +120,6 @@ export function matchesCalendarDisplayStatus(
   },
   now?: Date,
 ): boolean {
-  const todayStart = calendarTodayStartSec(now)
-  const tomorrowStart = todayStart + 86400
   const syst = (input.syst ?? '').trim()
   const completed =
     (syst !== 'CRTD' && syst !== 'REL' && syst !== '') ||
@@ -130,11 +129,12 @@ export function matchesCalendarDisplayStatus(
   if (code === 'completed') return completed
   if (!isPlanMovableStatus(syst) || completed) return false
 
-  const display = input.displayUnix
-  if (code === 'upcoming') return display >= tomorrowStart
-  if (code === 'overdue') return isCalendarDisplayDateOverdue(display, now)
-  if (code === 'in_progress') {
-    return display >= todayStart && display < tomorrowStart
-  }
+  const overdue = isCalendarDisplayDateOverdue(input.displayUnix, now)
+  const hasWo = hasCalendarWorkOrderNumber(input.wkorder)
+
+  if (code === 'overdue') return overdue
+  if (overdue) return false
+  if (code === 'upcoming') return hasWo
+  if (code === 'in_progress') return !hasWo
   return false
 }

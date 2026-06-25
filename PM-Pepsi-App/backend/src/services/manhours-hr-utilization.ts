@@ -1,6 +1,9 @@
 import type { Pool } from 'pg'
 import { safeRatio } from '../lib/reports-range.js'
 import {
+  manhourConfirmMinutesToHours,
+} from '../lib/manhour-confirm-sql.js'
+import {
   resolveManhourChartRange,
   type ManhourChartRange,
 } from './manhour-chart.js'
@@ -78,10 +81,26 @@ export async function getManhoursHrUtilization(
          GROUP BY m.idwkctr
        ),
        conf AS (
-         SELECT p.wkctr, COALESCE(SUM(c.timewk), 0)::text AS hours
-         FROM app.view_exportconfirm c
-         INNER JOIN people p ON p.wkctr = c.wkctr
-         WHERE c.endate >= $2 AND c.endate <= $3
+         SELECT p.wkctr, COALESCE(SUM(src.mins), 0)::text AS hours
+         FROM people p
+         LEFT JOIN LATERAL (
+           SELECT mins::numeric AS mins
+           FROM (
+             SELECT c.timewk AS mins
+             FROM app.view_exportconfirm c
+             WHERE c.wkctr = p.wkctr AND c.endate >= $2 AND c.endate <= $3
+             UNION ALL
+             SELECT w.wktimewk AS mins
+             FROM app.tbwrkclose w
+             WHERE w.wkctr = p.wkctr
+               AND w.close_kind = 'complete'
+               AND w.wktimeclose >= $2 AND w.wktimeclose <= $3
+               AND NOT EXISTS (
+                 SELECT 1 FROM app.tbcofirm cf
+                 WHERE cf.idiw37 = w.idiw37 AND cf.wkctr = w.wkctr
+               )
+           ) x
+         ) src ON true
          GROUP BY p.wkctr
        )
        SELECT
@@ -106,7 +125,7 @@ export async function getManhoursHrUtilization(
 
   const byPerson: ManhourHrUtilPerson[] = peopleRes.rows.map((r) => {
     const manhourHours = Number(r.mh_hours)
-    const confirmHours = Number(r.confirm_hours)
+    const confirmHours = manhourConfirmMinutesToHours(Number(r.confirm_hours))
     return {
       idwkctr: r.idwkctr,
       wkctr: r.wkctr,

@@ -27,6 +27,7 @@ describe('backlog manhour schema', () => {
       byWkzb: [{ code: 'ZB01', label: 'ZB01', count: 1 }],
       rows: [
         {
+          idiw37: 1,
           wkorder: '1001',
           wktype: 'ZB01',
           syst: 'REL',
@@ -34,6 +35,11 @@ describe('backlog manhour schema', () => {
           actwork: 1,
           unit: 'H',
           operationshorttext: 'Pump check',
+          planDate: '2026-05-01',
+          dispatchStatus: 'unassigned',
+          ackStatus: 'none',
+          assigneeCount: 0,
+          ackCount: 0,
         },
       ],
     })

@@ -48,9 +48,8 @@ export function deriveUserRole(
   const u = (userst ?? '').trim().toUpperCase()
   const pos = (position ?? '').trim()
 
-  if (u === 'A') return 'admin'
+  if (u === 'A' || u === 'H') return 'planner'
   if (u === 'W') return 'technician'
-  if (u === 'H') return 'manager'
 
   // userst === 'U' หรือว่างเปล่า — ใช้ position เป็นตัวช่วยตัดสิน
   if (pos) {
@@ -68,7 +67,13 @@ export function resolveUserRole(
   userst: string | null | undefined,
   position?: string | null,
 ): UserRole {
-  return normalizeUserRole(userrole) ?? deriveUserRole(userst, position)
+  const fromCol = normalizeUserRole(userrole)
+  if (fromCol === 'admin' || fromCol === 'manager') return 'planner'
+  if (fromCol) return fromCol
+
+  const derived = deriveUserRole(userst, position)
+  if (derived === 'admin' || derived === 'manager') return 'planner'
+  return derived
 }
 
 export const ROLE_LABEL_TH: Record<UserRole, string> = {

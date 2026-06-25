@@ -25,6 +25,10 @@ export const confirmQcSnapshotResponseSchema = z.object({
 
 export const confirmQcRejectBodySchema = z.object({
   note: z.string().max(500).optional(),
+  /** ISO date (yyyy-mm-dd) — งานจะเลื่อนไปวันนี้บนปฏิทิน */
+  rescheduleDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'rescheduleDate must be yyyy-mm-dd'),
 })
 
 export const confirmQcPendingItemSchema = z.object({

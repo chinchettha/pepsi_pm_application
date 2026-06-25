@@ -62,7 +62,7 @@ export function AppPageHero({
   const { t } = useTranslation('common')
   const reducedMotion = useReducedMotion()
   const showOrbs = animated && !reducedMotion
-  const eyebrowText = eyebrow ?? t('hero.defaultEyebrow')
+  const eyebrowText = eyebrow !== undefined ? eyebrow : t('hero.defaultEyebrow')
 
   return (
     <header

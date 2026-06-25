@@ -1,4 +1,13 @@
 import type { Pool } from 'pg'
+import {
+  MANHOUR_CONFIRM_MINUTES_SUM_SQL,
+  MANHOUR_CONFIRMED_WO_COUNT_SQL,
+  manhourConfirmMinutesToHours,
+} from '../lib/manhour-confirm-sql.js'
+import {
+  MANHOUR_DISPATCHED_WO_BY_TYPE_SQL,
+  MANHOUR_DISPATCHED_WO_COUNT_SQL,
+} from '../lib/personnel-assigned-work-sql.js'
 import { parseWorkday } from './manhours.js'
 
 export type ManhourChartRange = {
@@ -54,14 +63,26 @@ function unixToIsoDate(sec: number): string {
   return `${y}-${m}-${day}`
 }
 
+const SECONDS_PER_DAY = 86_400
+
+/** User-selected calendar day — range `to` must include the full last day (not 00:00 only). */
+export function inclusiveEndOfDaySec(dayStartSec: number): number {
+  return dayStartSec + SECONDS_PER_DAY - 1
+}
+
 function defaultRange(): ManhourChartRange {
-  const end = new Date()
-  end.setHours(0, 0, 0, 0)
-  const start = new Date(end)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const start = new Date(todayStart)
   start.setDate(start.getDate() - 30)
   const from = Math.floor(start.getTime() / 1000)
-  const to = Math.floor(end.getTime() / 1000)
-  return { from, to, fromDate: unixToIsoDate(from), toDate: unixToIsoDate(to) }
+  const toDayStart = Math.floor(todayStart.getTime() / 1000)
+  return {
+    from,
+    to: inclusiveEndOfDaySec(toDayStart),
+    fromDate: unixToIsoDate(from),
+    toDate: unixToIsoDate(toDayStart),
+  }
 }
 
 export function resolveManhourChartRange(
@@ -70,26 +91,27 @@ export function resolveManhourChartRange(
 ): ManhourChartRange {
   if (!fromInput?.trim() && !toInput?.trim()) return defaultRange()
   try {
-    const from = fromInput?.trim() ? parseWorkday(fromInput.trim()) : undefined
-    const to = toInput?.trim() ? parseWorkday(toInput.trim()) : undefined
     const base = defaultRange()
-    const resolvedFrom = from ?? base.from
-    const resolvedTo = to ?? base.to
-    if (resolvedTo < resolvedFrom) throw new Error('to must be >= from')
+    const fromDayStart = fromInput?.trim() ? parseWorkday(fromInput.trim()) : base.from
+    const toDayStart = toInput?.trim()
+      ? parseWorkday(toInput.trim())
+      : parseWorkday(base.toDate)
+    if (inclusiveEndOfDaySec(toDayStart) < fromDayStart) throw new Error('to must be >= from')
     return {
-      from: resolvedFrom,
-      to: resolvedTo,
-      fromDate: unixToIsoDate(resolvedFrom),
-      toDate: unixToIsoDate(resolvedTo),
+      from: fromDayStart,
+      to: inclusiveEndOfDaySec(toDayStart),
+      fromDate: unixToIsoDate(fromDayStart),
+      toDate: unixToIsoDate(toDayStart),
     }
   } catch {
     return defaultRange()
   }
 }
 
-function zbPercent(planned: number, confirmed: number): number {
-  if (confirmed <= 0) return 0
-  return Math.round((planned / confirmed) * 10000) / 100
+/** % complete = Confirm ÷ Assigned (เดิมสลับสูตร planned÷confirmed ทำให้ได้ >100% ผิดปกติ). */
+export function manhourZbCompletionPercent(planned: number, confirmed: number): number {
+  if (planned <= 0) return 0
+  return Math.round((confirmed / planned) * 10000) / 100
 }
 
 /** แถว manhour ช่วง stworkday–workday ทับซ้อนช่วงที่เลือก (M_manhour) */
@@ -152,18 +174,8 @@ export async function getManhourChartPerformance(
   const wkctr = profile.wkctr
 
   const [planRes, confirmSumRes, mhRes, zbTypes] = await Promise.all([
-    pool.query<{ n: string }>(
-      `SELECT COUNT(*)::text AS n
-       FROM app.view_planwork
-       WHERE wkctr = $1 AND bscstart BETWEEN $2 AND $3`,
-      [wkctr, from, to],
-    ),
-    pool.query<{ total: string }>(
-      `SELECT COALESCE(SUM(timewk), 0)::text AS total
-       FROM app.view_exportconfirm
-       WHERE wkctr = $1 AND endate BETWEEN $2 AND $3`,
-      [wkctr, from, to],
-    ),
+    pool.query<{ n: string }>(MANHOUR_DISPATCHED_WO_COUNT_SQL, [idwkctr, from, to]),
+    pool.query<{ total: string }>(MANHOUR_CONFIRM_MINUTES_SUM_SQL, [wkctr, from, to]),
     pool.query<{
       twh: string
       tot1: string
@@ -186,18 +198,18 @@ export async function getManhourChartPerformance(
     Promise.all(
       (['ZB01', 'ZB02', 'ZB05'] as const).map(async (wktype) => {
         const [plannedRes, confirmedRes] = await Promise.all([
-          pool.query<{ n: string }>(
-            `SELECT COUNT(*)::text AS n
-             FROM app.view_planwork
-             WHERE wkctr = $1 AND wktype = $2 AND bscstart BETWEEN $3 AND $4`,
-            [wkctr, wktype, from, to],
-          ),
-          pool.query<{ n: string }>(
-            `SELECT COUNT(*)::text AS n
-             FROM app.view_exportconfirm
-             WHERE wkctr = $1 AND wktype = $2 AND endate BETWEEN $3 AND $4`,
-            [wkctr, wktype, from, to],
-          ),
+          pool.query<{ n: string }>(MANHOUR_DISPATCHED_WO_BY_TYPE_SQL, [
+            idwkctr,
+            wktype,
+            from,
+            to,
+          ]),
+          pool.query<{ n: string }>(MANHOUR_CONFIRMED_WO_COUNT_SQL, [
+            wkctr,
+            wktype,
+            from,
+            to,
+          ]),
         ])
         const planned = Number(plannedRes.rows[0]?.n ?? 0)
         const confirmed = Number(confirmedRes.rows[0]?.n ?? 0)
@@ -205,13 +217,13 @@ export async function getManhourChartPerformance(
           wktype,
           planned,
           confirmed,
-          percent: zbPercent(planned, confirmed),
+          percent: manhourZbCompletionPercent(planned, confirmed),
         }
       }),
     ),
   ])
 
-  const confirmHours = Number(confirmSumRes.rows[0]?.total ?? 0)
+  const confirmHours = manhourConfirmMinutesToHours(Number(confirmSumRes.rows[0]?.total ?? 0))
   const mh = mhRes.rows[0]
   const manhourTotal =
     Number(mh?.twh ?? 0) +
@@ -264,12 +276,7 @@ export async function getManhourChartBreakdown(
        WHERE idwkctr = $1 AND ${MANHOUR_PERIOD_OVERLAP_SQL}`,
       [idwkctr, from, to],
     ),
-    pool.query<{ total: string }>(
-      `SELECT COALESCE(SUM(timewk), 0)::text AS total
-       FROM app.view_confirmation
-       WHERE wkctr = $1 AND endate BETWEEN $2 AND $3`,
-      [wkctr, from, to],
-    ),
+    pool.query<{ total: string }>(MANHOUR_CONFIRM_MINUTES_SUM_SQL, [wkctr, from, to]),
   ])
   const mh = mhRes.rows[0]
   return {
@@ -280,6 +287,6 @@ export async function getManhourChartBreakdown(
     ot1hol: Number(mh?.ot1hol ?? 0),
     ot2: Number(mh?.ot2 ?? 0),
     ot3: Number(mh?.ot3 ?? 0),
-    confirmHours: Number(confirmRes.rows[0]?.total ?? 0),
+    confirmHours: manhourConfirmMinutesToHours(Number(confirmRes.rows[0]?.total ?? 0)),
   }
 }

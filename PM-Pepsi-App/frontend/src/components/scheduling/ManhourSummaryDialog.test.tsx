@@ -6,17 +6,22 @@ import '@/i18n'
 import { ManhourSummaryDialog } from '@/components/scheduling/ManhourSummaryDialog'
 import { postBacklogManhourSummary } from '@/lib/api-public'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/api-public', () => ({
   postBacklogManhourSummary: vi.fn(),
 }))
 
+vi.mock('@/lib/use-permission', () => ({
+  usePermission: (code: string) => code === 'planning.assign',
+}))
+
 function renderDialog(props: {
   open?: boolean
   fromDate?: string
   toDate?: string
+  onAssign?: (target: { idiw37: number; wkorder: string }) => void
 } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -26,6 +31,7 @@ function renderDialog(props: {
         onOpenChange={vi.fn()}
         fromDate={props.fromDate ?? '2026-05-01'}
         toDate={props.toDate ?? '2026-05-01'}
+        onAssign={props.onAssign}
       />
     </QueryClientProvider>,
   )
@@ -46,6 +52,7 @@ describe('ManhourSummaryDialog', () => {
       byWkzb: [{ code: 'ZB01', label: 'ZB01', count: 1 }],
       rows: [
         {
+          idiw37: 42,
           wkorder: '1001',
           wktype: 'ZB01',
           syst: 'REL',
@@ -53,6 +60,11 @@ describe('ManhourSummaryDialog', () => {
           actwork: 1,
           unit: 'H',
           operationshorttext: 'Test WO',
+          planDate: '2026-05-01',
+          dispatchStatus: 'unassigned',
+          ackStatus: 'none',
+          assigneeCount: 0,
+          ackCount: 0,
         },
       ],
     })
@@ -95,5 +107,79 @@ describe('ManhourSummaryDialog', () => {
     vi.mocked(postBacklogManhourSummary).mockClear()
     renderDialog({ open: false })
     await waitFor(() => expect(postBacklogManhourSummary).not.toHaveBeenCalled())
+  })
+
+  it('shows unassigned when API returns dispatchStatus unassigned', async () => {
+    vi.mocked(postBacklogManhourSummary).mockResolvedValue({
+      fromDate: '2026-06-02',
+      toDate: '2026-06-02',
+      plannedMinutes: 30,
+      plannedHours: 0.5,
+      actualMinutes: 0,
+      actualHours: 0,
+      totalOrders: 1,
+      completionCount: 0,
+      completionPercent: 0,
+      byWkzb: [],
+      rows: [
+        {
+          idiw37: 1300,
+          wkorder: '4001568407',
+          wktype: 'ZB02',
+          syst: 'CRTD',
+          work: 30,
+          actwork: 0,
+          unit: 'MIN',
+          planDate: '2026-06-02',
+          dispatchStatus: 'unassigned',
+          ackStatus: 'none',
+          assigneeCount: 0,
+          ackCount: 0,
+        },
+      ],
+    })
+
+    renderDialog({ fromDate: '2026-06-02', toDate: '2026-06-02', onAssign: vi.fn() })
+
+    expect(await screen.findByText('Not assigned')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Assign/i })).toBeInTheDocument()
+    expect(screen.queryByText('Awaiting ack')).not.toBeInTheDocument()
+  })
+
+  it('toggles expanded layout when expand button is clicked', async () => {
+    vi.mocked(postBacklogManhourSummary).mockResolvedValue({
+      fromDate: '2026-06-02',
+      toDate: '2026-06-02',
+      plannedMinutes: 30,
+      plannedHours: 0.5,
+      actualMinutes: 0,
+      actualHours: 0,
+      totalOrders: 1,
+      completionCount: 0,
+      completionPercent: 0,
+      byWkzb: [],
+      rows: [
+        {
+          idiw37: 1300,
+          wkorder: '4001568407',
+          wktype: 'ZB02',
+          syst: 'CRTD',
+          work: 30,
+          actwork: 0,
+          unit: 'MIN',
+          planDate: '2026-06-02',
+          dispatchStatus: 'unassigned',
+          ackStatus: 'none',
+          assigneeCount: 0,
+          ackCount: 0,
+        },
+      ],
+    })
+
+    renderDialog({ fromDate: '2026-06-02', toDate: '2026-06-02', onAssign: vi.fn() })
+
+    const expandButton = await screen.findByRole('button', { name: /Expand dialog/i })
+    fireEvent.click(expandButton)
+    expect(screen.getByRole('button', { name: /Collapse dialog/i })).toBeInTheDocument()
   })
 })

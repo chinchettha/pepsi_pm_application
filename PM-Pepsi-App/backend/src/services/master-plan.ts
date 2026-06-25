@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg'
+import { invalidateIw37nMasterPlanEnrichmentCache } from '../lib/iw37n-master-plan-enrich.js'
 import {
   applyFillDownDisplay,
   displayColumnsForSheet,
@@ -16,12 +17,21 @@ import {
   type MasterPlanDiscipline,
   type ParsedMasterPlanWorkbook,
 } from '../lib/master-plan-parse.js'
+import { detectMasterPlanDiscipline } from '../lib/master-plan-discipline-detect.js'
+import {
+  attachPmStatusToRows,
+  fetchIw37nCloseSnapshots,
+} from '../lib/master-plan-pm-dates.js'
 import {
   extractMasterPlanLinkKeys,
   suggestsPm3Phase,
 } from '../lib/master-plan-row-links.js'
 import { detailSheetRowsToTasklist } from '../lib/master-plan-tasklist.js'
-import { buildMasterPlanSearchLabel, escapeIlikePattern } from '../lib/master-plan-search.js'
+import {
+  buildMasterPlanSearchLabel,
+  escapeIlikePattern,
+  scoreMaintenancePlanQueryMatch,
+} from '../lib/master-plan-search.js'
 import { auditLogFromRequest } from '../lib/audit-log.js'
 import { importTasklists } from './master-data.js'
 import type { Request } from 'express'
@@ -235,6 +245,31 @@ export async function getSheetRows(
     columnHeaders,
   )
 
+  const baseRows = withDisplay.map((r, i) => ({
+    id: rawRows[i]?.id ?? 0,
+    rowIndex: r.rowIndex,
+    cells: r.cells,
+    display: r.display,
+  }))
+
+  let rowsWithPm = baseRows.map((row) => ({
+    ...row,
+    pmStatus: { lastClosedAt: null, nextDueAt: null, intervalDays: null },
+  }))
+
+  if (sheet.sheet_kind === 'detail' && baseRows.length > 0) {
+    const mntplans = new Set<string>()
+    for (const row of baseRows) {
+      const keys = extractMasterPlanLinkKeys(columnHeaders, row.cells, row.display)
+      const mnt = keys.mntplan.trim()
+      if (mnt) mntplans.add(mnt)
+    }
+    if (mntplans.size > 0) {
+      const closeRows = await fetchIw37nCloseSnapshots(pool, [...mntplans])
+      rowsWithPm = attachPmStatusToRows(columnHeaders, baseRows, closeRows)
+    }
+  }
+
   return {
     sheetId: sheet.id,
     sheetName: sheet.sheet_name,
@@ -245,12 +280,7 @@ export async function getSheetRows(
     total,
     offset,
     limit,
-    rows: withDisplay.map((r, i) => ({
-      id: rawRows[i]?.id ?? 0,
-      rowIndex: r.rowIndex,
-      cells: r.cells,
-      display: r.display,
-    })),
+    rows: rowsWithPm,
   }
 }
 
@@ -267,6 +297,8 @@ export async function searchMasterPlanRows(
     sheetId: number
     sheetName: string
     label: string
+    maintenancePlan: string
+    matchScore: number
   }>
 }> {
   const q = query.trim()
@@ -304,22 +336,85 @@ export async function searchMasterPlanRows(
     [discipline, PLAN_YEAR, pattern, safeLimit],
   )
 
-  const items = rowsRes.rows.map((row) => {
-    const columnHeaders = Array.isArray(row.column_headers_json) ? row.column_headers_json : []
-    const cells = row.cells_json ?? {}
-    const withDisplay = applyFillDownDisplay(
-      [{ rowIndex: row.row_index, cells }],
-      columnHeaders,
-    )
-    const display = withDisplay[0]?.display ?? cells
-    return {
-      rowId: Number(row.row_id),
-      rowIndex: row.row_index,
-      sheetId: Number(row.sheet_id),
-      sheetName: row.sheet_name,
-      label: buildMasterPlanSearchLabel(columnHeaders, cells, display),
+  const items = rowsRes.rows
+    .map((row) => {
+      const columnHeaders = Array.isArray(row.column_headers_json) ? row.column_headers_json : []
+      const cells = row.cells_json ?? {}
+      const withDisplay = applyFillDownDisplay(
+        [{ rowIndex: row.row_index, cells }],
+        columnHeaders,
+      )
+      const display = withDisplay[0]?.display ?? cells
+      const maintenancePlan = extractMasterPlanLinkKeys(columnHeaders, cells, display).mntplan.trim()
+      return {
+        rowId: Number(row.row_id),
+        rowIndex: row.row_index,
+        sheetId: Number(row.sheet_id),
+        sheetName: row.sheet_name,
+        label: buildMasterPlanSearchLabel(columnHeaders, cells, display),
+        maintenancePlan,
+        matchScore: scoreMaintenancePlanQueryMatch(columnHeaders, cells, display, q),
+      }
+    })
+    .sort((a, b) => b.matchScore - a.matchScore || a.rowIndex - b.rowIndex)
+
+  return { query: q, items }
+}
+
+const MASTER_PLAN_DISCIPLINES: MasterPlanDiscipline[] = ['EE', 'ME', 'PK']
+
+/** Search all published workbooks — ranks by Maintenance plan column match. */
+export async function searchMasterPlanRowsGlobal(
+  pool: Pool,
+  query: string,
+  limit = 20,
+): Promise<{
+  query: string
+  items: Array<{
+    rowId: number
+    rowIndex: number
+    sheetId: number
+    sheetName: string
+    label: string
+    discipline: MasterPlanDiscipline
+    maintenancePlan: string
+    matchScore: number
+  }>
+}> {
+  const q = query.trim()
+  if (!q) return { query: '', items: [] }
+
+  const safeLimit = Math.min(50, Math.max(1, limit))
+  const merged: Array<{
+    rowId: number
+    rowIndex: number
+    sheetId: number
+    sheetName: string
+    label: string
+    discipline: MasterPlanDiscipline
+    maintenancePlan: string
+    matchScore: number
+  }> = []
+
+  for (const discipline of MASTER_PLAN_DISCIPLINES) {
+    const part = await searchMasterPlanRows(pool, discipline, q, safeLimit)
+    for (const item of part.items) {
+      merged.push({
+        ...item,
+        discipline,
+        maintenancePlan: item.maintenancePlan ?? '',
+        matchScore: item.matchScore ?? 0,
+      })
     }
-  })
+  }
+
+  merged.sort((a, b) => b.matchScore - a.matchScore || a.rowIndex - b.rowIndex)
+  const seen = new Set<number>()
+  const items = merged.filter((item) => {
+    if (seen.has(item.rowId)) return false
+    seen.add(item.rowId)
+    return true
+  }).slice(0, safeLimit)
 
   return { query: q, items }
 }
@@ -969,25 +1064,47 @@ export async function getMasterPlanStatus(
 export type ImportMasterPlanResult =
   | {
       ok: true
+      discipline: MasterPlanDiscipline
       workbookId: number
       versionNo: number
-      status: 'draft'
+      status: 'published'
       rowCount: number
       diff: MasterPlanImportDiff
+      tasklist: { inserted: number; updated: number; skipped: number; failed: number }
+      publishableRows: number
+      skippedRows: number
+      promotedDraft: boolean
     }
   | { ok: false; code: string; message: string; diff?: MasterPlanImportDiff }
+
+export function resolveMasterPlanImportDiscipline(
+  buffer: Buffer,
+  sourceFilename: string,
+  requested?: MasterPlanDiscipline | null,
+): MasterPlanDiscipline | null {
+  const detected = detectMasterPlanDiscipline(buffer, sourceFilename)
+  if (detected) return detected
+  return requested ?? null
+}
 
 export async function importMasterPlanWorkbook(
   pool: Pool,
   buffer: Buffer,
-  discipline: MasterPlanDiscipline,
   sourceFilename: string,
   actorId: string,
+  req: Request,
+  requestedDiscipline?: MasterPlanDiscipline | null,
 ): Promise<ImportMasterPlanResult> {
-  const imported = parseMasterPlanWorkbook(buffer, discipline, sourceFilename)
-  if (imported.discipline !== discipline) {
-    return { ok: false, code: 'DISCIPLINE_MISMATCH', message: 'File discipline does not match request' }
+  const discipline = resolveMasterPlanImportDiscipline(buffer, sourceFilename, requestedDiscipline)
+  if (!discipline) {
+    return {
+      ok: false,
+      code: 'UNRECOGNIZED_WORKBOOK',
+      message: 'Could not detect EE, ME, or PK from this Excel file',
+    }
   }
+
+  const imported = parseMasterPlanWorkbook(buffer, discipline, sourceFilename)
 
   const publishedMeta = await getWorkbookMeta(pool, discipline, 'published')
   const publishedParsed = publishedMeta ? await loadWorkbookParsed(pool, publishedMeta.id) : null
@@ -1003,6 +1120,7 @@ export async function importMasterPlanWorkbook(
   }
 
   const client = await pool.connect()
+  let inserted: { workbookId: number; rowCount: number }
   try {
     await client.query('BEGIN')
     await deleteWorkbooksByStatus(client, discipline, PLAN_YEAR, 'draft')
@@ -1014,26 +1132,37 @@ export async function importMasterPlanWorkbook(
     )
     const nextVersion = Number(versionRes.rows[0]?.max ?? 0) + 1
 
-    const inserted = await insertMasterPlanWorkbook(client, imported, {
+    inserted = await insertMasterPlanWorkbook(client, imported, {
       versionNo: nextVersion,
       status: 'draft',
       actorId,
     })
 
     await client.query('COMMIT')
-    return {
-      ok: true,
-      workbookId: inserted.workbookId,
-      versionNo: nextVersion,
-      status: 'draft',
-      rowCount: inserted.rowCount,
-      diff,
-    }
   } catch (err) {
     await client.query('ROLLBACK')
     throw err
   } finally {
     client.release()
+  }
+
+  const published = await publishMasterPlanToTasklist(pool, discipline, actorId, req)
+  if (!published.ok) {
+    return { ok: false, code: published.code, message: published.message }
+  }
+
+  return {
+    ok: true,
+    discipline,
+    workbookId: inserted.workbookId,
+    versionNo: published.versionNo,
+    status: 'published',
+    rowCount: inserted.rowCount,
+    diff,
+    tasklist: published.tasklist,
+    publishableRows: published.publishableRows,
+    skippedRows: published.skippedRows,
+    promotedDraft: published.promotedDraft,
   }
 }
 
@@ -1180,6 +1309,8 @@ export async function publishMasterPlanToTasklist(
       publishableRows: allTasklistRows.length,
     },
   })
+
+  invalidateIw37nMasterPlanEnrichmentCache()
 
   return {
     ok: true,

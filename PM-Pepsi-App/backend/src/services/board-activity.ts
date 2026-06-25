@@ -96,6 +96,11 @@ export async function getBoardActivity(
     LEFT JOIN app.tbmoveplan mov ON mov.idiw37 = p.idiw37
     CROSS JOIN LATERAL (
       SELECT COALESCE(
+        CASE
+          WHEN p.ack_status = 'acknowledged' AND p.ack_at IS NOT NULL
+            THEN FLOOR(EXTRACT(EPOCH FROM p.ack_at))::bigint
+          ELSE NULL
+        END,
         CASE WHEN p.pwcomment ~ '^[0-9]{9,11}$' THEN p.pwcomment::bigint ELSE NULL END,
         NULLIF(mov.cday, 0),
         NULLIF(i.bscstart, 0)
@@ -112,23 +117,57 @@ export async function getBoardActivity(
 
   const closedSql = `
     SELECT
-      ('close-' || c.idclose::text) AS source_id,
-      'closed'::text AS kind,
-      c.timeclose AS event_unix,
-      i.wkorder,
-      wc.idwkctr::text AS idwkctr,
-      c.wkctr,
-      NULLIF(TRIM(CONCAT(COALESCE(wc.namewkctr, ''), ' ', COALESCE(wc.surnamewkctr, ''))), '') AS display_name,
-      (octet_length(wc.imgmember_data) > 0) AS has_image
-    FROM app.tbcofirm c
-    INNER JOIN app.tbiw37n i ON i.idiw37 = c.idiw37
-    LEFT JOIN app.tbworkcenter wc ON wc.wkctr = c.wkctr
-    WHERE i.confirm_qc_status = 'approved'
-      AND c.timeclose > 0
-      AND timezone($1, to_timestamp(c.timeclose))::date >= $2::date
-      AND timezone($1, to_timestamp(c.timeclose))::date <= $3::date
-      AND ($5::text IS NULL OR i.team = $5::text)
-    ORDER BY c.timeclose DESC
+      source_id,
+      kind,
+      event_unix,
+      wkorder,
+      idwkctr,
+      wkctr,
+      display_name,
+      has_image
+    FROM (
+      SELECT
+        ('close-c-' || c.idclose::text) AS source_id,
+        'closed'::text AS kind,
+        c.timeclose AS event_unix,
+        i.wkorder,
+        wc.idwkctr::text AS idwkctr,
+        c.wkctr,
+        NULLIF(TRIM(CONCAT(COALESCE(wc.namewkctr, ''), ' ', COALESCE(wc.surnamewkctr, ''))), '') AS display_name,
+        (octet_length(wc.imgmember_data) > 0) AS has_image
+      FROM app.tbcofirm c
+      INNER JOIN app.tbiw37n i ON i.idiw37 = c.idiw37
+      LEFT JOIN app.tbworkcenter wc ON wc.wkctr = c.wkctr
+      WHERE c.timeclose > 0
+        AND timezone($1, to_timestamp(c.timeclose))::date >= $2::date
+        AND timezone($1, to_timestamp(c.timeclose))::date <= $3::date
+        AND ($5::text IS NULL OR i.team = $5::text)
+
+      UNION ALL
+
+      SELECT
+        ('close-w-' || w.idwrkclose::text) AS source_id,
+        'closed'::text AS kind,
+        w.wktimeclose AS event_unix,
+        i.wkorder,
+        wc.idwkctr::text AS idwkctr,
+        w.wkctr,
+        NULLIF(TRIM(CONCAT(COALESCE(wc.namewkctr, ''), ' ', COALESCE(wc.surnamewkctr, ''))), '') AS display_name,
+        (octet_length(wc.imgmember_data) > 0) AS has_image
+      FROM app.tbwrkclose w
+      INNER JOIN app.tbiw37n i ON i.idiw37 = w.idiw37
+      LEFT JOIN app.tbworkcenter wc ON wc.wkctr = w.wkctr
+      WHERE w.close_kind = 'complete'
+        AND w.wktimeclose > 0
+        AND timezone($1, to_timestamp(w.wktimeclose))::date >= $2::date
+        AND timezone($1, to_timestamp(w.wktimeclose))::date <= $3::date
+        AND ($5::text IS NULL OR i.team = $5::text)
+        AND NOT EXISTS (
+          SELECT 1 FROM app.tbcofirm cf
+          WHERE cf.idiw37 = w.idiw37 AND cf.wkctr = w.wkctr
+        )
+    ) closed_events
+    ORDER BY event_unix DESC
     LIMIT $4
   `
 

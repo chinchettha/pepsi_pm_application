@@ -32,6 +32,13 @@ import {
   appendPmPhaseFilter,
   PM_PHASE_FILTER_OPTIONS,
 } from '../lib/pm-phase-filter.js'
+import {
+  appendCalendarAssignedWkctrFilter,
+} from '../lib/personnel-assigned-work-sql.js'
+import {
+  appendFunctionalLocFilter,
+  listFunctionalFilterOptions,
+} from '../lib/functional-filter-options.js'
 import { formatWorkcenterFilterLabel } from '../data/eng-technician-codes.js'
 import { listWorkcenters } from './confirmation.js'
 import {
@@ -92,20 +99,10 @@ export async function listCalendarFilterOptions(pool: Pool): Promise<FilterOptio
   // กิจกรรม: Z1/Z2/Z5 คงที่ — ไม่อ่าน tbactivitytype (ดู activity-type-label.ts)
   const factory = `%${FACTORY_CODE}%`
 
-  const [statusOpts, workcenterItems, fnR, fnMasterR, eqR, priorityR] = await Promise.all([
+  const [statusOpts, workcenterItems, functionals, eqR, priorityR] = await Promise.all([
     listStatusOptions(pool),
     listWorkcenters(pool),
-    pool.query<{ functionalloc: string; funcdescrip: string | null }>(
-      `SELECT DISTINCT functionalloc, funcdescrip
-       FROM app.tbiw37n
-       WHERE functionalloc IS NOT NULL AND functionalloc <> ''
-         AND ${sqlFactoryScope('', '$1')}
-       ORDER BY functionalloc`,
-      [factory],
-    ),
-    pool.query<{ functionalloc: string; funldescrip: string | null }>(
-      `SELECT functionalloc, funldescrip FROM app.tbfunctional ORDER BY functionalloc`,
-    ),
+    listFunctionalFilterOptions(pool),
     pool.query<{ equipment: string; equdescrip: string | null }>(
       `SELECT DISTINCT equipment, equdescrip
        FROM app.tbiw37n
@@ -142,16 +139,7 @@ export async function listCalendarFilterOptions(pool: Pool): Promise<FilterOptio
       label: formatWorkcenterFilterLabel(w.wkctr, w.displayName),
     })),
     teams: [...PM_PLAN_TEAM_FILTER_OPTIONS],
-    functionals:
-      fnMasterR.rows.length > 0
-        ? fnMasterR.rows.map((r) => ({
-            code: r.functionalloc,
-            label: r.funldescrip ? `${r.functionalloc} = ${r.funldescrip}` : r.functionalloc,
-          }))
-        : fnR.rows.map((r) => ({
-            code: r.functionalloc,
-            label: r.funcdescrip ? `${r.functionalloc} = ${r.funcdescrip}` : r.functionalloc,
-          })),
+    functionals,
     equipments: eqR.rows.map((r) => ({
       code: r.equipment,
       label: r.equdescrip ? `${r.equipment} = ${r.equdescrip}` : r.equipment,
@@ -224,7 +212,9 @@ function buildCalendarFilteredFrom(
       SELECT COUNT(*)::int AS n FROM app.tbplangingwork p WHERE p.idiw37 = o.idiw37
     ) ac ON true
     LEFT JOIN LATERAL (
-      SELECT COUNT(*)::int AS n FROM app.tbwrkclose w WHERE w.idiw37 = o.idiw37
+      SELECT COUNT(*)::int AS n,
+             COUNT(DISTINCT w.wkctr) FILTER (WHERE w.close_kind = 'complete')::int AS complete_wkctr
+      FROM app.tbwrkclose w WHERE w.idiw37 = o.idiw37
     ) wc_pipe ON true
     LEFT JOIN LATERAL (
       SELECT COUNT(*)::int AS n FROM app.tbplangingwork p
@@ -250,30 +240,12 @@ function buildCalendarFilteredFrom(
   where += appendInFilter('o.syst', body.status, params)
   where += appendCalendarDisplayStatusFilter(body.displayStatus ?? [], 'o', 'v', params)
   where += appendPmPhaseFilter(body.pmPhase ?? [], 'o', params)
-  where += appendAssignedWkctrFilter(body.wkctr, params)
-  where += appendInFilter('o.functionalloc', body.functionalloc, params)
+  where += appendCalendarAssignedWkctrFilter(body.wkctr, 'o', params)
+  where += appendFunctionalLocFilter(body.functionalloc, 'o', 'ti', params)
   where += appendInFilter('o.equipment', body.equipment, params)
   where += appendInFilter('o.opac', body.priority, params)
   where += appendTeamFilter(body.team, params, 'o')
   return { where, params }
-}
-
-/** ช่างที่ถูกจ่ายงาน (tbplangingwork) หรือ wkctr บนใบงาน */
-function appendAssignedWkctrFilter(wkctrs: string[] | undefined, params: unknown[]): string {
-  const list = wkctrs ?? []
-  if (list.length === 0) return ''
-  const start = params.length + 1
-  const placeholders = list.map((_, i) => `$${start + i}`).join(', ')
-  params.push(...list)
-  return ` AND (
-    o.wkctr IN (${placeholders})
-    OR EXISTS (
-      SELECT 1 FROM app.tbplangingwork mpw
-      WHERE mpw.idiw37 = o.idiw37
-        AND mpw.wkctr IN (${placeholders})
-        AND COALESCE(TRIM(mpw.pwteam), '') <> 'G'
-    )
-  )`
 }
 
 /** สรุปตัวกรองปฏิทิน */
@@ -438,6 +410,7 @@ export async function listCalendarEventsFiltered(
            COALESCE(v.has_confirm, 0) AS has_confirm,
            COALESCE(ac.n, 0) AS assign_count,
            COALESCE(wc_pipe.n, 0) AS worktime_count,
+           COALESCE(wc_pipe.complete_wkctr, 0) AS complete_close_wkctr,
            COALESCE(ap.n, 0) AS ack_pending,
            COALESCE(aa.n, 0) AS ack_acknowledged
     ${where}

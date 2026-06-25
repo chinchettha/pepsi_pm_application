@@ -29,11 +29,15 @@
     },
     "statsSectionTitle": "สรุปงานของฉัน",
     "statsSectionDesc": "งานเปิด/ปิด การยืนยันงาน และชั่วโมงที่บันทึก",
+    "statsSectionDescTechnician": "เฉพาะงานที่จ่ายให้ฉันใน tbplangingwork · Confirmation และชั่วโมงของฉัน",
     "globalSectionTitle": "ภาพรวมโรงงาน",
     "globalSectionDesc": "สถานะ WO ทั้งโรงงานสำหรับ planner และ admin",
     "stats": {
       "openJobs": "งานเปิด (รอปิด)",
       "openJobsHint": "view_planwork for my work center + syst CRTD/REL",
+      "openJobsHintTechnician": "เฉพาะ WO ที่จ่ายให้ฉัน (tbplangingwork) · syst CRTD/REL",
+      "partialJobs": "ทำบางส่วนแล้ว",
+      "partialJobsHint": "งานเปิดที่บันทึก partial close ของฉัน",
       "closedJobs": "งานปิดแล้ว",
       "closedJobsHint": "TECO/COMP status",
       "myConfirmation": "Confirmation ของฉัน",
@@ -44,6 +48,8 @@
       "factoryOpenWoHint": "tbiw37n syst CRTD/REL",
       "assigned": "จ่ายงานแล้ว",
       "assignedHint": "At least one tbplangingwork row",
+      "partialFactory": "ทำบางส่วนแล้ว (โรงงาน)",
+      "partialFactoryHint": "WO เปิดที่มี partial close จากช่าง",
       "closedToday": "ปิดวันนี้",
       "closedTodayHint": "actfinish since midnight today",
       "unassigned": "ยังไม่จ่ายงาน",
@@ -87,7 +93,9 @@
     "recentPlanning": {
       "title": "งานเปิดล่าสุดของฉัน",
       "subtitle": "From view_planwork (syst IN CRTD,REL), limit 5",
+      "subtitleTechnician": "เฉพาะงานที่จ่ายให้ฉัน (tbplangingwork) · syst CRTD/REL · 5 รายการ",
       "goPlanning": "ไปหน้าแผนงาน",
+      "goPlanCalendar": "ไปปฏิทินจ่ายงาน",
       "emptyTitle": "ไม่มีงานเปิด",
       "emptyDesc": "No open jobs in the selected period"
     },
@@ -352,7 +360,7 @@
       "userst": "System access (userst)",
       "userstHint": "menuright menu mapping (A/U/W)",
       "userrole": "Dashboard/RBAC role (userrole)",
-      "userroleHint": "Source of truth for Personal Dashboard and future permissions",
+      "userroleHint": "Planner — วางแผนและดูแลระบบ · Technician — ปฏิบัติงานในสนาม",
       "passwordNew": "New password (leave blank to keep)",
       "password": "Password",
       "passwordNoChange": "Unchanged if left blank",
@@ -368,9 +376,7 @@
       "W": "W — Work center / Technician"
     },
     "userrole": {
-      "admin": "Admin — ผู้ดูแลระบบ",
-      "manager": "Manager — หัวหน้างาน/ผู้จัดการ",
-      "planner": "Planner / Engineering",
+      "planner": "Planner",
       "technician": "Technician — ช่าง"
     },
     "photo": {

@@ -1,34 +1,33 @@
 /**
- * 3 role หลัก — mirror backend/src/lib/primary-roles.ts
+ * 2 role หลัก — mirror backend/src/lib/primary-roles.ts
  */
-export const PRIMARY_USERST = ['A', 'U', 'W'] as const
-export const PRIMARY_USERROLES = ['admin', 'planner', 'technician'] as const
+export const PRIMARY_USERST = ['U', 'W'] as const
+export const PRIMARY_USERROLES = ['planner', 'technician'] as const
 
 export type PrimaryUserst = (typeof PRIMARY_USERST)[number]
 export type PrimaryUserrole = (typeof PRIMARY_USERROLES)[number]
 
-export const DEPRECATED_ROLE_CODES = ['H'] as const
+export const DEPRECATED_ROLE_CODES = ['A', 'H'] as const
 
 export const USERROLE_TO_USERST: Record<PrimaryUserrole, PrimaryUserst> = {
-  admin: 'A',
   planner: 'U',
   technician: 'W',
 }
 
 export const USERST_TO_USERROLE: Record<PrimaryUserst, PrimaryUserrole> = {
-  A: 'admin',
   U: 'planner',
   W: 'technician',
 }
 
 export const POST_LOGIN_PATH_BY_USERST: Record<PrimaryUserst, string> = {
-  A: '/',
-  U: '/planning',
+  U: '/',
   W: '/plan-calendar',
 }
 
 export function userroleToUserst(userrole: string): PrimaryUserst {
-  return USERROLE_TO_USERST[userrole as PrimaryUserrole] ?? 'U'
+  const v = userrole.trim().toLowerCase()
+  if (v === 'technician') return 'W'
+  return 'U'
 }
 
 export function normalizePrimaryRolePair(input: {
@@ -38,7 +37,12 @@ export function normalizePrimaryRolePair(input: {
   const rawRole = (input.userrole ?? '').trim().toLowerCase()
   const rawSt = (input.userst ?? '').trim().toUpperCase()
 
-  if (rawRole === 'manager' || rawSt === 'H') {
+  if (
+    rawRole === 'admin' ||
+    rawRole === 'manager' ||
+    rawSt === 'A' ||
+    rawSt === 'H'
+  ) {
     return { userst: 'U', userrole: 'planner' }
   }
 
@@ -49,11 +53,11 @@ export function normalizePrimaryRolePair(input: {
     }
   }
 
-  if (PRIMARY_USERST.includes(rawSt as PrimaryUserst)) {
-    return {
-      userst: rawSt as PrimaryUserst,
-      userrole: USERST_TO_USERROLE[rawSt as PrimaryUserst],
-    }
+  if (rawSt === 'W') {
+    return { userst: 'W', userrole: 'technician' }
+  }
+  if (rawSt === 'U') {
+    return { userst: 'U', userrole: 'planner' }
   }
 
   return { userst: 'U', userrole: 'planner' }
@@ -63,13 +67,10 @@ export function resolvePostLoginPathForUserst(
   userst: string | null | undefined,
   fallback = '/plan-calendar',
 ): string {
-  const st = (userst ?? '').trim().toUpperCase()
-  if (PRIMARY_USERST.includes(st as PrimaryUserst)) {
-    return POST_LOGIN_PATH_BY_USERST[st as PrimaryUserst]
-  }
-  return fallback
+  const normalized = normalizePrimaryRolePair({ userst })
+  return POST_LOGIN_PATH_BY_USERST[normalized.userst]
 }
 
 export function isVisibleRoleCode(roleCode: string): boolean {
-  return !DEPRECATED_ROLE_CODES.includes(roleCode.toUpperCase() as 'H')
+  return !DEPRECATED_ROLE_CODES.includes(roleCode.toUpperCase() as 'A' | 'H')
 }

@@ -7,6 +7,8 @@ export const dashboardSummarySchema = z.object({
   openOrders: z.number(),
   closedThisMonth: z.number(),
   pendingPersonnel: z.number(),
+  /** Open WO with technician partial close recorded */
+  partialOpenOrders: z.number(),
   iw37nLastImport: z.string().nullable(),
   trends: z.object({
     openDaily: dashboardTrendSeriesSchema,

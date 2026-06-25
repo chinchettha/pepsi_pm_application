@@ -1,6 +1,10 @@
 import type { Pool } from 'pg'
 import type { z } from 'zod'
-import { dashboardClosedWhere } from '../lib/dashboard-closed-filter.js'
+import { dashboardClosedEventSecExpr, dashboardQcApprovedWhere } from '../lib/dashboard-closed-filter.js'
+import {
+  SQL_OPEN_NOT_SUPERVISOR_CLOSED,
+  SQL_OPEN_PARTIAL_WO_EXISTS,
+} from '../lib/pipeline-counts.js'
 import type { dashboardSummarySchema } from '../schemas/dashboard.js'
 
 type Summary = z.infer<typeof dashboardSummarySchema>
@@ -63,11 +67,14 @@ async function fetchDailyTrends(
       [rangeStart, rangeEnd, team],
     ),
     pool.query<{ day_offset: number; n: string }>(
-      `SELECT ${dayBucket('i.actfinish')} AS day_offset, COUNT(*)::text AS n
+      `SELECT ${dayBucket(`(${dashboardClosedEventSecExpr('i')})`)} AS day_offset,
+              COUNT(DISTINCT i.idiw37)::text AS n
        FROM app.tbiw37n i
-       WHERE ${dashboardClosedWhere('i')}
+       WHERE ${dashboardQcApprovedWhere('i')}
+         AND (${dashboardClosedEventSecExpr('i')}) IS NOT NULL
          AND ($3::text IS NULL OR i.team = $3::text)
-         AND i.actfinish >= $1 AND i.actfinish < $2
+         AND (${dashboardClosedEventSecExpr('i')}) >= $1
+         AND (${dashboardClosedEventSecExpr('i')}) < $2
        GROUP BY 1`,
       [rangeStart, rangeEnd, team],
     ),
@@ -117,7 +124,7 @@ export async function getDashboardSummary(
 
   const { rangeStart, rangeEnd } = last7DayUnixBounds()
 
-  const [openR, closedR, pendingR, importR, trends] = await Promise.all([
+  const [openR, closedR, pendingR, partialR, importR, trends] = await Promise.all([
     pool.query<{ n: string }>(
       `SELECT COUNT(*)::text AS n
        FROM app.tbiw37n
@@ -126,9 +133,11 @@ export async function getDashboardSummary(
       [team],
     ),
     pool.query<{ n: string }>(
-      `SELECT COUNT(*)::text AS n FROM app.tbiw37n i
-       WHERE ${dashboardClosedWhere('i')}
-         AND i.actfinish >= $1 AND i.actfinish < $2
+      `SELECT COUNT(DISTINCT i.idiw37)::text AS n FROM app.tbiw37n i
+       WHERE ${dashboardQcApprovedWhere('i')}
+         AND (${dashboardClosedEventSecExpr('i')}) IS NOT NULL
+         AND (${dashboardClosedEventSecExpr('i')}) >= $1
+         AND (${dashboardClosedEventSecExpr('i')}) < $2
          AND ($3::text IS NULL OR i.team = $3::text)`,
       [startSec, endSec, team],
     ),
@@ -138,6 +147,15 @@ export async function getDashboardSummary(
        WHERE i.syst IN ('CRTD', 'REL')
          AND ($1::text IS NULL OR i.team = $1::text)
          AND NOT EXISTS (SELECT 1 FROM app.tbplangingwork p WHERE p.idiw37 = i.idiw37)`,
+      [team],
+    ),
+    pool.query<{ n: string }>(
+      `SELECT COUNT(*)::text AS n
+       FROM app.tbiw37n i
+       WHERE i.syst IN ('CRTD', 'REL')
+         AND ($1::text IS NULL OR i.team = $1::text)
+         AND ${SQL_OPEN_PARTIAL_WO_EXISTS}
+         AND ${SQL_OPEN_NOT_SUPERVISOR_CLOSED}`,
       [team],
     ),
     pool.query<{ t: Date | null }>(
@@ -152,6 +170,7 @@ export async function getDashboardSummary(
     openOrders: Number(openR.rows[0]?.n ?? 0),
     closedThisMonth: Number(closedR.rows[0]?.n ?? 0),
     pendingPersonnel: Number(pendingR.rows[0]?.n ?? 0),
+    partialOpenOrders: Number(partialR.rows[0]?.n ?? 0),
     iw37nLastImport: last ? last.toISOString() : null,
     trends,
   }

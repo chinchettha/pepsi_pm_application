@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Textarea } from '@/components/ui/textarea'
 import { TableSkeletonRows } from '@/components/ui/table-skeleton'
 import {
@@ -34,6 +35,7 @@ import {
 } from '@/lib/wo-team'
 import { cn } from '@/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { addDays, format } from 'date-fns'
 import { Check, ClipboardList, Loader2, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -77,6 +79,14 @@ function WoConfirmationQcActions({ row }: { row: Row }) {
   const canReview = usePermission('confirmation.import')
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectNote, setRejectNote] = useState('')
+  const [rescheduleDate, setRescheduleDate] = useState(() =>
+    format(addDays(new Date(), 1), 'yyyy-MM-dd'),
+  )
+
+  const resetRejectForm = () => {
+    setRejectNote('')
+    setRescheduleDate(format(addDays(new Date(), 1), 'yyyy-MM-dd'))
+  }
 
   const invalidate = async () => {
     await qc.invalidateQueries({ queryKey: ['work-orders', 'search'] })
@@ -84,6 +94,7 @@ function WoConfirmationQcActions({ row }: { row: Row }) {
     await qc.invalidateQueries({ queryKey: ['personnel', 'confirm'] })
     await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
     await qc.invalidateQueries({ queryKey: ['calendar'] })
+    await qc.invalidateQueries({ queryKey: ['notifications'] })
   }
 
   const approveMut = useMutation({
@@ -96,10 +107,14 @@ function WoConfirmationQcActions({ row }: { row: Row }) {
   })
 
   const rejectMut = useMutation({
-    mutationFn: (note: string) => postConfirmQcReject(Number(row.id), note),
+    mutationFn: () =>
+      postConfirmQcReject(Number(row.id), {
+        note: rejectNote,
+        rescheduleDate,
+      }),
     onSuccess: async () => {
       setRejectOpen(false)
-      setRejectNote('')
+      resetRejectForm()
       toast.message(t('toast.rejectSent', { wkorder: row.wkorder }))
       await invalidate()
     },
@@ -163,22 +178,39 @@ function WoConfirmationQcActions({ row }: { row: Row }) {
       </div>
       <QcBadge row={row} />
 
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+      <Dialog
+        open={rejectOpen}
+        onOpenChange={(open) => {
+          setRejectOpen(open)
+          if (!open) resetRejectForm()
+        }}
+      >
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle>{t('qc.rejectTitle')}</DialogTitle>
             <DialogDescription>{t('qc.rejectPrompt')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor={`qc-reject-note-${row.id}`}>{t('qc.rejectNoteLabel')}</Label>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor={`qc-reschedule-${row.id}`}>{t('qc.rescheduleDateLabel')}</Label>
+              <DatePicker
+                id={`qc-reschedule-${row.id}`}
+                value={rescheduleDate}
+                onChange={setRescheduleDate}
+                disabled={rejectMut.isPending}
+              />
+              <p className="text-xs text-app-muted">{t('qc.rescheduleDateHint')}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`qc-reject-note-${row.id}`}>{t('qc.rejectNoteLabel')}</Label>
             <Textarea
               id={`qc-reject-note-${row.id}`}
               value={rejectNote}
               onChange={(e) => setRejectNote(e.target.value)}
               placeholder={t('qc.rejectNotePlaceholder')}
-              rows={3}
-              disabled={rejectMut.isPending}
+              maxLength={500}
             />
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -192,8 +224,8 @@ function WoConfirmationQcActions({ row }: { row: Row }) {
             <Button
               type="button"
               variant="destructive"
-              disabled={rejectMut.isPending}
-              onClick={() => rejectMut.mutate(rejectNote)}
+              disabled={rejectMut.isPending || !rescheduleDate}
+              onClick={() => rejectMut.mutate()}
             >
               {rejectMut.isPending ? (
                 <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />

@@ -31,6 +31,7 @@ import {
   patchMasterPlanRow,
   publishMasterPlanToTasklist,
   searchMasterPlanRows,
+  searchMasterPlanRowsGlobal,
   sheetBelongsToDiscipline,
 } from '../services/master-plan.js'
 
@@ -60,13 +61,10 @@ export function registerMasterPlanRoutes(app: Express, pool: Pool, sessionSecret
     ...requireWrite,
     upload.single('file'),
     async (req: Request, res: Response) => {
-      const discipline = masterPlanDisciplineSchema.safeParse(
+      const requested = masterPlanDisciplineSchema.safeParse(
         String(req.body?.discipline ?? '').toUpperCase(),
       )
-      if (!discipline.success) {
-        res.status(400).json({ error: 'INVALID_DISCIPLINE', message: 'Use EE, ME, or PK' })
-        return
-      }
+      const requestedDiscipline = requested.success ? requested.data : null
 
       const file = req.file
       if (!file?.buffer?.length) {
@@ -79,13 +77,22 @@ export function registerMasterPlanRoutes(app: Express, pool: Pool, sessionSecret
       const result = await importMasterPlanWorkbook(
         pool,
         file.buffer,
-        discipline.data,
         file.originalname || 'import.xlsx',
         actorId,
+        req,
+        requestedDiscipline,
       )
 
       if (!result.ok) {
-        res.status(result.code === 'STRUCTURE_MISMATCH' ? 422 : 400).json({
+        const status =
+          result.code === 'STRUCTURE_MISMATCH'
+            ? 422
+            : result.code === 'UNRECOGNIZED_WORKBOOK'
+              ? 422
+              : result.code === 'NOT_FOUND'
+                ? 404
+                : 400
+        res.status(status).json({
           error: result.code,
           message: result.message,
           diff: result.diff,
@@ -95,11 +102,16 @@ export function registerMasterPlanRoutes(app: Express, pool: Pool, sessionSecret
 
       res.status(201).json(
         masterPlanImportResponseSchema.parse({
+          discipline: result.discipline,
           workbookId: result.workbookId,
           versionNo: result.versionNo,
           status: result.status,
           rowCount: result.rowCount,
           diff: result.diff,
+          tasklist: result.tasklist,
+          publishableRows: result.publishableRows,
+          skippedRows: result.skippedRows,
+          promotedDraft: result.promotedDraft,
         }),
       )
     },
@@ -243,6 +255,17 @@ export function registerMasterPlanRoutes(app: Express, pool: Pool, sessionSecret
   )
 
   app.get(
+    '/api/v1/master-plan/search',
+    ...requireRead,
+    async (req: Request, res: Response) => {
+      const q = typeof req.query.q === 'string' ? req.query.q : ''
+      const limit = Math.min(50, Math.max(1, Number(req.query.limit ?? 20) || 20))
+      const payload = await searchMasterPlanRowsGlobal(pool, q, limit)
+      res.json(masterPlanSearchResponseSchema.parse(payload))
+    },
+  )
+
+  app.get(
     '/api/v1/master-plan/:discipline/search',
     ...requireRead,
     async (req: Request, res: Response) => {
@@ -315,7 +338,7 @@ export function registerMasterPlanRoutes(app: Express, pool: Pool, sessionSecret
     if (!workbook) {
       res.status(404).json({
         error: 'NOT_FOUND',
-        message: `No published master plan for ${parsed.data}. Run seed:master-plan.`,
+        message: `No published master plan for ${parsed.data}. Import an Excel workbook on /master-plan.`,
       })
       return
     }

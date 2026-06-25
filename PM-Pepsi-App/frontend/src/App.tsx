@@ -68,7 +68,7 @@ export default function App() {
           <Route path="plan-calendar" element={<PlanCalendarPage />} />
           <Route path="line-calendar" element={<Navigate to="/plan-calendar" replace />} />
           <Route path="backlog" element={<BacklogPage />} />
-          <Route path="work-orders" element={<WorkOrdersPage />} />
+          <Route path="work-orders" element={<Navigate to="/confirmation" replace />} />
           <Route path="work-orders/:id" element={<WorkOrdersPage />} />
           <Route path="pm-vibration" element={<PmVibrationPage />} />
           <Route path="confirmation" element={<ConfirmationPage />} />

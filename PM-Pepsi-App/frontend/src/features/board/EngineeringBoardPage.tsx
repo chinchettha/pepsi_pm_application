@@ -49,7 +49,11 @@ import './engineering-board.css'
 import './engineering-board-theme.css'
 import './engineering-board-display.css'
 
-const REFRESH_MS = 60_000
+const REFRESH_MS = 15_000
+const BOARD_QUERY_OPTS = {
+  refetchInterval: REFRESH_MS,
+  refetchIntervalInBackground: true,
+} as const
 const TEAM_IDS: readonly BoardTeamId[] = ['all', 'A', 'B', 'EE', 'UT'] as const
 
 function parseBoardTeamFromSearchParams(sp: URLSearchParams): BoardTeamId {
@@ -128,14 +132,14 @@ export function EngineeringBoardPage() {
     queryKey: ['dashboard', 'board', team],
     queryFn: () => fetchDashboardSummary({ team: team === 'all' ? undefined : team }),
     enabled: canFetchData,
-    refetchInterval: REFRESH_MS,
+    ...BOARD_QUERY_OPTS,
   })
 
   const kpiQ = useQuery({
     queryKey: ['reports-kpi', 'board', 8, team],
     queryFn: () => fetchKpi({ weeksBack: 8, team: team === 'all' ? undefined : team }),
     enabled: canFetchData,
-    refetchInterval: REFRESH_MS,
+    ...BOARD_QUERY_OPTS,
   })
 
   const weeklyQ = useQuery({
@@ -144,13 +148,14 @@ export function EngineeringBoardPage() {
       fetchSummaryWeekly({ from: range.from, to: range.to, team: team === 'all' ? undefined : team }),
     enabled: canFetchData,
     refetchInterval: REFRESH_MS * 2,
+    refetchIntervalInBackground: true,
   })
 
   const activityQ = useQuery({
     queryKey: ['board', 'activity', period, team],
     queryFn: () => fetchBoardActivity({ period, limit: 12, team: team === 'all' ? undefined : team }),
     enabled: canFetchData,
-    refetchInterval: REFRESH_MS,
+    ...BOARD_QUERY_OPTS,
   })
 
   const pmReadingsQ = useQuery({
@@ -162,7 +167,7 @@ export function EngineeringBoardPage() {
         team: team === 'all' ? undefined : team,
       }),
     enabled: canFetchData,
-    refetchInterval: REFRESH_MS,
+    ...BOARD_QUERY_OPTS,
   })
 
   const annQ = useQuery({
@@ -170,11 +175,25 @@ export function EngineeringBoardPage() {
     queryFn: fetchActiveAnnouncements,
     enabled: canFetchData,
     refetchInterval: REFRESH_MS * 2,
+    refetchIntervalInBackground: true,
   })
 
   useEffect(() => {
-    if (dashQ.dataUpdatedAt) setLastRefresh(new Date(dashQ.dataUpdatedAt))
-  }, [dashQ.dataUpdatedAt])
+    const latest = Math.max(
+      dashQ.dataUpdatedAt,
+      kpiQ.dataUpdatedAt,
+      weeklyQ.dataUpdatedAt,
+      activityQ.dataUpdatedAt,
+      pmReadingsQ.dataUpdatedAt,
+    )
+    if (latest > 0) setLastRefresh(new Date(latest))
+  }, [
+    dashQ.dataUpdatedAt,
+    kpiQ.dataUpdatedAt,
+    weeklyQ.dataUpdatedAt,
+    activityQ.dataUpdatedAt,
+    pmReadingsQ.dataUpdatedAt,
+  ])
 
   const trends = dashQ.data?.trends
   const kpis =

@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { buildOperationText, buildWoPmFormHeader, formatSapPrintDate } from './wo-pm-form-header.js'
+import { buildOperationText, buildTaskListHeaderShortText, buildWoPmFormHeader, formatSapPrintDate } from './wo-pm-form-header.js'
 
 describe('wo-pm-form-header', () => {
   it('formats SAP print date', () => {
     expect(formatSapPrintDate('2026-05-26')).toBe('26.05.2026')
+  })
+
+  it('builds task list header short text from mntplan and legacy', () => {
+    expect(buildTaskListHeaderShortText('342596', 'P17-HR-ME2')).toBe('342596 & P17-HR-ME2')
+    expect(buildTaskListHeaderShortText('342596', '', '342596 & P17-HR-ME2')).toBe(
+      '342596 & P17-HR-ME2',
+    )
+    expect(buildTaskListHeaderShortText('', '', '369039 & P14-NI-EE')).toBe('369039 & P14-NI-EE')
   })
 
   it('maps WO 4001565681 sample fields', () => {

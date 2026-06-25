@@ -942,6 +942,7 @@
       "assignment_to_tech": "จ่ายงาน → DM ช่าง",
       "ack_to_planner": "รับทราบ → กลุ่ม Planner",
       "close_to_planner": "ปิดงาน → กลุ่ม Planner",
+      "move_request_to_planner": "ขอเลื่อนแผน → กลุ่ม Planner",
       "ack_summary": "สรุปรับทราบรายวัน",
       "confirm_reminder": "แจ้ง QC / Confirm ค้าง",
       "custom": "กำหนดเอง"

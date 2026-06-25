@@ -34,7 +34,7 @@ function normalizeWkctr(value: string | null | undefined): string {
   return (value ?? '').trim()
 }
 
-function findMyPersonAssignment(
+export function findMyPersonAssignment(
   assignees: PlanningAssigneeForCloseWo[],
   wkctr: string,
 ): PlanningAssigneeForCloseWo | undefined {
@@ -94,6 +94,20 @@ export function closeWoAccessDeniedMessage(reason: CloseWoAccessReason): string 
     return 'กรุณากดรับงานก่อน (Telegram หรือหน้า Planning)'
   }
   return 'เฉพาะช่างที่ได้รับมอบหมายและรับงานแล้วเท่านั้นที่ปิดงานได้'
+}
+
+/** ช่างที่ถูก assign (ไม่ใช่กลุ่ม G) และ WO ยังย้ายได้ — ไม่ต้องรับทราบก่อนขอเลื่อน */
+export function canRequestPlanMove(input: {
+  assignees: PlanningAssigneeForCloseWo[]
+  wkctr: string | null | undefined
+  canAssign: boolean
+  woMovable: boolean
+  hasPendingRequest: boolean
+}): boolean {
+  if (input.canAssign) return false
+  if (!input.woMovable) return false
+  if (input.hasPendingRequest) return false
+  return !!findMyPersonAssignment(input.assignees, normalizeWkctr(input.wkctr))
 }
 
 export async function assertTechnicianCloseWoAccess(

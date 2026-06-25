@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  engUtilizationChartNeedsScroll,
+  engUtilizationChartWidthPx,
   excelStylePercentTotal,
   formatEngUtilizationHrHour,
   formatEngUtilizationLabel,
@@ -69,5 +71,12 @@ describe('eng-utilization-chart', () => {
   it('formats HR hours for display', () => {
     expect(formatEngUtilizationHrHour(63)).toBe('63')
     expect(formatEngUtilizationHrHour(40.5)).toBe('40.5')
+  })
+
+  it('sizes chart: few people fill viewport, many people scroll', () => {
+    expect(engUtilizationChartWidthPx(1, 900)).toBe(900)
+    expect(engUtilizationChartWidthPx(22, 900)).toBe(22 * 52)
+    expect(engUtilizationChartNeedsScroll(22, 900)).toBe(true)
+    expect(engUtilizationChartNeedsScroll(3, 900)).toBe(false)
   })
 })

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildMasterPlanSearchLabel, escapeIlikePattern } from './master-plan-search.js'
+import {
+  buildMasterPlanSearchLabel,
+  escapeIlikePattern,
+  scoreMaintenancePlanQueryMatch,
+} from './master-plan-search.js'
 
 describe('master-plan-search', () => {
   const headers = [
@@ -25,5 +29,11 @@ describe('master-plan-search', () => {
 
   it('escapes ilike wildcards', () => {
     expect(escapeIlikePattern('100%')).toBe('100\\%')
+  })
+
+  it('scores exact maintenance plan match highest', () => {
+    const cells = { 'Maintenance plan': '366383', 'Task list': '6797' }
+    expect(scoreMaintenancePlanQueryMatch(headers, cells, cells, '366383')).toBe(100)
+    expect(scoreMaintenancePlanQueryMatch(headers, cells, cells, '6797')).toBe(0)
   })
 })

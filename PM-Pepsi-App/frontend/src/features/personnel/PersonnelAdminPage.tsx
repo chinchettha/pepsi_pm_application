@@ -191,7 +191,7 @@ type FormState = {
   wkctrtel: string
   wkctrmail: string
   labourcost: string
-  userst: 'A' | 'U' | 'W'
+  userst: 'U' | 'W'
   userrole: PrimaryUserrole
   workstatus: string
   pass: string
@@ -231,7 +231,6 @@ function useUserroleOptions() {
   const { t } = useTranslation('personnel')
   return useMemo(
     (): Array<{ value: PrimaryUserrole; label: string }> => [
-      { value: 'admin', label: t('admin.userrole.admin') },
       { value: 'planner', label: t('admin.userrole.planner') },
       { value: 'technician', label: t('admin.userrole.technician') },
     ],
@@ -300,7 +299,11 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   const [searchParams] = useSearchParams()
   const qc = useQueryClient()
   const authUser = getStoredAuthUser()
-  const isLegacyAdmin = authUser?.userst === 'A'
+  const isLegacyAdmin = useAnyPermission([
+    'admin.users.read',
+    'admin.users.write',
+    'personnel.write',
+  ])
   const canReadUsers = useAnyPermission([
     'admin.users.read',
     'admin.users.write',
@@ -1936,11 +1939,9 @@ function UserroleBadge({ role }: { role: PersonnelRole }) {
   const normalized = normalizePrimaryRolePair({ userrole: role }).userrole
   const opt = userroleOptions.find((o) => o.value === normalized)
   const tone =
-    normalized === 'admin'
-      ? 'app-tone-pill-danger-ring'
-      : normalized === 'technician'
-        ? 'app-tone-pill-success-ring'
-        : 'app-tone-pill-info-ring'
+    normalized === 'technician'
+      ? 'app-tone-pill-success-ring'
+      : 'app-tone-pill-info-ring'
   return (
     <span className={`inline-flex w-fit rounded-full px-2 py-1 text-xs font-medium ring-1 ${tone}`}>
       {opt?.label.split(' — ')[0] ?? normalized}

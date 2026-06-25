@@ -280,6 +280,7 @@ export function SchedulingCalendarPanel({
   subtitle,
   eventCount,
   isRefreshing,
+  legend,
   className,
   children,
 }: {
@@ -287,6 +288,8 @@ export function SchedulingCalendarPanel({
   subtitle?: string
   eventCount?: number
   isRefreshing?: boolean
+  /** แถบ legend / คำอธิบายใต้หัว panel */
+  legend?: ReactNode
   className?: string
   children: ReactNode
 }) {
@@ -321,6 +324,9 @@ export function SchedulingCalendarPanel({
           ) : null}
         </div>
       </div>
+      {legend ? (
+        <div className="border-b border-app/40 bg-app-subtle/35 px-3 py-2 sm:px-4">{legend}</div>
+      ) : null}
       <div className="p-3 sm:p-4">{children}</div>
     </div>
   )

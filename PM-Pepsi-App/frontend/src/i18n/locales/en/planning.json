@@ -110,5 +110,8 @@
         "description": "Expand whole group from master (tbwkctrgroup) — like default after import"
       }
     }
+  },
+  "moveRequest": {
+    "openIw37n": "Reschedule request for {{wkorder}} — opening IW37N to import / edit plan date"
   }
 }

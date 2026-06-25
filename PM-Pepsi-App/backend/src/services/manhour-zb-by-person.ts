@@ -1,6 +1,8 @@
 import type { Pool } from 'pg'
-import { resolveManhourChartRange, type ManhourChartRange } from './manhour-chart.js'
+import { MANHOUR_DISPATCHED_WO_BY_PERSON_SQL } from '../lib/personnel-assigned-work-sql.js'
+import { MANHOUR_CONFIRMED_WO_BY_PERSON_SQL } from '../lib/manhour-confirm-sql.js'
 import { personnelIsActiveSql } from '../lib/personnel-active-sql.js'
+import { resolveManhourChartRange, type ManhourChartRange } from './manhour-chart.js'
 
 export type ManhourZbPersonRow = {
   wkctr: string
@@ -82,16 +84,10 @@ export async function getManhourZbByPerson(
          AND ${activeWc}
      ),
      planned AS (
-       SELECT wkctr, wktype, COUNT(*)::text AS n
-       FROM app.view_planwork
-       WHERE wktype = ANY($1) AND bscstart BETWEEN $2 AND $3
-       GROUP BY wkctr, wktype
+       ${MANHOUR_DISPATCHED_WO_BY_PERSON_SQL.trim()}
      ),
      confirmed AS (
-       SELECT wkctr, wktype, COUNT(*)::text AS n
-       FROM app.view_exportconfirm
-       WHERE wktype = ANY($1) AND endate BETWEEN $2 AND $3
-       GROUP BY wkctr, wktype
+       ${MANHOUR_CONFIRMED_WO_BY_PERSON_SQL.trim()}
      ),
      stats AS (
        SELECT

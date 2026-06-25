@@ -33,20 +33,23 @@ import {
   postCalendarEvents,
   postCalendarFilterDetail,
 } from '@/lib/api-public'
+import { operationsLiveQueryOptions } from '@/lib/operations-live-sync'
 import { usePermission } from '@/lib/use-permission'
 import type { ScheduleCalendarEvent } from '@/lib/schedule-calendar'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { AlertCircle, CalendarDays, CalendarRange } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import {
-  ddMmYyyyToIsoDate,
-  todayDdMmYyyy,
-} from '@/lib/personnel-close-format'
+  normalizeCalendarSubmittedFilters,
+  parseYearMonthFromIsoDate,
+} from '@/lib/normalize-calendar-filters'
+import { useDebouncedFormFilters } from '@/lib/use-debounced-form-filters'
+import { todayDdMmYyyy, ddMmYyyyToIsoDateField, isoDateToDdMmYyyy } from '@/lib/personnel-close-format'
 import { woPmPhaseSchema } from '@/api/schemas'
 import { withDisplayStatusColors } from '@/lib/calendar-display-status'
 import { formatCalendarMonthLabel } from '@/lib/format-month-label'
@@ -105,6 +108,7 @@ export function CalendarPage() {
   const { t: tc } = useTranslation('common')
   const { locale } = useAppLocale()
   const canRead = usePermission('calendar.read')
+  const canMovePlan = usePermission('calendar.write')
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -165,6 +169,29 @@ export function CalendarPage() {
   })
   const [activityDisplay, setActivityDisplay] = useState<ActivityDisplayMode>('all')
 
+  const applyCalendarFilters = useCallback(
+    (data: CalendarFilterForm, syncMonth = false) => {
+      const next = normalizeCalendarSubmittedFilters(data)
+      setSubmittedFilters((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(next)) return prev
+        return next
+      })
+      if (!syncMonth) return
+      const ym = parseYearMonthFromIsoDate(next.fromDate ?? '')
+      if (ym) {
+        setYear(ym.year)
+        setMonth(ym.month)
+      }
+    },
+    [],
+  )
+
+  const watchedValues = useWatch({ control: form.control })
+  const filterSnapshot = JSON.stringify(watchedValues ?? {})
+  useDebouncedFormFilters(filterSnapshot, () => {
+    applyCalendarFilters(form.getValues(), false)
+  })
+
   const optsQ = useQuery({
     queryKey: ['calendar', 'filter-options', 'activity-z1z2z5', 'maint-act-zb02', 'team-ab-ee-ut', 'syst-teco'],
     queryFn: fetchCalendarFilterOptions,
@@ -202,6 +229,7 @@ export function CalendarPage() {
     queryFn: () => postCalendarEvents(calendarSearchBody),
     enabled: canRead,
     placeholderData: keepPreviousData,
+    ...operationsLiveQueryOptions,
   })
 
   const filterDetailQ = useQuery({
@@ -209,6 +237,7 @@ export function CalendarPage() {
     queryFn: () => postCalendarFilterDetail(calendarSearchBody),
     enabled: canRead,
     placeholderData: keepPreviousData,
+    ...operationsLiveQueryOptions,
   })
 
   const clearFilters = () => {
@@ -229,45 +258,27 @@ export function CalendarPage() {
       wcEndTime: '00:00',
     }
     form.reset(empty)
-    setSubmittedFilters(empty)
+    applyCalendarFilters(empty, false)
   }
 
   const onSearch = form.handleSubmit((data) => {
-    const wcStartIso = ddMmYyyyToIsoDate(data.wcStartDate?.trim() ?? '')
-    const wcEndIso = ddMmYyyyToIsoDate(data.wcEndDate?.trim() ?? '')
-    const useWcRange = data.wkctr.length > 0 && Boolean(wcStartIso && wcEndIso)
-    const fromIso = useWcRange ? wcStartIso : data.fromDate?.trim() || ''
-    const toIso = useWcRange ? wcEndIso : data.toDate?.trim() || ''
-    const next: CalendarFilterForm = {
-      ...data,
-      fromDate: fromIso,
-      toDate: toIso,
-    }
-    setSubmittedFilters(next)
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fromIso)
-    if (m) {
-      const y = Number(m[1])
-      const mm = Number(m[2])
-      if (Number.isFinite(y) && Number.isFinite(mm) && mm >= 1 && mm <= 12) {
-        setYear(y)
-        setMonth(mm)
-      }
-    }
+    applyCalendarFilters(data, true)
   })
 
   useEffect(() => {
     if (!wkctrFromUrl) return
     const current = form.getValues('wkctr') ?? []
     if (current.length === 1 && current[0] === wkctrFromUrl) return
-    form.setValue('wkctr', [wkctrFromUrl], { shouldDirty: true })
     const today = todayDdMmYyyy()
-    setSubmittedFilters((prev) => ({
-      ...prev,
+    const next = {
+      ...form.getValues(),
       wkctr: [wkctrFromUrl],
-      wcStartDate: prev.wcStartDate || today,
-      wcEndDate: prev.wcEndDate || today,
-    }))
-  }, [form, wkctrFromUrl])
+      wcStartDate: form.getValues('wcStartDate') || today,
+      wcEndDate: form.getValues('wcEndDate') || today,
+    }
+    form.setValue('wkctr', [wkctrFromUrl], { shouldDirty: true })
+    applyCalendarFilters(next, false)
+  }, [form, wkctrFromUrl, applyCalendarFilters])
 
   const openMove = (event: ScheduleCalendarEvent, date: string) => {
     if (event.canMovePlan === false) {
@@ -471,14 +482,18 @@ export function CalendarPage() {
                             <FilterDateField
                               id="calendar-wc-start"
                               label={t('filters.wcFrom')}
-                              value={form.watch('wcStartDate') ?? ''}
-                              onChange={(v) => form.setValue('wcStartDate', v)}
+                              value={ddMmYyyyToIsoDateField(form.watch('wcStartDate') ?? '')}
+                              onChange={(iso) =>
+                                form.setValue('wcStartDate', iso ? isoDateToDdMmYyyy(iso) : '')
+                              }
                             />
                             <FilterDateField
                               id="calendar-wc-end"
                               label={t('filters.wcTo')}
-                              value={form.watch('wcEndDate') ?? ''}
-                              onChange={(v) => form.setValue('wcEndDate', v)}
+                              value={ddMmYyyyToIsoDateField(form.watch('wcEndDate') ?? '')}
+                              onChange={(iso) =>
+                                form.setValue('wcEndDate', iso ? isoDateToDdMmYyyy(iso) : '')
+                              }
                             />
                           </SchedulingFilterDateRow>
                         ) : null}
@@ -584,7 +599,7 @@ export function CalendarPage() {
                     setMhOpen(true)
                   }}
                   onEventClick={(e) => setDetailTarget({ id: e.id, date: e.date })}
-                  onEventDrop={(e, newDate) => openMove(e, newDate)}
+                  onEventDrop={canMovePlan ? (e, newDate) => openMove(e, newDate) : undefined}
                 />
               </SchedulingCalendarPanel>
             )}

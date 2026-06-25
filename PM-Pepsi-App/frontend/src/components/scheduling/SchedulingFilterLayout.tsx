@@ -65,24 +65,29 @@ export function SchedulingFilterShell({
             <p className="mt-0.5 text-xs text-app-muted">{collapsedSummary}</p>
           ) : null}
         </div>
-        {collapsible ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8 shrink-0 text-app-muted"
-            aria-expanded={isOpen}
-            aria-label={
-              isOpen ? t('common:actions.hideFilters') : t('common:actions.showFilters')
-            }
-            onClick={() => setOpen((v) => !v)}
-          >
-            <ChevronDown
-              className={cn('size-4 transition-transform duration-200', isOpen && 'rotate-180')}
-              aria-hidden
-            />
-          </Button>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {collapsible && !isOpen && actions ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>
+          ) : null}
+          {collapsible ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0 text-app-muted"
+              aria-expanded={isOpen}
+              aria-label={
+                isOpen ? t('common:actions.hideFilters') : t('common:actions.showFilters')
+              }
+              onClick={() => setOpen((v) => !v)}
+            >
+              <ChevronDown
+                className={cn('size-4 transition-transform duration-200', isOpen && 'rotate-180')}
+                aria-hidden
+              />
+            </Button>
+          ) : null}
+        </div>
       </div>
       <AnimatePresence initial={false}>
         {isOpen ? (

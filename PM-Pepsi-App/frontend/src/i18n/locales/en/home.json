@@ -39,6 +39,8 @@
     "closedMonthHint": "After Foreman QC approval · actual close date",
     "pendingAssign": "Pending assignment",
     "pendingAssignHint": "No plan in tbplangingwork yet",
+    "partialOpen": "Partially done",
+    "partialOpenHint": "Open WOs with technician partial close",
     "iw37nImport": "Latest IW37N import",
     "iw37nImportHint": "Last 7 days: {{count}} batch(es)"
   },

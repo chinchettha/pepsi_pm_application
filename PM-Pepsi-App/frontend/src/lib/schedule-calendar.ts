@@ -1,6 +1,7 @@
 import type { EventInput } from '@fullcalendar/core'
 import type { CalendarEventHoverDetail } from '@/api/schemas'
 import { calendarEventSurfaceClasses } from '@/lib/calendar-event-classes'
+import { pipelineSortKey } from '@/lib/pipeline-sort-key'
 
 export type ScheduleCalendarEvent = {
   id: string
@@ -26,13 +27,18 @@ export type ScheduleCalendarEvent = {
   tecoBellAlert?: boolean
   displayStatus?: 'in_progress' | 'overdue' | 'moved' | 'completed'
   team?: 'A' | 'B' | 'EE' | 'UT'
-  pipelineStatus?: 'unassigned' | 'assigned' | 'in_progress' | 'closed'
+  pipelineStatus?: 'unassigned' | 'assigned' | 'in_progress' | 'partial' | 'closed'
   pipelineBadges?: Array<
-    'ack_pending' | 'ack_done' | 'qc_pending' | 'qc_approved' | 'qc_rejected'
+    'ack_pending' | 'ack_done' | 'partial_close' | 'qc_pending' | 'qc_approved' | 'qc_rejected'
   >
+  /** Open WO — technician / supervisor completion % */
+  workProgressPercent?: number
 }
 
-export function toFullCalendarEvents(items: ScheduleCalendarEvent[]): EventInput[] {
+export function toFullCalendarEvents(
+  items: ScheduleCalendarEvent[],
+  dragEnabled = false,
+): EventInput[] {
   return items.map((e) => {
     const canMove = e.canMovePlan !== false
     return {
@@ -42,7 +48,7 @@ export function toFullCalendarEvents(items: ScheduleCalendarEvent[]): EventInput
       allDay: true,
       backgroundColor: e.color,
       borderColor: e.color,
-      startEditable: canMove,
+      startEditable: dragEnabled && canMove,
       extendedProps: {
         orderId: e.orderId,
         description: e.description,
@@ -62,6 +68,8 @@ export function toFullCalendarEvents(items: ScheduleCalendarEvent[]): EventInput
         team: e.team,
         pipelineStatus: e.pipelineStatus,
         pipelineBadges: e.pipelineBadges,
+        workProgressPercent: e.workProgressPercent,
+        pipelineSortKey: pipelineSortKey(e.pipelineStatus),
         surfaceClasses: calendarEventSurfaceClasses(e),
       },
     }

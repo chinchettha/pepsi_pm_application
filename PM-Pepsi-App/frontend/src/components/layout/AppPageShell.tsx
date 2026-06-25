@@ -21,6 +21,8 @@ export function AppPageShell({
   headerActions,
   hints,
   heroMeta,
+  heroClassName,
+  heroAnimated = true,
   contentClassName,
   /** ห่อ children ด้วย `SchedulingPageStack` (fade-up ต่อ section) */
   stack = true,
@@ -34,6 +36,8 @@ export function AppPageShell({
   hints?: string[]
   /** meta แทน/เพิ่ม hints ถ้าต้องการ custom */
   heroMeta?: ReactNode
+  heroClassName?: string
+  heroAnimated?: boolean
   contentClassName?: string
   stack?: boolean
   children: ReactNode
@@ -59,6 +63,8 @@ export function AppPageShell({
         eyebrow={eyebrow}
         actions={headerActions}
         meta={meta}
+        className={heroClassName}
+        animated={heroAnimated}
       />
       <AppPageContent className={cn('scheduling-page pb-8', contentClassName)}>{body}</AppPageContent>
     </div>

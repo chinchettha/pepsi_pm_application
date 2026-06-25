@@ -22,6 +22,22 @@ export function todayDdMmYyyy(): string {
   return `${dd}.${mm}.${yyyy}`
 }
 
+/** Current local time as `HH:mm` for close-out defaults */
+export function nowHhMm(): string {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/** Add minutes to `HH:mm` (wraps within same day) */
+export function addMinutesHhMm(hhMm: string, minutes: number): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhMm.trim())
+  if (!m) return hhMm
+  const d = new Date()
+  d.setHours(Number(m[1]), Number(m[2]), 0, 0)
+  d.setMinutes(d.getMinutes() + minutes)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 export function isoDateToDdMmYyyy(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim())
   if (!m) return iso
@@ -34,6 +50,28 @@ export function ddMmYyyyToIsoDate(v: string): string {
   const dd = m[1].padStart(2, '0')
   const mm = m[2].padStart(2, '0')
   return `${m[3]}-${mm}-${dd}`
+}
+
+/** `DD.MM.YYYY` → ISO for DatePicker; empty when invalid */
+export function ddMmYyyyToIsoDateField(v: string): string {
+  const iso = ddMmYyyyToIsoDate(v)
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : ''
+}
+
+/** Parse `DD.MM.YYYY` → local `Date` (midnight) for calendar widgets */
+export function parseDdMmYyyyToDate(v: string): Date | undefined {
+  const iso = ddMmYyyyToIsoDate(v)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!m) return undefined
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return Number.isNaN(d.getTime()) ? undefined : d
+}
+
+export function dateToDdMmYyyy(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}.${mm}.${yyyy}`
 }
 
 export function epochToDdMmYyyy(sec: number): string {

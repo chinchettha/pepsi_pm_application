@@ -8,7 +8,7 @@ import {
   resolvePmExecutionStatus,
   type PmExecutionStatus,
 } from './wo-pm-execution.js'
-import { resolveWoPmPhase, type WoPmPhase } from './wo-pm-phase.js'
+import { resolveWoPmPhase, type WoPmPhase, type WoPmPhaseContext } from './wo-pm-phase.js'
 import {
   hasCalendarPlanMove,
   hasCalendarWorkOrderNumber,
@@ -75,8 +75,18 @@ export type CalendarOrderRow = {
   worktime_count?: number | string | null
   ack_pending?: number | string | null
   ack_acknowledged?: number | string | null
+  complete_close_wkctr?: number | string | null
   work?: string | number | null
   untime?: string | number | null
+}
+
+function pmPhaseContextFromCalendarRow(row: CalendarOrderRow): WoPmPhaseContext {
+  return {
+    assignCount: Number(row.assign_count ?? 0),
+    percentClose: row.percent_close,
+    hasConfirm: row.has_confirm,
+    confirmQcStatus: row.confirm_qc_status,
+  }
 }
 
 /** ชั่วโมงจาก work + untime — 0 เมื่อไม่มีค่า (ไม่รวมใน dayHourTotals) */
@@ -270,6 +280,7 @@ export function resolveCalendarEventPipeline(row: CalendarOrderRow): {
     percentClose: row.percent_close,
     hasConfirm: row.has_confirm,
     confirmQcStatus: row.confirm_qc_status,
+    completeCloseWkctrCount: Number(row.complete_close_wkctr ?? 0),
     ackPending: Number(row.ack_pending ?? 0),
     ackAcknowledged: Number(row.ack_acknowledged ?? 0),
   })
@@ -313,7 +324,7 @@ export function buildCalendarEventHoverDetail(row: CalendarOrderRow): CalendarEv
     workOrder: wkorder,
     wktype: wktype || undefined,
     wktypeLabel: wktype ? formatWktypeDisplayWithMat(wktype, row.mat).primary : undefined,
-    pmPhase: resolveWoPmPhase(row.syst),
+    pmPhase: resolveWoPmPhase(row.syst, pmPhaseContextFromCalendarRow(row)),
     syst: (row.syst ?? '').trim() || undefined,
     resourceName: resourceName || undefined,
     wkctr: wkctr || undefined,
@@ -402,7 +413,7 @@ export function mapCalendarOrderRowToEvent(
   const syst = (row.syst ?? '').trim()
   const scheduling = resolveCalendarEventColor(row, moveColor, displayUnix)
   const pipeline = resolveCalendarEventPipeline(row)
-  const usePipelineColor = isPlanMovableStatus(syst)
+  const usePipelineColor = pipeline.status === 'closed' || isPlanMovableStatus(syst)
   const { pmExecutionStatus, moved, displayStatus } = scheduling
   const color = usePipelineColor ? pipeline.color : scheduling.color
   const moveReasonRequired = resolveCalendarMoveReasonRequired({
@@ -443,7 +454,7 @@ export function mapCalendarOrderRowToEvent(
     hoverDetail,
     canMovePlan: isPlanMovableStatus(syst),
     syst,
-    pmPhase: resolveWoPmPhase(syst),
+    pmPhase: resolveWoPmPhase(syst, pmPhaseContextFromCalendarRow(row)),
     pmExecutionStatus,
     displayStatus,
     team: pmTeam,

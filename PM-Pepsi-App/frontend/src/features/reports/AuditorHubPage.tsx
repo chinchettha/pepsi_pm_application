@@ -211,7 +211,7 @@ export function AuditorHubPage() {
                   <Link to="/plan-calendar">{t('auditor.navPlanCalendar')}</Link>
                 </Button>
                 <Button variant="outline" size="sm" asChild>
-                  <Link to="/work-orders">{t('auditor.navWorkOrders')}</Link>
+                  <Link to="/confirmation">{t('auditor.navWorkOrders')}</Link>
                 </Button>
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/calendar">{t('auditor.navScheduling')}</Link>

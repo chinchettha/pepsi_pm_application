@@ -74,24 +74,24 @@
     "panelTitle": "ปฏิทินงาน",
     "panelSubtitle": "{{month}} · มุมมอง \"วัน\" = Order Frame · ลากช่วงวันเพื่อสรุปชั่วโมง",
     "filterSummaryTitle": "สรุปตามตัวกรอง",
-    "moreJobs": "+{{count}} งาน"
+    "moreJobs": "+{{count}} งาน",
+    "dayJobCount": "{{count}} งานในวันนี้",
+    "dayJobsTitle": "รายการงานในวัน",
+    "dayJobsSubtitle": "{{date}} · {{count}} งาน",
+    "dayJobsEmpty": "ไม่มีงานในวันนี้"
   },
   "planCalendar": {
     "title": "ปฏิทินจ่ายงาน",
-    "description": "สี Pipeline ทั้งโรงงาน (Planner/Admin) · ช่างเห็นเฉพาะงานที่จ่ายให้ตัวเอง",
-    "hints": {
-      "assigned": "Planner เห็นทุก WO ในเดือน · ช่างเห็นเฉพาะงานจ่ายให้ตัวเอง",
-      "colors": "สี Pipeline (จ่ายงาน → ปิดงาน)",
-      "hours": "สรุปชั่วโมง",
-      "wo": "เปิด WO"
-    },
+    "heroDescription": "Planner เห็นทุก WO · ช่างเห็นงานจ่ายให้ตัวเอง · สี Pipeline แสดงสถานะ",
     "pmPlanning": "แผน PM/CM",
     "workScheduling": "ปฏิทิน Work scheduling",
     "loading": "กำลังโหลดปฏิทิน",
     "loadFailed": "โหลดปฏิทินไม่สำเร็จ",
     "loadFailedHint": "ตรวจการเชื่อมต่อ API หรือสิทธิ์",
     "panelTitle": "ปฏิทินงานจ่ายแล้ว",
+    "panelTitleAssignee": "งานที่จ่ายให้ฉัน",
     "panelSubtitle": "เลือกช่วงวันที่เพื่อสรุปชั่วโมง · คลิกรายการเปิดใบงาน",
+    "panelSubtitleAssignee": "เฉพาะงานที่ planner จ่ายให้ฉัน · คลิกรายการเปิดใบงาน",
     "emptyMonth": "ไม่มีงานในเดือนนี้ — ลองเปลี่ยนปี/เดือนให้ตรงวันแผน WO (ข้อมูล SAP มักไม่ใช่เดือนปัจจุบัน) หรือดูรายการที่เมนู แผน PM/CM · ยังเลือกช่วงวันสรุปชั่วโมงได้"
   },
   "backlog": {
@@ -100,6 +100,7 @@
     "noAccess": "ไม่มีสิทธิ์เข้าถึง",
     "noAccessHint": "ต้องมีสิทธิ์ backlog.read",
     "hints": {
+      "filter": "กิจกรรม · ประเภทงาน · ศูนย์งาน · Functional Location · อุปกรณ์",
       "status": "CRTD + REL",
       "wcSummary": "สรุปศูนย์งาน",
       "drag": "ลากย้ายแผน",
@@ -170,6 +171,25 @@
     "comment": "Comment",
     "commentPlaceholder": "หมายเหตุเพิ่มเติม (ถ้ามี)"
   },
+  "moveRequest": {
+    "title": "ขอเลื่อนแผนงาน",
+    "description": "ระบุเหตุผลให้ Planner — Planner จะเป็นผู้ย้ายวันแผนในระบบ",
+    "reasonLabel": "เหตุผล *",
+    "reasonPlaceholder": "เช่น รออะไหล่, เครื่องยังไม่หยุด, …",
+    "reasonRequired": "กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร",
+    "preferredDate": "วันที่ต้องการเลื่อนไป (ไม่บังคับ)",
+    "preferredDateHint": "Planner อาจเลือกวันอื่นเมื่อย้ายแผนจริง",
+    "preferredDateValue": "วันที่ต้องการ: {{date}}",
+    "submit": "แจ้ง Planner",
+    "submitSuccess": "ส่งคำขอเลื่อนแผนให้ Planner แล้ว",
+    "technicianTitle": "ต้องการเลื่อนงานนี้?",
+    "technicianHint": "ช่างย้ายแผนเองไม่ได้ — ส่งเหตุผลแล้วรอ Planner ย้ายวันให้",
+    "openDialog": "ขอเลื่อนแผน",
+    "pendingTitle": "ส่งคำขอเลื่อนแผนแล้ว",
+    "pendingHint": "แจ้ง Planner แล้ว — รอวันแผนเปลี่ยนในระบบ",
+    "plannerPendingTitle": "คำขอเลื่อนแผนจากช่าง",
+    "plannerHint": "ใช้ปุ่มย้ายแผนด้านล่างเพื่อกำหนดวันใหม่ — คำขอที่ค้างจะปิดอัตโนมัติ"
+  },
   "calendarLegend": {
     "title": "สีบนปฏิทิน:",
     "tecoWarning": "เตือน TECO",
@@ -203,11 +223,6 @@
     "needImages": "กรุณาแนบรูปหลังทำ PM เสร็จก่อนปิดงาน"
   },
   "wktype": {
-    "filterNote": {
-      "summary": "ประเภทงาน SAP (ZD) ตามประชุมลูกค้า — ในไฟล์ IW37N ใช้รหัส ZB",
-      "item": "{{zd}} {{zdLabel}} ← กรอง {{zb}} ({{iw37nLabel}})",
-      "docHint": "อ้างอิง: docs/customer-requirements/WKTYPE-ZD-ZB-MAPPING.md"
-    },
     "mappingSource": "ประชุมลูกค้า ครั้งที่ 2 (7 พ.ค. 2569)",
     "zd": {
       "ZB05": "Breakdown / เครื่องหยุด",
@@ -243,11 +258,13 @@
       "unassigned": { "label": "ยังไม่จ่าย", "title": "ยังไม่มอบหมายช่าง" },
       "assigned": { "label": "จ่ายแล้ว", "title": "จ่ายแล้ว — รอช่างเริ่มทำ" },
       "in_progress": { "label": "กำลังทำ", "title": "บันทึกเวลาแล้ว — ยังไม่ปิด supervisor" },
+      "partial": { "label": "ทำบางส่วน", "title": "ช่างบันทึกปิดงานบางส่วน — งานยังไม่เสร็จ" },
       "closed": { "label": "ปิดแล้ว", "title": "ปิด supervisor แล้ว — รอ Planner Confirm" }
     },
     "badge": {
       "ack_pending": { "label": "รอรับทราบ", "title": "ช่างยังไม่กดรับทราบ" },
       "ack_done": { "label": "รับทราบแล้ว", "title": "ช่างรับทราบแล้ว (Telegram/Web)" },
+      "partial_close": { "label": "บางส่วน", "title": "บันทึกปิดงานบางส่วน — WO ยังเปิดอยู่" },
       "qc_pending": { "label": "รอ Confirm", "title": "รอ Planner Confirm/Reject" },
       "qc_approved": { "label": "อนุมัติแล้ว", "title": "Planner อนุมัติแล้ว" },
       "qc_rejected": { "label": "ส่งกลับ", "title": "Planner ส่งกลับแก้ไข" }
@@ -498,6 +515,14 @@
     "alarmLabel": "Alarm (mm/s)",
     "saveReading": "บันทึกค่าวัด"
   },
+  "plannerComment": {
+    "title": "Planner comment",
+    "description": "หมายเหตุจาก planner ตอนมอบหมายงานให้คุณ",
+    "empty": "ยังไม่มี comment จาก planner สำหรับงานนี้",
+    "assignLabel": "Comment ถึงช่าง (ไม่บังคับ)",
+    "placeholder": "เช่น รออะไหล่, เครื่องยังไม่หยุด…",
+    "optionalHint": "ไม่บังคับ — บันทึกพร้อมปุ่มมอบหมาย ถ้าไม่ใส่ ช่างจะเห็นว่าไม่มี comment จาก planner"
+  },
   "pmComment": {
     "title": "Comments and Findings (PM)",
     "description": "บันทึกเหตุผลเมื่อแผน PM ออกมาแต่ไม่ได้ทำ / ผลการตรวจ — แยกจากหมายเหตุจ่ายงานและความเห็นปิดงาน · บันทึกได้หลายครั้งต่อ WO",
@@ -537,10 +562,20 @@
     "wkctrType": "Work Center Type",
     "itemsTitle": "รายการงาน PM",
     "itemsDesc": "งานจาก Master Plan ที่ Publish แล้ว (ผูกด้วย mntplan)",
+    "planDetailTitle": "รายละเอียดแผน",
+    "planDetailDesc": "รายละเอียดทั้งหมดของ maintenance plan นี้",
+    "planJobsList": "รายการงาน PM",
     "runningStopped": "เดิน {{running}} · หยุด {{stopped}}",
     "headerOnly": "มีหัว task list แต่ยังไม่มีรายการงาน",
     "machine": "เครื่องจักร",
     "pmItem": "รายการ PM",
+    "description": "Description",
+    "headerShortText": "Header Short Text",
+    "functionalLocation": "Functional Location",
+    "equipment": "Equipment",
+    "operation": "Operation",
+    "operationText": "Operation Text",
+    "operationLongText": "Operation Long Text",
     "running": "เดิน",
     "stopped": "หยุด"
   },
@@ -569,9 +604,18 @@
     "completion": "completion",
     "colWoType": "Work Order/Type",
     "colStatus": "Status",
+    "colDispatch": "จ่ายงาน",
+    "colAck": "รับงาน",
     "colPlan": "Plan",
     "colAction": "Action",
     "colUnit": "Unit",
+    "colActions": "ดำเนินการ",
+    "dispatchUnassigned": "ยังไม่จ่าย",
+    "dispatchAssigned": "จ่ายแล้ว",
+    "ackPending": "รอรับทราบ",
+    "ackPartial": "รับแล้ว {{ack}}/{{total}}",
+    "ackAcknowledged": "รับทราบแล้ว",
+    "assign": "จ่ายงาน",
     "rangeHint": "ช่วง {{from}} → {{to}} — เลือกวันเดียวบนปฏิทินเพื่อดูสรุปรายวัน"
   },
   "woMachine": {

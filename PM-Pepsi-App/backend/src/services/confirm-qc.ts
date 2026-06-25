@@ -23,7 +23,7 @@ export type ConfirmQcSnapshot = {
   approved: boolean
 }
 
-async function hasTbwrkcloseTable(pool: Pool): Promise<boolean> {
+async function hasTbwrkcloseTable(pool: Pool | PoolClient): Promise<boolean> {
   const r = await pool.query<{ reg: string | null }>(
     `SELECT to_regclass('app.tbwrkclose')::text AS reg`,
   )
@@ -43,7 +43,7 @@ export async function touchConfirmQcPending(pool: Pool | PoolClient, idiw37: num
 }
 
 /** หลัง Admin อนุมัติ — แสดงบน Dashboard ช่างเป็นสถานะ TECO (เขียว) */
-export async function applyTecoSystemStatus(pool: Pool, idiw37: number): Promise<void> {
+export async function applyTecoSystemStatus(pool: Pool | PoolClient, idiw37: number): Promise<void> {
   await pool.query(
     `UPDATE app.tbiw37n i
      SET syst = 'TECO',
@@ -57,7 +57,7 @@ export async function applyTecoSystemStatus(pool: Pool, idiw37: number): Promise
 }
 
 export async function setConfirmQcStatus(
-  pool: Pool,
+  pool: Pool | PoolClient,
   idiw37: number,
   status: ConfirmQcStatus,
   reviewedBy: string,
@@ -84,8 +84,66 @@ export async function setConfirmQcStatus(
   return getConfirmQcSnapshot(pool, idiw37)
 }
 
-export async function getConfirmQcSnapshot(
+/** Reason code สำหรับเลื่อนแผนหลัง Planner ไม่อนุมัติงานปิด */
+export const QC_REJECT_RESCHEDULE_REASON_CODE = '99'
+
+/**
+ * Planner ไม่อนุมัติ + กำหนดวันเลื่อนแผน — อัปเดต QC, tbmoveplan, แจ้งช่าง
+ */
+export async function rejectConfirmQcAndReschedule(
   pool: Pool,
+  idiw37: number,
+  reviewedBy: string,
+  rescheduleDate: string,
+  note?: string,
+): Promise<ConfirmQcSnapshot | null> {
+  const { moveWorkOrderPlan, MovePlanError } = await import('./scheduling-move.js')
+  const commentNote = note?.trim() ?? ''
+  const moveComment = commentNote
+    ? `QC reject: ${commentNote}`
+    : 'QC reject — planner rescheduled'
+
+  const client = await pool.connect()
+  let moveBeforeDate = rescheduleDate
+  try {
+    await client.query('BEGIN')
+    const out = await setConfirmQcStatus(client, idiw37, 'rejected', reviewedBy, note)
+    if (!out) {
+      await client.query('ROLLBACK')
+      return null
+    }
+    const moveResult = await moveWorkOrderPlan(client, {
+      idiw37: String(idiw37),
+      targetDate: rescheduleDate,
+      reasonCode: QC_REJECT_RESCHEDULE_REASON_CODE,
+      comment: moveComment,
+      mwkctr: reviewedBy,
+      skipNotify: true,
+    })
+    moveBeforeDate = moveResult.before.displayDate
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    if (err instanceof MovePlanError) throw err
+    throw err
+  } finally {
+    client.release()
+  }
+
+  const { notifyTechniciansPlanMoved } = await import('./technician-plan-moved-notify.js')
+  await notifyTechniciansPlanMoved(pool, idiw37, {
+    targetDateIso: rescheduleDate,
+    beforeDateIso: moveBeforeDate,
+    movedByWkctr: reviewedBy,
+    context: 'qc_reject',
+    rejectNote: commentNote || undefined,
+  })
+
+  return getConfirmQcSnapshot(pool, idiw37)
+}
+
+export async function getConfirmQcSnapshot(
+  pool: Pool | PoolClient,
   idiw37: number,
 ): Promise<ConfirmQcSnapshot | null> {
   const wo = await pool.query<{

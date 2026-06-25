@@ -19,7 +19,6 @@ import {
   schedulingHeroLinkBtnClass,
   schedulingHeroLinkIconClass,
 } from '@/components/scheduling/SchedulingPageLayout'
-import { WktypeZdMappingNote } from '@/components/scheduling/WktypeZdMappingNote'
 import { WorkOrderAutocomplete } from '@/components/scheduling/WorkOrderAutocomplete'
 import { WorkOrderDetailDialog } from '@/components/scheduling/WorkOrderDetailDialog'
 import { MassConfirmSearchCard } from '@/features/confirmation/MassConfirmSearchCard'
@@ -57,10 +56,11 @@ import {
   Upload,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useDebouncedFormFilters } from '@/lib/use-debounced-form-filters'
 import type { workOrderFilterDetailResponseSchema, workOrderSearchRowSchema } from '@/api/schemas'
 import { z } from 'zod'
 
@@ -132,6 +132,19 @@ export function WorkOrdersPage() {
   })
 
   const [submitted, setSubmitted] = useState<FilterForm>(emptyFilters)
+
+  const applyWoFilters = useCallback((data: FilterForm) => {
+    setSubmitted((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(data)) return prev
+      return data
+    })
+  }, [])
+
+  const watchedValues = useWatch({ control: form.control })
+  const filterSnapshot = JSON.stringify(watchedValues ?? {})
+  useDebouncedFormFilters(filterSnapshot, () => {
+    applyWoFilters(form.getValues())
+  })
 
   useEffect(() => {
     if (!routeId) return
@@ -344,13 +357,13 @@ export function WorkOrdersPage() {
   }
 
   const onSearch = form.handleSubmit((data) => {
-    setSubmitted(data)
+    applyWoFilters(data)
   })
 
   const clearFilters = () => {
     const empty = emptyFilters()
     form.reset(empty)
-    setSubmitted(empty)
+    applyWoFilters(empty)
   }
 
   const filterCollapsedHint = useMemo(() => {
@@ -510,8 +523,9 @@ export function WorkOrdersPage() {
                         inputClassName="h-10 border-app/80 bg-[var(--app-surface)] shadow-sm transition-shadow focus-visible:shadow-md"
                         onInputChange={(v) => form.setValue('q', v)}
                         onSelect={(item) => {
+                          const next = { ...form.getValues(), q: item.wkorder }
                           form.setValue('q', item.wkorder)
-                          setSubmitted((prev) => ({ ...prev, q: item.wkorder }))
+                          applyWoFilters(next)
                           setOpenId(item.id)
                         }}
                         placeholder={t('search.placeholder')}
@@ -548,15 +562,12 @@ export function WorkOrdersPage() {
                         name="wktype"
                         control={form.control}
                         render={({ field }) => (
-                          <div className="space-y-0">
-                            <FilterMultiSelect
-                              label={ts('filters.labels.wktype')}
-                              options={wktypeOptions}
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                            <WktypeZdMappingNote />
-                          </div>
+                          <FilterMultiSelect
+                            label={ts('filters.labels.wktype')}
+                            options={wktypeOptions}
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
                         )}
                       />
                       <Controller

@@ -13,6 +13,7 @@ import {
 } from '@/features/reports/ReportsDateFilter'
 import { WeekToWeekTable } from '@/features/reports/WeekToWeekTable'
 import { fetchKpi } from '@/lib/api-public'
+import { operationsLiveQueryOptions } from '@/lib/operations-live-sync'
 import { usePermission } from '@/lib/use-permission'
 import {
   BarElement,
@@ -63,6 +64,7 @@ export function ReportsPage() {
       }),
     enabled: canRead,
     placeholderData: keepPreviousData,
+    ...operationsLiveQueryOptions,
   })
 
   const avgUtil =

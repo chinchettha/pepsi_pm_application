@@ -1,6 +1,7 @@
 import { useI18nFormat } from '@/lib/use-i18n-format'
 import { format, parseISO } from 'date-fns'
 import { CalendarIcon } from 'lucide-react'
+import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -43,9 +44,10 @@ export function DatePicker({
   const yearMax = toYear ?? now.getFullYear() + 2
   const startMonth = new Date(yearMin, 0)
   const endMonth = new Date(yearMax, 11)
+  const [open, setOpen] = useState(false)
 
   return (
-    <Popover>
+    <Popover modal open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           id={id}
@@ -67,17 +69,21 @@ export function DatePicker({
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          'w-auto p-0',
+          'z-[120] w-auto p-0',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2',
         )}
         align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Calendar
           mode="single"
           selected={selected}
           onSelect={(d) => {
-            if (d) onChange(toIsoDate(d))
+            if (d) {
+              onChange(toIsoDate(d))
+              setOpen(false)
+            }
           }}
           locale={dateLocale}
           captionLayout="dropdown"

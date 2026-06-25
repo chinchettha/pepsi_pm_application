@@ -36,6 +36,7 @@ export const backlogManhourSearchBodySchema = z.object({
 })
 
 export const backlogManhourRowSchema = z.object({
+  idiw37: z.number().int().positive(),
   wkorder: z.string(),
   wktype: z.string().nullable().optional(),
   syst: z.string().nullable().optional(),
@@ -43,6 +44,11 @@ export const backlogManhourRowSchema = z.object({
   actwork: z.number(),
   unit: z.string(),
   operationshorttext: z.string().nullable().optional(),
+  planDate: z.string().optional(),
+  dispatchStatus: z.enum(['unassigned', 'assigned']),
+  ackStatus: z.enum(['none', 'pending', 'partial', 'acknowledged']),
+  assigneeCount: z.number().int().nonnegative(),
+  ackCount: z.number().int().nonnegative(),
 })
 
 export const backlogManhourResponseSchema = z.object({

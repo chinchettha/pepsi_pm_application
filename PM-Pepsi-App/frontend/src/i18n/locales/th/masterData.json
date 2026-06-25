@@ -21,7 +21,12 @@
     "description": "แผน PM ประจำปีจาก Excel ลูกค้า — Process ไฟฟ้า (EE) เครื่องกล (ME) และ Packing (PK)",
     "hints": ["Process · ไฟฟ้า", "Process · เครื่องกล", "Packing", "Sheet ตรงไฟล์ลูกค้า"],
     "planYear": "ปี {{year}}",
-    "version": "v{{no}}"
+    "version": "v{{no}}",
+    "deepLinkFromIw37n": "เปิดจาก IW37N — Maintenance plan “{{q}}”",
+    "deepLinkJumpFound": "กระโดดไปแถว {{rowNo}} แท็บ {{discipline}}",
+    "deepLinkJumpMissing": "ไม่พบแถวตรงเป๊ะ — ใช้ช่องค้นหาในตาราง",
+    "deepLinkOpenIw37n": "ดูใน IW37N",
+    "deepLinkClear": "ล้างตัวกรอง"
   },
   "panel": {
     "loadFailed": "โหลดไม่สำเร็จ",
@@ -219,7 +224,9 @@
     "showing": "แสดง {{count}}",
     "loadMore": "โหลดแถวเพิ่ม",
     "loadingMore": "กำลังโหลด…",
-    "notSeeded": "ยังไม่มี Master Plan ในระบบ — รัน backend seed:master-plan",
+    "notSeeded": "ยังไม่มี Master Plan ที่ publish สำหรับแท็บนี้",
+    "emptyTitle": "ยังไม่มี Master Plan {{discipline}}",
+    "emptyDesc": "อัปโหลดไฟล์ Excel ใดก็ได้ (EE / ME / PK) — ระบบจะจำแนกแท็บให้และ publish ไป task list อัตโนมัติ",
     "sheetPickerLabel": "ชีต",
     "sheetPickerPlaceholder": "เลือกชีต…",
     "sheetSearch": "ค้นหาชีต",
@@ -277,6 +284,8 @@
       "machine": "M/C — เครื่องจักรหรือ functional location ที่รับ PM\n• แคบกว่า Machine List: สินทรัพย์ที่แผนนี้ผูกอยู่\n• เชื่อมกับ equipment / functional location ใน flow SAP\n• แก้ไขค่าในเซลล์ได้",
       "pmlist": "รายละเอียดงาน PM ตาม Excel ลูกค้า (มักเป็นภาษาไทย)\n• แสดงตามต้นฉบับ — แอปไม่แปล\n• ไปปรากฏบนใบงานหลัง publish\n• ดับเบิลคลิกเพื่อแก้แบบหลายบรรทัด ไม่ตัดข้อความ",
       "days": "ระยะห่างเป็นวันระหว่างรอบ PM\n• ใช้กับปฏิทินร่วมกับ freq (day) ในบางชีต\n• แก้ไขได้ — ควรเทียบกับ strategy ใน SAP หลัง publish",
+      "lastClosed": "วันที่ช่างปิดงาน PM ล่าสุด (จากการปิดงาน / confirmation ในระบบ)\n• จับคู่จาก SAP Code (mntplan) และข้อความ PM list บนใบงาน\n• อ่านอย่างเดียว — อัปเดตเมื่อมีการบันทึกปิดงาน",
+      "nextDue": "วันที่ควรทำ PM ครั้งถัดไป = วันปิดล่าสุด + จำนวนวัน (days)\n• ใช้ค่า days ในแถวนี้ (รวม fill-down แบบ Excel)\n• ไฮไลต์สีเหลืองเมื่อเลยกำหนดแล้ว\n• คอลัมน์คำนวณ อ่านอย่างเดียว",
       "freqDay": "ความถี่ PM เป็นวัน (คอลัมน์ freq (day) หรือ Frequency บนชีต PK)\n• ชีต Packing ใช้ Frequency / Type / Craft แทนบางคอลัมน์ EE/ME\n• แก้ไขค่าในเซลล์ได้",
       "min": "ชั่วโมงคนขั้นต่ำตามแผน (Min)\n• มัก merge แนวตั้งใน Excel — เซลล์ว่างซ้ำค่าบน\n• ใช้ในแผน manhour และ utilization\n• แก้ไขได้",
       "man": "จำนวนคน (Man) หรือคอลัมน์ man-hour\n• อาจ rowspan เหมือน Min เมื่อ merge ใน Excel\n• ใช้ตรวจขนาดทีมและเวลางาน\n• แก้ไขได้",
@@ -285,6 +294,10 @@
       "craft": "สาขาช่างสำหรับ PM แพ็ค (PK)\n• บทบาทคล้าย Legacy บนชีต Process — ทีมไหนทำงาน\n• แก้ไขได้",
       "wh": "ชั่วโมงงานตามแผน (WH) ในบางชีต\n• ใช้คู่กับ Min/Man ในการวางแผนเวลา\n• แก้ไขได้",
       "equipt": "แท็กอุปกรณ์หรืออ้างอิงสั้นเมื่อชีตมีคอลัมน์ Equipt/Equipment\n• ตรวจกับ Equipment master และ functional location\n• แก้ไขได้เมื่อมีคอลัมน์นี้บนชีต"
+    },
+    "virtualColumns": {
+      "lastClosed": "ปิดงานล่าสุด",
+      "nextDue": "ครบกำหนดถัดไป"
     },
     "rowLinks": {
       "column": "ลิงก์",
@@ -300,6 +313,7 @@
     },
     "actions": {
       "import": "นำเข้า Excel",
+      "importAny": "นำเข้า Master Plan",
       "export": "ส่งออก Excel",
       "exportDraft": "ส่งออก draft",
       "publish": "เผยแพร่ไป task list",
@@ -307,6 +321,8 @@
       "exporting": "กำลังส่งออก…",
       "publishing": "กำลังเผยแพร่…",
       "importSuccess": "บันทึก draft v{{version}} — เปลี่ยน {{changed}} แถว",
+      "importPublishedSuccess": "Publish {{discipline}} v{{version}} — task list +{{inserted}} ~{{updated}}",
+      "importUnrecognized": "จำแนก EE / ME / PK จากไฟล์นี้ไม่ได้",
       "importStructureError": "โครง sheet ไม่ตรงกับ workbook ที่เผยแพร่แล้ว",
       "importFailed": "นำเข้าไม่สำเร็จ",
       "exportFailed": "ส่งออกไม่สำเร็จ",

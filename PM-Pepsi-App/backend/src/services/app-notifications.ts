@@ -89,6 +89,33 @@ async function userCanSeePlannerNotifications(
   return hasPermission(pool, userst, 'confirmation.import')
 }
 
+export async function markMoveRequestNotificationsResolved(
+  pool: Pool,
+  idiw37: number,
+): Promise<number> {
+  if (!(await hasAppNotificationTable(pool))) return 0
+  const r = await pool.query(
+    `UPDATE app.tbl_app_notification
+     SET read_at = COALESCE(read_at, now())
+     WHERE read_at IS NULL
+       AND notify_kind = 'move_request_to_planner'
+       AND idiw37 = $1`,
+    [idiw37],
+  )
+  return r.rowCount ?? 0
+}
+
+const MOVE_REQUEST_STILL_PENDING = `
+  NOT (
+    n.notify_kind = 'move_request_to_planner'
+    AND n.idiw37 IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM app.tbplan_move_request pmr
+      WHERE pmr.idiw37 = n.idiw37 AND pmr.status = 'pending'
+    )
+  )
+`
+
 export async function listAppNotificationsForUser(
   pool: Pool,
   wkctr: string,
@@ -103,25 +130,27 @@ export async function listAppNotificationsForUser(
   const planner = await userCanSeePlannerNotifications(pool, userst)
 
   const { rows } = await pool.query<AppNotificationRow>(
-    `SELECT id, notify_kind, audience, recipient_wkctr, idiw37, title, body, link_route, read_at, created_at
-     FROM app.tbl_app_notification
+    `SELECT n.id, n.notify_kind, n.audience, n.recipient_wkctr, n.idiw37, n.title, n.body, n.link_route, n.read_at, n.created_at
+     FROM app.tbl_app_notification n
      WHERE (
-       (recipient_wkctr IS NOT NULL AND recipient_wkctr = $1)
-       OR ($2::boolean AND audience = 'planner' AND recipient_wkctr IS NULL)
+       (n.recipient_wkctr IS NOT NULL AND n.recipient_wkctr = $1)
+       OR ($2::boolean AND n.audience = 'planner' AND n.recipient_wkctr IS NULL)
      )
-     ORDER BY created_at DESC
+       AND ${MOVE_REQUEST_STILL_PENDING}
+     ORDER BY n.created_at DESC
      LIMIT $3`,
     [w, planner, limit],
   )
 
   const unreadR = await pool.query<{ n: string }>(
     `SELECT COUNT(*)::text AS n
-     FROM app.tbl_app_notification
-     WHERE read_at IS NULL
+     FROM app.tbl_app_notification n
+     WHERE n.read_at IS NULL
        AND (
-         (recipient_wkctr IS NOT NULL AND recipient_wkctr = $1)
-         OR ($2::boolean AND audience = 'planner' AND recipient_wkctr IS NULL)
-       )`,
+         (n.recipient_wkctr IS NOT NULL AND n.recipient_wkctr = $1)
+         OR ($2::boolean AND n.audience = 'planner' AND n.recipient_wkctr IS NULL)
+       )
+       AND ${MOVE_REQUEST_STILL_PENDING}`,
     [w, planner],
   )
 

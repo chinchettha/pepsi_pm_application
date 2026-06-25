@@ -1,9 +1,11 @@
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   MasterDataPanelError,
   MasterDataPanelSkeleton,
 } from '@/features/master-data/master-data-panel-ui'
 import { MasterPlanChangeLogPanel } from '@/features/master-plan/MasterPlanChangeLogPanel'
+import { MasterPlanImportButton } from '@/features/master-plan/MasterPlanImportButton'
 import { MasterPlanSearchBar } from '@/features/master-plan/MasterPlanSearchBar'
 import { MasterPlanSheetGrid } from '@/features/master-plan/MasterPlanSheetGrid'
 import { MasterPlanSheetPicker } from '@/features/master-plan/MasterPlanSheetPicker'
@@ -22,8 +24,8 @@ import {
   writeLastMasterPlanSheetId,
 } from '@/lib/master-plan-sheet-pref'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { History } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { History, Table2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -33,11 +35,17 @@ type MasterPlanDisciplineViewProps = {
   discipline: MasterPlanDiscipline
   /** Hide duplicate workbook card — use on `/master-plan` where page header shows meta */
   hideWorkbookSummary?: boolean
+  /** From `/master-plan?q=` — filter rows and jump to Maintenance plan match */
+  deepLink?: { query: string; jump?: MasterPlanSearchItem } | null
+  /** After auto-detect import — switch parent tab */
+  onImported?: (discipline: MasterPlanDiscipline) => void
 }
 
 export function MasterPlanDisciplineView({
   discipline,
   hideWorkbookSummary = false,
+  deepLink = null,
+  onImported,
 }: MasterPlanDisciplineViewProps) {
   const { t } = useTranslation('masterData')
   const { canWrite } = useMasterDataPermissions()
@@ -139,17 +147,47 @@ export function MasterPlanDisciplineView({
     [handleJumpToRow],
   )
 
+  useEffect(() => {
+    if (!deepLink?.jump) return
+    handleJumpToRow(deepLink.jump.sheetId, deepLink.jump.rowId, deepLink.jump.rowIndex)
+  }, [deepLink?.jump, handleJumpToRow])
+
+  useEffect(() => {
+    if (!deepLink?.query) return
+    if (deepLink.jump && selectedSheetId !== deepLink.jump.sheetId) return
+    setRowSearch(deepLink.query)
+  }, [deepLink?.query, deepLink?.jump, selectedSheetId])
+
+  const deepLinkJumpHandled = useRef<number | null>(null)
+  useEffect(() => {
+    if (!deepLink?.jump || !rowsQ.data) return
+    if (deepLinkJumpHandled.current === deepLink.jump.rowId) return
+    deepLinkJumpHandled.current = deepLink.jump.rowId
+    setFocusRowId(deepLink.jump.rowId)
+  }, [deepLink?.jump, rowsQ.data])
+
   if (workbookQ.isLoading && !workbookQ.data) return <MasterDataPanelSkeleton />
   if (workbookQ.isError) {
     return (
       <MasterDataPanelError error={workbookQ.error} onRetry={() => void workbookQ.refetch()} />
     )
   }
-  if (!workbookQ.data) {
+  if (workbookQ.data === null) {
     return (
-      <MasterDataPanelError
-        error={new Error(t('masterPlan.notSeeded'))}
-        onRetry={() => void workbookQ.refetch()}
+      <EmptyState
+        icon={Table2}
+        title={t('masterPlan.emptyTitle', { discipline })}
+        description={t('masterPlan.emptyDesc')}
+        action={
+          canWrite ? (
+            <MasterPlanImportButton
+              onImported={(d) => {
+                onImported?.(d)
+                void workbookQ.refetch()
+              }}
+            />
+          ) : undefined
+        }
       />
     )
   }

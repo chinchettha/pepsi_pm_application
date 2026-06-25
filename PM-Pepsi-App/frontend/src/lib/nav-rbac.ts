@@ -1,6 +1,6 @@
 import type { AuthUser } from '@/api/schemas'
 import { appNav, type NavEntry, type NavLinkEntry } from '@/components/layout/nav-config'
-import { permissionForRoute } from '@/lib/nav-route-permissions'
+import { permissionsForRoute } from '@/lib/nav-route-permissions'
 import { hasPermission } from '@/lib/permissions-core'
 import { getRbacPreviewSnapshot } from '@/lib/rbac-preview'
 
@@ -20,25 +20,30 @@ export function canAccessByMenuright(userst: string, menuright: string): boolean
   return allowed.includes(role)
 }
 
+function navItemPermissions(item: NavLinkEntry): string[] {
+  if (item.permission) return [item.permission]
+  return permissionsForRoute(item.to)
+}
+
 export function canAccessNavItem(
   userst: string,
   item: NavLinkEntry,
   permissions?: string[],
   rbacStrict?: boolean,
 ): boolean {
-  const perm = item.permission ?? permissionForRoute(item.to)
+  const routePerms = navItemPermissions(item)
   const user = { userst, permissions } as AuthUser
   if (rbacStrict && permissions !== undefined) {
-    if (perm) {
+    if (routePerms.length > 0) {
       const preview = getRbacPreviewSnapshot()
       const effective = preview?.permissions ?? permissions
-      if (effective.length > 0) return effective.includes(perm)
-      return hasPermission(user, perm)
+      if (effective.length > 0) return routePerms.some((p) => effective.includes(p))
+      return routePerms.some((p) => hasPermission(user, p))
     }
     return canAccessByMenuright(userst, item.menuright)
   }
-  if (permissions && permissions.length > 0 && perm) {
-    return hasPermission(user, perm)
+  if (permissions && permissions.length > 0 && routePerms.length > 0) {
+    return routePerms.some((p) => hasPermission(user, p))
   }
   return canAccessByMenuright(userst, item.menuright)
 }

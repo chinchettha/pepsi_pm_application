@@ -15,6 +15,7 @@
     "uat:phase2": "tsx scripts/phase2-uat.ts",
     "uat:phase2-zb02all": "tsx scripts/phase2-uat-zb02all.ts",
     "uat:reset-iw37n": "tsx scripts/uat-reset-iw37n.ts",
+    "uat:reset-master-plan": "tsx scripts/uat-reset-master-plan.ts",
     "import:iw37n": "tsx scripts/import-iw37n.ts",
     "verify:iw37n-p02": "tsx scripts/verify-iw37n-p02.ts",
     "verify:migrations-p03": "tsx scripts/verify-migrations-p03.ts",

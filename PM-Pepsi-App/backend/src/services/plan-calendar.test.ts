@@ -10,6 +10,9 @@ describe('mapPlanWorkRowToEvent', () => {
     percent_close: 0,
     has_confirm: 0,
     confirm_qc_status: null as string | null,
+    partial_close_count: 0,
+    complete_close_wkctr: 0,
+    partial_only_wkctr: 0,
   }
 
   it('uses pipeline red when unassigned', () => {
@@ -67,6 +70,31 @@ describe('mapPlanWorkRowToEvent', () => {
     expect(ev?.color).toBe('#4DA6FF')
   })
 
+  it('uses pipeline orange partial when partial close exists', () => {
+    const sec = Math.floor(new Date('2026-03-05').getTime() / 1000)
+    const ev = mapPlanWorkRowToEvent({
+      ...baseRow,
+      idiw37: 4,
+      wkorder: 'WO4',
+      wktype: 'PM01',
+      bscstart: sec,
+      cday: null,
+      syst: 'REL',
+      operationshorttext: null,
+      assign_count: 1,
+      worktime_count: 1,
+      partial_close_count: 1,
+      ack_acknowledged: 1,
+      complete_close_wkctr: 0,
+      partial_only_wkctr: 1,
+    })
+    expect(ev?.pipelineStatus).toBe('partial')
+    expect(ev?.color).toBe('#F7941D')
+    expect(ev?.pipelineBadges).toContain('partial_close')
+    expect(ev?.pipelineBadges).toContain('ack_done')
+    expect(ev?.workProgressPercent).toBe(50)
+  })
+
   it('uses pipeline green when closed with qc pending', () => {
     const sec = Math.floor(new Date('2026-03-05').getTime() / 1000)
     const ev = mapPlanWorkRowToEvent({
@@ -105,6 +133,29 @@ describe('mapPlanWorkRowToEvent', () => {
     expect(ev?.canMovePlan).toBe(false)
     expect(ev?.pipelineStatus).toBe('closed')
     expect(ev?.pipelineBadges).toEqual(['qc_approved'])
+  })
+
+  it('marks QC approved CRTD as closed green (technician closed)', () => {
+    const sec = Math.floor(new Date('2026-06-03').getTime() / 1000)
+    const ev = mapPlanWorkRowToEvent({
+      ...baseRow,
+      idiw37: 1358,
+      wkorder: '4001555906',
+      wktype: 'ZB02',
+      bscstart: sec,
+      cday: null,
+      syst: 'CRTD',
+      operationshorttext: null,
+      assign_count: 1,
+      worktime_count: 1,
+      complete_close_wkctr: 1,
+      ack_acknowledged: 1,
+      confirm_qc_status: 'approved',
+    })
+    expect(ev?.pipelineStatus).toBe('closed')
+    expect(ev?.color).toBe('#7AC943')
+    expect(ev?.pipelineBadges).toEqual(['qc_approved'])
+    expect(ev?.workProgressPercent).toBeUndefined()
   })
 
   it('returns null without plan date', () => {

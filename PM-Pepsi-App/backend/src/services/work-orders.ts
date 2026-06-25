@@ -44,7 +44,18 @@ import { formatUnixDate } from './scheduling-move.js'
 import {
   derivePlanningWorkcenterTags,
 } from '../lib/planning-workcenter-tags.js'
-import { buildWoPmFormHeader } from '../lib/wo-pm-form-header.js'
+import {
+  appendCalendarAssignedWkctrFilter,
+} from '../lib/personnel-assigned-work-sql.js'
+import {
+  buildFuncLocDescripByLegacyMap,
+  resolveFuncLocDescripForLegacy,
+} from '../lib/func-loc-legacy-match.js'
+import { buildTaskListHeaderShortText, buildWoPmFormHeader } from '../lib/wo-pm-form-header.js'
+import {
+  appendFunctionalLocFilter,
+  listFunctionalFilterOptions,
+} from '../lib/functional-filter-options.js'
 import {
   buildTaskMeasurementFields,
   loadWoPmExecution,
@@ -64,6 +75,7 @@ type Iw37Row = {
   equipment: string | null
   equdescrip: string | null
   functionalloc: string | null
+  funcdescrip: string | null
   untime: string | number | null
   syst: string | null
   bscstart: string | number | null
@@ -195,7 +207,7 @@ export async function listWorkOrders(
 
 export async function listWorkOrderFilterOptions(pool: Pool): Promise<FilterOptions> {
   const factory = `%${FACTORY_CODE}%`
-  const [statusesR, wcR, fnDistinctR, fnMasterR, eqR] = await Promise.all([
+  const [statusesR, wcR, functionals, eqR] = await Promise.all([
     pool.query<{ syst: string; wkstreason: string | null; wkstcolor: string | null }>(
       `SELECT syst, wkstreason, wkstcolor
        FROM app.tbwkstatus
@@ -204,17 +216,7 @@ export async function listWorkOrderFilterOptions(pool: Pool): Promise<FilterOpti
     pool.query<{ wkctr: string; namewkctr: string | null; surnamewkctr: string | null }>(
       `SELECT wkctr, namewkctr, surnamewkctr FROM app.tbworkcenter ORDER BY wkctr`,
     ),
-    pool.query<{ functionalloc: string; funcdescrip: string | null }>(
-      `SELECT DISTINCT functionalloc, funcdescrip
-       FROM app.tbiw37n
-       WHERE functionalloc IS NOT NULL AND functionalloc <> ''
-         AND ${sqlFactoryScope('', '$1')}
-       ORDER BY functionalloc`,
-      [factory],
-    ),
-    pool.query<{ functionalloc: string; funldescrip: string | null }>(
-      `SELECT functionalloc, funldescrip FROM app.tbfunctional ORDER BY functionalloc`,
-    ),
+    listFunctionalFilterOptions(pool),
     pool.query<{ equipment: string; equdescrip: string | null }>(
       `SELECT DISTINCT equipment, equdescrip
        FROM app.tbiw37n
@@ -241,16 +243,7 @@ export async function listWorkOrderFilterOptions(pool: Pool): Promise<FilterOpti
       return { code: r.wkctr, label: name ? `${r.wkctr} = ${name}` : r.wkctr }
     }),
     teams: [...PM_PLAN_TEAM_FILTER_OPTIONS],
-    functionals:
-      fnMasterR.rows.length > 0
-        ? fnMasterR.rows.map((r) => ({
-            code: r.functionalloc,
-            label: r.funldescrip ? `${r.functionalloc} = ${r.funldescrip}` : r.functionalloc,
-          }))
-        : fnDistinctR.rows.map((r) => ({
-            code: r.functionalloc,
-            label: r.funcdescrip ? `${r.functionalloc} = ${r.funcdescrip}` : r.functionalloc,
-          })),
+    functionals,
     equipments: eqR.rows.map((r) => ({
       code: r.equipment,
       label: r.equdescrip ? `${r.equipment} = ${r.equdescrip}` : r.equipment,
@@ -304,8 +297,8 @@ export async function searchWorkOrders(
   sql += appendInFilter('vo.mat', expandActivityFilterCodes(body.activity), params)
   sql += appendWorkTypeFilter('vo', body.wktype, params, appendInFilter)
   sql += appendInFilter('vo.syst', body.status, params)
-  sql += appendInFilter('vo.wkctr', body.wkctr, params)
-  sql += appendInFilter('vo.functionalloc', body.functionalloc, params)
+  sql += appendCalendarAssignedWkctrFilter(body.wkctr, 'vo', params)
+  sql += appendFunctionalLocFilter(body.functionalloc, 'vo', 'i', params)
   sql += appendInFilter('vo.equipment', body.equipment, params)
   sql += appendTeamFilterVo(body.team, params)
 
@@ -388,18 +381,19 @@ export async function getWorkOrderFilterDetail(
   const factory = `%${FACTORY_CODE}%`
   const params: unknown[] = [factory]
   let where = `
-    FROM app.view_order
-    WHERE ${sqlFactoryScope('', '$1')}
-      AND bscstart IS NOT NULL
-      AND bscstart > 0`
+    FROM app.view_order vo
+    LEFT JOIN app.tbiw37n ti ON ti.idiw37 = vo.idiw37
+    WHERE ${sqlFactoryScope('vo', '$1')}
+      AND vo.bscstart IS NOT NULL
+      AND vo.bscstart > 0`
 
-  where += appendInFilter('mat', expandActivityFilterCodes(body.activity), params)
-  where += appendWorkTypeFilter('', body.wktype, params, appendInFilter)
-  where += appendInFilter('syst', body.status, params)
-  where += appendInFilter('wkctr', body.wkctr, params)
-  where += appendInFilter('functionalloc', body.functionalloc, params)
-  where += appendInFilter('equipment', body.equipment, params)
-  where += appendTeamFilter(body.team, params)
+  where += appendInFilter('vo.mat', expandActivityFilterCodes(body.activity), params)
+  where += appendWorkTypeFilter('vo', body.wktype, params, appendInFilter)
+  where += appendInFilter('vo.syst', body.status, params)
+  where += appendCalendarAssignedWkctrFilter(body.wkctr, 'vo', params)
+  where += appendFunctionalLocFilter(body.functionalloc, 'vo', 'ti', params)
+  where += appendInFilter('vo.equipment', body.equipment, params)
+  where += appendTeamFilterVo(body.team, params)
 
   const fromSec = body.fromDate ? parseIsoYyyyMmDdToSec(body.fromDate) : null
   const toSec = body.toDate ? parseIsoYyyyMmDdToSec(body.toDate) : null
@@ -411,9 +405,9 @@ export async function getWorkOrderFilterDetail(
     const b = params.length
     where += `
       AND (
-        (bscstart >= $${a} AND bscstart < $${b})
-        OR (actfinish >= $${a} AND actfinish < $${b})
-        OR (cday >= $${a} AND cday < $${b})
+        (vo.bscstart >= $${a} AND vo.bscstart < $${b})
+        OR (vo.actfinish >= $${a} AND vo.actfinish < $${b})
+        OR (vo.cday >= $${a} AND vo.cday < $${b})
       )`
   }
 
@@ -421,10 +415,10 @@ export async function getWorkOrderFilterDetail(
     params.push(`%${body.q.trim()}%`)
     const i = params.length
     where += ` AND (
-      wkorder ILIKE $${i}
-      OR operationshorttext ILIKE $${i}
-      OR equdescrip ILIKE $${i}
-      OR funcdescrip ILIKE $${i}
+      vo.wkorder ILIKE $${i}
+      OR vo.operationshorttext ILIKE $${i}
+      OR vo.equdescrip ILIKE $${i}
+      OR vo.funcdescrip ILIKE $${i}
     )`
   }
 
@@ -442,15 +436,15 @@ export async function getWorkOrderFilterDetail(
   }>(
     `SELECT
        COUNT(*)::text AS total_orders,
-       COUNT(*) FILTER (WHERE syst NOT IN ('CRTD', 'REL'))::text AS completion_count,
-       COUNT(*) FILTER (WHERE team = 'A')::text AS team_a_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'A'), 0)::text AS team_a_work,
-       COUNT(*) FILTER (WHERE team = 'B')::text AS team_b_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'B'), 0)::text AS team_b_work,
-       COUNT(*) FILTER (WHERE team = 'EE')::text AS team_ee_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'EE'), 0)::text AS team_ee_work,
-       COUNT(*) FILTER (WHERE team = 'UT')::text AS team_ut_count,
-       COALESCE(SUM(COALESCE(work, 0)) FILTER (WHERE team = 'UT'), 0)::text AS team_ut_work
+       COUNT(*) FILTER (WHERE vo.syst NOT IN ('CRTD', 'REL'))::text AS completion_count,
+       COUNT(*) FILTER (WHERE vo.team = 'A')::text AS team_a_count,
+       COALESCE(SUM(COALESCE(vo.work, 0)) FILTER (WHERE vo.team = 'A'), 0)::text AS team_a_work,
+       COUNT(*) FILTER (WHERE vo.team = 'B')::text AS team_b_count,
+       COALESCE(SUM(COALESCE(vo.work, 0)) FILTER (WHERE vo.team = 'B'), 0)::text AS team_b_work,
+       COUNT(*) FILTER (WHERE vo.team = 'EE')::text AS team_ee_count,
+       COALESCE(SUM(COALESCE(vo.work, 0)) FILTER (WHERE vo.team = 'EE'), 0)::text AS team_ee_work,
+       COUNT(*) FILTER (WHERE vo.team = 'UT')::text AS team_ut_count,
+       COALESCE(SUM(COALESCE(vo.work, 0)) FILTER (WHERE vo.team = 'UT'), 0)::text AS team_ut_work
      ${where}`,
     params,
   )
@@ -468,7 +462,7 @@ export async function getWorkOrderFilterDetail(
     `SELECT z.wkzb, z.zbdescrip, COALESCE(x.cnt, 0)::text AS cnt
      FROM app.tbwkzb z
      LEFT JOIN (
-       SELECT wktype, COUNT(*)::int AS cnt
+       SELECT vo.wktype, COUNT(*)::int AS cnt
        ${where}
        GROUP BY wktype
      ) x ON x.wktype = z.wkzb
@@ -634,7 +628,7 @@ async function getWorkOrderViewRow(
   id: string,
 ): Promise<ViewOrderRow | null> {
   const r = await pool.query<ViewOrderRow>(
-    `SELECT i.idiw37, i.wkorder, i.mntplan, i.wktype, i.equipment, i.equdescrip, i.functionalloc, i.untime,
+    `SELECT i.idiw37, i.wkorder, i.mntplan, i.wktype, i.equipment, i.equdescrip, i.functionalloc, i.funcdescrip, i.untime,
             i.syst, i.bscstart, i.actfinish, i.systemstatus, i.wkctr, i.operationshorttext,
             i.ostdescription, i.opac, i.work, i.actwork, i.team, i.mat,
             v.cday, v.wkstcolor,
@@ -805,6 +799,26 @@ type MachineRow = { machine: string }
 
 type LineRow = { productline: string | null; uptime: string | number | null }
 
+async function loadFuncLocDescripByLegacy(
+  pool: Pool,
+  legacies: string[],
+): Promise<Map<string, string>> {
+  const codes = [...new Set(legacies.map((l) => l.trim()).filter(Boolean))]
+  if (codes.length === 0) return new Map()
+
+  const patterns = codes.map((l) => `${l}%`)
+  const r = await pool.query<{ functionalloc: string; funcdescrip: string }>(
+    `SELECT DISTINCT TRIM(functionalloc) AS functionalloc, TRIM(funcdescrip) AS funcdescrip
+     FROM app.tbiw37n
+     WHERE TRIM(funcdescrip) <> ''
+       AND TRIM(functionalloc) <> ''
+       AND functionalloc ILIKE ANY($1::text[])
+       AND ${sqlFactoryScope('', '$2')}`,
+    [patterns, `%${FACTORY_CODE}%`],
+  )
+  return buildFuncLocDescripByLegacyMap(r.rows)
+}
+
 type MaterialRow = {
   matpo: string | null
   pstngdate: string | null
@@ -866,6 +880,12 @@ export async function getWorkOrderModalDetail(
 
   const taskRows = taskR.rows
   const firstTask = taskRows[0]
+  const legacies = [...new Set(taskRows.map((r) => r.legacy?.trim()).filter((x): x is string => !!x))]
+  const funcLocByLegacy = await loadFuncLocDescripByLegacy(pool, legacies)
+  const woFuncLoc = {
+    functionalloc: row.functionalloc?.trim() ?? '',
+    funcdescrip: row.funcdescrip?.trim() ?? '',
+  }
   const summary = firstTask
     ? {
         tasklist: firstTask.tasklist,
@@ -944,8 +964,7 @@ export async function getWorkOrderModalDetail(
      FROM app.tbworkcenter wc
      LEFT JOIN app.tbwkctrtype wt ON wt.idwkctrtype::text = wc.idwkctrtype::text
      LEFT JOIN app.tbwkctrstatus ws ON ws.workstatus = wc.workstatus
-     WHERE COALESCE(wc.userrole, '') <> 'admin'
-       AND COALESCE(UPPER(wc.userst), '') <> 'A'
+     WHERE lower(coalesce(wc.userrole, '')) = 'technician'
        AND (ws.is_active IS DISTINCT FROM false)
      ORDER BY wc.wkctr ASC`,
   )
@@ -1018,12 +1037,34 @@ export async function getWorkOrderModalDetail(
 
   const pmExecution = await loadWoPmExecution(pool, Number(row.idiw37), canEditPmExecution)
 
-  const { resolveCloseWoAccess } = await import('../lib/close-wo-access.js')
+  const { resolveCloseWoAccess, canRequestPlanMove: resolveCanRequestPlanMove } = await import(
+    '../lib/close-wo-access.js'
+  )
   const closeWoAccess = resolveCloseWoAccess({
     assignees,
     wkctr: auth?.wkctr,
     userst,
     hasConfirmWrite,
+  })
+
+  const loginWkctr = (auth?.wkctr ?? '').trim()
+  const { getMyPendingPlanMoveRequest, listPendingPlanMoveRequests } = await import(
+    './plan-move-request.js'
+  )
+  const myMoveRequest = loginWkctr
+    ? await getMyPendingPlanMoveRequest(pool, Number(row.idiw37), loginWkctr)
+    : null
+  const moveRequestsPending = canAssign
+    ? await listPendingPlanMoveRequests(pool, Number(row.idiw37))
+    : []
+
+  const woMovable = isPlanMovableStatus((row.syst ?? '').trim())
+  const canRequestPlanMove = resolveCanRequestPlanMove({
+    assignees,
+    wkctr: loginWkctr,
+    canAssign,
+    woMovable,
+    hasPendingRequest: !!myMoveRequest,
   })
 
   const hoursMap = await loadPlanningAvailableHoursByWkctr(pool, date, {
@@ -1058,6 +1099,13 @@ export async function getWorkOrderModalDetail(
       items: taskRows.map((r) => {
         const machine = r.machine?.trim() ?? ''
         const pmlist = r.pmlist?.trim() ?? ''
+        const taskLine =
+          machine && pmlist ? `${machine} — ${pmlist}` : machine || pmlist || '—'
+        const description = resolveFuncLocDescripForLegacy(
+          r.legacy ?? '',
+          funcLocByLegacy,
+          woFuncLoc,
+        )
         const measure = buildTaskMeasurementFields({
           pmlist: r.pmlist,
           mpoint: r.mpoint,
@@ -1067,7 +1115,13 @@ export async function getWorkOrderModalDetail(
           tasklist: r.tasklist?.trim() ?? '',
           machine: r.machine?.trim() ?? '',
           pmlist: r.pmlist?.trim() ?? '',
-          displayLine: machine && pmlist ? `${machine} — ${pmlist}` : machine || pmlist || '—',
+          description,
+          displayLine: taskLine,
+          headerShortText: buildTaskListHeaderShortText(
+            mntplan,
+            r.legacy,
+            row.operationshorttext,
+          ),
           machinestatus: r.machinestatus != null ? Number(r.machinestatus) : null,
           mat: r.mat?.trim() ?? '',
           matdescrip: r.matdescrip?.trim() ?? '',
@@ -1093,6 +1147,9 @@ export async function getWorkOrderModalDetail(
         wkctrdescription: g.wkctrdescription?.trim() ?? '',
       })),
       closeWoAccess,
+      canRequestPlanMove,
+      myMoveRequest,
+      moveRequestsPending,
     },
     materials: {
       items: matR.rows.map((m) => ({
@@ -1216,7 +1273,40 @@ export async function assignWorkOrderPlanningBatch(
     )
   }
 
+  if (trimmedComment && trimmedComment.length > 0) {
+    await pool.query(
+      `UPDATE app.tbplangingwork
+       SET pwcomment = $1, wkctrpw = $2
+       WHERE idiw37 = $3 AND COALESCE(TRIM(pwteam), '') <> 'G'`,
+      [trimmedComment, actorWkctr, row.idiw37],
+    )
+  }
+
   return { assigned: toAssign, skipped, notFound }
+}
+
+/**
+ * อัปเดต pwcomment ให้ช่างที่จ่ายแล้วทุกคน (แถว person — ไม่รวมกลุ่ม G)
+ */
+export async function updateWorkOrderPlanningComment(
+  pool: Pool,
+  id: string,
+  comment: string,
+  actorWkctr: string,
+): Promise<{ updated: number } | null> {
+  const row = await getWorkOrderViewRow(pool, id)
+  if (!row) return null
+
+  const trimmed = comment.trim()
+  if (!trimmed) return { updated: 0 }
+
+  const r = await pool.query(
+    `UPDATE app.tbplangingwork
+     SET pwcomment = $1, wkctrpw = $2
+     WHERE idiw37 = $3 AND COALESCE(TRIM(pwteam), '') <> 'G'`,
+    [trimmed, actorWkctr.trim(), row.idiw37],
+  )
+  return { updated: r.rowCount ?? 0 }
 }
 
 /**

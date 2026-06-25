@@ -20,6 +20,7 @@ import {
   postWorkOrderPlanningBatch,
 } from '@/lib/api-public'
 import { formatPlanningHourValue } from '@/lib/planning-available-hours'
+import { invalidateOperationsViews } from '@/lib/operations-live-sync'
 import { planningAssignModeMeta } from '@/lib/planning-i18n'
 import type { PlanningAssignMode } from '@/lib/planning-assign-mode'
 import { usePermission } from '@/lib/use-permission'
@@ -94,10 +95,7 @@ export function PlanningAssignDialog({
   }, [target?.idiw37])
 
   const invalidatePlanningQueries = async (idiw37: number) => {
-    await qc.invalidateQueries({ queryKey: ['planning'] })
-    await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
-    await qc.invalidateQueries({ queryKey: ['calendar'] })
-    await qc.invalidateQueries({ queryKey: ['work-orders'] })
+    await invalidateOperationsViews(qc)
     await qc.invalidateQueries({ queryKey: ['work-orders', 'modal-detail', idiw37] })
   }
 

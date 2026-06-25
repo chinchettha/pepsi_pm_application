@@ -13,6 +13,15 @@ import type { Pool } from 'pg'
 import type { AuthUser } from '../schemas/auth.js'
 import type { PersonnelDashboardResponse } from '../schemas/personnel.js'
 import { timespanThai } from '../lib/timespan.js'
+import {
+  SQL_OPEN_NOT_SUPERVISOR_CLOSED,
+  SQL_OPEN_PARTIAL_WO_EXISTS,
+} from '../lib/pipeline-counts.js'
+import {
+  PERSONNEL_ASSIGNED_PARTIAL_COUNT_SQL,
+  PERSONNEL_ASSIGNED_PLAN_COUNT_SQL,
+  PERSONNEL_ASSIGNED_RECENT_OPEN_SQL,
+} from '../lib/personnel-assigned-work-sql.js'
 import { ROLE_LABEL_TH, resolveUserRole, type UserRole } from '../lib/user-role.js'
 import { getWorktimeTotal } from './manhours.js'
 
@@ -175,6 +184,7 @@ type GlobalSumRow = {
   open_total: string
   close_today: string
   assigned_total: string
+  partial_total: string
 }
 
 async function loadRoleData(
@@ -207,7 +217,12 @@ async function loadRoleData(
            COUNT(*) FILTER (WHERE i.syst IN ('TECO','COMP') AND COALESCE(i.actfinish,0) >= $1)::text AS close_today,
            COUNT(*) FILTER (WHERE i.syst IN ('CRTD','REL') AND EXISTS (
              SELECT 1 FROM app.tbplangingwork p WHERE p.idiw37 = i.idiw37
-           ))::text AS assigned_total
+           ))::text AS assigned_total,
+           COUNT(*) FILTER (
+             WHERE i.syst IN ('CRTD','REL')
+               AND ${SQL_OPEN_PARTIAL_WO_EXISTS}
+               AND ${SQL_OPEN_NOT_SUPERVISOR_CLOSED}
+           )::text AS partial_total
          FROM app.tbiw37n i`,
         [startToday],
         [],
@@ -232,6 +247,7 @@ async function loadRoleData(
           openTotal: Number(g.open_total ?? 0),
           closeToday: Number(g.close_today ?? 0),
           assignedTotal: Number(g.assigned_total ?? 0),
+          partialTotal: Number(g.partial_total ?? 0),
         }
       : null
 
@@ -317,31 +333,57 @@ export async function getPersonnelDashboard(
   pool: Pool,
   user: AuthUser,
 ): Promise<PersonnelDashboardResponse> {
-  const [profileRow, planCounts, recentPlanOpen, confirmSum, recentConfirm, worktime] =
-    await Promise.all([
-      loadProfile(pool, user).catch(() => null),
-      safeQuery<PlanCountRow>(
-        pool,
-        `SELECT
+  const profileRow = await loadProfile(pool, user).catch(() => null)
+
+  const role = resolveUserRole(
+    profileRow?.userrole ?? null,
+    profileRow?.userst ?? user.userst,
+    profileRow?.position ?? null,
+  )
+  const isTechnician = role === 'technician'
+
+  const planCountSql = isTechnician
+    ? PERSONNEL_ASSIGNED_PLAN_COUNT_SQL
+    : `SELECT
            CASE WHEN syst IN ('CRTD', 'REL') THEN 'open' ELSE 'closed' END AS syst,
            COUNT(*)::text AS n
          FROM app.view_planwork
          WHERE idwkctr = $1
-         GROUP BY 1`,
-        [user.idwkctr],
-        [],
-      ),
-      safeQuery<PlanRow>(
-        pool,
-        `SELECT idiw37, wkorder, wktype, operationshorttext, functionalloc, equdescrip,
+         GROUP BY 1`
+
+  const partialCountSql = isTechnician
+    ? PERSONNEL_ASSIGNED_PARTIAL_COUNT_SQL
+    : `SELECT COUNT(DISTINCT v.idiw37)::text AS n
+         FROM app.view_planwork v
+         WHERE v.idwkctr = $1
+           AND v.syst IN ('CRTD', 'REL')
+           AND EXISTS (
+             SELECT 1 FROM app.tbwrkclose w
+             WHERE w.idiw37 = v.idiw37
+               AND w.wkctr = v.wkctr
+               AND w.close_kind = 'partial'
+               AND NOT EXISTS (
+                 SELECT 1 FROM app.tbwrkclose c
+                 WHERE c.idiw37 = v.idiw37
+                   AND c.wkctr = w.wkctr
+                   AND c.close_kind = 'complete'
+               )
+           )`
+
+  const recentOpenSql = isTechnician
+    ? PERSONNEL_ASSIGNED_RECENT_OPEN_SQL
+    : `SELECT idiw37, wkorder, wktype, operationshorttext, functionalloc, equdescrip,
                 bscstart::text AS bscstart, syst
          FROM app.view_planwork
          WHERE idwkctr = $1 AND syst IN ('CRTD', 'REL')
          ORDER BY bscstart DESC NULLS LAST
-         LIMIT 5`,
-        [user.idwkctr],
-        [],
-      ),
+         LIMIT 5`
+
+  const [planCounts, partialPlanCount, recentPlanOpen, confirmSum, recentConfirm, worktime] =
+    await Promise.all([
+      safeQuery<PlanCountRow>(pool, planCountSql, [user.idwkctr], []),
+      safeQuery<{ n: string }>(pool, partialCountSql, [user.idwkctr], [{ n: '0' }]),
+      safeQuery<PlanRow>(pool, recentOpenSql, [user.idwkctr], []),
       safeQuery<ConfirmSumRow>(
         pool,
         `SELECT
@@ -390,14 +432,9 @@ export async function getPersonnelDashboard(
     planCounts.find((c) => c.syst === 'closed')?.n ?? '0',
   )
 
-  const sumRow = confirmSum[0] ?? { total_close: '0', total_minutes: '0' }
+  const partialCount = Number(partialPlanCount[0]?.n ?? '0')
 
-  const role = resolveUserRole(
-    profileRow?.userrole ?? null,
-    profileRow?.userst ?? user.userst,
-    profileRow?.position ?? null,
-  )
-  const roleLabel = ROLE_LABEL_TH[role]
+  const sumRow = confirmSum[0] ?? { total_close: '0', total_minutes: '0' }
 
   const roleData = await loadRoleData(
     pool,
@@ -406,6 +443,8 @@ export async function getPersonnelDashboard(
     profileRow?.idwkctrgroup ?? null,
     profileRow?.wkctrdescription ?? null,
   ).catch(() => ({}) as PersonnelDashboardResponse['roleData'])
+
+  const roleLabel = ROLE_LABEL_TH[role]
 
   return {
     role,
@@ -436,6 +475,7 @@ export async function getPersonnelDashboard(
     planning: {
       openCount,
       closedCount,
+      partialCount,
       recent: recentPlanOpen.map((r) => ({
         idiw37: Number(r.idiw37),
         wkorder: r.wkorder,

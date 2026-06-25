@@ -164,8 +164,24 @@ describe('manhours frontend schemas', () => {
       completionCount: 0,
       completionPercent: 0,
       byWkzb: [],
-      rows: [],
+      rows: [
+        {
+          idiw37: 1,
+          wkorder: '4001568407',
+          wktype: 'ZB02',
+          syst: 'CRTD',
+          work: 30,
+          actwork: 0,
+          unit: 'MIN',
+          dispatchStatus: 'unassigned',
+          ackStatus: 'none',
+          assigneeCount: 0,
+          ackCount: 0,
+        },
+      ],
     })
     expect(parsed.plannedMinutes).toBe(100)
+    expect(parsed.rows[0]?.dispatchStatus).toBe('unassigned')
+    expect(parsed.rows[0]?.ackStatus).toBe('none')
   })
 })

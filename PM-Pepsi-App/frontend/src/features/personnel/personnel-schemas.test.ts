@@ -61,6 +61,7 @@ describe('personnel schemas', () => {
       planning: {
         openCount: 1,
         closedCount: 2,
+        partialCount: 0,
         recent: [],
       },
       confirmation: {

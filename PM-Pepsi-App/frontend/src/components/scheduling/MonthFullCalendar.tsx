@@ -1,4 +1,4 @@
-import type { DatesSetArg, DateSelectArg, EventClickArg, EventDropArg } from '@fullcalendar/core'
+import type { DatesSetArg, DateSelectArg, EventClickArg, EventDropArg, MoreLinkArg } from '@fullcalendar/core'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin, { type DateClickArg } from '@fullcalendar/interaction'
 import FullCalendar from '@fullcalendar/react'
@@ -8,6 +8,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 
 import { calendarEventHoverDetailSchema, type CalendarEventHoverDetail } from '@/api/schemas'
 import { CalendarDayGantt } from '@/components/scheduling/CalendarDayGantt'
+import { CalendarDayJobsDialog } from '@/components/scheduling/CalendarDayJobsDialog'
 import { CalendarEventHoverCard } from '@/components/scheduling/CalendarEventHoverCard'
 import { mountCalendarTecoBell } from '@/lib/calendar-event-bell'
 import { mountCalendarPipelineBadges } from '@/lib/calendar-pipeline-badge'
@@ -85,10 +86,14 @@ type MonthFullCalendarProps = {
   yearMax?: number
   /** UI ปฏิทินแบบ modern (toolbar + animation) — ค่าเริ่มต้น true */
   modern?: boolean
-  /** จำนวนงานที่แสดงในช่องวันก่อน "+N งาน" (ค่าเริ่มต้น 5) */
-  dayMaxEvents?: number
+  /** จำนวนงานที่แสดงในช่องวันก่อน "+N งาน" (ค่าเริ่มต้น 5 · `true` = ตามความสูงช่อง) */
+  dayMaxEvents?: number | boolean
   /** ความสูงขั้นต่ำช่องวัน เช่น `7.5rem` */
   dayCellMinHeight?: string
+  /** จำนวน WO ต่อวัน — แสดง badge ข้างเลขวัน */
+  dayOrderCounts?: Readonly<Record<string, number>>
+  /** แถบงานกะทัดรัด — เหมาะ planner ที่มีงานหนาแน่น */
+  denseEvents?: boolean
   /** Note รายวัน — รหัสศูนย์งานที่มีงานค้าง (Backlog) */
   dayWkctrNotes?: ReadonlyMap<string, readonly string[]> | Record<string, readonly string[]>
   /** สี/ธีมวันหยุด — ส่งผ่าน CSS variables */
@@ -133,6 +138,8 @@ export function MonthFullCalendar({
   modern = true,
   dayMaxEvents = MODERN_CALENDAR_DEFAULTS.dayMaxEvents,
   dayCellMinHeight,
+  dayOrderCounts,
+  denseEvents = false,
   dayWkctrNotes,
   theme,
 }: MonthFullCalendarProps) {
@@ -148,16 +155,17 @@ export function MonthFullCalendar({
     }),
     [t],
   )
-  const fcEvents = useMemo(() => toFullCalendarEvents(events), [events])
+  const touchDnD = Boolean(onEventDrop)
+  const touchSelect = Boolean(onDateClick || onRangeSelect)
+  const fcEvents = useMemo(() => toFullCalendarEvents(events, touchDnD), [events, touchDnD])
+  const reducedMotion = useReducedMotion()
+
   const notesForDate = (isoDate: string): readonly string[] => {
     if (!dayWkctrNotes) return []
     if (dayWkctrNotes instanceof Map) return dayWkctrNotes.get(isoDate) ?? []
     const record = dayWkctrNotes as Record<string, readonly string[]>
     return record[isoDate] ?? []
   }
-  const touchDnD = Boolean(onEventDrop)
-  const touchSelect = Boolean(onDateClick || onRangeSelect)
-  const reducedMotion = useReducedMotion()
 
   const themeStyle = useMemo(
     () =>
@@ -176,7 +184,10 @@ export function MonthFullCalendar({
     x: number
     y: number
   } | null>(null)
+  const [dayJobsDate, setDayJobsDate] = useState<string | null>(null)
   const prevPeriod = useRef({ year, month })
+  /** กัน datesSet ยิง onMonthChange ขณะ sync จาก parent (gotoDate) */
+  const syncingFromParentRef = useRef(false)
 
   useEffect(() => {
     if (currentView === 'dayGridDay') return
@@ -184,6 +195,7 @@ export function MonthFullCalendar({
     if (!api) return
     const viewDate = api.getDate()
     if (viewDate.getFullYear() !== year || viewDate.getMonth() + 1 !== month) {
+      syncingFromParentRef.current = true
       api.gotoDate(new Date(year, month - 1, 1))
     }
   }, [year, month, currentView])
@@ -220,6 +232,7 @@ export function MonthFullCalendar({
     setFocusDate(iso)
     onMonthChange(base.getFullYear(), base.getMonth() + 1)
     if (currentView !== 'dayGridDay') {
+      syncingFromParentRef.current = true
       calRef.current?.getApi().gotoDate(base)
     }
   }
@@ -264,11 +277,15 @@ export function MonthFullCalendar({
     }
     const anchor = parseIsoDate(focusDate) ?? new Date(year, month - 1, 1)
     const viewDate = api.getDate()
-    if (
-      viewDate.getFullYear() !== anchor.getFullYear() ||
-      viewDate.getMonth() !== anchor.getMonth() ||
-      viewDate.getDate() !== anchor.getDate()
-    ) {
+    const periodMismatch =
+      currentView === 'dayGridMonth'
+        ? viewDate.getFullYear() !== anchor.getFullYear() ||
+          viewDate.getMonth() !== anchor.getMonth()
+        : viewDate.getFullYear() !== anchor.getFullYear() ||
+          viewDate.getMonth() !== anchor.getMonth() ||
+          viewDate.getDate() !== anchor.getDate()
+    if (periodMismatch) {
+      syncingFromParentRef.current = true
       api.gotoDate(anchor)
     }
   }, [currentView, focusDate, year, month])
@@ -276,15 +293,26 @@ export function MonthFullCalendar({
   const handleDatesSet = (arg: DatesSetArg) => {
     const viewType = arg.view.type as CalendarViewType
     if (viewType === 'dayGridMonth' || viewType === 'dayGridWeek' || viewType === 'dayGridDay') {
-      setCurrentView(viewType)
+      setCurrentView((prev) => (prev === viewType ? prev : viewType))
     }
+
+    if (syncingFromParentRef.current) {
+      syncingFromParentRef.current = false
+      return
+    }
+
     const d = arg.view.currentStart
     const iso = toYyyyMmDd(d)
     if (viewType === 'dayGridDay' || viewType === 'dayGridWeek') {
-      setFocusDate(iso)
+      setFocusDate((prev) => (prev === iso ? prev : iso))
     }
-    const y = d.getFullYear()
-    const m = d.getMonth() + 1
+
+    // month view: แถวแรกของ grid อาจเป็นวันของเดือนก่อนหน้า — อย่า sync กลับ parent
+    if (viewType === 'dayGridMonth') return
+
+    const anchor = arg.view.calendar.getDate()
+    const y = anchor.getFullYear()
+    const m = anchor.getMonth() + 1
     if (y !== year || m !== month) onMonthChange(y, m)
   }
 
@@ -356,6 +384,13 @@ export function MonthFullCalendar({
     calRef.current?.getApi().unselect()
   }
 
+  const handleMoreLinkClick = (arg: MoreLinkArg) => {
+    arg.jsEvent.preventDefault()
+    const iso = toYyyyMmDd(arg.date)
+    // ให้ FC จัด layout popover เสร็จก่อน (หลีกเลี่ยง getBoundingClientRect null)
+    window.setTimeout(() => setDayJobsDate(iso), 0)
+  }
+
   const useModernChrome = modern && showPeriodPicker
 
   return (
@@ -399,6 +434,7 @@ export function MonthFullCalendar({
           'bg-[color-mix(in_srgb,var(--app-bg)_10%,var(--app-surface))]',
           'shadow-[0_8px_30px_color-mix(in_srgb,var(--app-text)_6%,transparent)]',
           modern && 'pm-fullcalendar--modern',
+          denseEvents && 'pm-fullcalendar--dense',
           touchDnD && 'pm-fullcalendar--touch-dnd',
         )}
       >
@@ -433,6 +469,8 @@ export function MonthFullCalendar({
           fixedWeekCount={false}
           dayMaxEvents={dayMaxEvents}
           moreLinkText={(n) => t('calendar.moreJobs', { count: n })}
+          moreLinkClick={handleMoreLinkClick}
+          eventOrder="-extendedProps.pipelineSortKey,title"
           events={fcEvents}
           datesSet={handleDatesSet}
           editable={touchDnD}
@@ -469,18 +507,26 @@ export function MonthFullCalendar({
             const d = String(arg.date.getDate()).padStart(2, '0')
             const iso = `${y}-${m}-${d}`
             const notes = notesForDate(iso)
+            const dayTotal = dayOrderCounts?.[iso] ?? 0
             return (
               <div className="pm-cal-day-head flex w-full flex-col gap-0.5">
-                <span
-                  className={cn(
-                    'pm-cal-day-num',
-                    arg.isToday && 'pm-cal-day-num--today',
-                    arg.isOther && 'pm-cal-day-num--muted',
-                    (arg.date.getDay() === 0 || arg.date.getDay() === 6) && 'pm-cal-day-num--weekend',
-                  )}
-                >
-                  {arg.dayNumberText}
-                </span>
+                <div className="pm-cal-day-head__row flex w-full items-center justify-between gap-1">
+                  <span
+                    className={cn(
+                      'pm-cal-day-num',
+                      arg.isToday && 'pm-cal-day-num--today',
+                      arg.isOther && 'pm-cal-day-num--muted',
+                      (arg.date.getDay() === 0 || arg.date.getDay() === 6) && 'pm-cal-day-num--weekend',
+                    )}
+                  >
+                    {arg.dayNumberText}
+                  </span>
+                  {dayTotal > 1 ? (
+                    <span className="pm-cal-day-count" title={t('calendar.dayJobCount', { count: dayTotal })}>
+                      {dayTotal}
+                    </span>
+                  ) : null}
+                </div>
                 {notes.length > 0 ? (
                   <div className="pm-cal-day-notes space-y-px px-0.5" aria-hidden>
                     {notes.slice(0, 3).map((line) => (
@@ -561,6 +607,14 @@ export function MonthFullCalendar({
             document.body,
           )
         : null}
+      <CalendarDayJobsDialog
+        date={dayJobsDate}
+        events={events}
+        onOpenChange={(open) => {
+          if (!open) setDayJobsDate(null)
+        }}
+        onEventClick={onEventClick}
+      />
     </div>
   )
 }

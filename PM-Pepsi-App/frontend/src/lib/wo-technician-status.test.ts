@@ -22,4 +22,15 @@ describe('buildWoTechnicianStatusRows', () => {
     expect(rows[0]?.status).toBe('pending')
     expect(rows[0]?.statusLabel).toBe('Pending')
   })
+
+  it('does not mark partial personnel close as done', () => {
+    const rows = buildWoTechnicianStatusRows({
+      assignees: [{ kind: 'person', code: 'PAC003', displayName: 'ช่าง C' }],
+      personnelCloses: [
+        { wkctr: 'PAC003', displayName: 'ช่าง C', closeKind: 'partial' },
+      ],
+      supervisorCloses: [],
+    })
+    expect(rows[0]?.status).toBe('pending')
+  })
 })

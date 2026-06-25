@@ -17,15 +17,26 @@ import { getAuthToken, getStoredAuthUser } from '@/features/auth/login-api'
 import { fetchEngUtilizationDaily, fetchWorktimeSummaryOverall } from '@/lib/api-public'
 import { personnelImageUrl } from '@/lib/api-public'
 import { defaultHrConfirmMonth, pepsiWeekSelectOptions } from '@/lib/manhour-hr-confirm-period'
+import {
+  ENG_UTIL_AVATAR_RADIUS,
+  ENG_UTIL_CHART_HEIGHT_PX,
+  ENG_UTIL_CHART_TOP_PADDING,
+  engUtilizationChartNeedsScroll,
+  engUtilizationChartWidthPx,
+  formatEngUtilizationLabel,
+} from '@/lib/eng-utilization-chart'
+import { operationsLiveQueryOptions } from '@/lib/operations-live-sync'
 import { useAnyPermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArcElement,
+  BarController,
   BarElement,
   CategoryScale,
   Chart as ChartJS,
   Legend,
   LinearScale,
+  LineController,
   LineElement,
   PointElement,
   Title,
@@ -34,6 +45,7 @@ import {
 import type { ChartData } from 'chart.js'
 import { WorktimePmCompletionPanel } from '@/features/manhours/WorktimePmCompletionPanel'
 import { AlertCircle, Link as LinkIcon, RefreshCcw, Sparkles } from 'lucide-react'
+import { subDays } from 'date-fns'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chart, Doughnut } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
@@ -41,6 +53,8 @@ import { useTranslation } from 'react-i18next'
 
 ChartJS.register(
   ArcElement,
+  BarController,
+  LineController,
   Title,
   Tooltip,
   Legend,
@@ -95,6 +109,7 @@ function SummaryOverallTab() {
         week,
       }),
     placeholderData: keepPreviousData,
+    ...operationsLiveQueryOptions,
   })
 
   if (q.isLoading && !q.data) return <Skeleton className="h-80 w-full rounded-card" />
@@ -229,7 +244,7 @@ function EngUtilizationDailyChart() {
   const { t } = useTranslation('manhours')
   const thisYear = new Date().getFullYear()
   const todayIso = useMemo(() => {
-    const d = new Date()
+    const d = subDays(new Date(), 1)
     const y = d.getFullYear()
     const m = String(d.getMonth() + 1).padStart(2, '0')
     const day = String(d.getDate()).padStart(2, '0')
@@ -254,24 +269,48 @@ function EngUtilizationDailyChart() {
         ...(period === 'daily' ? { from: day, to: day } : {}),
       }),
     placeholderData: keepPreviousData,
+    ...operationsLiveQueryOptions,
   })
 
   const imgCacheRef = useRef(new Map<string, HTMLImageElement>())
+  const chartScrollRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(640)
   const [, bumpImgReady] = useState(0)
 
   const rows = q.data?.rows ?? []
-  const labels = rows.map((r) =>
-    r.displayName?.trim() ? `${r.wkctr} (${r.displayName})` : r.wkctr,
+  const chartRows = useMemo(
+    () => [...rows].sort((a, b) => b.hrHours - a.hrHours),
+    [rows],
   )
+  const chartAverage = useMemo(() => {
+    if (chartRows.length === 0) return 0
+    return chartRows.reduce((s, r) => s + r.totalPercent, 0) / chartRows.length
+  }, [chartRows])
+  const labels = chartRows.map((r) => formatEngUtilizationLabel(r.wkctr, r.displayName))
+  const chartWidth = engUtilizationChartWidthPx(chartRows.length, containerWidth)
+  const chartScrollable = engUtilizationChartNeedsScroll(chartRows.length, containerWidth)
+
+  useEffect(() => {
+    const el = chartScrollRef.current
+    if (!el) return
+    const sync = () => {
+      const w = el.clientWidth
+      if (w > 0) setContainerWidth(w)
+    }
+    sync()
+    const ro = new ResizeObserver(() => sync())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [chartRows.length])
 
   // preload personnel photos for chart avatars (authenticated — avoids 401 on <img src>)
   useEffect(() => {
-    if (!rows.length) return
+    if (!chartRows.length) return
     const cache = imgCacheRef.current
     let cancelled = false
     const blobUrls: string[] = []
 
-    for (const r of rows) {
+    for (const r of chartRows) {
       const idwkctr = r.idwkctr
       if (!idwkctr || !r.hasImage) continue
       if (cache.has(idwkctr)) continue
@@ -315,7 +354,7 @@ function EngUtilizationDailyChart() {
       for (const url of blobUrls) URL.revokeObjectURL(url)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows])
+  }, [chartRows])
 
   if (q.isLoading && !q.data) return <Skeleton className="h-64 w-full rounded-card" />
   if (q.isError) {
@@ -325,29 +364,111 @@ function EngUtilizationDailyChart() {
   }
   if (!q.data) return null
 
+  if (chartRows.length === 0) {
+    return (
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-body-sm font-semibold text-app">{t('worktime.chartTitle')}</p>
+            <p className="text-xs text-app-muted">
+              {(q.data.periodLabel || q.data.dateLabel) ? (q.data.periodLabel || q.data.dateLabel) : 'Daily'}
+            </p>
+          </div>
+          <Badge variant="secondary" className="gap-1 text-xs">
+            <Sparkles className="size-3.5" aria-hidden />
+            {t('worktime.badgeSummary')}
+          </Badge>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <Label className="text-xs text-app-muted">{t('worktime.chartPeriod')}</Label>
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as 'daily' | 'weekly' | 'monthly' | 'yearly')}
+            className="h-9 rounded-md border border-app/30 bg-[var(--app-surface)] px-3 text-sm text-app"
+          >
+            <option value="daily">{t('worktime.periodDaily')}</option>
+            <option value="weekly">{t('worktime.periodWeekly')}</option>
+            <option value="monthly">{t('worktime.periodMonthly')}</option>
+            <option value="yearly">{t('worktime.periodYearly')}</option>
+          </select>
+
+          {period === 'daily' ? (
+            <Input
+              type="date"
+              value={day}
+              onChange={(e) => setDay(e.target.value)}
+              className="h-9 w-[180px]"
+            />
+          ) : null}
+
+          {period === 'weekly' ? (
+            <select
+              value={week}
+              onChange={(e) => setWeek(e.target.value)}
+              className="h-9 rounded-md border border-app/30 bg-[var(--app-surface)] px-3 text-sm text-app"
+            >
+              {weekOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
+
+          {period === 'monthly' ? (
+            <Input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="h-9 w-[180px]"
+            />
+          ) : null}
+
+          {period === 'yearly' ? (
+            <Input
+              type="number"
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="h-9 w-[120px]"
+            />
+          ) : null}
+        </div>
+
+        <EmptyState
+          className="mt-4"
+          title={t('worktime.chartEmpty')}
+          description={t('worktime.chartEmptyHint')}
+        />
+      </div>
+    )
+  }
+
   const data: ChartData<'bar' | 'line', number[], string> = {
     labels,
     datasets: [
       {
         type: 'bar' as const,
         label: t('worktime.datasetPm'),
-        data: rows.map((r) => Math.max(0, r.pmPercent)),
+        data: chartRows.map((r) => Math.max(0, r.pmPercent)),
         backgroundColor: 'rgba(34,197,94,0.85)',
         stack: 'util',
         borderWidth: 0,
+        minBarLength: 4,
       },
       {
         type: 'bar' as const,
         label: t('worktime.datasetReactive'),
-        data: rows.map((r) => Math.max(0, r.reactivePercent)),
+        data: chartRows.map((r) => Math.max(0, r.reactivePercent)),
         backgroundColor: 'rgba(14,165,233,0.90)',
         stack: 'util',
         borderWidth: 0,
+        minBarLength: 4,
       },
       {
         type: 'line' as const,
         label: t('worktime.datasetTotal'),
-        data: rows.map((r) => Math.max(0, r.totalPercent)),
+        data: chartRows.map((r) => Math.max(0, r.totalPercent)),
         borderColor: 'rgba(236,72,153,0.9)',
         backgroundColor: 'rgba(236,72,153,0.15)',
         pointBackgroundColor: 'rgba(236,72,153,0.95)',
@@ -365,7 +486,7 @@ function EngUtilizationDailyChart() {
           <p className="text-body-sm font-semibold text-app">{t('worktime.chartTitle')}</p>
           <p className="text-xs text-app-muted">
             {(q.data.periodLabel || q.data.dateLabel) ? (q.data.periodLabel || q.data.dateLabel) : 'Daily'} ·{' '}
-            {t('worktime.chartAverage', { pct: q.data.averagePercent.toFixed(1) })}
+            {t('worktime.chartAverage', { pct: chartAverage.toFixed(1) })}
           </p>
         </div>
         <Badge variant="secondary" className="gap-1 text-xs">
@@ -429,34 +550,48 @@ function EngUtilizationDailyChart() {
         ) : null}
       </div>
 
-      <div className="mt-3 overflow-x-auto">
-        <div
-          className="h-[520px]"
-          style={{ minWidth: Math.max(920, rows.length * 56) }}
-        >
+      <div ref={chartScrollRef} className="mt-3 w-full overflow-x-auto rounded-card border border-app/30 bg-[var(--app-surface)]">
+        {chartScrollable ? (
+          <p className="border-b border-app/20 px-3 py-1.5 text-xs text-app-muted">
+            {t('worktime.chartScrollHint', { count: chartRows.length })}
+          </p>
+        ) : null}
+        <div style={{ width: chartWidth, height: ENG_UTIL_CHART_HEIGHT_PX }}>
           <Chart
             type="bar"
             data={data}
             options={{
               responsive: true,
               maintainAspectRatio: false,
-            layout: { padding: { top: 116 } },
+              layout: { padding: { top: ENG_UTIL_CHART_TOP_PADDING } },
               interaction: { mode: 'index', intersect: false },
               plugins: {
                 legend: { position: 'bottom' as const },
                 tooltip: { enabled: true },
               },
+              datasets: {
+                bar: {
+                  categoryPercentage: 0.88,
+                  barPercentage: 0.92,
+                  maxBarThickness: 36,
+                },
+              },
               scales: {
                 x: {
                   stacked: true,
-                  ticks: { maxRotation: 60, minRotation: 30 },
+                  ticks: {
+                    maxRotation: 45,
+                    minRotation: 45,
+                    font: { size: 10 },
+                    autoSkip: false,
+                  },
                   grid: { display: false },
                 },
                 y: {
                   stacked: true,
                   min: 0,
                   max: 100,
-                  ticks: { callback: (v) => `${v}%` },
+                  ticks: { callback: (v) => `${v}%`, font: { size: 10 } },
                 },
               },
             }}
@@ -465,14 +600,14 @@ function EngUtilizationDailyChart() {
               id: 'techPhotos',
               afterDatasetsDraw(chart) {
                 const ctx = chart.ctx
-                const metaBar = chart.getDatasetMeta(0) // %PM bar (has x positions)
+                const metaBar = chart.getDatasetMeta(0)
                 if (!metaBar?.data?.length) return
 
-                const r = 20
-                const y = chart.chartArea.top + r + 10
+                const r = ENG_UTIL_AVATAR_RADIUS
+                const y = chart.chartArea.top + r + 6
                 for (let i = 0; i < metaBar.data.length; i += 1) {
                   const bar = metaBar.data[i]
-                  const row = rows[i]
+                  const row = chartRows[i]
                   const x = bar.x
 
                   const img =
@@ -496,7 +631,7 @@ function EngUtilizationDailyChart() {
                     ctx.fillStyle = 'rgba(148,163,184,0.9)'
                     ctx.fill()
                     ctx.fillStyle = 'rgba(15,23,42,0.95)'
-                    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif'
+                    ctx.font = '10px system-ui, -apple-system, Segoe UI, Roboto, sans-serif'
                     ctx.textAlign = 'center'
                     ctx.textBaseline = 'middle'
                     ctx.fillText(t.slice(0, 2).toUpperCase(), x, y)
@@ -508,7 +643,7 @@ function EngUtilizationDailyChart() {
                   ctx.beginPath()
                   ctx.arc(x, y, r, 0, Math.PI * 2)
                   ctx.strokeStyle = 'rgba(255,255,255,0.95)'
-                  ctx.lineWidth = 4
+                  ctx.lineWidth = 3
                   ctx.stroke()
                   ctx.restore()
                 }
@@ -528,10 +663,10 @@ function EngUtilizationDailyChart() {
 
                 for (let i = 0; i < metaLine.data.length; i += 1) {
                   const point = metaLine.data[i]
-                  const v = rows[i]?.totalPercent ?? 0
+                  const v = chartRows[i]?.totalPercent ?? 0
                   const text = `${Math.round(v)}%`
                   const x = point.x
-                  const y = Math.max(chart.chartArea.top + 28, point.y - 46)
+                  const y = Math.max(chart.chartArea.top + 22, point.y - 38)
 
                   const padX = 8
                   const w = ctx.measureText(text).width + padX * 2
@@ -565,6 +700,48 @@ function EngUtilizationDailyChart() {
           aria-label={t('worktime.chartAria')}
           />
         </div>
+      </div>
+
+      <div className="mt-4 overflow-x-auto rounded-card border border-app/30">
+        <table className="w-full min-w-[36rem] text-left text-sm">
+          <thead className="border-b border-app/30 bg-app-subtle/50 text-xs uppercase tracking-wide text-app-muted">
+            <tr>
+              <th className="px-3 py-2 font-semibold">{t('worktime.tableTechnician')}</th>
+              <th className="px-3 py-2 font-semibold text-right">{t('worktime.datasetPm')}</th>
+              <th className="px-3 py-2 font-semibold text-right">{t('worktime.datasetReactive')}</th>
+              <th className="px-3 py-2 font-semibold text-right">{t('worktime.datasetTotal')}</th>
+              <th className="px-3 py-2 font-semibold text-right">{t('worktime.tableHrHours')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {chartRows.map((row) => (
+              <tr key={row.idwkctr} className="border-b border-app/15 last:border-0">
+                <td className="px-3 py-2 font-medium text-app">
+                  {formatEngUtilizationLabel(row.wkctr, row.displayName)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">{row.pmPercent.toFixed(1)}%</td>
+                <td className="px-3 py-2 text-right tabular-nums">{row.reactivePercent.toFixed(1)}%</td>
+                <td className="px-3 py-2 text-right tabular-nums font-medium">{row.totalPercent.toFixed(1)}%</td>
+                <td className="px-3 py-2 text-right tabular-nums">{row.hrHours.toFixed(1)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="border-t border-app/30 bg-app-subtle/35 text-xs font-semibold text-app">
+            <tr>
+              <td className="px-3 py-2">{t('worktime.tableAverage')}</td>
+              <td className="px-3 py-2 text-right tabular-nums">
+                {(chartRows.reduce((s, r) => s + r.pmPercent, 0) / chartRows.length).toFixed(1)}%
+              </td>
+              <td className="px-3 py-2 text-right tabular-nums">
+                {(chartRows.reduce((s, r) => s + r.reactivePercent, 0) / chartRows.length).toFixed(1)}%
+              </td>
+              <td className="px-3 py-2 text-right tabular-nums">{chartAverage.toFixed(1)}%</td>
+              <td className="px-3 py-2 text-right tabular-nums">
+                {chartRows.reduce((s, r) => s + r.hrHours, 0).toFixed(1)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   )
@@ -616,14 +793,14 @@ export function WorktimePage() {
           </Button>
           <CanPermission permission="work-orders.read">
             <Button variant="outline" size="sm" asChild>
-              <Link to="/work-orders">{t('worktime.navWorkOrders')}</Link>
+              <Link to="/confirmation">{t('worktime.navWorkOrders')}</Link>
             </Button>
           </CanPermission>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
-              void qc.invalidateQueries({ queryKey: ['worktime', 'summary-overall'] })
+              void qc.invalidateQueries({ queryKey: ['worktime'] })
             }}
           >
             <RefreshCcw className="mr-1 size-3.5" aria-hidden />

@@ -50,6 +50,7 @@ export function legacyHasPermission(userst: string | null | undefined, perm: str
     return false
   }
   if (role === 'U') {
+    if (perm.startsWith('admin.')) return true
     if (perm.startsWith('planning.') || perm.startsWith('iw37n.')) return true
     if (
       perm === 'work-orders.read' ||
@@ -63,6 +64,7 @@ export function legacyHasPermission(userst: string | null | undefined, perm: str
       perm === 'dashboard.read' ||
       perm === 'calendar.read' ||
       perm === 'calendar.write' ||
+      perm === 'plan-calendar.read' ||
       perm === 'backlog.read' ||
       perm === 'backlog.write' ||
       perm === 'reports.read' ||
@@ -77,8 +79,7 @@ export function legacyHasPermission(userst: string | null | undefined, perm: str
   if (role === 'W') {
     if (
       perm === 'dashboard.read' ||
-      perm === 'planning.read' ||
-      perm === 'calendar.read' ||
+      perm === 'plan-calendar.read' ||
       perm === 'backlog.read' ||
       perm === 'work-orders.read' ||
       perm === 'work-orders.write' ||

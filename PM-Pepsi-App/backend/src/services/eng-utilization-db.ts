@@ -1,5 +1,9 @@
 import type { Pool } from 'pg'
 import { resolveManhourChartRange, type ManhourChartRange } from './manhour-chart.js'
+import {
+  ENG_UTIL_CONFIRM_MINUTES_BY_WKCTR_SQL,
+  manhourConfirmMinutesToHours,
+} from '../lib/manhour-confirm-sql.js'
 import { personnelIsActiveSql } from '../lib/personnel-active-sql.js'
 
 /** แถว manhour ช่วง stworkday–workday ทับซ้อนช่วงที่เลือก (เหมือน manhour chart) */
@@ -49,9 +53,9 @@ export async function getEngUtilizationDailyFromDb(
     display_name: string | null
     has_image: boolean
     hr_hours: string
-    pm_hours: string
-    reactive_hours: string
-    rca_hours: string
+    pm_minutes: string
+    reactive_minutes: string
+    rca_minutes: string
   }>(
     `WITH people AS (
        SELECT
@@ -78,17 +82,7 @@ export async function getEngUtilizationDailyFromDb(
        GROUP BY m.idwkctr
      ),
      conf AS (
-       SELECT
-         p.wkctr,
-         COALESCE(SUM(CASE WHEN c.wktype = 'ZB02' THEN c.timewk ELSE 0 END), 0)::text AS pm_hours,
-         COALESCE(SUM(CASE WHEN c.wktype = 'ZB05' THEN c.timewk ELSE 0 END), 0)::text AS reactive_hours,
-         COALESCE(SUM(CASE WHEN c.wktype = 'ZB01' THEN c.timewk ELSE 0 END), 0)::text AS rca_hours
-       FROM people p
-       LEFT JOIN app.view_exportconfirm c
-         ON c.wkctr = p.wkctr
-        AND c.endate BETWEEN $1 AND $2
-        AND c.wktype IN ('ZB01','ZB02','ZB05')
-       GROUP BY p.wkctr
+       ${ENG_UTIL_CONFIRM_MINUTES_BY_WKCTR_SQL}
      )
      SELECT
        p.idwkctr,
@@ -96,9 +90,9 @@ export async function getEngUtilizationDailyFromDb(
        p.display_name,
        p.has_image,
        COALESCE(hr.hr_hours, '0') AS hr_hours,
-       COALESCE(conf.pm_hours, '0') AS pm_hours,
-       COALESCE(conf.reactive_hours, '0') AS reactive_hours,
-       COALESCE(conf.rca_hours, '0') AS rca_hours
+       COALESCE(conf.pm_minutes, '0') AS pm_minutes,
+       COALESCE(conf.reactive_minutes, '0') AS reactive_minutes,
+       COALESCE(conf.rca_minutes, '0') AS rca_minutes
      FROM people p
      LEFT JOIN hr ON hr.idwkctr = p.idwkctr
      LEFT JOIN conf ON conf.wkctr = p.wkctr
@@ -106,30 +100,32 @@ export async function getEngUtilizationDailyFromDb(
     [from, to],
   )
 
-  const rows: EngUtilizationDbRow[] = r.rows.map((row) => {
-    const wkctr = String(row.wkctr)
-    const hrHours = Number(row.hr_hours ?? 0)
-    const pmHours = Number(row.pm_hours ?? 0)
-    const reactiveHours = Number(row.reactive_hours ?? 0)
-    const rcaHours = Number(row.rca_hours ?? 0)
-    const pmPercent = hrHours > 0 ? (pmHours / hrHours) * 100 : 0
-    const reactivePercent = hrHours > 0 ? (reactiveHours / hrHours) * 100 : 0
-    const totalPercent = pmPercent + reactivePercent
-    return {
-      idwkctr: String(row.idwkctr),
-      wkctr,
-      label: wkctr,
-      displayName: row.display_name ? String(row.display_name) : null,
-      hasImage: Boolean(row.has_image),
-      pmPercent,
-      reactivePercent,
-      totalPercent,
-      pmHours,
-      reactiveHours,
-      rcaHours,
-      hrHours,
-    }
-  })
+  const rows: EngUtilizationDbRow[] = r.rows
+    .map((row) => {
+      const wkctr = String(row.wkctr)
+      const hrHours = Number(row.hr_hours ?? 0)
+      const pmHours = manhourConfirmMinutesToHours(Number(row.pm_minutes ?? 0))
+      const reactiveHours = manhourConfirmMinutesToHours(Number(row.reactive_minutes ?? 0))
+      const rcaHours = manhourConfirmMinutesToHours(Number(row.rca_minutes ?? 0))
+      const pmPercent = hrHours > 0 ? (pmHours / hrHours) * 100 : 0
+      const reactivePercent = hrHours > 0 ? (reactiveHours / hrHours) * 100 : 0
+      const totalPercent = pmPercent + reactivePercent
+      return {
+        idwkctr: String(row.idwkctr),
+        wkctr,
+        label: wkctr,
+        displayName: row.display_name ? String(row.display_name) : null,
+        hasImage: Boolean(row.has_image),
+        pmPercent,
+        reactivePercent,
+        totalPercent,
+        pmHours,
+        reactiveHours,
+        rcaHours,
+        hrHours,
+      }
+    })
+    .filter((row) => row.hrHours > 0)
 
   const avg =
     rows.length > 0 ? rows.reduce((s, rr) => s + rr.totalPercent, 0) / rows.length : 0

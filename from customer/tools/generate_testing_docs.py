@@ -23,6 +23,7 @@ def main() -> None:
         TOOLS / "generate_install_deploy_runbook_docx.py",
         TOOLS / "generate_security_docx.py",
         TOOLS / "generate_e2e_test_docx.py",
+        TOOLS / "generate_persona_vv_iso29110_docx.py",
         TOOLS / "generate_test_case_scenario_docx.py",
     ]
     for script in scripts:

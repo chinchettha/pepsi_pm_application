@@ -1,4 +1,5 @@
 import XLSX from 'xlsx'
+import { masterPlanColumnStorageKey } from './master-plan-column-keys.js'
 
 export type MasterPlanDiscipline = 'EE' | 'ME' | 'PK'
 
@@ -78,9 +79,10 @@ function parseDetailRows(
     if (!rowHasContent(row)) continue
     const cells: Record<string, string> = {}
     for (let c = 0; c < headers.length; c++) {
-      const header = headers[c]
+      const header = cellStr(headers[c])
       if (!header) continue
-      cells[header] = cellStr(row[c])
+      const key = masterPlanColumnStorageKey(headers, c)
+      cells[key] = cellStr(row[c])
     }
     out.push({ rowIndex: r, cells })
   }

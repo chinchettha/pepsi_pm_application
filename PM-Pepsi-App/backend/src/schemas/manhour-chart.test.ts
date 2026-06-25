@@ -22,7 +22,7 @@ describe('manhour chart schemas', () => {
       utilizationPercent: 85.5,
       confirmHours: 40,
       manhourTotal: 46.78,
-      zb: [{ wktype: 'ZB01', planned: 3, confirmed: 2, percent: 150 }],
+      zb: [{ wktype: 'ZB01', planned: 3, confirmed: 2, percent: 66.67 }],
     })
     expect(parsed.zb).toHaveLength(1)
   })
@@ -52,5 +52,13 @@ describe('resolveManhourChartRange', () => {
   it('accepts dd.mm.yyyy legacy dates', () => {
     const r = resolveManhourChartRange('01.04.2026', '01.05.2026')
     expect(r.to).toBeGreaterThanOrEqual(r.from)
+  })
+
+  it('includes activity through end of the last selected day', () => {
+    const r = resolveManhourChartRange('2026-05-26', '2026-06-25')
+    // WO 4001555906 closed 2026-06-25 ~08:48 BKK (wktimeclose 1782352074)
+    expect(r.from).toBeLessThanOrEqual(1782352074)
+    expect(r.to).toBeGreaterThanOrEqual(1782352074)
+    expect(r.toDate).toBe('2026-06-25')
   })
 })

@@ -8,7 +8,6 @@ import {
   BookText,
   Boxes,
   CalendarDays,
-  ClipboardList,
   Clock3,
   Database,
   Home,
@@ -50,9 +49,8 @@ export const appNav: NavEntry[] = [
   { kind: 'heading', label: 'Calendar & Work Orders' },
   { kind: 'item', to: '/', label: 'Dashboard', icon: Home, menuright: 'A:U:W', end: true },
   { kind: 'item', to: '/plan-calendar', label: 'Plan Calendar', icon: CalendarDays, menuright: 'A:U:W' },
-  { kind: 'item', to: '/calendar', label: 'Work Scheduling Calendar', icon: CalendarDays, menuright: 'A:U:W' },
+  { kind: 'item', to: '/calendar', label: 'Work Scheduling Calendar', icon: CalendarDays, menuright: 'A:U' },
   { kind: 'item', to: '/backlog', label: 'Backlog', icon: LayoutList, menuright: 'A:U:W' },
-  { kind: 'item', to: '/work-orders', label: 'WO / Confirmation', icon: ClipboardList, menuright: 'A:U:W' },
   {
     kind: 'item',
     to: '/pm-vibration',
@@ -97,15 +95,15 @@ export const appNav: NavEntry[] = [
     menuright: 'A:U:W',
     end: true,
   },
-  { kind: 'item', to: '/reports/audit', label: 'Auditor Hub', icon: ShieldCheck, menuright: 'A:U:W' },
-  { kind: 'item', to: '/activity-log', label: 'Activity Log', icon: BookText, menuright: 'A:U:W' },
+  { kind: 'item', to: '/reports/audit', label: 'Auditor Hub', icon: ShieldCheck, menuright: 'A:U' },
+  { kind: 'item', to: '/activity-log', label: 'Activity Log', icon: BookText, menuright: 'A:U' },
   { kind: 'item', to: '/manhours-hr', label: 'Manhour HR', icon: Printer, menuright: 'A:U:W' },
-  { kind: 'item', to: '/summary-weekly', label: 'Eng Utilization', icon: LineChart, menuright: 'A:U:W' },
+  { kind: 'item', to: '/summary-weekly', label: 'Eng Utilization', icon: LineChart, menuright: 'A:U' },
 
   { kind: 'heading', label: 'Administrator' },
   ...buildAdminNavEntries(i18n.getFixedT('en', 'admin')),
 
   { kind: 'heading', label: 'System' },
-  { kind: 'item', to: '/user-log', label: 'User Log', icon: BookText, menuright: 'A:U:W' },
+  { kind: 'item', to: '/user-log', label: 'User Log', icon: BookText, menuright: 'A:U' },
   { kind: 'item', to: '/settings', label: 'Settings', icon: Settings, menuright: 'A' },
 ]

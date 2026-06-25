@@ -74,24 +74,24 @@
     "panelTitle": "Work calendar",
     "panelSubtitle": "{{month}} · Day view = Order Frame · drag dates for hour summary",
     "filterSummaryTitle": "Filter summary",
-    "moreJobs": "+{{count}} jobs"
+    "moreJobs": "+{{count}} jobs",
+    "dayJobCount": "{{count}} jobs this day",
+    "dayJobsTitle": "Jobs on this day",
+    "dayJobsSubtitle": "{{date}} · {{count}} jobs",
+    "dayJobsEmpty": "No jobs on this day"
   },
   "planCalendar": {
     "title": "Plan calendar",
-    "description": "Pipeline colors — Planner/Admin: all factory WOs in month · Technicians: assigned to self only",
-    "hints": {
-      "assigned": "Planner sees all WOs in month · Technicians see assigned work only",
-      "colors": "Pipeline status colors (assignment → close)",
-      "hours": "Hour summary",
-      "wo": "Open WO"
-    },
+    "heroDescription": "Planner sees all WOs · Technicians see assigned work · Pipeline colors show status",
     "pmPlanning": "PM/CM planning",
     "workScheduling": "Work scheduling",
     "loading": "Loading calendar",
     "loadFailed": "Could not load calendar",
     "loadFailedHint": "Check API or permission",
     "panelTitle": "Assigned work calendar",
+    "panelTitleAssignee": "My assigned work",
     "panelSubtitle": "Pick a date range for hours · click an item for WO details",
+    "panelSubtitleAssignee": "Work assigned to me only · click an item for WO details",
     "emptyMonth": "No assigned work this month — switch year/month to match the WO plan date (SAP data is often not the current month), or check the Planning list; you can still pick a range for hour summary"
   },
   "backlog": {
@@ -100,6 +100,7 @@
     "noAccess": "No access",
     "noAccessHint": "Requires permission backlog.read",
     "hints": {
+      "filter": "Activity · type · work center · functional location · equipment",
       "status": "CRTD + REL",
       "wcSummary": "Work center summary",
       "drag": "Drag to move plan",
@@ -170,6 +171,25 @@
     "comment": "Comment",
     "commentPlaceholder": "Additional notes (optional)"
   },
+  "moveRequest": {
+    "title": "Request plan reschedule",
+    "description": "Tell the planner why this job should move — they will reschedule in the system",
+    "reasonLabel": "Reason *",
+    "reasonPlaceholder": "e.g. Waiting for parts, machine still running, …",
+    "reasonRequired": "Enter a reason (at least 3 characters)",
+    "preferredDate": "Preferred date (optional)",
+    "preferredDateHint": "Planner may choose a different date when moving the plan",
+    "preferredDateValue": "Preferred date: {{date}}",
+    "submit": "Notify planner",
+    "submitSuccess": "Reschedule request sent to planner",
+    "technicianTitle": "Need to move this job?",
+    "technicianHint": "You cannot move the plan yourself — submit a reason and the planner will reschedule.",
+    "openDialog": "Request reschedule",
+    "pendingTitle": "Reschedule request pending",
+    "pendingHint": "Planner has been notified — wait for the plan date to change",
+    "plannerPendingTitle": "Technician reschedule requests",
+    "plannerHint": "Use Move plan below to set the new date — pending requests close automatically"
+  },
   "calendarLegend": {
     "title": "Calendar colors:",
     "tecoWarning": "TECO alert",
@@ -203,11 +223,6 @@
     "needImages": "Attach after-PM photos before closing"
   },
   "wktype": {
-    "filterNote": {
-      "summary": "SAP work type (ZD) per customer meeting — IW37N files use ZB codes",
-      "item": "{{zd}} {{zdLabel}} ← filter {{zb}} ({{iw37nLabel}})",
-      "docHint": "Reference: docs/customer-requirements/WKTYPE-ZD-ZB-MAPPING.md"
-    },
     "mappingSource": "Customer meeting #2 (7 May 2026)",
     "zd": {
       "ZB05": "Breakdown / machine stop",
@@ -243,11 +258,13 @@
       "unassigned": { "label": "Unassigned", "title": "Not yet assigned to technicians" },
       "assigned": { "label": "Assigned", "title": "Assigned — waiting for technician to start" },
       "in_progress": { "label": "In progress", "title": "Work time recorded — not yet supervisor closed" },
+      "partial": { "label": "Partial", "title": "Technician saved partial close — work not finished" },
       "closed": { "label": "Closed", "title": "Supervisor closed — awaiting Planner Confirm" }
     },
     "badge": {
       "ack_pending": { "label": "Awaiting ack", "title": "Technician has not acknowledged yet" },
       "ack_done": { "label": "Acknowledged", "title": "Technician acknowledged (Telegram or Web)" },
+      "partial_close": { "label": "Partial", "title": "Partial close saved — work still open" },
       "qc_pending": { "label": "Awaiting Confirm", "title": "Waiting for Planner Confirm/Reject" },
       "qc_approved": { "label": "Confirmed", "title": "Planner approved" },
       "qc_rejected": { "label": "Rejected", "title": "Planner sent back for correction" }
@@ -498,6 +515,14 @@
     "alarmLabel": "Alarm (mm/s)",
     "saveReading": "Save measurement"
   },
+  "plannerComment": {
+    "title": "Planner comment",
+    "description": "Note from the planner when this work was assigned to you",
+    "empty": "No planner comment for this assignment",
+    "assignLabel": "Comment for technicians (optional)",
+    "placeholder": "e.g. wait for parts, machine still running…",
+    "optionalHint": "Optional — saved when you assign. If left blank, technicians see no planner comment."
+  },
   "pmComment": {
     "title": "Comments and Findings (PM)",
     "description": "Reason when PM plan issued but not done / inspection results — separate from planning notes and close comments · multiple entries per WO",
@@ -537,10 +562,20 @@
     "wkctrType": "Work Center Type",
     "itemsTitle": "PM job list",
     "itemsDesc": "Tasks from the published master plan for this maintenance plan",
+    "planDetailTitle": "Plan detail",
+    "planDetailDesc": "Full details for this maintenance plan",
+    "planJobsList": "PM jobs",
     "runningStopped": "Running {{running}} · Stopped {{stopped}}",
     "headerOnly": "Task list header exists but no job items",
     "machine": "Machine",
     "pmItem": "PM item",
+    "description": "Description",
+    "headerShortText": "Header Short Text",
+    "functionalLocation": "Functional Location",
+    "equipment": "Equipment",
+    "operation": "Operation",
+    "operationText": "Operation Text",
+    "operationLongText": "Operation Long Text",
     "running": "Running",
     "stopped": "Stopped"
   },
@@ -569,9 +604,18 @@
     "completion": "completion",
     "colWoType": "Work Order/Type",
     "colStatus": "Status",
+    "colDispatch": "Dispatch",
+    "colAck": "Ack",
     "colPlan": "Plan",
     "colAction": "Action",
     "colUnit": "Unit",
+    "colActions": "Actions",
+    "dispatchUnassigned": "Not assigned",
+    "dispatchAssigned": "Assigned",
+    "ackPending": "Awaiting ack",
+    "ackPartial": "Ack {{ack}}/{{total}}",
+    "ackAcknowledged": "Acknowledged",
+    "assign": "Assign",
     "rangeHint": "Range {{from}} → {{to}} — select a single day on the calendar for a day-level summary"
   },
   "woMachine": {

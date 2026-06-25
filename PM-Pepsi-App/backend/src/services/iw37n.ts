@@ -3,6 +3,11 @@ import type { Pool } from 'pg'
 import type { z } from 'zod'
 import type { iw37nBatchItemSchema } from '../schemas/iw37n.js'
 import { parseIw37nFile, parseIw37nFileWithMeta, type Iw37nImportRow } from './iw37n-parser.js'
+import {
+  loadIw37nEnrichmentContext,
+  resolveIw37nMasterPlanEnrichment,
+  type Iw37nEnrichmentInput,
+} from '../lib/iw37n-master-plan-enrich.js'
 
 type BatchItem = z.infer<typeof iw37nBatchItemSchema>
 
@@ -184,6 +189,16 @@ export type Iw37nItem = {
   functionalloc: string
   funcdescrip: string
   team: string | null
+  /** Master Plan SAP Code (may match mntplan or come from published workbook). */
+  sapCode: string
+  tasklist: string
+  legacy: string
+  zone: string
+  machineList: string
+  machineMc: string
+  pmlist: string
+  pmday: number | null
+  masterPlanLinked: boolean
 }
 
 type ItemRow = {
@@ -211,7 +226,32 @@ type ItemRow = {
   team: string | null
 }
 
-function mapItemRow(r: ItemRow): Iw37nItem {
+const IW37N_ITEMS_SELECT = `
+SELECT
+  i.idiw37,
+  i.mntplan,
+  i.wkorder,
+  i.wktype,
+  i.mat,
+  i.bscstart,
+  i.actfinish,
+  i.systemstatus,
+  i.syst,
+  i.opac,
+  i.operationshorttext,
+  i.ostdescription,
+  i.cknow,
+  i.wkctr,
+  i.work,
+  i.actwork,
+  i.untime,
+  i.equipment,
+  i.equdescrip,
+  i.functionalloc,
+  i.funcdescrip,
+  i.team`
+
+function mapBaseItemRow(r: ItemRow): Omit<Iw37nItem, 'sapCode' | 'tasklist' | 'legacy' | 'zone' | 'machineList' | 'machineMc' | 'pmlist' | 'pmday' | 'masterPlanLinked'> {
   return {
     idiw37: Number(r.idiw37),
     mntplan: (r.mntplan ?? '').trim(),
@@ -238,6 +278,118 @@ function mapItemRow(r: ItemRow): Iw37nItem {
   }
 }
 
+function toEnrichmentInput(row: ItemRow): Iw37nEnrichmentInput {
+  return {
+    mntplan: (row.mntplan ?? '').trim(),
+    operationshorttext: (row.operationshorttext ?? '').trim(),
+    ostdescription: (row.ostdescription ?? '').trim(),
+    equipment: (row.equipment ?? '').trim(),
+    equdescrip: (row.equdescrip ?? '').trim(),
+    functionalloc: (row.functionalloc ?? '').trim(),
+  }
+}
+
+function mapItemRow(r: ItemRow, enrichment?: ReturnType<typeof resolveIw37nMasterPlanEnrichment>): Iw37nItem {
+  const base = mapBaseItemRow(r)
+  const mp = enrichment ?? resolveIw37nMasterPlanEnrichment(toEnrichmentInput(r), {
+    tasklistByMntplan: new Map(),
+    tasklistByLegacy: new Map(),
+    masterByMntplan: new Map(),
+    masterByLegacy: new Map(),
+  })
+  return {
+    ...base,
+    sapCode: mp.sapCode || base.mntplan,
+    tasklist: mp.tasklist,
+    legacy: mp.legacy,
+    zone: mp.zone,
+    machineList: mp.machineList,
+    machineMc: mp.machineMc || base.equdescrip || base.equipment,
+    pmlist: mp.pmlist || base.operationshorttext || base.ostdescription,
+    pmday: mp.pmday,
+    masterPlanLinked: mp.linked,
+    masterPlanMntplan: mp.masterPlanMntplan || mp.sapCode || base.mntplan,
+    masterPlanDiscipline: mp.masterPlanDiscipline || '',
+  }
+}
+
+async function enrichItemRows(
+  pool: Pool,
+  rows: ItemRow[],
+  opts?: { skipMasterPlan?: boolean },
+): Promise<Iw37nItem[]> {
+  if (rows.length === 0) return []
+  const ctx = await loadIw37nEnrichmentContext(
+    pool,
+    rows.map((row) => toEnrichmentInput(row)),
+    { skipMasterPlan: opts?.skipMasterPlan },
+  )
+  return rows.map((row) => mapItemRow(row, resolveIw37nMasterPlanEnrichment(toEnrichmentInput(row), ctx)))
+}
+
+async function findMntplansFromTasklistSearch(pool: Pool, q: string): Promise<string[]> {
+  if (/^\d+$/.test(q)) {
+    const exact = await pool.query<{ mntplan: string }>(
+      `SELECT DISTINCT TRIM(mntplan) AS mntplan
+       FROM app.tbtasklist
+       WHERE TRIM(mntplan) = $1`,
+      [q],
+    )
+    if (exact.rows.length > 0) {
+      return exact.rows.map((r) => r.mntplan).filter(Boolean)
+    }
+  }
+
+  const pattern = `%${q}%`
+  const tlMatch = await pool.query<{ mntplan: string }>(
+    `SELECT DISTINCT TRIM(mntplan) AS mntplan
+     FROM app.tbtasklist
+     WHERE TRIM(mntplan) <> ''
+       AND (
+         tasklist ILIKE $1 OR legacy ILIKE $1 OR pmlist ILIKE $1
+         OR idzone ILIKE $1 OR machine ILIKE $1
+         OR TRIM(mntplan) ILIKE $1
+       )`,
+    [pattern],
+  )
+  return tlMatch.rows.map((r) => r.mntplan).filter(Boolean)
+}
+
+function buildIw37nItemsSearchClause(
+  q: string,
+  mntplansFromTasklist: string[],
+  params: unknown[],
+): string {
+  if (/^\d+$/.test(q)) {
+    params.push(q, `${q}%`, `%${q}%`)
+    const exact = `(
+      i.wkorder = $3 OR TRIM(i.mntplan) = $3
+      OR i.wkorder LIKE $4 OR TRIM(i.mntplan) LIKE $4
+      OR i.ostdescription ILIKE $5 OR i.operationshorttext ILIKE $5
+      OR i.mntplan ILIKE $5 OR i.funcdescrip ILIKE $5
+    )`
+    if (mntplansFromTasklist.length > 0) {
+      params.push(mntplansFromTasklist)
+      return `WHERE (${exact} OR TRIM(i.mntplan) = ANY($6::text[]))`
+    }
+    return `WHERE ${exact}`
+  }
+
+  const pattern = `%${q}%`
+  params.push(pattern)
+  const directMatch = `(
+    i.wkorder ILIKE $3 OR i.mntplan ILIKE $3 OR i.opac ILIKE $3
+    OR i.equipment ILIKE $3 OR i.functionalloc ILIKE $3
+    OR i.operationshorttext ILIKE $3 OR i.ostdescription ILIKE $3
+    OR i.funcdescrip ILIKE $3
+  )`
+  if (mntplansFromTasklist.length > 0) {
+    params.push(mntplansFromTasklist)
+    return `WHERE (${directMatch} OR TRIM(i.mntplan) = ANY($4::text[]))`
+  }
+  return `WHERE ${directMatch}`
+}
+
 export async function listIw37nItems(
   pool: Pool,
   opts?: { q?: string; limit?: number; offset?: number },
@@ -248,76 +400,34 @@ export async function listIw37nItems(
   const params: unknown[] = [limit, offset]
   let where = ''
   if (q) {
-    params.push(`%${q}%`)
-    where = `WHERE wkorder ILIKE $3 OR mntplan ILIKE $3 OR opac ILIKE $3`
+    const mntplansFromTasklist = await findMntplansFromTasklistSearch(pool, q)
+    where = buildIw37nItemsSearchClause(q, mntplansFromTasklist, params)
   }
   const r = await pool.query<ItemRow>(
-    `SELECT
-       idiw37,
-       mntplan,
-       wkorder,
-       wktype,
-       mat,
-       bscstart,
-       actfinish,
-       systemstatus,
-       syst,
-       opac,
-       operationshorttext,
-       ostdescription,
-       cknow,
-       wkctr,
-       work,
-       actwork,
-       untime,
-       equipment,
-       equdescrip,
-       functionalloc,
-       funcdescrip,
-       team
-     FROM app.tbiw37n
+    `${IW37N_ITEMS_SELECT}
+     FROM app.tbiw37n i
      ${where}
-     ORDER BY idiw37 DESC
+     ORDER BY i.idiw37 DESC
      LIMIT $1 OFFSET $2`,
     params,
   )
-  return r.rows.map(mapItemRow)
+  return enrichItemRows(pool, r.rows, { skipMasterPlan: true })
 }
 
 export async function getIw37nItem(pool: Pool, id: string): Promise<Iw37nItem | null> {
   const n = Number(id)
   if (!Number.isFinite(n)) return null
   const r = await pool.query<ItemRow>(
-    `SELECT
-       idiw37,
-       mntplan,
-       wkorder,
-       wktype,
-       mat,
-       bscstart,
-       actfinish,
-       systemstatus,
-       syst,
-       opac,
-       operationshorttext,
-       ostdescription,
-       cknow,
-       wkctr,
-       work,
-       actwork,
-       untime,
-       equipment,
-       equdescrip,
-       functionalloc,
-       funcdescrip,
-       team
-     FROM app.tbiw37n
-     WHERE idiw37 = $1
+    `${IW37N_ITEMS_SELECT}
+     FROM app.tbiw37n i
+     WHERE i.idiw37 = $1
      LIMIT 1`,
     [n],
   )
   const row = r.rows[0]
-  return row ? mapItemRow(row) : null
+  if (!row) return null
+  const [item] = await enrichItemRows(pool, [row])
+  return item ?? null
 }
 
 export async function updateIw37nItem(

@@ -37,17 +37,27 @@ describe('matchesCalendarDisplayStatus', () => {
     ).toBe(true)
   })
 
-  it('classifies upcoming', () => {
+  it('classifies upcoming when open WO has real number and is not overdue', () => {
     expect(
       matchesCalendarDisplayStatus(
         'upcoming',
-        { syst: 'CRTD', displayUnix: tomorrow },
+        { syst: 'REL', wkorder: '4001560529', displayUnix: tomorrow },
         now,
       ),
     ).toBe(true)
   })
 
-  it('classifies in_progress today', () => {
+  it('classifies in_progress when open WO has no real number and is not overdue', () => {
+    expect(
+      matchesCalendarDisplayStatus(
+        'in_progress',
+        { syst: 'REL', wkorder: '0', displayUnix: tomorrow },
+        now,
+      ),
+    ).toBe(true)
+  })
+
+  it('classifies in_progress today without WO number', () => {
     expect(
       matchesCalendarDisplayStatus(
         'in_progress',

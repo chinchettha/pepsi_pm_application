@@ -31,11 +31,9 @@ test.describe('Authenticated UI smoke', () => {
     await expect(page.locator('main, [role="main"]').first()).toBeVisible({ timeout: 20_000 })
   })
 
-  test('work orders page loads table shell', async ({ page }) => {
+  test('work orders URL redirects to confirmation', async ({ page }) => {
     await page.goto('/work-orders')
-    await expect(page.getByRole('heading', { name: /ใบงาน|Work order/i })).toBeVisible({
-      timeout: 20_000,
-    })
+    await expect(page).toHaveURL(/\/confirmation/, { timeout: 20_000 })
   })
 
   test('confirmation page loads', async ({ page }) => {

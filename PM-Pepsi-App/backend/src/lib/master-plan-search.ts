@@ -1,5 +1,23 @@
 import { extractMasterPlanLinkKeys } from './master-plan-row-links.js'
 
+/** Rank deep-link / search hits — exact Maintenance plan match wins. */
+export function scoreMaintenancePlanQueryMatch(
+  columnHeaders: string[],
+  cells: Record<string, string>,
+  display: Record<string, string>,
+  query: string,
+): number {
+  const keys = extractMasterPlanLinkKeys(columnHeaders, cells, display)
+  const q = query.trim()
+  const mnt = keys.mntplan.trim()
+  if (!q || !mnt) return 0
+  if (mnt === q) return 100
+  if (q.length >= 5 && mnt.endsWith(q)) return 85
+  if (mnt.length >= 5 && q.endsWith(mnt)) return 85
+  if (mnt.includes(q) || q.includes(mnt)) return 50
+  return 0
+}
+
 export function buildMasterPlanSearchLabel(
   columnHeaders: string[],
   cells: Record<string, string>,

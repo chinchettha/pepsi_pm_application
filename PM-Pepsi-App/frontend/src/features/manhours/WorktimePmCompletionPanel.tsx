@@ -316,7 +316,8 @@ function PmByLineSection({
 }) {
   const { t } = useTranslation('manhours')
   const colors = PANEL_CHART_COLORS
-  const lineRows = rows.slice(0, 12).map((row) => ({
+  const lineRows = rows.slice(0, 12).map((row, index) => ({
+    key: row.productline.trim() || `unknown-${index}`,
     label:
       row.prolinedescrip?.trim() ||
       (row.productline.trim() ? row.productline : t('worktimePm.unknown')),
@@ -346,7 +347,7 @@ function PmByLineSection({
         </thead>
         <tbody>
           {lineRows.map((row) => (
-            <tr key={row.label}>
+            <tr key={row.key}>
               <td>{row.label}</td>
               <td className="tabular-nums font-semibold">{row.planned}</td>
               <td className="tabular-nums text-[var(--wt-pm-muted)]">
@@ -401,7 +402,7 @@ function PmByLineSection({
       {lineRows.map((row) => {
         const w = Math.max(8, (row.planned / max) * 100)
         return (
-          <div key={row.label} className="worktime-pm-panel__line-row rounded-xl px-3 py-2.5">
+          <div key={row.key} className="worktime-pm-panel__line-row rounded-xl px-3 py-2.5">
             <div className="mb-1 flex items-center justify-between gap-2 text-sm">
               <span className="min-w-0 truncate font-semibold">{row.label}</span>
               <span className="worktime-pm-panel__line-value shrink-0 tabular-nums font-bold">

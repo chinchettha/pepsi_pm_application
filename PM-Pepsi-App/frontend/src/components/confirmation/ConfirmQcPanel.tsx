@@ -1,5 +1,6 @@
 import { ConfirmQcStatusBadge } from '@/components/confirmation/ConfirmQcStatusBadge'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -13,6 +14,7 @@ import {
 import { usePermission } from '@/lib/use-permission'
 import { useAppLocale } from '@/providers/I18nProvider'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { addDays, format } from 'date-fns'
 import { CheckCircle2, ClipboardList, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -48,6 +50,9 @@ export function ConfirmQcPanel({
   const hasReviewPerm = usePermission('confirmation.import')
   const canReview = isPlannerReviewer(authUser?.userst) && hasReviewPerm
   const [rejectNote, setRejectNote] = useState('')
+  const [rescheduleDate, setRescheduleDate] = useState(() =>
+    format(addDays(new Date(), 1), 'yyyy-MM-dd'),
+  )
 
   const qcQ = useQuery({
     queryKey: ['confirmation', 'qc', idiw37],
@@ -68,21 +73,33 @@ export function ConfirmQcPanel({
     await qc.invalidateQueries({ queryKey: ['confirmation', 'export'] })
     await qc.invalidateQueries({ queryKey: ['personnel', 'admin', 'confirm'] })
     await qc.invalidateQueries({ queryKey: ['dashboard'] })
+    await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
+    await qc.invalidateQueries({ queryKey: ['calendar'] })
+    await qc.invalidateQueries({ queryKey: ['notifications'] })
     onQcChange?.()
+  }
+
+  const resetRejectForm = () => {
+    setRejectNote('')
+    setRescheduleDate(format(addDays(new Date(), 1), 'yyyy-MM-dd'))
   }
 
   const approveMut = useMutation({
     mutationFn: () => postConfirmQcApprove(idiw37!),
     onSuccess: async () => {
-      setRejectNote('')
+      resetRejectForm()
       await invalidate()
     },
   })
 
   const rejectMut = useMutation({
-    mutationFn: () => postConfirmQcReject(idiw37!, rejectNote),
+    mutationFn: () =>
+      postConfirmQcReject(idiw37!, {
+        note: rejectNote,
+        rescheduleDate,
+      }),
     onSuccess: async () => {
-      setRejectNote('')
+      resetRejectForm()
       await invalidate()
     },
   })
@@ -141,31 +158,8 @@ export function ConfirmQcPanel({
 
       {showActions ? (
         <div className="mt-4 space-y-4 border-t border-app/50 pt-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="qc-reject-note" className="text-xs font-medium">
-              {t('qc.rejectReasonLabel')}
-            </Label>
-            <Textarea
-              id="qc-reject-note"
-              rows={3}
-              value={rejectNote}
-              onChange={(e) => setRejectNote(e.target.value)}
-              placeholder={t('qc.rejectReasonPlaceholder')}
-              maxLength={500}
-            />
-          </div>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              className="gap-1.5 sm:min-w-[8.5rem]"
-              disabled={approveMut.isPending || rejectMut.isPending}
-              onClick={() => rejectMut.mutate()}
-            >
-              <XCircle className="size-4" aria-hidden />
-              {rejectMut.isPending ? t('qc.rejecting') : t('qc.reject')}
-            </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-app-muted">{t('qc.approveHint')}</p>
             <Button
               type="button"
               size="sm"
@@ -176,6 +170,47 @@ export function ConfirmQcPanel({
               <CheckCircle2 className="size-4" aria-hidden />
               {approveMut.isPending ? t('qc.approving') : t('qc.approve')}
             </Button>
+          </div>
+
+          <div className="space-y-3 rounded-card border border-app/50 bg-app-subtle/30 p-3">
+            <p className="text-xs font-medium text-app">{t('qc.rejectSectionTitle')}</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="qc-reschedule-date" className="text-xs font-medium">
+                {t('qc.rescheduleDateLabel')}
+              </Label>
+              <DatePicker
+                id="qc-reschedule-date"
+                value={rescheduleDate}
+                onChange={setRescheduleDate}
+              />
+              <p className="text-xs text-app-muted">{t('qc.rescheduleDateHint')}</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="qc-reject-note" className="text-xs font-medium">
+                {t('qc.rejectReasonLabel')}
+              </Label>
+              <Textarea
+                id="qc-reject-note"
+                rows={3}
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                placeholder={t('qc.rejectReasonPlaceholder')}
+                maxLength={500}
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="gap-1.5 sm:min-w-[8.5rem]"
+                disabled={approveMut.isPending || rejectMut.isPending || !rescheduleDate}
+                onClick={() => rejectMut.mutate()}
+              >
+                <XCircle className="size-4" aria-hidden />
+                {rejectMut.isPending ? t('qc.rejecting') : t('qc.reject')}
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}

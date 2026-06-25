@@ -19,6 +19,8 @@ import {
 import type { planningItemSchema } from '@/api/schemas'
 import { getStoredAuthUser } from '@/features/auth/login-api'
 import { fetchPlanning, postPlanningOrderAck } from '@/lib/api-public'
+import { buildIw37nMoveRequestHref } from '@/features/iw37n/iw37n-href'
+import { operationsLiveQueryOptions } from '@/lib/operations-live-sync'
 import { formatPlanningHourValue } from '@/lib/planning-available-hours'
 import {
   appCssMotionClassWhen,
@@ -33,7 +35,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useReducedMotion } from 'framer-motion'
 import { AlertCircle, CheckCircle2, ClipboardList, Loader2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { TFunction } from 'i18next'
@@ -54,6 +56,7 @@ export function PlanningPage() {
   const { t: tc } = useTranslation('common')
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const statusMap = useMemo(() => planningStatusMap(t), [t])
   const authUser = getStoredAuthUser()
   const canRead = usePermission('planning.read')
@@ -69,6 +72,7 @@ export function PlanningPage() {
     queryFn: () => fetchPlanning({ status: planningStatus }),
     enabled: canRead,
     placeholderData: keepPreviousData,
+    ...operationsLiveQueryOptions,
   })
   const myCode = (authUser?.wkctr || authUser?.username || authUser?.idwkctr || '').trim()
 
@@ -99,6 +103,23 @@ export function PlanningPage() {
     const row = document.querySelector<HTMLElement>(`[data-planning-row-id="${highlightId}"]`)
     row?.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' })
   }, [highlightId, reduceMotion])
+
+  useEffect(() => {
+    const raw = searchParams.get('idiw37')?.trim()
+    if (!raw) return
+    const id = Number(raw)
+    if (!Number.isFinite(id) || id <= 0) return
+
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev)
+        params.delete('idiw37')
+        return params
+      },
+      { replace: true },
+    )
+    navigate(buildIw37nMoveRequestHref(id), { replace: true })
+  }, [searchParams, setSearchParams, navigate])
 
   if (!canRead) {
     return (
@@ -134,7 +155,7 @@ export function PlanningPage() {
             </CanPermission>
             <CanPermission permission="work-orders.read">
               <Button type="button" variant="outline" size="sm" asChild>
-                <Link to="/work-orders">{t('actions.woConfirm')}</Link>
+                <Link to="/confirmation">{t('actions.woConfirm')}</Link>
               </Button>
             </CanPermission>
             <CanPermission permission="iw37n.read">

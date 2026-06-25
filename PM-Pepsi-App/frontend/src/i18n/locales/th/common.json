@@ -280,7 +280,16 @@
     ]
   },
   "datePicker": {
-    "placeholder": "เลือกวันที่"
+    "placeholder": "เลือกวันที่",
+    "month": "เดือน",
+    "year": "ปี",
+    "previousMonth": "เดือนก่อนหน้า",
+    "nextMonth": "เดือนถัดไป"
+  },
+  "timePicker": {
+    "placeholder": "เลือกเวลา",
+    "hour": "ชั่วโมง",
+    "minute": "นาที"
   },
   "userMenu": {
     "profile": "โปรไฟล์",

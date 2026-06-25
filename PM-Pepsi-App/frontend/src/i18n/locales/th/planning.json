@@ -110,5 +110,8 @@
         "description": "ขยายจ่ายทั้งกลุ่มจาก master (tbwkctrgroup) — คล้าย default หลัง import"
       }
     }
+  },
+  "moveRequest": {
+    "openIw37n": "ช่างขอเลื่อนแผน {{wkorder}} — เปิด IW37N เพื่อนำเข้า/แก้วันแผน"
   }
 }

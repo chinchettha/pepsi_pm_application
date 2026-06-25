@@ -4,6 +4,8 @@ export const telegramNotifyKindSchema = z.enum([
   'assignment_to_tech',
   'ack_to_planner',
   'close_to_planner',
+  'move_request_to_planner',
+  'plan_moved_to_tech',
   'ack_summary',
   'confirm_reminder',
   'custom',

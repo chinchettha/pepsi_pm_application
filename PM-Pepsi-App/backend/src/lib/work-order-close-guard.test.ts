@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { workOrderCloseGuardMessage } from './work-order-close-guard.js'
+import { workOrderCloseGuardMessage, personnelCloseGuardMessage } from './work-order-close-guard.js'
 
 describe('workOrderCloseGuardMessage', () => {
   it('requires comment and after-PM image only', () => {
@@ -12,5 +12,16 @@ describe('workOrderCloseGuardMessage', () => {
     expect(
       workOrderCloseGuardMessage({ commentCount: 1, imageBefore: 3, imageAfter: 1 }),
     ).toBeNull()
+  })
+})
+
+describe('personnelCloseGuardMessage', () => {
+  it('partial close does not require images', () => {
+    expect(personnelCloseGuardMessage({ imageAfter: 0 }, 'partial')).toBeNull()
+  })
+
+  it('complete close requires after-PM image', () => {
+    expect(personnelCloseGuardMessage({ imageAfter: 0 }, 'complete')).toMatch(/รูป/)
+    expect(personnelCloseGuardMessage({ imageAfter: 1 }, 'complete')).toBeNull()
   })
 })

@@ -2518,7 +2518,37 @@ html.dark .app-table-shell {
 
 /* Master Plan — sticky Zone + Machine List column offsets */
 .master-plan-excel-table {
-  --mp-sticky-col1-width: 4.5rem;
+  --mp-sticky-col1-width: 3.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.master-plan-excel-table tbody .master-plan-cell {
+  min-height: 2.125rem;
+  vertical-align: middle;
+}
+
+.master-plan-excel-table tbody .master-plan-cell-pm {
+  vertical-align: top;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #2a2a2a;
+}
+
+.master-plan-excel-table tbody tr {
+  min-height: 2.125rem;
+}
+
+.master-plan-excel-table tbody td[rowspan] {
+  border-bottom: 1px solid #b4c6e7;
+}
+
+/* Keep Excel-style blue header readable (global sticky rule uses --app-surface bg + white text = invisible) */
+.master-plan-excel-table.app-data-table-sticky thead th {
+  background: #2f5597;
+  color: #fff;
+  box-shadow: 0 1px 0 #1f3864;
 }
 
 .master-plan-excel-table .app-table-sticky--col-2 {
@@ -2563,6 +2593,73 @@ html.dark .app-table-shell {
   outline: 2px solid #2f5597;
   outline-offset: -2px;
   background: #e9eff7 !important;
+}
+
+.iw37n-items-table {
+  --iw37n-sticky-col1-width: 8.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.iw37n-items-table .app-table-sticky--col-2 {
+  left: var(--iw37n-sticky-col1-width);
+}
+
+.iw37n-items-table.app-data-table-sticky thead th {
+  background: #2f5597;
+  color: #fff;
+  box-shadow: 0 1px 0 #1f3864;
+}
+
+.iw37n-items-table thead th.app-table-sticky,
+.iw37n-items-table thead th.app-table-sticky--col-2 {
+  background: #2f5597;
+}
+
+.iw37n-items-table tbody tr.bg-\[\#f5f8fc\] .app-table-sticky,
+.iw37n-items-table tbody tr.bg-\[\#f5f8fc\] .app-table-sticky--col-2 {
+  background: #f5f8fc;
+}
+
+.iw37n-items-table tbody tr.bg-white .app-table-sticky,
+.iw37n-items-table tbody tr.bg-white .app-table-sticky--col-2 {
+  background: #fff;
+}
+
+.iw37n-items-table tbody tr:hover .app-table-sticky,
+.iw37n-items-table tbody tr:hover .app-table-sticky--col-2 {
+  background: #e9eff7;
+}
+
+.iw37n-items-table .iw37n-col-group-start {
+  border-left: 2px solid color-mix(in srgb, #2f5597 35%, transparent);
+}
+
+.iw37n-items-table thead .iw37n-col-master-plan {
+  background: #1f3864;
+}
+
+.iw37n-items-table tbody .iw37n-cell-pm-list {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #2a2a2a;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.iw37n-items-table tbody .iw37n-cell-code {
+  font-size: 0.6875rem;
+  letter-spacing: -0.01em;
+}
+
+.iw37n-items-table tbody .iw37n-cell {
+  min-height: 2rem;
+  vertical-align: middle;
+}
+
+.iw37n-items-table tbody .iw37n-cell-pm-list.iw37n-cell {
+  vertical-align: top;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 /* Planning list — single-row feedback after assign (PRE-UAT U4c) */
@@ -2830,6 +2927,228 @@ html.dark .app-card:hover {
 
 .dashboard-hero--compact .dashboard-hero__content {
   padding-bottom: 1.25rem;
+}
+
+.dashboard-hero--slim {
+  padding-top: 0.65rem;
+}
+
+.dashboard-hero--slim .dashboard-hero__pepsi-stripe {
+  margin-top: 0.65rem;
+  height: 3px;
+}
+
+.dashboard-hero--slim .dashboard-hero__content {
+  padding-bottom: 0.65rem;
+}
+
+.dashboard-hero--slim .dashboard-hero__title {
+  font-size: clamp(1.35rem, 2.8vw, 1.85rem);
+}
+
+.dashboard-hero--slim .dashboard-hero__subtitle {
+  margin-top: 0.35rem;
+  max-width: 42rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.dashboard-hero--slim .dashboard-hero__eyebrow {
+  margin-bottom: 0.15rem;
+  font-size: 0.65rem;
+}
+
+.plan-calendar-page .scheduling-page-stack {
+  gap: 0.75rem;
+}
+
+.plan-calendar-page .scheduling-page {
+  padding-top: 0.75rem;
+}
+
+.plan-calendar-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.plan-calendar-panel__month {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 28%, var(--app-border));
+  background: color-mix(in srgb, var(--app-accent) 8%, var(--app-surface));
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.plan-calendar-panel__hint {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.plan-calendar-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.plan-calendar-legend__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.plan-calendar-legend__row--badges {
+  padding-top: 0.15rem;
+  border-top: 1px dashed color-mix(in srgb, var(--app-border) 70%, transparent);
+}
+
+.plan-calendar-legend__heading {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--app-text);
+}
+
+.plan-calendar-legend__heading--muted {
+  color: var(--app-muted);
+}
+
+.plan-calendar-legend__swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
+  background: var(--app-surface);
+  padding: 0.1rem 0.45rem 0.1rem 0.3rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--app-text);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--app-text) 5%, transparent);
+}
+
+.plan-calendar-legend__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 12%, transparent);
+}
+
+.plan-calendar-legend__label {
+  white-space: nowrap;
+}
+
+.plan-calendar-legend__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--app-bg) 35%, var(--app-surface));
+  padding: 0.1rem 0.4rem;
+  font-size: 0.625rem;
+  color: var(--app-muted);
+}
+
+.scheduling-calendar-widget--plan .pm-fullcalendar {
+  border-radius: 1rem;
+  --pm-cal-day-max-height: 8.5rem;
+}
+
+/* จำกัดความสูงกรอบวัน — งานเกินแสดง +N งาน (ไม่ยืดคอลัมน์ทั้งหน้า) */
+.scheduling-calendar-widget--plan .pm-fullcalendar--modern .fc .fc-daygrid-day-frame {
+  max-height: var(--pm-cal-day-max-height);
+  overflow: hidden;
+}
+
+.scheduling-calendar-widget--plan .pm-fullcalendar--modern .fc .fc-daygrid-day-events {
+  overflow: hidden;
+}
+
+.scheduling-calendar-widget--plan .pm-fullcalendar--dense .fc .fc-daygrid-event {
+  margin-top: 1px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.63rem;
+  line-height: 1.15;
+}
+
+/* ซ่อน popover เริ่มต้นของ FC (ใช้ dialog แทน) — ห้าม display:none จะทำให้ getBoundingClientRect crash */
+.pm-fullcalendar--modern .fc .fc-more-popover,
+.pm-fullcalendar--modern .fc .fc-popover {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+@media (min-width: 640px) {
+  .scheduling-calendar-widget--plan .pm-fullcalendar {
+    --pm-cal-day-max-height: 9rem;
+  }
+
+  .scheduling-calendar-widget--plan .pm-fullcalendar--dense .fc .fc-daygrid-event {
+    font-size: 0.65rem;
+  }
+}
+
+.pm-cal-day-head__row {
+  min-height: 1.1rem;
+}
+
+.pm-cal-day-count {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--app-accent) 14%, var(--app-surface));
+  border: 1px solid color-mix(in srgb, var(--app-accent) 28%, var(--app-border));
+  padding: 0 0.35rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--app-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-calendar-pipeline-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+
+.plan-calendar-pipeline-stats__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--app-border) 75%, transparent);
+  background: var(--app-surface);
+  padding: 0.15rem 0.5rem 0.15rem 0.35rem;
+  font-size: 0.68rem;
+}
+
+.plan-calendar-pipeline-stats__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.plan-calendar-pipeline-stats__label {
+  color: var(--app-muted);
+  font-weight: 500;
+}
+
+.plan-calendar-pipeline-stats__value {
+  font-weight: 700;
+  color: var(--app-text);
 }
 
 .dashboard-hero {
@@ -5142,6 +5461,7 @@ html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
   --cal-pipeline-unassigned: #ff3b30;
   --cal-pipeline-assigned: #7b61ff;
   --cal-pipeline-in-progress: var(--brand-logo-sky);
+  --cal-pipeline-partial: var(--brand-logo-orange);
   --cal-pipeline-closed: var(--brand-logo-green-light);
   --cal-team-a: color-mix(in srgb, var(--status-success) 88%, white);
   --cal-team-b: color-mix(in srgb, var(--status-danger) 82%, white);
@@ -5508,6 +5828,7 @@ html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
   --cal-pipeline-unassigned: #ff3b30;
   --cal-pipeline-assigned: #7b61ff;
   --cal-pipeline-in-progress: var(--brand-logo-sky);
+  --cal-pipeline-partial: var(--brand-logo-orange);
   --cal-pipeline-closed: var(--brand-logo-green-light);
   --cal-team-a: color-mix(in srgb, var(--status-success) 88%, white);
   --cal-team-b: color-mix(in srgb, var(--status-danger) 82%, white);
@@ -5569,6 +5890,11 @@ html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
 .pm-fullcalendar--modern .fc .pm-cal-event--pipeline-in-progress {
   background-color: var(--cal-pipeline-in-progress) !important;
   border-color: color-mix(in srgb, var(--cal-pipeline-in-progress) 80%, black) !important;
+}
+
+.pm-fullcalendar--modern .fc .pm-cal-event--pipeline-partial {
+  background-color: var(--cal-pipeline-partial) !important;
+  border-color: color-mix(in srgb, var(--cal-pipeline-partial) 80%, black) !important;
 }
 
 .pm-fullcalendar--modern .fc .pm-cal-event--pipeline-closed {
@@ -5633,6 +5959,11 @@ html.dark .pm-fullcalendar .fc .fc-daygrid-more-link:hover {
 .pm-cal-gantt__bar.pm-cal-event--pipeline-in-progress {
   background-color: var(--cal-pipeline-in-progress) !important;
   border: 1px solid color-mix(in srgb, var(--cal-pipeline-in-progress) 80%, black);
+}
+
+.pm-cal-gantt__bar.pm-cal-event--pipeline-partial {
+  background-color: var(--cal-pipeline-partial) !important;
+  border: 1px solid color-mix(in srgb, var(--cal-pipeline-partial) 80%, black);
 }
 
 .pm-cal-gantt__bar.pm-cal-event--pipeline-closed {

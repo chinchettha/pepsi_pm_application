@@ -35,6 +35,7 @@ export async function countWorkOrderCloseRequirements(
   }
 }
 
+/** ช่างบันทึก confirm ผ่านหน้า Confirmation — ต้องมี comment + รูปหลัง PM */
 export function workOrderCloseGuardMessage(counts: WorkOrderCloseGuardCounts): string | null {
   if (counts.commentCount < 1) {
     return 'กรุณาบันทึกรายละเอียด (ความคิดเห็น) ก่อนปิดงาน'
@@ -45,8 +46,30 @@ export function workOrderCloseGuardMessage(counts: WorkOrderCloseGuardCounts): s
   return null
 }
 
+/** ช่างบันทึกปิดงาน (personnel) — partial ไม่บังคับรูป/comment; complete ต้องมีรูปหลัง PM */
+export function personnelCloseGuardMessage(
+  counts: Pick<WorkOrderCloseGuardCounts, 'imageAfter'>,
+  closeKind: 'complete' | 'partial' = 'complete',
+): string | null {
+  if (closeKind === 'partial') return null
+  if (counts.imageAfter < 1) {
+    return 'กรุณาแนบรูปหลังทำ PM เสร็จก่อนปิดงาน'
+  }
+  return null
+}
+
 export async function assertWorkOrderCloseReady(pool: Pool | PoolClient, idiw37: number): Promise<void> {
   const counts = await countWorkOrderCloseRequirements(pool, idiw37)
   const message = workOrderCloseGuardMessage(counts)
+  if (message) throw new Error(message)
+}
+
+export async function assertPersonnelCloseReady(
+  pool: Pool | PoolClient,
+  idiw37: number,
+  closeKind: 'complete' | 'partial' = 'complete',
+): Promise<void> {
+  const counts = await countWorkOrderCloseRequirements(pool, idiw37)
+  const message = personnelCloseGuardMessage(counts, closeKind)
   if (message) throw new Error(message)
 }

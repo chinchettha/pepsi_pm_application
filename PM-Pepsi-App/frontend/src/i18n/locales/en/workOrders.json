@@ -87,7 +87,9 @@
     "rejectPrompt": "Reason for send-back (optional)",
     "rejectTitle": "Send back for correction",
     "rejectNoteLabel": "Reason (optional)",
-    "rejectNotePlaceholder": "e.g. missing after-PM photos, incorrect close time…"
+    "rejectNotePlaceholder": "e.g. missing after-PM photos, incorrect close time…",
+    "rescheduleDateLabel": "Reschedule to",
+    "rescheduleDateHint": "Work moves to this date on the plan calendar; the assigned technician is notified."
   },
   "toast": {
     "approveSuccess": "Approved {{wkorder}} — TECO status on technician dashboard",

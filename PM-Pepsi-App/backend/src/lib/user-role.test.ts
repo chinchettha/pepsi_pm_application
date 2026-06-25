@@ -3,13 +3,14 @@ import { deriveUserRole, normalizeUserRole, resolveUserRole } from './user-role.
 
 describe('user-role', () => {
   it('uses explicit userrole as source of truth before legacy hints', () => {
-    expect(resolveUserRole('manager', 'A', 'Engineer')).toBe('manager')
+    expect(resolveUserRole('manager', 'A', 'Engineer')).toBe('planner')
     expect(resolveUserRole('technician', 'U', 'Planner')).toBe('technician')
+    expect(resolveUserRole('planner', 'A', 'Engineer')).toBe('planner')
   })
 
   it('falls back to legacy userst when userrole is missing', () => {
-    expect(resolveUserRole(null, 'A', null)).toBe('admin')
-    expect(resolveUserRole('', 'H', null)).toBe('manager')
+    expect(resolveUserRole(null, 'A', null)).toBe('planner')
+    expect(resolveUserRole('', 'H', null)).toBe('planner')
     expect(resolveUserRole(undefined, 'W', null)).toBe('technician')
   })
 

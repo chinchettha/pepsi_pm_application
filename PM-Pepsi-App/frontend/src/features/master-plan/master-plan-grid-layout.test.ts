@@ -26,6 +26,28 @@ describe('master-plan-grid-layout', () => {
     expect(computeColumnRowspans(rows, 'Min')).toEqual([2, 'skip'])
   })
 
+  it('computes rowspan for merged SAP Code / Task list', () => {
+    const rows = [
+      {
+        rowIndex: 1,
+        cells: { 'SAP Code': '610000004496', 'Task list': '100930' },
+        display: { 'SAP Code': '610000004496', 'Task list': '100930' },
+      },
+      {
+        rowIndex: 2,
+        cells: { 'SAP Code': '', 'Task list': '' },
+        display: { 'SAP Code': '610000004496', 'Task list': '100930' },
+      },
+      {
+        rowIndex: 3,
+        cells: { 'SAP Code': '', 'Task list': '' },
+        display: { 'SAP Code': '610000004496', 'Task list': '100930' },
+      },
+    ]
+    expect(computeColumnRowspans(rows, 'SAP Code')).toEqual([3, 'skip', 'skip'])
+    expect(computeColumnRowspans(rows, 'Task list')).toEqual([3, 'skip', 'skip'])
+  })
+
   it('extracts meta lines excluding banner', () => {
     const meta = extractSheetMetaLines([
       ['', '', 'STAX EE MASTER PLAN'],
@@ -71,8 +93,9 @@ describe('master-plan-grid-layout', () => {
   })
 
   it('applies narrow width class for Zone and wide for PM list', () => {
-    expect(masterPlanColumnWidthClass('Zone')).toContain('4.5rem')
-    expect(masterPlanColumnWidthClass('PM list')).toContain('17.5rem')
+    expect(masterPlanColumnWidthClass('Zone')).toContain('3.75rem')
+    expect(masterPlanColumnWidthClass('PM list')).toContain('20rem')
+    expect(masterPlanColumnWidthClass('SAP Code')).toContain('8.75rem')
   })
 
   it('marks Zone and Machine List as non-editable anchors', () => {

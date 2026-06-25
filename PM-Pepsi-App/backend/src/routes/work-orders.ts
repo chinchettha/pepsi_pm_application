@@ -43,6 +43,7 @@ import {
   workOrderModalDetailResponseSchema,
   workOrderPlanningBatchBodySchema,
   workOrderPlanningBatchResponseSchema,
+  workOrderPlanningCommentBodySchema,
   workOrderPlanningOkResponseSchema,
   workOrderPlanningUpsertBodySchema,
   workOrderFilterDetailResponseSchema,
@@ -70,6 +71,7 @@ import {
   getWorkOrderFilterDetail,
   searchWorkOrders,
   resolveWorkOrderIdiw37,
+  updateWorkOrderPlanningComment,
   upsertWorkOrderPlanning,
   updateWorkOrderTeam,
   updateWorkOrderTeamBatch,
@@ -123,6 +125,7 @@ import {
 import {
   getConfirmQcSnapshot,
   listConfirmQcPending,
+  rejectConfirmQcAndReschedule,
   setConfirmQcStatus,
 } from '../services/confirm-qc.js'
 import {
@@ -783,6 +786,65 @@ export function registerWorkOrderRoutes(
     },
   )
 
+  app.patch(
+    '/api/v1/work-orders/:id/planning/comment',
+    ...requirePlanningAssign,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'ต้องเข้าสู่ระบบ' })
+        return
+      }
+      const id = String(req.params.id ?? '')
+      const parsed = workOrderPlanningCommentBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Invalid body',
+          issues: parsed.error.issues,
+        })
+        return
+      }
+      const actorWkctr = (user.wkctr || user.username || user.idwkctr || '').trim()
+      try {
+        const result = await updateWorkOrderPlanningComment(
+          pool,
+          id,
+          parsed.data.comment,
+          actorWkctr,
+        )
+        if (!result) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
+        if (result.updated === 0) {
+          res.status(409).json({
+            error: 'NO_ASSIGNEES',
+            message: 'Assign technicians before saving a planner comment',
+          })
+          return
+        }
+        voidAudit(pool, req, {
+          action: 'planning.assign',
+          resource: 'tbplangingwork',
+          resourceId: id,
+          after: sanitizeAuditPayload({ comment: parsed.data.comment }),
+        })
+        res.json(workOrderPlanningOkResponseSchema.parse({ ok: true }))
+      } catch (err) {
+        if (err instanceof Error && err.name === 'ZodError') throw err
+        if (isSchemaMissing(err)) {
+          res.status(503).json({
+            error: 'SCHEMA_NOT_READY',
+            message: 'Run database/migrations/007_tbplangingwork_view_planwork.sql',
+          })
+          return
+        }
+        throw err
+      }
+    },
+  )
+
  // DELETE all assignments ของ WO (back-compat)
   app.delete(
     '/api/v1/work-orders/:id/planning',
@@ -1149,14 +1211,6 @@ export function registerWorkOrderRoutes(
           })
           return
         }
-        const { assertWorkOrderCloseReady } = await import('../lib/work-order-close-guard.js')
-        try {
-          await assertWorkOrderCloseReady(pool, parsed.data.idiw37)
-        } catch (guardErr) {
-          const message = guardErr instanceof Error ? guardErr.message : String(guardErr)
-          res.status(409).json({ error: 'CONFIRM_QC_NOT_READY', message })
-          return
-        }
         const out = await setConfirmQcStatus(
           pool,
           parsed.data.idiw37,
@@ -1219,22 +1273,35 @@ export function registerWorkOrderRoutes(
           res.status(404).json({ error: 'NOT_FOUND' })
           return
         }
-        const out = await setConfirmQcStatus(
+        const out = await rejectConfirmQcAndReschedule(
           pool,
           parsed.data.idiw37,
-          'rejected',
           user.wkctr || user.username || '',
+          body.data.rescheduleDate,
           body.data.note,
         )
+        if (!out) {
+          res.status(404).json({ error: 'NOT_FOUND' })
+          return
+        }
         voidAudit(pool, req, {
           action: 'confirmation.qc.reject',
           resource: 'tbiw37n',
           resourceId: String(parsed.data.idiw37),
-          after: { wkorder: qc.wkorder, note: body.data.note },
+          after: {
+            wkorder: qc.wkorder,
+            note: body.data.note,
+            rescheduleDate: body.data.rescheduleDate,
+          },
         })
         res.json(confirmQcSnapshotResponseSchema.parse({ qc: out }))
       } catch (err) {
         if (err instanceof Error && err.name === 'ZodError') throw err
+        const { MovePlanError } = await import('../services/scheduling-move.js')
+        if (err instanceof MovePlanError) {
+          res.status(400).json({ error: err.code, message: err.message })
+          return
+        }
         if (isSchemaMissing(err)) {
           res.status(503).json({
             error: 'SCHEMA_NOT_READY',
@@ -1358,7 +1425,11 @@ export function registerWorkOrderRoutes(
           })
           return
         }
-        throw err
+        console.error('[confirmation/preview]', err)
+        res.status(500).json({
+          error: 'INTERNAL_ERROR',
+          message: err instanceof Error ? err.message : 'Preview failed',
+        })
       }
     },
   )
@@ -1398,7 +1469,11 @@ export function registerWorkOrderRoutes(
           })
           return
         }
-        throw err
+        console.error('[confirmation/export]', err)
+        res.status(500).json({
+          error: 'INTERNAL_ERROR',
+          message: err instanceof Error ? err.message : 'Export list failed',
+        })
       }
     },
   )
@@ -1894,6 +1969,8 @@ export function registerWorkOrderRoutes(
           startT: bodyParsed.data.startT,
           endD: bodyParsed.data.endD,
           endT: bodyParsed.data.endT,
+          closeKind: bodyParsed.data.closeKind,
+          incompleteReason: bodyParsed.data.incompleteReason,
         })
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

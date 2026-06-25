@@ -942,6 +942,7 @@
       "assignment_to_tech": "Assignment → technician DM",
       "ack_to_planner": "Ack → planner group",
       "close_to_planner": "Work closed → planner group",
+      "move_request_to_planner": "Reschedule request → planner group",
       "ack_summary": "Daily ack summary",
       "confirm_reminder": "QC / confirm reminder",
       "custom": "Custom"

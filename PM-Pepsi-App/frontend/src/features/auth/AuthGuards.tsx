@@ -7,8 +7,7 @@ import { getStoredAuthUser, isLoggedIn, refreshAuthSession } from '@/features/au
 import { HttpErrorPage } from '@/features/errors/HttpErrorPage'
 import { ADMIN_READ_PERMISSIONS } from '@/lib/admin-sections'
 import { pathAllowedForUser } from '@/lib/nav-active'
-import { permissionForRoute, PUBLIC_NAV_PATHS } from '@/lib/nav-route-permissions'
-import { hasPermission } from '@/lib/permissions'
+import { canAccessRoute, permissionsForRoute, PUBLIC_NAV_PATHS } from '@/lib/nav-route-permissions'
 import { useAppNav } from '@/lib/use-app-nav'
 import { useAnyPermission, useAuthUser } from '@/lib/use-permission'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -63,15 +62,15 @@ export function NavRouteGuard() {
   const { allowedPaths, isLoading } = useAppNav()
   const allowedPathsKey = allowedPaths.join('\0')
 
-  const routePerm = permissionForRoute(location.pathname)
   const isPublicRoute = [...PUBLIC_NAV_PATHS].some(
     (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
   )
-  const hasRoutePerm = isPublicRoute || !routePerm || hasPermission(authUser, routePerm)
+  const routePerms = permissionsForRoute(location.pathname)
+  const hasRoutePerm = isPublicRoute || routePerms.length === 0 || canAccessRoute(authUser, location.pathname)
 
   useEffect(() => {
     if (!authUser || isLoading) return
-    if (routePerm && !hasRoutePerm) return
+    if (!hasRoutePerm) return
     if (allowedPaths.length === 0) return
     if (pathAllowedForUser(location.pathname, allowedPaths)) return
 
@@ -83,9 +82,9 @@ export function NavRouteGuard() {
 
     navigate(fallback, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- allowedPathsKey tracks path list
-  }, [authUser, allowedPathsKey, hasRoutePerm, isLoading, location.pathname, navigate, routePerm])
+  }, [authUser, allowedPathsKey, hasRoutePerm, isLoading, location.pathname, navigate])
 
-  if (authUser && routePerm && !hasRoutePerm) {
+  if (authUser && routePerms.length > 0 && !hasRoutePerm) {
     return <HttpErrorPage forcedCode={403} />
   }
 

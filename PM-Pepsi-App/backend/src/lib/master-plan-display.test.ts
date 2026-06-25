@@ -32,4 +32,43 @@ describe('applyFillDownDisplay', () => {
     expect(out[1]?.display.Man).toBe('1')
     expect(out[1]?.display['Man hour']).toBe('30')
   })
+
+  it('fills SAP Code and Task list from row above when empty (Excel merge)', () => {
+    const rows = [
+      {
+        rowIndex: 10,
+        cells: {
+          Zone: 'SE3',
+          'SAP Code': '610000004496',
+          'Task list': '100930',
+          Legacy: 'SE3-MI-EE',
+          'PM list': 'Check motor',
+        },
+      },
+      {
+        rowIndex: 11,
+        cells: {
+          Zone: '',
+          'SAP Code': '',
+          'Task list': '',
+          Legacy: 'SE3-MI-EE',
+          'PM list': 'Check belt',
+        },
+      },
+    ]
+    const out = applyFillDownDisplay(rows, ['Zone', 'SAP Code', 'Task list', 'Legacy', 'PM list'])
+    expect(out[1]?.display['SAP Code']).toBe('610000004496')
+    expect(out[1]?.display['Task list']).toBe('100930')
+    expect(out[1]?.display.Zone).toBe('SE3')
+  })
+
+  it('fills Maintenance plan alias the same as SAP Code', () => {
+    const rows = [
+      { rowIndex: 1, cells: { 'Maintenance plan': '342596', 'Task list': '9189' } },
+      { rowIndex: 2, cells: { 'Maintenance plan': '', 'Task list': '' } },
+    ]
+    const out = applyFillDownDisplay(rows, ['Maintenance plan', 'Task list'])
+    expect(out[1]?.display['Maintenance plan']).toBe('342596')
+    expect(out[1]?.display['Task list']).toBe('9189')
+  })
 })

@@ -85,7 +85,7 @@
     "title": "Assigned / closed",
     "zoneTag": "Zone C · Activity",
     "aria": "Zone C — latest assigned and closed work",
-    "sub": "Up to 12 items · refresh every 60s",
+    "sub": "Up to 12 items · refresh every 15s",
     "empty": "No assigned/closed activity in this period",
     "error": "Could not load activity"
   },

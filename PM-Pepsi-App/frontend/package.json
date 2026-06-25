@@ -19,7 +19,7 @@
     "test:e2e:viewport": "playwright test e2e/u4e-viewport-pages.spec.ts",
     "test:e2e:locale": "playwright test e2e/u4e-locale-shell.spec.ts",
     "test:e2e:portal": "playwright test e2e/u4f-portal.spec.ts",
-    "test:e2e:admin-smoke": "playwright test e2e/admin-hub-smoke.spec.ts",
+    "test:e2e:persona": "playwright test e2e/planner-persona.spec.ts e2e/technician-persona.spec.ts",
     "test:e2e:screenshots": "playwright test e2e/uat-screenshots.spec.ts"
   },
   "dependencies": {
@@ -57,6 +57,7 @@
     "react-chartjs-2": "^5.3.1",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.6",
+    "react-easy-crop": "^6.0.2",
     "react-hook-form": "^7.76.0",
     "react-i18next": "^17.0.8",
     "react-joyride": "^3.1.0",

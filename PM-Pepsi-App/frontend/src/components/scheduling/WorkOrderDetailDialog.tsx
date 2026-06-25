@@ -3,6 +3,11 @@ import { ConfirmationImagesPanel } from '@/components/confirmation/ConfirmationI
 import { ConfirmQcPanel } from '@/components/confirmation/ConfirmQcPanel'
 import { PersonnelClosePanel } from '@/components/confirmation/PersonnelClosePanel'
 import { MovePlanDialog } from '@/components/scheduling/MovePlanDialog'
+import {
+  PlanMoveRequestPlannerList,
+  RequestMovePlanDialog,
+  TechnicianMoveRequestBanner,
+} from '@/components/scheduling/RequestMovePlanDialog'
 import { WoPmPhaseBadge } from '@/components/scheduling/WoPmPhaseBadge'
 import { PlanningTechnicianCards } from '@/components/scheduling/PlanningTechnicianCards'
 import { WorkOrderSummaryPanel } from '@/components/scheduling/WorkOrderSummaryPanel'
@@ -12,6 +17,7 @@ import { WorkOrderConfirmCommentsSection } from '@/components/scheduling/WorkOrd
 import { WorkOrderMaterialPanel } from '@/components/scheduling/WorkOrderMaterialPanel'
 import { WorkOrderSupervisorCloseSection } from '@/components/scheduling/WorkOrderSupervisorCloseSection'
 import { WorkOrderMachinePanel } from '@/components/scheduling/WorkOrderMachinePanel'
+import { WorkOrderPlannerCommentSection } from '@/components/scheduling/WorkOrderPlannerCommentSection'
 import { WorkOrderPmCommentSection } from '@/components/scheduling/WorkOrderPmCommentSection'
 import { WorkOrderTaskListPanel } from '@/components/scheduling/WorkOrderTaskListPanel'
 import { WorkOrderWorkflowSteps } from '@/components/scheduling/WorkOrderWorkflowSteps'
@@ -47,7 +53,6 @@ import {
   postConfirmationComment,
   postPlanningOrderAck,
   postWorkOrderPlanningBatch,
-  putWorkOrderPlanning,
   putWorkOrderTeam,
   putConfirmationComment,
 } from '@/lib/api-public'
@@ -63,7 +68,9 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Loader2, Maximize2, Minimize2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { usePermission } from '@/lib/use-permission'
+import { usePermission, useAuthUser } from '@/lib/use-permission'
+import { resolvePlannerCommentForWkctr, resolveSharedPlannerComment } from '@/lib/planner-comment'
+import { operationsLiveQueryOptions, invalidateOperationsViews } from '@/lib/operations-live-sync'
 import { cn } from '@/lib/utils'
 
 type WorkOrderDetailDialogProps = {
@@ -130,9 +137,12 @@ export function WorkOrderDetailDialog({
   const open = Boolean(orderId)
   const assignedLayout = tabLayout === 'assigned'
   const canPlan = usePermission('planning.assign')
+  const canMovePlanDirect = usePermission('calendar.write')
   const planningEditable = canPlan
+  const authUser = useAuthUser()
   const canEditTeam = usePermission('work-orders.write')
   const [moveOpen, setMoveOpen] = useState(false)
+  const [moveRequestOpen, setMoveRequestOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<MainTab>(initialTab)
   const [confirmTab, setConfirmTab] = useState<ConfirmSubTab>('close')
   const [closeWkctr, setCloseWkctr] = useState('')
@@ -153,6 +163,7 @@ export function WorkOrderDetailDialog({
     queryKey: ['work-order', orderId],
     queryFn: () => fetchWorkOrderDetail(orderId!),
     enabled: open,
+    ...operationsLiveQueryOptions,
   })
 
   const d = detailQ.data
@@ -163,6 +174,7 @@ export function WorkOrderDetailDialog({
     queryKey: ['work-order', 'modal-detail', orderId, modalDate],
     queryFn: () => fetchWorkOrderModalDetail(orderId!, modalDate || undefined),
     enabled: open,
+    ...operationsLiveQueryOptions,
   })
 
   const personAssignees = useMemo(
@@ -172,13 +184,16 @@ export function WorkOrderDetailDialog({
       ),
     [modalQ.data?.planning?.assignees],
   )
-  const groupAssignees = useMemo(
+
+  const myPlannerComment = useMemo(
     () =>
-      (modalQ.data?.planning?.assignees ?? []).filter(
-        (a) => a.pwteam === 'G' || a.kind === 'group',
-      ),
-    [modalQ.data?.planning?.assignees],
+      resolvePlannerCommentForWkctr(modalQ.data?.planning?.assignees, authUser?.wkctr),
+    [modalQ.data?.planning?.assignees, authUser?.wkctr],
   )
+
+  const canRequestPlanMove = Boolean(modalQ.data?.planning?.canRequestPlanMove)
+  const pendingMoveRequests = modalQ.data?.planning?.moveRequestsPending ?? []
+  const showPlannerMoveRequests = canPlan && pendingMoveRequests.length > 0
 
   const closeWoAccess = modalQ.data?.planning.closeWoAccess
   const canShowCloseWoTab = assignedLayout && Boolean(closeWoAccess?.canView)
@@ -191,6 +206,17 @@ export function WorkOrderDetailDialog({
     closeWoAccess.myAssignment?.ackStatus === 'pending' &&
     typeof idiw37 === 'number'
 
+  const showMoveRequestStrip =
+    canAckMyAssignment ||
+    canRequestPlanMove ||
+    Boolean(modalQ.data?.planning?.myMoveRequest) ||
+    showPlannerMoveRequests
+
+  const personnelDefaultWorkDate = useMemo(() => {
+    const iso = modalDate || d?.plannedDate || ''
+    return iso ? isoToDdMmYyyy(iso) : undefined
+  }, [modalDate, d?.plannedDate])
+
   const closesQ = useQuery({
     queryKey: ['confirmation', 'by-wkorder', d?.wkorder],
     queryFn: () => fetchConfirmationByWorkOrder(d!.wkorder),
@@ -201,6 +227,7 @@ export function WorkOrderDetailDialog({
     queryKey: ['confirmation', 'personnel-closes', idiw37],
     queryFn: () => fetchPersonnelCloses(idiw37!),
     enabled: open && typeof idiw37 === 'number' && Number.isFinite(idiw37),
+    ...operationsLiveQueryOptions,
   })
 
   const commentsQ = useQuery({
@@ -332,23 +359,6 @@ export function WorkOrderDetailDialog({
     },
   })
 
-  const assignPlanMut = useMutation({
-    mutationFn: (args: { mode: 'P' | 'G'; code: string }) =>
-      putWorkOrderPlanning(orderId!, { mode: args.mode, code: args.code, comment: planComment.trim() || undefined }),
-    onSuccess: async (_data, args) => {
-      setPlanComment('')
-      toast.success(
-        args.mode === 'G' ? t('woDialog.toastAssignGroupOk') : t('woDialog.toastAssignPersonOk'),
-      )
-      await qc.invalidateQueries({ queryKey: ['work-order', 'modal-detail', orderId] })
-      await qc.invalidateQueries({ queryKey: ['work-order', orderId] })
-      await qc.invalidateQueries({ queryKey: ['plan-calendar'] })
-      await qc.invalidateQueries({ queryKey: ['planning'] })
-      await qc.invalidateQueries({ queryKey: ['calendar'] })
-    },
-    onError: (e: Error) => toast.error(e.message || t('woDialog.toastAssignFailed')),
-  })
-
   const teamMut = useMutation({
     mutationFn: (team: WorkOrderTeamCode) => putWorkOrderTeam(orderId!, team),
     onSuccess: async (_data, team) => {
@@ -409,6 +419,11 @@ export function WorkOrderDetailDialog({
     },
     onError: (err) => toast.error((err as Error).message || t('woDialog.ackFailed')),
   })
+
+  useEffect(() => {
+    if (!open || !modalQ.data?.planning?.assignees) return
+    setPlanComment(resolveSharedPlannerComment(modalQ.data.planning.assignees))
+  }, [open, orderId, modalQ.data?.planning?.assignees])
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -513,6 +528,36 @@ export function WorkOrderDetailDialog({
               />
             ) : null}
           </div>
+
+          {showMoveRequestStrip ? (
+            <div className="shrink-0 space-y-2 border-b border-app/60 px-4 py-3 sm:px-6">
+              {canAckMyAssignment ? (
+                <div className="app-tone-info-callout rounded-card border px-3 py-2 text-body-sm">
+                  <p>{t('woDialog.closeWoLockedPendingAck')}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-2"
+                    disabled={ackMut.isPending}
+                    onClick={() => ackMut.mutate()}
+                  >
+                    {ackMut.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                    ) : null}
+                    {t('woDialog.acknowledgeAssignment')}
+                  </Button>
+                </div>
+              ) : null}
+              <TechnicianMoveRequestBanner
+                pending={modalQ.data?.planning?.myMoveRequest}
+                canRequest={canRequestPlanMove}
+                onRequest={() => setMoveRequestOpen(true)}
+              />
+              {showPlannerMoveRequests ? (
+                <PlanMoveRequestPlannerList items={pendingMoveRequests} />
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {showPostCloseReview && d && !assignedLayout ? (
@@ -645,7 +690,9 @@ export function WorkOrderDetailDialog({
                       teamPending={teamMut.isPending}
                       canEditTeam={canEditTeam}
                       onTeamChange={(team) => teamMut.mutate(team)}
-                      onMovePlan={d.canMovePlan ? () => setMoveOpen(true) : undefined}
+                      onMovePlan={
+                        d.canMovePlan && canMovePlanDirect ? () => setMoveOpen(true) : undefined
+                      }
                     />
                   ) : null}
                 </WoModalTabFade>
@@ -679,6 +726,14 @@ export function WorkOrderDetailDialog({
                       <WorkOrderTaskListPanel
                         taskList={modalQ.data.taskList}
                         plannerLayout={assignedLayout}
+                        planDetailHeader={{
+                          functionalLocation: modalQ.data.woHeader.functionalLocation,
+                          equipment: modalQ.data.woHeader.equipment,
+                          descriptionLine1: modalQ.data.woHeader.descriptionLine1,
+                          descriptionLine2: modalQ.data.woHeader.descriptionLine2,
+                          operationNumber: modalQ.data.woHeader.operationNumber,
+                          operationText: modalQ.data.woHeader.operationText,
+                        }}
                         woContext={
                           assignedLayout && d
                             ? {
@@ -691,18 +746,9 @@ export function WorkOrderDetailDialog({
                         }
                         canAssign={canPlan}
                         onGoPlanning={() => setActiveTab('planning')}
-                        orderId={assignedLayout ? undefined : (orderId ?? undefined)}
-                        pmExecution={assignedLayout ? undefined : modalQ.data.pmExecution}
-                        showMeasurements={!assignedLayout}
-                        onPmSaved={() => void modalQ.refetch()}
                       />
-                      {assignedLayout && orderId ? (
-                        <WorkOrderPmCommentSection
-                          orderId={orderId}
-                          wkorderLabel={d?.wkorder}
-                          pmExecution={modalQ.data.pmExecution}
-                          onSaved={() => void modalQ.refetch()}
-                        />
+                      {assignedLayout && !canPlan ? (
+                        <WorkOrderPlannerCommentSection comment={myPlannerComment} />
                       ) : null}
                     </div>
                   ) : null}
@@ -738,23 +784,6 @@ export function WorkOrderDetailDialog({
                     {t('woDialog.readOnlyPlanning')}
                   </p>
                 ) : null}
-                {canAckMyAssignment ? (
-                  <div className="app-tone-info-callout rounded-card border px-3 py-2 text-body-sm">
-                    <p>{t('woDialog.closeWoLockedPendingAck')}</p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="mt-2"
-                      disabled={ackMut.isPending}
-                      onClick={() => ackMut.mutate()}
-                    >
-                      {ackMut.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                      ) : null}
-                      {t('woDialog.acknowledgeAssignment')}
-                    </Button>
-                  </div>
-                ) : null}
                 {d && modalQ.data?.date ? (
                   <p className="app-tone-info-callout rounded-card border px-3 py-2 text-xs">
                     {t('woDialog.availableHour', { date: modalQ.data.date })}
@@ -764,24 +793,6 @@ export function WorkOrderDetailDialog({
                   <p className="text-app-muted">{t('woDialog.noPlanPermission')}</p>
                 ) : d ? (
                   <>
-                    <div className="rounded-card border border-app bg-[var(--app-surface)] p-3">
-                      <p className="font-medium text-app">{t('woDialog.planningWork')}</p>
-                      {planningEditable ? (
-                        <div className="mt-3 space-y-2">
-                          <Label htmlFor="plan-comment">{t('shared.comment')}</Label>
-                          <Input
-                            id="plan-comment"
-                            value={planComment}
-                            onChange={(e) => setPlanComment(e.target.value)}
-                          />
-                        </div>
-                      ) : planComment.trim() ? (
-                        <p className="mt-2 text-body-sm text-app-muted">
-                          {t('shared.notesPrefix')} {planComment}
-                        </p>
-                      ) : null}
-                    </div>
-
                     {d.movePlan ? (
                       <div className="app-tone-warning-callout rounded-card border p-3">
                         <p className="app-tone-warning-strong font-medium">{t('woDialog.planMoved')}</p>
@@ -799,7 +810,7 @@ export function WorkOrderDetailDialog({
                       <p className="text-app-muted">{t('woDialog.noPlanMove')}</p>
                     )}
 
-                    {d.canMovePlan && planningEditable ? (
+                    {d.canMovePlan && planningEditable && canMovePlanDirect ? (
                       <Button type="button" variant="outline" onClick={() => setMoveOpen(true)}>
                         {t('woDialog.movePlanButton')}
                       </Button>
@@ -907,48 +918,6 @@ export function WorkOrderDetailDialog({
                               </div>
                             )}
                           </div>
-
-                          <div className="rounded-card border border-app bg-[var(--app-surface)] p-3">
-                            <p className="font-medium text-app">{t('woDialog.groupAssignees')}</p>
-                            {groupAssignees.length === 0 ? (
-                              <p className="mt-2 text-caption">{t('woDialog.noGroupAssign')}</p>
-                            ) : (
-                              <div className="mt-3 overflow-auto rounded-button border border-app">
-                                <table className="min-w-full text-body-sm">
-                                  <thead className="bg-app-subtle text-app">
-                                    <tr>
-                                      <th className="px-3 py-2 text-left">{t('woDialog.techCode')}</th>
-                                      <th className="px-3 py-2 text-left">{t('woDialog.fullName')}</th>
-                                      {planningEditable ? (
-                                        <th className="px-3 py-2 text-center">{t('shared.action')}</th>
-                                      ) : null}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {groupAssignees.map((a) => (
-                                      <tr key={`g-${a.code}-${a.idplanw ?? ''}`} className="border-t">
-                                        <td className="px-3 py-2 font-mono">{a.code}</td>
-                                        <td className="px-3 py-2">{a.displayName}</td>
-                                        {planningEditable ? (
-                                          <td className="px-3 py-2 text-center">
-                                            <Button
-                                              type="button"
-                                              size="sm"
-                                              variant="outline"
-                                              onClick={() => removeAssigneeMut.mutate(a.code)}
-                                              disabled={removeAssigneeMut.isPending}
-                                            >
-                                              {t('shared.delete')}
-                                            </Button>
-                                          </td>
-                                        ) : null}
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                          </div>
                         </div>
 
                         {planningEditable ? (
@@ -958,6 +927,8 @@ export function WorkOrderDetailDialog({
                           assignedCodes={personAssignees.map((a) => a.code)}
                           woTeam={d.team}
                           submitting={batchAssignMut.isPending}
+                          assignComment={planComment}
+                          onAssignCommentChange={setPlanComment}
                           onBatchAssign={async (codes) => {
                             const res = await batchAssignMut.mutateAsync(codes)
                             return {
@@ -968,39 +939,6 @@ export function WorkOrderDetailDialog({
                           }}
                         />
 
-                        <div className="rounded-card border border-app bg-[var(--app-surface)] p-3">
-                          <p className="font-medium text-app">{t('woDialog.planningGroup')}</p>
-                          <div className="mt-3 overflow-auto rounded-button border border-app">
-                            <table className="min-w-full text-body-sm">
-                              <thead className="bg-app-subtle text-app">
-                                <tr>
-                                  <th className="px-3 py-2 text-left">{t('woDialog.groupCode')}</th>
-                                  <th className="px-3 py-2 text-left">{t('woDialog.groupName')}</th>
-                                  <th className="px-3 py-2 text-center">{t('shared.action')}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {modalQ.data.planning.groups.map((g) => (
-                                  <tr key={g.wkctrgroup} className="border-t">
-                                    <td className="px-3 py-2">{g.wkctrgroup}</td>
-                                    <td className="px-3 py-2">{g.wkctrdescription}</td>
-                                    <td className="px-3 py-2 text-center">
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => assignPlanMut.mutate({ mode: 'G', code: g.wkctrgroup })}
-                                        disabled={assignPlanMut.isPending}
-                                      >
-                                        {t('woDialog.add')}
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
                           </>
                         ) : null}
                       </>
@@ -1039,16 +977,6 @@ export function WorkOrderDetailDialog({
                         {t('woDialog.readOnlyCloseWo')}
                       </p>
                     ) : null}
-                    <PersonnelClosePanel
-                      idiw37={idiw37}
-                      enabled={open && typeof idiw37 === 'number'}
-                      closeBlockedMessage={closeBlockedMessage}
-                      canWrite={assignedCloseCanWrite}
-                      onAppliedToSupervisor={applyPersonnelToSupervisorClose}
-                      onChanged={() => {
-                        void qc.invalidateQueries({ queryKey: ['work-order', orderId] })
-                      }}
-                    />
                     {typeof idiw37 === 'number' ? (
                       <ConfirmationImagesPanel
                         idiw37={idiw37}
@@ -1056,42 +984,20 @@ export function WorkOrderDetailDialog({
                         readOnly={!assignedCloseCanWrite}
                       />
                     ) : null}
-                    <WorkOrderSupervisorCloseSection
-                      readOnly={!assignedCloseCanWrite}
-                      closeWkctr={closeWkctr}
-                      onCloseWkctrChange={setCloseWkctr}
-                      startDate={startDate}
-                      onStartDateChange={setStartDate}
-                      startTime={startTime}
-                      onStartTimeChange={setStartTime}
-                      endDate={endDate}
-                      onEndDateChange={setEndDate}
-                      endTime={endTime}
-                      onEndTimeChange={setEndTime}
-                      onSubmit={() => {
-                        if (!canCloseWorkOrder) {
-                          toast.error(
-                            closeBlockedMessage ?? t('woDialog.closeBlockedDefault'),
-                          )
-                          return
-                        }
-                        addCloseMut.mutate()
+                    <PersonnelClosePanel
+                      key={idiw37 ?? 'no-wo'}
+                      idiw37={idiw37}
+                      enabled={open && typeof idiw37 === 'number'}
+                      imageAfterCount={imageAfterCount}
+                      canWrite={assignedCloseCanWrite}
+                      singleTechnicianWkctr={authUser?.wkctr}
+                      selectedWkctr={authUser?.wkctr}
+                      defaultWorkDate={personnelDefaultWorkDate}
+                      onAppliedToSupervisor={applyPersonnelToSupervisorClose}
+                      onChanged={() => {
+                        void invalidateOperationsViews(qc)
+                        void qc.invalidateQueries({ queryKey: ['work-order', orderId] })
                       }}
-                      submitPending={addCloseMut.isPending}
-                      submitDisabled={
-                        !assignedCloseCanWrite ||
-                        !startDate ||
-                        !endDate ||
-                        !startTime ||
-                        !endTime ||
-                        !canCloseWorkOrder
-                      }
-                      isLoading={closesQ.isLoading}
-                      isError={closesQ.isError}
-                      error={(closesQ.error as Error) ?? null}
-                      items={closesQ.data?.items ?? []}
-                      onDelete={(idclose) => delCloseMut.mutate(idclose)}
-                      deletePending={delCloseMut.isPending}
                     />
                   </div>
                 ) : (
@@ -1115,11 +1021,14 @@ export function WorkOrderDetailDialog({
                   }
                   personnelClosePanel={
                     <PersonnelClosePanel
+                      key={idiw37 ?? 'no-wo'}
                       idiw37={idiw37}
                       enabled={open && typeof idiw37 === 'number'}
-                      closeBlockedMessage={closeBlockedMessage}
+                      imageAfterCount={imageAfterCount}
+                      defaultWorkDate={personnelDefaultWorkDate}
                       onAppliedToSupervisor={applyPersonnelToSupervisorClose}
                       onChanged={() => {
+                        void invalidateOperationsViews(qc)
                         void qc.invalidateQueries({ queryKey: ['work-order', orderId] })
                       }}
                     />
@@ -1206,7 +1115,7 @@ export function WorkOrderDetailDialog({
         </DialogContent>
       </Dialog>
 
-      {d && orderId ? (
+      {d && orderId && canMovePlanDirect ? (
         <MovePlanDialog
           open={moveOpen}
           onOpenChange={setMoveOpen}
@@ -1215,6 +1124,19 @@ export function WorkOrderDetailDialog({
           defaultDate={d.movePlan?.movedDate || d.plannedDate}
           onSuccess={() => {
             void detailQ.refetch()
+            void modalQ.refetch()
+          }}
+        />
+      ) : null}
+      {d && typeof idiw37 === 'number' ? (
+        <RequestMovePlanDialog
+          open={moveRequestOpen}
+          onOpenChange={setMoveRequestOpen}
+          idiw37={idiw37}
+          wkorder={d.wkorder}
+          defaultPreferredDate={d.plannedDate}
+          onSuccess={() => {
+            void modalQ.refetch()
           }}
         />
       ) : null}

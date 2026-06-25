@@ -1,13 +1,15 @@
 import type { Express, Request, Response } from 'express'
 import type { Pool } from 'pg'
 import { voidAudit, sanitizeAuditPayload } from '../lib/audit-mutation.js'
-import { createRequirePermission } from '../middleware/require-permission.js'
+import { createRequireAnyPermission, createRequirePermission } from '../middleware/require-permission.js'
 import { calendarEventsResponseSchema } from '../schemas/calendar.js'
 import {
   planningAckResponseSchema,
   planningAckSummaryResponseSchema,
   planningAssignBodySchema,
   planningAssignResponseSchema,
+  planMoveRequestBodySchema,
+  planMoveRequestResponseSchema,
   planningResponseSchema,
 } from '../schemas/planning.js'
 import { listPlanCalendarEvents } from '../services/plan-calendar.js'
@@ -23,6 +25,11 @@ import {
   notifyNewPlanningAssignments,
   notifyPlannerAssignmentAcknowledged,
 } from '../services/telegram-assignment-notify.js'
+import {
+  createPlanMoveRequest,
+  PlanMoveRequestError,
+} from '../services/plan-move-request.js'
+import { notifyPlannerMoveRequest } from '../services/planner-move-request-notify.js'
 
 function isSchemaMissing(err: unknown): boolean {
   const message = err instanceof Error ? err.message : ''
@@ -38,12 +45,16 @@ export function registerPlanningRoutes(
   pool: Pool,
   sessionSecret: string,
 ) {
-  const requireRead = createRequirePermission(pool, sessionSecret)('planning.read')
+  const requirePlanningRead = createRequirePermission(pool, sessionSecret)('planning.read')
+  const requirePlanCalendarRead = createRequireAnyPermission(pool, sessionSecret)([
+    'plan-calendar.read',
+    'planning.read',
+  ])
   const requireAssign = createRequirePermission(pool, sessionSecret)('planning.assign')
 
   app.get(
     '/api/v1/plan-calendar/events',
-    ...requireRead,
+    ...requirePlanCalendarRead,
     async (req: Request, res: Response) => {
       const idwkctr = req.authUser?.idwkctr
       const wkctr = (req.authUser?.wkctr || req.authUser?.username || '').trim()
@@ -61,8 +72,15 @@ export function registerPlanningRoutes(
         Math.max(1, Number(req.query.month) || now.getMonth() + 1),
       )
       try {
-        const scope = resolvePlanCalendarScope(req.authUser?.userst)
-        const items = await listPlanCalendarEvents(
+        const roleR = await pool.query<{ userrole: string | null }>(
+          `SELECT userrole FROM app.tbworkcenter WHERE idwkctr = $1`,
+          [idwkctr],
+        )
+        const scope = resolvePlanCalendarScope({
+          userst: req.authUser?.userst,
+          userrole: roleR.rows[0]?.userrole,
+        })
+        const result = await listPlanCalendarEvents(
           pool,
           idwkctr,
           year,
@@ -70,7 +88,7 @@ export function registerPlanningRoutes(
           wkctr,
           scope,
         )
-        res.json(calendarEventsResponseSchema.parse({ items, year, month }))
+        res.json(calendarEventsResponseSchema.parse(result))
       } catch (err) {
         if (isSchemaMissing(err)) {
           res.status(503).json({
@@ -86,7 +104,7 @@ export function registerPlanningRoutes(
 
   app.get(
     '/api/v1/planning/orders',
-    ...requireRead,
+    ...requirePlanningRead,
     async (req: Request, res: Response) => {
       const idwkctr = req.authUser?.idwkctr
       const wkctr = (req.authUser?.wkctr || req.authUser?.username || '').trim()
@@ -194,7 +212,7 @@ export function registerPlanningRoutes(
 
   app.post(
     '/api/v1/planning/orders/:idiw37/ack',
-    ...requireRead,
+    ...requirePlanCalendarRead,
     async (req: Request, res: Response) => {
       const user = req.authUser!
       const wkctr = (user.wkctr || user.username || '').trim()
@@ -255,7 +273,7 @@ export function registerPlanningRoutes(
 
   app.get(
     '/api/v1/planning/orders/:idiw37/ack-summary',
-    ...requireRead,
+    ...requirePlanningRead,
     async (req: Request, res: Response) => {
       const idiw37 = Number(req.params.idiw37)
       if (!Number.isFinite(idiw37) || idiw37 <= 0) {
@@ -274,6 +292,69 @@ export function registerPlanningRoutes(
           return
         }
         throw err
+      }
+    },
+  )
+
+  app.post(
+    '/api/v1/planning/move-request',
+    ...requirePlanCalendarRead,
+    async (req: Request, res: Response) => {
+      const user = req.authUser
+      if (!user) {
+        res.status(401).json({ error: 'UNAUTHORIZED' })
+        return
+      }
+      const parsed = planMoveRequestBodySchema.safeParse(req.body)
+      if (!parsed.success) {
+        res.status(400).json({ error: 'VALIDATION', message: parsed.error.message })
+        return
+      }
+      const requesterWkctr = (user.wkctr || user.username || '').trim()
+      if (!requesterWkctr) {
+        res.status(400).json({ error: 'VALIDATION', message: 'Work center required' })
+        return
+      }
+      try {
+        const item = await createPlanMoveRequest(pool, {
+          idiw37: parsed.data.idiw37,
+          requesterWkctr,
+          comment: parsed.data.comment,
+          preferredDate: parsed.data.preferredDate,
+        })
+        void notifyPlannerMoveRequest(pool, item).catch((err) =>
+          console.error('[planning/move-request-notify]', err),
+        )
+        voidAudit(pool, req, {
+          action: 'planning.read',
+          resource: 'tbplan_move_request',
+          resourceId: String(item.id),
+          after: sanitizeAuditPayload({
+            idiw37: item.idiw37,
+            requesterWkctr: item.requesterWkctr,
+            preferredDate: item.preferredDate,
+          }),
+        })
+        res.status(201).json(planMoveRequestResponseSchema.parse({ ok: true, item }))
+      } catch (err) {
+        if (err instanceof PlanMoveRequestError) {
+          const status =
+            err.code === 'NOT_FOUND'
+              ? 404
+              : err.code === 'NOT_ASSIGNED'
+                ? 403
+                : err.code === 'NOT_MOVABLE'
+                  ? 409
+                  : err.code === 'DUPLICATE'
+                    ? 409
+                    : err.code === 'SCHEMA_MISSING'
+                      ? 503
+                      : 400
+          res.status(status).json({ error: err.code, message: err.message })
+          return
+        }
+        console.error('[planning/move-request]', err)
+        res.status(500).json({ error: 'INTERNAL', message: 'Move request failed' })
       }
     },
   )

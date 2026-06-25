@@ -10,10 +10,11 @@ export type PmPlanTeam = 'A' | 'B' | 'EE' | 'UT'
 export function inferCalendarDisplayStatus(
   e: Pick<
     ScheduleCalendarEvent,
-    'displayStatus' | 'pmExecutionStatus' | 'moveCount' | 'moveReasonRequired'
+    'displayStatus' | 'pmExecutionStatus' | 'moveCount' | 'moveReasonRequired' | 'pipelineStatus'
   >,
 ): CalendarEventDisplayStatus {
   if (e.displayStatus) return e.displayStatus
+  if (e.pipelineStatus === 'closed') return 'completed'
   if (e.pmExecutionStatus === 'done' || e.pmExecutionStatus === 'closed') {
     return 'completed'
   }
@@ -30,9 +31,13 @@ export function calendarPipelineStatusClass(status: PlannerPipelineStatus): stri
   return `pm-cal-event--pipeline-${status.replace(/_/g, '-')}`
 }
 
-/** CRTD/REL on /calendar — pipeline colors override SAP scheduling displayStatus */
-export function usesPipelineSurfaceColor(e: Pick<ScheduleCalendarEvent, 'syst' | 'pipelineStatus'>): boolean {
-  return isPlanMovableStatus(e.syst) && e.pipelineStatus != null
+/** CRTD/REL — pipeline colors; closed (รวม TECO) ใช้เขียวเสมอ */
+export function usesPipelineSurfaceColor(
+  e: Pick<ScheduleCalendarEvent, 'syst' | 'pipelineStatus'>,
+): boolean {
+  if (e.pipelineStatus == null) return false
+  if (e.pipelineStatus === 'closed') return true
+  return isPlanMovableStatus(e.syst)
 }
 
 export function calendarTeamClass(team?: PmPlanTeam | string): string | null {

@@ -1,4 +1,3 @@
-import { CanPermission } from '@/components/auth/CanPermission'
 import { ConfirmationExportTablePanel } from '@/components/confirmation/ConfirmationExportTablePanel'
 import {
   ConfirmationReviewDialog,
@@ -15,8 +14,6 @@ import {
   SchedulingPageHeader,
   SchedulingPageSection,
   SchedulingPageStack,
-  schedulingHeroLinkBtnClass,
-  schedulingHeroLinkIconClass,
 } from '@/components/scheduling/SchedulingPageLayout'
 import { MassConfirmSearchCard } from '@/features/confirmation/MassConfirmSearchCard'
 import { Button } from '@/components/ui/button'
@@ -30,12 +27,12 @@ import {
   fetchConfirmationPreview,
   type ConfirmationPreviewStatus,
 } from '@/lib/api-public'
+import { operationsLiveQueryOptions } from '@/lib/operations-live-sync'
 import { usePermission } from '@/lib/use-permission'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, BadgeCheck, ClipboardCheck, Eye, RotateCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 
 type ReviewTab = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -77,7 +74,7 @@ export function ConfirmationPage() {
     queryFn: () => fetchConfirmationPreview(previewStatus!),
     enabled: canRead && previewStatus != null,
     placeholderData: keepPreviousData,
-    refetchInterval: 60_000,
+    ...operationsLiveQueryOptions,
   })
 
   const approvedQ = useQuery({
@@ -150,22 +147,7 @@ export function ConfirmationPage() {
 
   return (
     <>
-      <SchedulingPageHeader title={t('page.title')} icon={BadgeCheck} hints={pageHints}>
-        <CanPermission permission="work-orders.read">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={schedulingHeroLinkBtnClass}
-            asChild
-          >
-            <Link to="/work-orders">
-              <ClipboardCheck className={schedulingHeroLinkIconClass} aria-hidden />
-              {t('page.woConfirmationLink')}
-            </Link>
-          </Button>
-        </CanPermission>
-      </SchedulingPageHeader>
+      <SchedulingPageHeader title={t('page.title')} icon={BadgeCheck} hints={pageHints} />
 
       <AppPageContent className="scheduling-page pb-8">
         <SchedulingPageStack>

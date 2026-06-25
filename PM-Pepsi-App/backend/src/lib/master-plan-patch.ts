@@ -1,3 +1,5 @@
+import { masterPlanColumnStorageKeys } from './master-plan-column-keys.js'
+
 export type MasterPlanCellChange = {
   fieldName: string
   before: string
@@ -21,7 +23,9 @@ export function allowedMasterPlanColumnKeys(
   currentCells: Record<string, string>,
 ): Set<string> {
   const headers = columnHeaders.map((h) => h.trim()).filter(Boolean)
-  if (headers.length > 0) return new Set(headers)
+  if (headers.length > 0) {
+    return new Set(masterPlanColumnStorageKeys(columnHeaders))
+  }
   if (sheetKind !== 'detail') {
     return new Set(Object.keys(currentCells).filter((k) => /^col\d+$/.test(k)))
   }

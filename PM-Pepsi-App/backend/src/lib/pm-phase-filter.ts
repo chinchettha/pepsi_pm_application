@@ -1,4 +1,10 @@
-import type { WoPmPhase } from './wo-pm-phase.js'
+import { PLANNER_DISPATCH_WHERE_MP } from './planner-dispatch-status.js'
+import {
+  isWoPmPhaseConfirm,
+  resolveWoPmPhase,
+  type WoPmPhase,
+  type WoPmPhaseContext,
+} from './wo-pm-phase.js'
 
 export const PM_PHASE_FILTER_CODES = ['create', 'rel', 'confirm'] as const
 
@@ -10,16 +16,56 @@ export const PM_PHASE_FILTER_OPTIONS: { code: PmPhaseFilterCode; label: string }
   { code: 'confirm', label: 'Confirm' },
 ]
 
+function sqlOpenSyst(alias: string): string {
+  return `UPPER(TRIM(COALESCE(${alias}.syst, '')))`
+}
+
+function sqlHasPlannerAssignment(alias: string): string {
+  return `EXISTS (
+    SELECT 1 FROM app.tbplangingwork mp
+    WHERE mp.idiw37 = ${alias}.idiw37
+      AND ${PLANNER_DISPATCH_WHERE_MP}
+  )`
+}
+
+/** Confirm — mirror `isWoPmPhaseConfirm` */
+function sqlIsPmPhaseConfirm(orderAlias: string): string {
+  const s = sqlOpenSyst(orderAlias)
+  return `(
+    (${s} <> '' AND ${s} NOT IN ('CRTD', 'REL'))
+    OR EXISTS (
+      SELECT 1 FROM app.view_countpersonelclose vc
+      WHERE vc.idiw37 = ${orderAlias}.idiw37
+        AND COALESCE(vc.percent_close, 0) >= 100
+    )
+    OR EXISTS (
+      SELECT 1 FROM app.tbiw37n i
+      WHERE i.idiw37 = ${orderAlias}.idiw37
+        AND LOWER(TRIM(COALESCE(i.confirm_qc_status, ''))) = 'approved'
+    )
+    OR EXISTS (
+      SELECT 1 FROM app.tbcofirm c WHERE c.idiw37 = ${orderAlias}.idiw37
+    )
+    OR EXISTS (
+      SELECT 1 FROM app.tbwrkclose w
+      WHERE w.idiw37 = ${orderAlias}.idiw37 AND w.close_kind = 'complete'
+    )
+  )`
+}
+
 /** SQL ต่อ phase เดียว — mirror `resolveWoPmPhase` */
 export function sqlPmPhaseMatch(code: PmPhaseFilterCode, alias: string): string {
-  const syst = `UPPER(TRIM(COALESCE(${alias}.syst, '')))`
+  const s = sqlOpenSyst(alias)
+  const confirm = sqlIsPmPhaseConfirm(alias)
+  const assigned = sqlHasPlannerAssignment(alias)
+
   switch (code) {
-    case 'create':
-      return `${syst} = 'CRTD'`
-    case 'rel':
-      return `${syst} = 'REL'`
     case 'confirm':
-      return `${syst} NOT IN ('CRTD', 'REL')`
+      return confirm
+    case 'create':
+      return `(${s} = 'CRTD' AND NOT (${confirm}) AND NOT (${assigned}))`
+    case 'rel':
+      return `(NOT (${confirm}) AND (${s} = 'REL' OR (${s} = 'CRTD' AND ${assigned})))`
     default:
       return 'FALSE'
   }
@@ -40,16 +86,17 @@ export function appendPmPhaseFilter(
 }
 
 /** ใช้ใน unit test — mirror logic ฝั่ง TS */
-export function matchesPmPhaseFilter(code: PmPhaseFilterCode, syst: string | null | undefined): boolean {
-  const s = (syst ?? '').trim().toUpperCase()
-  if (code === 'create') return s === 'CRTD'
-  if (code === 'rel') return s === 'REL'
-  return s !== 'CRTD' && s !== 'REL'
+export function matchesPmPhaseFilter(
+  code: PmPhaseFilterCode,
+  syst: string | null | undefined,
+  ctx?: WoPmPhaseContext,
+): boolean {
+  return resolveWoPmPhase(syst, ctx) === code
 }
 
-export function resolvePmPhaseFromSyst(syst: string | null | undefined): WoPmPhase {
-  const s = (syst ?? '').trim().toUpperCase()
-  if (s === 'CRTD') return 'create'
-  if (s === 'REL') return 'rel'
-  return 'confirm'
+export function resolvePmPhaseFromSyst(
+  syst: string | null | undefined,
+  ctx?: WoPmPhaseContext,
+): WoPmPhase {
+  return resolveWoPmPhase(syst, ctx)
 }

@@ -21,7 +21,12 @@
     "description": "Annual PM plans from customer Excel — Process Electrical (EE), Mechanical (ME), and Packing (PK).",
     "hints": ["Process · Electrical", "Process · Mechanical", "Packing", "Sheets match customer Excel"],
     "planYear": "Plan year {{year}}",
-    "version": "v{{no}}"
+    "version": "v{{no}}",
+    "deepLinkFromIw37n": "Opened from IW37N — Maintenance plan “{{q}}”",
+    "deepLinkJumpFound": "Jumped to row {{rowNo}} in {{discipline}}",
+    "deepLinkJumpMissing": "No exact row match — use search in the grid",
+    "deepLinkOpenIw37n": "View in IW37N",
+    "deepLinkClear": "Clear filter"
   },
   "panel": {
     "loadFailed": "Could not load",
@@ -219,7 +224,9 @@
     "showing": "showing {{count}}",
     "loadMore": "Load more rows",
     "loadingMore": "Loading…",
-    "notSeeded": "Master Plan not loaded — run backend seed:master-plan",
+    "notSeeded": "No published workbook for this discipline yet",
+    "emptyTitle": "No {{discipline}} Master Plan loaded",
+    "emptyDesc": "Upload any EE, ME, or PK Excel file — the app detects the discipline and publishes to the task list automatically.",
     "sheetPickerLabel": "Sheet",
     "sheetPickerPlaceholder": "Select sheet…",
     "sheetSearch": "Search sheets",
@@ -277,6 +284,8 @@
       "machine": "M/C — the specific machine or functional location receiving PM.\n• Narrower than Machine List: the asset the plan applies to.\n• Maps toward equipment / functional location in SAP flows.\n• Editable cell value.",
       "pmlist": "PM task description as written in customer Excel (often Thai).\n• Shown verbatim — not translated by the app.\n• Appears on work orders and confirmation screens after publish.\n• Use multi-line editor (double-click); long text is not truncated.",
       "days": "Interval in days between PM executions.\n• Drives calendar scheduling together with freq (day) on some sheets.\n• Editable; compare with SAP strategy after publish.",
+      "lastClosed": "Date the technician last closed this PM (from work-order close / confirmation).\n• Matched by SAP Code (mntplan) and PM list text on the work order.\n• Read-only — updated when confirmations are recorded in the app.",
+      "nextDue": "Next PM due date = Last closed + days interval.\n• Uses the days column on this row (with Excel fill-down).\n• Highlighted amber when the due date is before today.\n• Read-only calculated column.",
       "freqDay": "PM frequency in days (column may appear as freq (day) or Frequency on PK sheets).\n• Packing sheets use Frequency / Type / Craft instead of some EE/ME columns.\n• Editable numeric/text cell.",
       "min": "Planned minimum man-hours for the PM task.\n• Often merged vertically in Excel — blank cells repeat the value above.\n• Used in manhour planning and utilization reports.\n• Editable.",
       "man": "Planned manpower (people) or man-hour column (Man / Man hour).\n• May rowspan like Min when merged in Excel.\n• Feeds manhour and team sizing checks.\n• Editable.",
@@ -285,6 +294,10 @@
       "craft": "Trade / craft for packing PM (PK sheets).\n• Similar role to Legacy on process sheets — which team executes the job.\n• Editable.",
       "wh": "Planned work hours (WH) for the task on some sheets.\n• Used alongside Min/Man for time planning.\n• Editable.",
       "equipt": "Equipment tag or short equipment reference when the sheet uses an Equipt/Equipment column.\n• Cross-check with Equipment master and functional location.\n• Editable when present on the sheet."
+    },
+    "virtualColumns": {
+      "lastClosed": "Last closed",
+      "nextDue": "Next due"
     },
     "rowLinks": {
       "column": "Links",
@@ -300,6 +313,7 @@
     },
     "actions": {
       "import": "Import Excel",
+      "importAny": "Import Master Plan",
       "export": "Export Excel",
       "exportDraft": "Export draft",
       "publish": "Publish to task list",
@@ -307,6 +321,8 @@
       "exporting": "Exporting…",
       "publishing": "Publishing…",
       "importSuccess": "Draft v{{version}} saved — {{changed}} row(s) changed",
+      "importPublishedSuccess": "{{discipline}} published v{{version}} — task list +{{inserted}} ~{{updated}}",
+      "importUnrecognized": "Could not detect EE, ME, or PK from this file",
       "importStructureError": "Sheet layout does not match published workbook",
       "importFailed": "Import failed",
       "exportFailed": "Export failed",

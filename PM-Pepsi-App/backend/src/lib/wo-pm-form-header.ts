@@ -96,6 +96,20 @@ function activityTypeLabel(row: RowLike, firstTask?: TaskLike | null): string {
   return row.wktype?.trim() ?? ''
 }
 
+/** SAP Header Short Text for PM task list rows — e.g. `342596 & P17-HR-ME2` */
+export function buildTaskListHeaderShortText(
+  mntplan: string,
+  legacy: string,
+  woOperationShortText?: string | null,
+): string {
+  const m = mntplan.trim()
+  const l = legacy.trim()
+  if (m && l) return `${m} & ${l}`
+  const wo = woOperationShortText?.trim() ?? ''
+  if (wo) return wo
+  return m || l
+}
+
 /** SAP print Operation Text — e.g. `2M - EE Oil Heating Zone (P14)` */
 export function buildOperationText(row: RowLike, techId: string): string {
   const ost = row.ostdescription?.trim() ?? ''

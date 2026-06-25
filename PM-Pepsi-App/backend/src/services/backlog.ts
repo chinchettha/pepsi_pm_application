@@ -8,14 +8,27 @@ import type {
   backlogSearchBodySchema,
 } from '../schemas/backlog.js'
 import { formatUntimeUnit, manhourDateWhereSql } from '../lib/manhour-minutes.js'
-import { listActivityFilterOptions } from '../lib/activity-type-label.js'
+import {
+  PLANNER_DISPATCH_WHERE,
+  resolvePlannerDispatchStatus,
+} from '../lib/planner-dispatch-status.js'
+import {
+  expandActivityFilterCodes,
+  listActivityFilterOptions,
+} from '../lib/activity-type-label.js'
+import { appendWorkTypeFilter } from '../lib/maint-activity-type.js'
 import { listWktypeZdFilterOptions } from '../lib/wktype-zd-mapping.js'
+import {
+  appendFunctionalLocFilter,
+  listFunctionalFilterOptions,
+} from '../lib/functional-filter-options.js'
 import {
   FACTORY_CODE,
   sqlFactoryScope,
   getMoveOverColor,
   mapOrderRowToEvent,
   monthRangeSec,
+  appendInFilter,
   type CalendarEvent,
   type OrderRow,
 } from './scheduling-shared.js'
@@ -26,6 +39,17 @@ type FilterOptions = z.infer<typeof backlogFilterOptionsResponseSchema>
 type BacklogManhourSearch = z.infer<typeof backlogManhourSearchBodySchema>
 type BacklogManhourSummary = z.infer<typeof backlogManhourResponseSchema>
 type BacklogFilterDetail = z.infer<typeof backlogFilterDetailResponseSchema>
+
+function unixToIsoDate(sec: string | number | null): string {
+  if (sec == null || sec === '') return ''
+  const n = Number(sec)
+  if (!Number.isFinite(n) || n <= 0) return ''
+  const d = new Date(n * 1000)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 function parseIsoYyyyMmDdToSec(v: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim())
@@ -52,13 +76,18 @@ const MH_ACT_MIN_SQL = `CASE
 END`
 
 /** เงื่อนไขงานค้าง (CRTD/REL) ในเดือน — เฉพาะใบที่มีศูนย์งาน */
-function backlogMonthScope(startSec: number, endSec: number, factory: string): {
+function buildBacklogFilteredScope(body: BacklogSearch): {
   fromOrder: string
   fromOrderWithWc: string
   whereClause: string
   params: unknown[]
 } {
-  const whereClause = `WHERE ${sqlFactoryScope('o', '$3')}
+  const { year, month } = body
+  const { startSec, endSec } = monthRangeSec(year, month)
+  const factory = `%${FACTORY_CODE}%`
+  const params: unknown[] = [startSec, endSec, factory]
+
+  let whereClause = `WHERE ${sqlFactoryScope('o', '$3')}
         AND o.syst IN ('CRTD', 'REL')
         AND o.bscstart IS NOT NULL
         AND o.bscstart > 0
@@ -68,33 +97,29 @@ function backlogMonthScope(startSec: number, endSec: number, factory: string): {
           OR (o.actfinish >= $1 AND o.actfinish < $2)
           OR (o.cday >= $1 AND o.cday < $2)
         )`
-  return {
-    fromOrder: 'FROM app.view_order o',
-    fromOrderWithWc: `FROM app.view_order o
-      LEFT JOIN app.tbworkcenter wc ON wc.wkctr = TRIM(o.wkctr)`,
-    whereClause,
-    params: [startSec, endSec, factory],
-  }
+
+  whereClause += appendInFilter('o.mat', expandActivityFilterCodes(body.activity), params)
+  whereClause += appendWorkTypeFilter('o', body.wktype, params, appendInFilter)
+  whereClause += appendInFilter('o.wkctr', body.wkctr, params)
+  whereClause += appendFunctionalLocFilter(body.functionalloc, 'o', 'ti', params)
+  whereClause += appendInFilter('o.equipment', body.equipment, params)
+
+  const fromOrder = `FROM app.view_order o
+      LEFT JOIN app.tbiw37n ti ON ti.idiw37 = o.idiw37`
+  const fromOrderWithWc = `${fromOrder}
+      LEFT JOIN app.tbworkcenter wc ON wc.wkctr = TRIM(o.wkctr)`
+
+  return { fromOrder, fromOrderWithWc, whereClause, params }
 }
 
 export async function listBacklogFilterOptions(pool: Pool): Promise<FilterOptions> {
   const factory = `%${FACTORY_CODE}%`
 
-  const [wcR, fnR, fnMasterR, eqR] = await Promise.all([
+  const [wcR, functionals, eqR] = await Promise.all([
     pool.query<{ wkctr: string; namewkctr: string | null; surnamewkctr: string | null }>(
       `SELECT wkctr, namewkctr, surnamewkctr FROM app.tbworkcenter ORDER BY wkctr`,
     ),
-    pool.query<{ functionalloc: string; funcdescrip: string | null }>(
-      `SELECT DISTINCT functionalloc, funcdescrip
-       FROM app.tbiw37n
-       WHERE functionalloc IS NOT NULL AND functionalloc <> ''
-         AND ${sqlFactoryScope('', '$1')}
-       ORDER BY functionalloc`,
-      [factory],
-    ),
-    pool.query<{ functionalloc: string; funldescrip: string | null }>(
-      `SELECT functionalloc, funldescrip FROM app.tbfunctional ORDER BY functionalloc`,
-    ),
+    listFunctionalFilterOptions(pool),
     pool.query<{ equipment: string; equdescrip: string | null }>(
       `SELECT DISTINCT equipment, equdescrip
        FROM app.tbiw37n
@@ -115,20 +140,7 @@ export async function listBacklogFilterOptions(pool: Pool): Promise<FilterOption
         label: name ? `${r.wkctr} = ${name}` : r.wkctr,
       }
     }),
-    functionals:
-      fnMasterR.rows.length > 0
-        ? fnMasterR.rows.map((r) => ({
-            code: r.functionalloc,
-            label: r.funldescrip
-              ? `${r.functionalloc} = ${r.funldescrip}`
-              : r.functionalloc,
-          }))
-        : fnR.rows.map((r) => ({
-            code: r.functionalloc,
-            label: r.funcdescrip
-              ? `${r.functionalloc} = ${r.funcdescrip}`
-              : r.functionalloc,
-          })),
+    functionals,
     equipments: eqR.rows.map((r) => ({
       code: r.equipment,
       label: r.equdescrip ? `${r.equipment} = ${r.equdescrip}` : r.equipment,
@@ -143,8 +155,7 @@ export async function listBacklogEvents(
   const { year, month } = body
   const { startSec, endSec, prefix } = monthRangeSec(year, month)
   const moveColor = await getMoveOverColor(pool)
-  const factory = `%${FACTORY_CODE}%`
-  const scope = backlogMonthScope(startSec, endSec, factory)
+  const scope = buildBacklogFilteredScope(body)
 
   const params = [...scope.params]
   const sql = `
@@ -242,6 +253,7 @@ export async function getBacklogManhourSummary(
   )
 
   const rowsR = await pool.query<{
+    idiw37: number
     wkorder: string
     wktype: string | null
     syst: string | null
@@ -250,12 +262,27 @@ export async function getBacklogManhourSummary(
     untime: string | number | null
     operationshorttext: string | null
     bscstart: string | number | null
+    assign_count: string
+    ack_count: string
   }>(
-    `SELECT wkorder, wktype, syst, work, actwork, untime, operationshorttext, bscstart
-     FROM app.view_order
-     WHERE ${sqlFactoryScope('', '$1')}
-       AND ${dateWhere}
-     ORDER BY bscstart DESC NULLS LAST
+    `SELECT o.idiw37, o.wkorder, o.wktype, o.syst, o.work, o.actwork, o.untime, o.operationshorttext, o.bscstart,
+            COALESCE(a.assign_count, 0)::text AS assign_count,
+            COALESCE(a.ack_count, 0)::text AS ack_count
+     FROM (
+       SELECT idiw37, wkorder, wktype, syst, work, actwork, untime, operationshorttext, bscstart
+       FROM app.view_order
+       WHERE ${sqlFactoryScope('', '$1')}
+         AND ${dateWhere}
+     ) o
+     LEFT JOIN (
+       SELECT idiw37,
+              COUNT(*)::int AS assign_count,
+              COUNT(*) FILTER (WHERE ack_status = 'acknowledged')::int AS ack_count
+       FROM app.tbplangingwork p
+       WHERE ${PLANNER_DISPATCH_WHERE}
+       GROUP BY idiw37
+     ) a ON a.idiw37 = o.idiw37
+     ORDER BY o.bscstart DESC NULLS LAST
      LIMIT 2500`,
     dateParams,
   )
@@ -275,15 +302,26 @@ export async function getBacklogManhourSummary(
       label: r.zbdescrip ? `${r.wkzb} = ${r.zbdescrip}` : r.wkzb,
       count: Number(r.cnt) || 0,
     })),
-    rows: rowsR.rows.map((r) => ({
-      wkorder: r.wkorder,
-      wktype: r.wktype?.trim() ?? '',
-      syst: r.syst?.trim() ?? '',
-      work: r.work != null && r.work !== '' ? Number(r.work) || 0 : 0,
-      actwork: r.actwork != null && r.actwork !== '' ? Number(r.actwork) || 0 : 0,
-      unit: formatUntimeUnit(r.untime),
-      operationshorttext: r.operationshorttext,
-    })),
+    rows: rowsR.rows.map((r) => {
+      const assigneeCount = Number(r.assign_count) || 0
+      const ackCount = Number(r.ack_count) || 0
+      const { dispatchStatus, ackStatus } = resolvePlannerDispatchStatus(assigneeCount, ackCount)
+      return {
+        idiw37: r.idiw37,
+        wkorder: r.wkorder,
+        wktype: r.wktype?.trim() ?? '',
+        syst: r.syst?.trim() ?? '',
+        work: r.work != null && r.work !== '' ? Number(r.work) || 0 : 0,
+        actwork: r.actwork != null && r.actwork !== '' ? Number(r.actwork) || 0 : 0,
+        unit: formatUntimeUnit(r.untime),
+        operationshorttext: r.operationshorttext,
+        planDate: unixToIsoDate(r.bscstart),
+        dispatchStatus,
+        ackStatus,
+        assigneeCount,
+        ackCount,
+      }
+    }),
   }
 }
 
@@ -292,9 +330,7 @@ export async function getBacklogFilterDetail(
   body: BacklogSearch,
 ): Promise<BacklogFilterDetail> {
   const { year, month } = body
-  const { startSec, endSec } = monthRangeSec(year, month)
-  const factory = `%${FACTORY_CODE}%`
-  const scope = backlogMonthScope(startSec, endSec, factory)
+  const scope = buildBacklogFilteredScope(body)
 
   const totalsR = await pool.query<{
     total_orders: string

@@ -29,11 +29,15 @@
     },
     "statsSectionTitle": "My work summary",
     "statsSectionDesc": "Open/closed jobs, confirmations, and recorded hours",
+    "statsSectionDescTechnician": "Assigned to me only (tbplangingwork) · my confirmations and hours",
     "globalSectionTitle": "Plant overview",
     "globalSectionDesc": "Factory-wide WO status for planners and admins",
     "stats": {
       "openJobs": "Open jobs (pending close)",
       "openJobsHint": "view_planwork for my work center + syst CRTD/REL",
+      "openJobsHintTechnician": "Assigned to me only (tbplangingwork) · syst CRTD/REL",
+      "partialJobs": "Partially done",
+      "partialJobsHint": "My open jobs with partial close recorded",
       "closedJobs": "Closed jobs",
       "closedJobsHint": "TECO/COMP status",
       "myConfirmation": "My confirmations",
@@ -44,6 +48,8 @@
       "factoryOpenWoHint": "tbiw37n syst CRTD/REL",
       "assigned": "Assigned",
       "assignedHint": "At least one tbplangingwork row",
+      "partialFactory": "Partially done (plant)",
+      "partialFactoryHint": "Open WOs with technician partial close",
       "closedToday": "Closed today",
       "closedTodayHint": "actfinish since midnight today",
       "unassigned": "Unassigned",
@@ -87,7 +93,9 @@
     "recentPlanning": {
       "title": "My latest open jobs",
       "subtitle": "From view_planwork (syst IN CRTD,REL), limit 5",
+      "subtitleTechnician": "Assigned to me only (tbplangingwork) · syst CRTD/REL · top 5",
       "goPlanning": "Go to planning",
+      "goPlanCalendar": "Go to plan calendar",
       "emptyTitle": "No open jobs",
       "emptyDesc": "No open jobs in the selected period"
     },
@@ -352,7 +360,7 @@
       "userst": "System access (userst)",
       "userstHint": "menuright menu mapping (A/U/W)",
       "userrole": "Dashboard/RBAC role (userrole)",
-      "userroleHint": "Source of truth for Personal Dashboard and future permissions",
+      "userroleHint": "Planner — planning and system management. Technician — field execution only.",
       "passwordNew": "New password (leave blank to keep)",
       "password": "Password",
       "passwordNoChange": "Unchanged if left blank",
@@ -368,9 +376,7 @@
       "W": "W — Work center / Technician"
     },
     "userrole": {
-      "admin": "Admin — System administrator",
-      "manager": "Manager — Supervisor",
-      "planner": "Planner / Engineering",
+      "planner": "Planner",
       "technician": "Technician"
     },
     "photo": {

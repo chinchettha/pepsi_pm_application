@@ -5,22 +5,16 @@ import {
 } from '@/components/scheduling/SchedulingPageLayout'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import {
   ArrowRight,
   ClipboardCheck,
-  Cog,
   ExternalLink,
   Factory,
   Layers,
   ListChecks,
   MapPin,
-  Package,
-  PauseCircle,
-  PlayCircle,
 } from 'lucide-react'
-import type { WoPmExecution } from '@/api/schemas'
-import { WorkOrderPmMeasurementBlock } from '@/components/scheduling/WorkOrderPmMeasurementBlock'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -36,7 +30,9 @@ export type WorkOrderTaskListItem = {
   tasklist: string
   machine: string
   pmlist: string
+  description?: string
   displayLine?: string
+  headerShortText?: string
   machinestatus: number | null
   mat: string
   matdescrip: string
@@ -60,25 +56,24 @@ export type WorkOrderTaskWoContext = {
   mntplan: string
 }
 
+/** SAP-style plan header from IW37N — same shape as modal `woHeader` */
+export type WorkOrderPlanDetailHeader = {
+  functionalLocation: string
+  equipment: string
+  descriptionLine1: string
+  descriptionLine2: string
+  operationNumber: string
+  operationText: string
+}
+
 type Props = {
   taskList: WorkOrderTaskListData
-  orderId?: string
-  pmExecution?: WoPmExecution
-  onPmSaved?: () => void
-  /** Calendar / plan-calendar assigned modal — planner read-only layout */
+  /** Calendar / plan-calendar assigned modal — compact chrome (context strip, hide hero chips) */
   plannerLayout?: boolean
+  planDetailHeader?: WorkOrderPlanDetailHeader | null
   woContext?: WorkOrderTaskWoContext | null
   canAssign?: boolean
   onGoPlanning?: () => void
-  showMeasurements?: boolean
-}
-
-const listVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.04, delayChildren: 0.06 },
-  },
 }
 
 const cardVariants = {
@@ -89,17 +84,6 @@ const cardVariants = {
     scale: 1,
     transition: { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const },
   },
-}
-
-function machineStatusMeta(
-  status: number | null,
-  t: ReturnType<typeof useTranslation>['t'],
-): {
-  label: string
-  running: boolean
-} {
-  if (status === 1) return { label: t('taskList.stopped'), running: false }
-  return { label: t('taskList.running'), running: true }
 }
 
 function stripLabelValue(label: string): string {
@@ -164,13 +148,15 @@ function WoContextStrip({
               ·
             </span>
             <span className="text-app-muted">{t('taskList.pmPlan')}</span>
-            <Link
-              to={`/master-plan?q=${encodeURIComponent(mnt)}`}
+            <a
+              href={`/master-plan?q=${encodeURIComponent(mnt)}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1 font-mono font-semibold text-primary hover:underline"
             >
               {mnt}
               <ExternalLink className="size-3.5 shrink-0" aria-hidden />
-            </Link>
+            </a>
           </>
         ) : null}
       </p>
@@ -178,185 +164,134 @@ function WoContextStrip({
   )
 }
 
-function PlannerTaskItemCard({
-  item,
-  index,
-  reduceMotion,
-  t,
-}: {
-  item: WorkOrderTaskListItem
-  index: number
-  reduceMotion: boolean | null
-  t: ReturnType<typeof useTranslation>['t']
-}) {
-  const status = machineStatusMeta(item.machinestatus, t)
-  const line = item.displayLine?.trim() || item.pmlist || item.machine || '—'
+/** SAP Operation Long Text line — e.g. `Water Dosing Pump-ตรวจเช็ค.../00=Emergency` */
+function taskItemOperationLongLine(item: WorkOrderTaskListItem): string {
+  const machine = item.machine?.trim() ?? ''
+  const pmlist = item.pmlist?.trim() ?? ''
+  if (machine && pmlist) return `${machine}-${pmlist}`
+  return item.displayLine?.trim() || machine || pmlist || ''
+}
 
+function PlanDetailLabelValue({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  if (!value.trim()) return null
   return (
-    <motion.li layout={!reduceMotion} variants={reduceMotion ? undefined : cardVariants} className="group">
-      <article
-        className={cn(
-          'relative flex items-start gap-3 overflow-hidden rounded-card border bg-[var(--app-surface)] p-3 shadow-sm',
-          status.running ? 'app-tone-success-stat' : 'app-tone-warning-tile',
-        )}
-      >
-        <span
-          className={cn(
-            'flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold tabular-nums',
-            status.running ? 'app-tone-success-card-index' : 'app-tone-warning-card-index',
-          )}
-        >
-          {index + 1}
-        </span>
-        <p className="min-w-0 flex-1 whitespace-pre-wrap text-body-sm font-medium leading-relaxed text-app">
-          {line}
-        </p>
-        <span
-          className={cn(
-            'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold',
-            status.running ? 'app-tone-success-badge' : 'app-tone-warning-badge',
-          )}
-        >
-          {status.running ? (
-            <PlayCircle className="size-3.5" aria-hidden />
-          ) : (
-            <PauseCircle className="size-3.5" aria-hidden />
-          )}
-          {status.label}
-        </span>
-      </article>
-    </motion.li>
+    <div className="min-w-0 space-y-0.5">
+      <p className="text-xs font-semibold text-app-muted">{label}</p>
+      <p className={cn('text-body-sm leading-snug text-app', mono && 'font-mono')}>{value}</p>
+    </div>
   )
 }
 
-function TaskListItemCard({
-  item,
-  index,
-  reduceMotion,
-  orderId,
-  pmExecution,
-  onPmSaved,
-  t,
-  fallbackAxisLabels,
-  showMeasurements,
+function PlanDetailPairRow({
+  leftLabel,
+  leftValue,
+  leftMono,
+  rightLabel,
+  rightValue,
+  rightMono,
 }: {
-  item: WorkOrderTaskListItem
-  index: number
-  reduceMotion: boolean | null
-  orderId?: string
-  pmExecution?: WoPmExecution
-  onPmSaved?: () => void
-  t: ReturnType<typeof useTranslation>['t']
-  fallbackAxisLabels: [string, string, string]
-  showMeasurements: boolean
+  leftLabel: string
+  leftValue: string
+  leftMono?: boolean
+  rightLabel: string
+  rightValue: string
+  rightMono?: boolean
 }) {
-  const status = machineStatusMeta(item.machinestatus, t)
-  const line = item.displayLine?.trim()
+  if (!leftValue.trim() && !rightValue.trim()) return null
+  return (
+    <div className="grid gap-4 border-b border-app/35 pb-3 sm:grid-cols-2">
+      <PlanDetailLabelValue label={leftLabel} value={leftValue} mono={leftMono} />
+      <PlanDetailLabelValue label={rightLabel} value={rightValue} mono={rightMono} />
+    </div>
+  )
+}
+
+function PlannerPlanDetailCard({
+  items,
+  header,
+  reduceMotion,
+  t,
+}: {
+  items: WorkOrderTaskListItem[]
+  header: WorkOrderPlanDetailHeader | null | undefined
+  reduceMotion: boolean | null
+  t: ReturnType<typeof useTranslation>['t']
+}) {
+  const headerShortText =
+    items.map((item) => item.headerShortText?.trim() ?? '').find((line) => line.length > 0) ?? ''
+  const operationLongLines = items
+    .map((item) => taskItemOperationLongLine(item))
+    .filter((line) => line.length > 0)
+
+  const stoppedCount = items.filter((item) => item.machinestatus === 1).length
+  const runningCount = items.length - stoppedCount
+  const planStopped = stoppedCount > 0 && runningCount === 0
 
   return (
-    <motion.li
+    <motion.article
       layout={!reduceMotion}
       variants={reduceMotion ? undefined : cardVariants}
-      className="group"
+      className={cn(
+        'overflow-hidden rounded-card border bg-[var(--app-surface)] shadow-sm',
+        planStopped ? 'app-tone-warning-tile' : 'app-tone-success-stat',
+      )}
     >
-      <article
-        className={cn(
-          'relative overflow-hidden rounded-card border bg-[var(--app-surface)] p-4 shadow-sm transition-shadow duration-200',
-          'hover:shadow-md',
-          status.running
-            ? 'app-tone-success-stat hover:shadow-md'
-            : 'app-tone-warning-tile hover:shadow-md',
-        )}
-      >
-        <div
-          className={cn(
-            'absolute inset-y-0 left-0 w-1',
-            status.running ? 'app-tone-success-strip-fill' : 'app-tone-warning-strip-fill',
-          )}
-          aria-hidden
-        />
-
-        <div className="flex flex-wrap items-start gap-3 pl-2">
-          <span
-            className={cn(
-              'flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold tabular-nums',
-              status.running ? 'app-tone-success-card-index' : 'app-tone-warning-card-index',
-            )}
-          >
-            {index + 1}
-          </span>
-
-          <div className="min-w-0 flex-1 space-y-2">
-            {line ? (
-              <p className="whitespace-pre-wrap text-body-sm font-semibold leading-relaxed text-app">{line}</p>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="flex items-center gap-2 text-xs font-medium text-app-muted">
-                      <Cog className="size-3.5 shrink-0" aria-hidden />
-                      {t('taskList.machine')}
-                    </p>
-                    <p className="mt-0.5 truncate font-semibold text-app">{item.machine || '—'}</p>
-                  </div>
-                </div>
-                <div className="rounded-button bg-app-subtle/45 px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-app-muted">
-                    {t('taskList.pmItem')}
-                  </p>
-                  <p className="mt-0.5 text-body-sm font-medium text-app">{item.pmlist || '—'}</p>
-                </div>
-              </>
-            )}
-
-            <div className="flex justify-end">
-              <span
-                className={cn(
-                  'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold',
-                  status.running ? 'app-tone-success-badge' : 'app-tone-warning-badge',
-                )}
-              >
-                {status.running ? (
-                  <PlayCircle className="size-3.5" aria-hidden />
-                ) : (
-                  <PauseCircle className="size-3.5" aria-hidden />
-                )}
-                {status.label}
-              </span>
-            </div>
-
-            {item.mat ? (
-              <div className="flex items-start gap-2 rounded-button border border-app/60 app-surface-panel px-3 py-2">
-                <Package className="mt-0.5 size-4 shrink-0 text-app-muted" aria-hidden />
-                <div className="min-w-0">
-                  <p className="font-mono text-xs font-semibold text-app">{item.mat}</p>
-                  {item.matdescrip ? (
-                    <p className="mt-0.5 text-xs leading-relaxed text-app-muted">{item.matdescrip}</p>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
-            {showMeasurements && orderId && pmExecution ? (
-              <WorkOrderPmMeasurementBlock
-                orderId={orderId}
-                item={{
-                  ...item,
-                  displayLine: item.displayLine ?? '',
-                  measurementKind: item.measurementKind ?? 'none',
-                  mpoint: item.mpoint ?? '',
-                  measurementTitle: item.measurementTitle ?? '',
-                  axisLabels: item.axisLabels ?? fallbackAxisLabels,
-                  unit: item.unit ?? '',
-                }}
-                pmExecution={pmExecution}
-                onSaved={() => onPmSaved?.()}
-              />
-            ) : null}
+      <div className="space-y-4 p-4">
+        {headerShortText ? (
+          <div className="rounded-button border border-app/50 bg-app-subtle/30 px-3 py-2.5">
+            <p className="text-xs font-semibold text-app-muted">{t('taskList.headerShortText')}</p>
+            <p className="mt-0.5 font-mono text-body font-semibold tracking-tight text-app">
+              {headerShortText}
+            </p>
           </div>
+        ) : null}
+
+        {header ? (
+          <div className="space-y-3">
+            <PlanDetailPairRow
+              leftLabel={t('taskList.functionalLocation')}
+              leftValue={header.functionalLocation}
+              leftMono
+              rightLabel={t('taskList.description')}
+              rightValue={header.descriptionLine1}
+            />
+            <PlanDetailPairRow
+              leftLabel={t('taskList.equipment')}
+              leftValue={header.equipment}
+              leftMono
+              rightLabel={t('taskList.description')}
+              rightValue={header.descriptionLine2}
+            />
+          </div>
+        ) : null}
+
+        <div className="space-y-2 border-t border-app/35 pt-3">
+          <PlanDetailLabelValue
+            label={t('taskList.operation')}
+            value={header?.operationNumber ?? ''}
+            mono
+          />
+          <PlanDetailLabelValue label={t('taskList.operationText')} value={header?.operationText ?? ''} />
         </div>
-      </article>
-    </motion.li>
+
+        {operationLongLines.length > 0 ? (
+          <div className="space-y-1.5 border-t border-app/35 pt-3">
+            <p className="text-xs font-semibold text-app-muted">{t('taskList.operationLongText')}</p>
+            <div className="whitespace-pre-wrap rounded-button border border-app/50 bg-app-subtle/20 px-3 py-2.5 text-body-sm leading-relaxed text-app">
+              {operationLongLines.join('\n')}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </motion.article>
   )
 }
 
@@ -387,27 +322,16 @@ function TaskListEmptyState({
 
 export function WorkOrderTaskListPanel({
   taskList,
-  orderId,
-  pmExecution,
-  onPmSaved,
   plannerLayout = false,
+  planDetailHeader,
   woContext,
   canAssign = false,
   onGoPlanning,
-  showMeasurements = true,
 }: Props) {
   const { t } = useTranslation('scheduling')
   const reduceMotion = useReducedMotion()
   const { summary, items, mntplan } = taskList
   const mnt = mntplan.trim()
-  const fallbackAxisLabels = useMemo(
-    (): [string, string, string] => [
-      t('pmMeasurement.valueN', { n: 1 }),
-      t('pmMeasurement.valueN', { n: 2 }),
-      t('pmMeasurement.valueN', { n: 3 }),
-    ],
-    [t],
-  )
 
   const stats = useMemo(() => {
     let running = 0
@@ -517,8 +441,8 @@ export function WorkOrderTaskListPanel({
         <SchedulingPageSection index={1}>
           <SchedulingSection
             icon={ListChecks}
-            title={t('taskList.itemsTitle')}
-            description={t('taskList.itemsDesc')}
+            title={t('taskList.planDetailTitle')}
+            description={t('taskList.planDetailDesc')}
             badge={
               <span className="rounded-full bg-app-subtle px-2 py-0.5 text-[10px] font-semibold text-app-muted">
                 {t('taskList.runningStopped', { running: stats.running, stopped: stats.stopped })}
@@ -526,40 +450,12 @@ export function WorkOrderTaskListPanel({
             }
             bodyClassName="space-y-3"
           >
-            <motion.ul
-              layout={!reduceMotion}
-              variants={reduceMotion ? undefined : listVariants}
-              initial={reduceMotion ? false : 'hidden'}
-              animate="show"
-              className="space-y-3"
-            >
-              <AnimatePresence mode="popLayout">
-                {items.map((item, idx) =>
-                  plannerLayout ? (
-                    <PlannerTaskItemCard
-                      key={`${item.tasklist}-${item.machine}-${item.pmlist}-${idx}`}
-                      item={item}
-                      index={idx}
-                      reduceMotion={reduceMotion}
-                      t={t}
-                    />
-                  ) : (
-                    <TaskListItemCard
-                      key={`${item.tasklist}-${item.machine}-${item.pmlist}-${idx}`}
-                      item={item}
-                      index={idx}
-                      reduceMotion={reduceMotion}
-                      orderId={orderId}
-                      pmExecution={pmExecution}
-                      onPmSaved={onPmSaved}
-                      t={t}
-                      fallbackAxisLabels={fallbackAxisLabels}
-                      showMeasurements={showMeasurements}
-                    />
-                  ),
-                )}
-              </AnimatePresence>
-            </motion.ul>
+            <PlannerPlanDetailCard
+              items={items}
+              header={planDetailHeader}
+              reduceMotion={reduceMotion}
+              t={t}
+            />
           </SchedulingSection>
         </SchedulingPageSection>
       ) : (

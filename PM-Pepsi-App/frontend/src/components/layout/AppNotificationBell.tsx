@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from '@/lib/api-public'
-import { usePermission } from '@/lib/permissions'
+import { resolveNotificationHref } from '@/lib/notification-href'
+import { useAnyPermission, usePermission } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell } from 'lucide-react'
@@ -11,7 +12,7 @@ import { Link } from 'react-router-dom'
 
 export function AppNotificationBell() {
   const { t } = useTranslation('common')
-  const canReceive = usePermission('confirmation.import')
+  const canReceive = useAnyPermission(['confirmation.import', 'plan-calendar.read'])
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
 
@@ -85,7 +86,7 @@ export function AppNotificationBell() {
             items.map((item) => (
               <Link
                 key={item.id}
-                to={item.linkRoute ?? '/confirmation'}
+                to={resolveNotificationHref(item)}
                 className={cn(
                   'block border-b border-app px-3 py-2.5 last:border-b-0 hover:bg-app-subtle',
                   !item.read && 'bg-[color-mix(in_srgb,var(--app-accent)_8%,transparent)]',

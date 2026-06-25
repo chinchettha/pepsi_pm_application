@@ -18,11 +18,18 @@ export const masterPlanWorkbookResponseSchema = z.object({
   sheets: z.array(masterPlanSheetSummarySchema),
 })
 
+export const masterPlanPmStatusSchema = z.object({
+  lastClosedAt: z.number().nullable(),
+  nextDueAt: z.number().nullable(),
+  intervalDays: z.number().nullable(),
+})
+
 export const masterPlanSheetRowSchema = z.object({
   id: z.number().int(),
   rowIndex: z.number().int(),
   cells: z.record(z.string()),
   display: z.record(z.string()),
+  pmStatus: masterPlanPmStatusSchema.optional(),
 })
 
 export const masterPlanSheetRowsResponseSchema = z.object({
@@ -44,6 +51,9 @@ export const masterPlanSearchItemSchema = z.object({
   sheetId: z.number().int(),
   sheetName: z.string(),
   label: z.string(),
+  discipline: masterPlanDisciplineSchema.optional(),
+  maintenancePlan: z.string().optional(),
+  matchScore: z.number().optional(),
 })
 
 export const masterPlanSearchResponseSchema = z.object({
@@ -185,11 +195,23 @@ export const masterPlanImportDiffSchema = z.object({
 })
 
 export const masterPlanImportResponseSchema = z.object({
+  discipline: masterPlanDisciplineSchema,
   workbookId: z.number().int(),
   versionNo: z.number().int(),
-  status: z.literal('draft'),
+  status: z.enum(['draft', 'published']),
   rowCount: z.number().int(),
   diff: masterPlanImportDiffSchema,
+  tasklist: z
+    .object({
+      inserted: z.number().int(),
+      updated: z.number().int(),
+      skipped: z.number().int(),
+      failed: z.number().int(),
+    })
+    .optional(),
+  publishableRows: z.number().int().optional(),
+  skippedRows: z.number().int().optional(),
+  promotedDraft: z.boolean().optional(),
 })
 
 export const masterPlanPublishBodySchema = z.object({

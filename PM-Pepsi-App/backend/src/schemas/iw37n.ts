@@ -98,6 +98,17 @@ export const iw37nItemSchema = z.object({
   functionalloc: z.string(),
   funcdescrip: z.string(),
   team: z.string().nullable(),
+  sapCode: z.string(),
+  tasklist: z.string(),
+  legacy: z.string(),
+  zone: z.string(),
+  machineList: z.string(),
+  machineMc: z.string(),
+  pmlist: z.string(),
+  pmday: z.number().nullable(),
+  masterPlanLinked: z.boolean(),
+  masterPlanMntplan: z.string(),
+  masterPlanDiscipline: z.enum(['EE', 'ME', 'PK']).or(z.literal('')),
 })
 
 export const iw37nItemsQuerySchema = z.object({

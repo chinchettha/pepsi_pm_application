@@ -96,21 +96,9 @@ test.describe('U4e viewport — tablet 768×1024', () => {
     await expectNoHorizontalPageOverflow(page, 'calendar')
   })
 
-  test('work-orders modal opens (when rows exist)', async ({ page }) => {
+  test('work-orders URL redirects to confirmation', async ({ page }) => {
     await page.goto('/work-orders', { waitUntil: 'domcontentloaded' })
-    await expect(page.getByRole('heading', { name: /Work order|ใบงาน/i })).toBeVisible({
-      timeout: 25_000,
-    })
-    const openWo = page.locator('tbody button').first()
-    const hasRow = await openWo.isVisible().catch(() => false)
-    if (!hasRow) {
-      test.skip(true, 'No work order rows in DB — skip modal viewport check')
-      return
-    }
-    await openWo.click()
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15_000 })
-    const dialogBox = await page.getByRole('dialog').boundingBox()
-    expect(dialogBox?.width ?? 0).toBeLessThanOrEqual(VIEWPORT_TABLET.width + 4)
+    await expect(page).toHaveURL(/\/confirmation/, { timeout: 25_000 })
   })
 
   for (const row of HOT_PATH_PAGES) {

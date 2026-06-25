@@ -4,6 +4,8 @@
  */
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   formatPlanningAvailableLine,
   type PlanningWorkcenterHours,
@@ -39,6 +41,8 @@ type Props = {
   submitting?: boolean
   woTeam?: string | null
   className?: string
+  assignComment?: string
+  onAssignCommentChange?: (value: string) => void
 }
 
 const CATEGORIES: PlanningCategoryTag[] = ['AA', 'BB', 'EE', 'UT']
@@ -257,6 +261,8 @@ export function PlanningTechnicianCards({
   submitting = false,
   woTeam,
   className,
+  assignComment = '',
+  onAssignCommentChange,
 }: Props) {
   const { t } = useTranslation(['scheduling', 'common'])
   const reduceMotion = useReducedMotion()
@@ -458,6 +464,24 @@ export function PlanningTechnicianCards({
                 </div>
 
                 <TechnicianCardGrid {...gridProps} size={gridSize} />
+
+                {onAssignCommentChange ? (
+                  <div className="space-y-1.5 rounded-button border border-app/70 bg-app-subtle/30 p-3">
+                    <Label htmlFor="planning-assign-comment" className="text-body-sm">
+                      {t('plannerComment.assignLabel')}
+                    </Label>
+                    <Textarea
+                      id="planning-assign-comment"
+                      value={assignComment}
+                      onChange={(e) => onAssignCommentChange(e.target.value)}
+                      placeholder={t('plannerComment.placeholder')}
+                      rows={2}
+                      maxLength={255}
+                      disabled={submitting}
+                    />
+                    <p className="text-xs text-app-muted">{t('plannerComment.optionalHint')}</p>
+                  </div>
+                ) : null}
 
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-app/60 pt-3">
                   <p className="text-xs text-app-muted">

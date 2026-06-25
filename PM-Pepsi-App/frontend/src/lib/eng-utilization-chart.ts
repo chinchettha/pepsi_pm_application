@@ -2,6 +2,36 @@ import type { SummaryWeeklyRow } from '@/api/schemas'
 import { i18n } from '@/i18n'
 import { format, startOfMonth, subDays } from 'date-fns'
 
+/** Excel Summary Daily — ความกว้างต่อช่าง (~52px) · เลื่อนแนวนอนเมื่อมีหลายคน */
+export const ENG_UTIL_CHART_COLUMN_PX = 52
+export const ENG_UTIL_CHART_HEIGHT_PX = 360
+export const ENG_UTIL_CHART_TOP_PADDING = 68
+export const ENG_UTIL_AVATAR_RADIUS = 14
+
+export const ENG_UTIL_CHART_MIN_WIDTH_PX = 640
+
+export function engUtilizationChartWidthPx(
+  personCount: number,
+  containerWidth = 0,
+): number {
+  if (personCount <= 0) return 0
+  const natural = personCount * ENG_UTIL_CHART_COLUMN_PX
+  const viewport =
+    containerWidth > 0 ? containerWidth : ENG_UTIL_CHART_MIN_WIDTH_PX
+  // ช่างเยอะ — คอลัมน์คงที่ 52px/คน · เลื่อนแนวนอน (แบบ Excel)
+  if (natural > viewport) return natural
+  // ช่างน้อย — ขยายเต็มพื้นที่อ่านรายงานได้ (แท่งยังบางด้วย maxBarThickness)
+  return Math.max(ENG_UTIL_CHART_MIN_WIDTH_PX, viewport)
+}
+
+export function engUtilizationChartNeedsScroll(
+  personCount: number,
+  containerWidth: number,
+): boolean {
+  if (personCount <= 0 || containerWidth <= 0) return false
+  return personCount * ENG_UTIL_CHART_COLUMN_PX > containerWidth
+}
+
 /** ป้ายแกน X แบบ Excel: `PAC010 (Narit)` */
 export function formatEngUtilizationLabel(
   wkctr: string,

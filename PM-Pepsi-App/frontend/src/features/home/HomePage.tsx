@@ -15,6 +15,7 @@ import {
   navItemsToQuickLinks,
 } from '@/features/home/dashboard-config'
 import { fetchDashboardSummary } from '@/lib/api-public'
+import { operationsLiveQueryOptions } from '@/lib/operations-live-sync'
 import { coerceNumberArray } from '@/lib/coerce-array'
 import { readCssVar } from '@/lib/css-tokens'
 import {
@@ -33,6 +34,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Database,
+  PieChart,
   UserRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -227,6 +229,7 @@ export function HomePage() {
     queryKey: ['dashboard'],
     queryFn: () => fetchDashboardSummary(),
     placeholderData: keepPreviousData,
+    ...operationsLiveQueryOptions,
   })
 
   const quickLinks = useMemo(
@@ -256,7 +259,7 @@ export function HomePage() {
             label: t('kpi.openOrders'),
             value: dash.data.openOrders.toLocaleString(locale === 'th' ? 'th-TH' : 'en-US'),
             hint: t('kpi.openOrdersHint'),
-            to: '/work-orders',
+            to: '/confirmation',
             icon: ClipboardList,
             tone: 'pepsi-blue' as const,
             trend: coerceNumberArray(trends.openDaily),
@@ -266,7 +269,7 @@ export function HomePage() {
             label: t('kpi.closedMonth'),
             value: dash.data.closedThisMonth.toLocaleString(locale === 'th' ? 'th-TH' : 'en-US'),
             hint: t('kpi.closedMonthHint'),
-            to: '/work-orders',
+            to: '/confirmation',
             icon: CheckCircle2,
             tone: 'pepsi-red' as const,
             trend: coerceNumberArray(trends.closedDaily),
@@ -280,6 +283,16 @@ export function HomePage() {
             icon: UserRound,
             tone: 'pepsi-orange' as const,
             trend: coerceNumberArray(trends.pendingDaily),
+            sparkTone: 'pepsi-orange' as const,
+          },
+          {
+            label: t('kpi.partialOpen'),
+            value: dash.data.partialOpenOrders.toLocaleString(locale === 'th' ? 'th-TH' : 'en-US'),
+            hint: t('kpi.partialOpenHint'),
+            to: '/plan-calendar',
+            icon: PieChart,
+            tone: 'pepsi-orange' as const,
+            trend: coerceNumberArray(trends.openDaily),
             sparkTone: 'pepsi-orange' as const,
           },
           {

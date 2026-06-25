@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { closeWoAccessDeniedMessage, resolveCloseWoAccess } from './close-wo-access.js'
+import {
+  canRequestPlanMove,
+  closeWoAccessDeniedMessage,
+  resolveCloseWoAccess,
+} from './close-wo-access.js'
 
 const assignees = [
   {
@@ -89,5 +93,40 @@ describe('closeWoAccessDeniedMessage', () => {
   it('returns Thai messages', () => {
     expect(closeWoAccessDeniedMessage('pending_ack')).toMatch(/รับงาน/)
     expect(closeWoAccessDeniedMessage('not_assigned')).toMatch(/มอบหมาย/)
+  })
+})
+
+describe('canRequestPlanMove', () => {
+  it('allows assigned technician before ack when WO is movable', () => {
+    expect(
+      canRequestPlanMove({
+        assignees,
+        wkctr: 'PAC001',
+        canAssign: false,
+        woMovable: true,
+        hasPendingRequest: false,
+      }),
+    ).toBe(true)
+  })
+
+  it('blocks planner and closed WO', () => {
+    expect(
+      canRequestPlanMove({
+        assignees,
+        wkctr: 'PAC001',
+        canAssign: true,
+        woMovable: true,
+        hasPendingRequest: false,
+      }),
+    ).toBe(false)
+    expect(
+      canRequestPlanMove({
+        assignees,
+        wkctr: 'PAC001',
+        canAssign: false,
+        woMovable: false,
+        hasPendingRequest: false,
+      }),
+    ).toBe(false)
   })
 })

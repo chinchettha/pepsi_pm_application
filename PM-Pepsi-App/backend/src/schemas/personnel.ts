@@ -116,6 +116,7 @@ export const personnelRoleDataSchema = z.object({
       openTotal: z.number().int(),
       closeToday: z.number().int(),
       assignedTotal: z.number().int(),
+      partialTotal: z.number().int(),
     })
     .nullable()
     .optional(),
@@ -129,6 +130,7 @@ export const personnelDashboardResponseSchema = z.object({
   planning: z.object({
     openCount: z.number().int(),
     closedCount: z.number().int(),
+    partialCount: z.number().int(),
     recent: z.array(personnelPlanningItemSchema),
   }),
   confirmation: z.object({

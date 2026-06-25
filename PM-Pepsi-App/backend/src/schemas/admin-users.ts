@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { authUserSchema } from './auth.js'
-import { personnelAdminListResponseSchema, personnelUserroleSchema } from './personnel-admin.js'
+import { personnelAdminListResponseSchema, personnelPrimaryUserroleSchema, personnelUserroleSchema } from './personnel-admin.js'
 
 export const adminUserAccountTypeSchema = z.enum(['workcenter', 'member'])
 
@@ -14,13 +14,13 @@ export const adminUsersListQuerySchema = z.object({
 
 export const adminBulkUserroleBodySchema = z.object({
   idwkctrs: z.array(z.string().min(1).max(64)).min(1).max(500),
-  userrole: personnelUserroleSchema,
+  userrole: personnelPrimaryUserroleSchema,
 })
 
 export const adminBulkUserroleResponseSchema = z.object({
   ok: z.literal(true),
   updated: z.number().int(),
-  userrole: personnelUserroleSchema,
+  userrole: personnelPrimaryUserroleSchema,
 })
 
 export const adminMemberItemSchema = z.object({

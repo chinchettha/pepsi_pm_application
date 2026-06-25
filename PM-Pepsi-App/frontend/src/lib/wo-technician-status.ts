@@ -10,7 +10,7 @@ export type WoTechnicianStatusRow = {
 }
 
 type Assignee = { kind: 'person' | 'group'; code: string; displayName: string }
-type CloseRow = { wkctr: string; displayName: string }
+type CloseRow = { wkctr: string; displayName: string; closeKind?: 'complete' | 'partial' }
 
 export function buildWoTechnicianStatusRows(args: {
   workCenter?: string
@@ -35,7 +35,10 @@ export function buildWoTechnicianStatusRows(args: {
     if (!names.has(code)) names.set(code, code)
   }
 
-  for (const row of args.personnelCloses ?? []) markDone(row.wkctr, row.displayName)
+  for (const row of args.personnelCloses ?? []) {
+    if (row.closeKind === 'partial') continue
+    markDone(row.wkctr, row.displayName)
+  }
   for (const row of args.supervisorCloses ?? []) markDone(row.wkctr, row.displayName)
 
   for (const a of args.assignees ?? []) {

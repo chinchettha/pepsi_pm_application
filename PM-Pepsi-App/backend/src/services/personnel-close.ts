@@ -1,6 +1,8 @@
 import type { Pool } from 'pg'
 import { touchConfirmQcPending } from './confirm-qc.js'
 
+export type PersonnelCloseKind = 'complete' | 'partial'
+
 function parseDdMmYyyy(v: string): { dd: number; mm: number; yyyy: number } | null {
   const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(v.trim())
   if (!m) return null
@@ -42,6 +44,8 @@ export type PersonnelCloseItem = {
   cendate: number
   wktimewk: number
   wkunit: string
+  closeKind: PersonnelCloseKind
+  incompleteReason: string | null
 }
 
 function displayNameFromRow(row: {
@@ -66,6 +70,8 @@ export async function listPersonnelCloses(pool: Pool, idiw37: number): Promise<P
     cendate: string
     wktimewk: number
     wkunit: string
+    close_kind: PersonnelCloseKind
+    incomplete_reason: string | null
     titlewkctr: string | null
     namewkctr: string | null
     surnamewkctr: string | null
@@ -81,6 +87,8 @@ export async function listPersonnelCloses(pool: Pool, idiw37: number): Promise<P
        v.cendate,
        v.wktimewk,
        v.wkunit,
+       COALESCE(v.close_kind, 'complete') AS close_kind,
+       v.incomplete_reason,
        v.titlewkctr,
        v.namewkctr,
        v.surnamewkctr,
@@ -89,7 +97,7 @@ export async function listPersonnelCloses(pool: Pool, idiw37: number): Promise<P
        v.surnamewkctreng
      FROM app.view_personelclose v
      WHERE v.idiw37 = $1
-     ORDER BY v.wkctr`,
+     ORDER BY v.wktimeclose DESC, v.idwrkclose DESC`,
     [idiw37],
   )
   return r.rows.map((row) => ({
@@ -101,6 +109,8 @@ export async function listPersonnelCloses(pool: Pool, idiw37: number): Promise<P
     cendate: Number(row.cendate),
     wktimewk: row.wktimewk,
     wkunit: row.wkunit,
+    closeKind: row.close_kind === 'partial' ? 'partial' : 'complete',
+    incompleteReason: row.incomplete_reason?.trim() || null,
   }))
 }
 
@@ -114,6 +124,20 @@ function formatHhMm(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+function validateCloseKindInput(closeKind: PersonnelCloseKind, incompleteReason?: string): string | null {
+  const reason = incompleteReason?.trim() ?? ''
+  if (closeKind === 'partial') {
+    if (reason.length < 3) {
+      throw new Error('Please enter why the work is not finished yet')
+    }
+    return reason
+  }
+  if (reason.length > 0) {
+    throw new Error('Incomplete reason is only allowed for partial close')
+  }
+  return null
+}
+
 async function insertPersonnelCloseRow(
   pool: Pool,
   opts: {
@@ -123,8 +147,13 @@ async function insertPersonnelCloseRow(
     startT: string
     endD: string
     endT: string
+    closeKind?: PersonnelCloseKind
+    incompleteReason?: string
   },
 ): Promise<number> {
+  const closeKind: PersonnelCloseKind = opts.closeKind === 'partial' ? 'partial' : 'complete'
+  const incompleteReason = validateCloseKindInput(closeKind, opts.incompleteReason)
+
   const d1 = parseDdMmYyyy(opts.startD)
   const d2 = parseDdMmYyyy(opts.endD)
   const t1 = parseHhMm(opts.startT)
@@ -136,21 +165,38 @@ async function insertPersonnelCloseRow(
   const wktimewk = durationMinutes(cstdate, cendate)
   if (wktimewk <= 0) throw new Error('End time must be after start time')
 
-  const dup = await pool.query<{ n: string }>(
-    `SELECT COUNT(*)::text AS n FROM app.tbwrkclose WHERE idiw37 = $1 AND wkctr = $2`,
-    [opts.idiw37, opts.wkctr],
-  )
-  if (Number(dup.rows[0]?.n ?? 0) > 0) {
-    throw new Error('ท่านได้ทำการปิดงานไปแล้ว โปรดตรวจสอบ')
+  if (closeKind === 'complete') {
+    const dup = await pool.query<{ n: string }>(
+      `SELECT COUNT(*)::text AS n
+       FROM app.tbwrkclose
+       WHERE idiw37 = $1 AND wkctr = $2 AND close_kind = 'complete'`,
+      [opts.idiw37, opts.wkctr],
+    )
+    if (Number(dup.rows[0]?.n ?? 0) > 0) {
+      throw new Error('ท่านได้ทำการปิดงานไปแล้ว โปรดตรวจสอบ')
+    }
   }
 
   const wktimeclose = Math.floor(Date.now() / 1000)
   await pool.query(
-    `INSERT INTO app.tbwrkclose (idiw37, cstdate, cendate, wkctr, wktimeclose, wktimewk, wkunit)
-     VALUES ($1, $2, $3, $4, $5, $6, 'Min')`,
-    [opts.idiw37, cstdate, cendate, opts.wkctr, wktimeclose, wktimewk],
+    `INSERT INTO app.tbwrkclose (
+       idiw37, cstdate, cendate, wkctr, wktimeclose, wktimewk, wkunit, close_kind, incomplete_reason
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, 'Min', $7, $8)`,
+    [
+      opts.idiw37,
+      cstdate,
+      cendate,
+      opts.wkctr,
+      wktimeclose,
+      wktimewk,
+      closeKind,
+      incompleteReason,
+    ],
   )
-  await touchConfirmQcPending(pool, opts.idiw37)
+  if (closeKind === 'complete') {
+    await touchConfirmQcPending(pool, opts.idiw37)
+  }
   return wktimewk
 }
 
@@ -176,6 +222,7 @@ export async function addPersonnelCloseTelegramMini(
     startT,
     endD,
     endT,
+    closeKind: 'complete',
   })
 
   return {
@@ -194,10 +241,13 @@ export async function addPersonnelClose(
     startT: string
     endD: string
     endT: string
+    closeKind?: PersonnelCloseKind
+    incompleteReason?: string
   },
 ): Promise<void> {
-  const { assertWorkOrderCloseReady } = await import('../lib/work-order-close-guard.js')
-  await assertWorkOrderCloseReady(pool, opts.idiw37)
+  const { assertPersonnelCloseReady } = await import('../lib/work-order-close-guard.js')
+  const closeKind: PersonnelCloseKind = opts.closeKind === 'partial' ? 'partial' : 'complete'
+  await assertPersonnelCloseReady(pool, opts.idiw37, closeKind)
   await insertPersonnelCloseRow(pool, opts)
 }
 

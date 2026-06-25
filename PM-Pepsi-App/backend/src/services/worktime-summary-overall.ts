@@ -1,6 +1,12 @@
 import type { Pool } from 'pg'
 import { resolveManhourChartRange, type ManhourChartRange } from './manhour-chart.js'
-import { personnelIsActiveSql } from '../lib/personnel-active-sql.js'
+import {
+  manhourConfirmMinutesToHours,
+  WORKTIME_CONFIRM_MINUTES_SUM_SQL,
+  WORKTIME_CONFIRMED_COUNT_BY_WKTYPE_SQL,
+  WORKTIME_PM_COMPLETED_COUNT_SQL,
+  WORKTIME_TECHNICIAN_CONFIRM_STATS_SQL,
+} from '../lib/manhour-confirm-sql.js'
 import { pepsiWorkWeekDateRange, pepsiWorkWeekFromUnix } from '../lib/pepsi-work-week.js'
 
 export type WorktimeOverallZbStat = {
@@ -103,9 +109,7 @@ async function pmSummary(
       [wktype, range.from, range.to],
     ),
     pool.query<{ n: string }>(
-      `SELECT COUNT(*)::text AS n
-       FROM app.view_exportconfirm
-       WHERE wktype = $1 AND endate BETWEEN $2 AND $3`,
+      WORKTIME_PM_COMPLETED_COUNT_SQL,
       [wktype, range.from, range.to],
     ),
   ])
@@ -148,7 +152,7 @@ export async function getWorktimeSummaryOverall(
 
   const wktypeList = ['ZB01', 'ZB02', 'ZB05'] as const
 
-  const [plannedRes, completedRes, techRes, pmYearCounts, pmMonthCounts, pmWeekCounts, hoursYearRes, pmByLineRes] =
+  const [plannedRes, completedRes, techRes, pmYearCounts, pmMonthCounts, pmWeekCounts, hrHoursRes, confirmMinutesRes, pmByLineRes] =
     await Promise.all([
     pool.query<{ wktype: string; n: string }>(
       `SELECT wktype, COUNT(*)::text AS n
@@ -157,58 +161,29 @@ export async function getWorktimeSummaryOverall(
        GROUP BY wktype`,
       [wktypeList, from, to],
     ),
-    pool.query<{ wktype: string; n: string }>(
-      `SELECT wktype, COUNT(*)::text AS n
-       FROM app.view_exportconfirm
-       WHERE wktype = ANY($1) AND endate BETWEEN $2 AND $3
-       GROUP BY wktype`,
-      [wktypeList, from, to],
-    ),
+    pool.query<{ wktype: string; n: string }>(WORKTIME_CONFIRMED_COUNT_BY_WKTYPE_SQL, [
+      wktypeList,
+      from,
+      to,
+    ]),
     pool.query<{
       idwkctr: string
       wkctr: string
       display_name: string | null
       has_image: boolean
       completed_orders: string
-      confirm_hours: string
-    }>(
-      `SELECT
-         wc.idwkctr,
-         wc.wkctr,
-         NULLIF(TRIM(CONCAT(
-           COALESCE(wc.titlewkctr,''),
-           COALESCE(wc.namewkctr,''),
-           ' ',
-           COALESCE(wc.surnamewkctr,'')
-         )), '') AS display_name,
-         (octet_length(wc.imgmember_data) > 0) AS has_image,
-         COUNT(*)::text AS completed_orders,
-         COALESCE(SUM(c.timewk), 0)::text AS confirm_hours
-       FROM app.view_exportconfirm c
-       INNER JOIN app.tbworkcenter wc ON wc.wkctr = c.wkctr
-       WHERE c.wktype = ANY($1)
-         AND c.endate BETWEEN $2 AND $3
-         AND ${personnelIsActiveSql('wc')}
-       GROUP BY wc.idwkctr, wc.wkctr, wc.titlewkctr, wc.namewkctr, wc.surnamewkctr, wc.imgmember_data
-       ORDER BY COALESCE(SUM(c.timewk), 0) DESC
-       LIMIT 25`,
-      [wktypeList, from, to],
-    ),
+      confirm_minutes: string
+    }>(WORKTIME_TECHNICIAN_CONFIRM_STATS_SQL, [wktypeList, from, to]),
     pmSummary(pool, range),
     pmSummary(pool, monthRangeResolved),
     pmSummary(pool, weekRangeResolved),
-    pool.query<{ hr_hours: string; confirm_hours: string }>(
-      `SELECT
-         (SELECT COALESCE(SUM(m.wh + m.ot1 + m.ot15 + m.ot1hol + m.ot2 + m.ot3), 0)::text
-          FROM app.tbmanhours m
-          WHERE m.workday BETWEEN $1 AND $2
-         ) AS hr_hours,
-         (SELECT COALESCE(SUM(c.timewk), 0)::text
-          FROM app.view_exportconfirm c
-          WHERE c.endate BETWEEN $1 AND $2
-         ) AS confirm_hours`,
+    pool.query<{ hr_hours: string }>(
+      `SELECT COALESCE(SUM(m.wh + m.ot1 + m.ot15 + m.ot1hol + m.ot2 + m.ot3), 0)::text AS hr_hours
+       FROM app.tbmanhours m
+       WHERE m.workday BETWEEN $1 AND $2`,
       [from, to],
     ),
+    pool.query<{ total: string }>(WORKTIME_CONFIRM_MINUTES_SUM_SQL, [from, to]),
     pool.query<{ productline: string; prolinedescrip: string | null; planned: string }>(
       `WITH mntplan_to_line AS (
          SELECT DISTINCT ON (tl.mntplan)
@@ -268,10 +243,9 @@ export async function getWorktimeSummaryOverall(
     backlog: Math.max(0, pmWeekCounts.planned - pmWeekCounts.completed),
   }
 
-  const hoursRow = hoursYearRes.rows[0]
   const hoursYear: WorktimeOverallHoursYearSummary = {
-    hrHours: Math.round(Number(hoursRow?.hr_hours ?? 0) * 10) / 10,
-    confirmHours: Math.round(Number(hoursRow?.confirm_hours ?? 0) * 10) / 10,
+    hrHours: Math.round(Number(hrHoursRes.rows[0]?.hr_hours ?? 0) * 10) / 10,
+    confirmHours: manhourConfirmMinutesToHours(Number(confirmMinutesRes.rows[0]?.total ?? 0)),
   }
 
   const pmByLine: WorktimeOverallPmLineRow[] = pmByLineRes.rows.map((r) => ({
@@ -286,7 +260,7 @@ export async function getWorktimeSummaryOverall(
     displayName: r.display_name,
     hasImage: Boolean(r.has_image),
     completedOrders: Number(r.completed_orders),
-    confirmHours: Math.round(Number(r.confirm_hours) * 10) / 10,
+    confirmHours: manhourConfirmMinutesToHours(Number(r.confirm_minutes)),
   }))
 
   return { range, year, pmYear, pmMonth, pmWeek, hoursYear, pmByLine, zb, technicians }
