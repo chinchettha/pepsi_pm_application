@@ -30,6 +30,8 @@ describe('mapPlanWorkRowToEvent', () => {
     expect(ev?.pipelineStatus).toBe('unassigned')
     expect(ev?.color).toBe('#FF3B30')
     expect(ev?.title).toBe('WO1 / PM01')
+    expect(ev?.hoverDetail?.workOrder).toBe('WO1')
+    expect(ev?.hoverDetail?.zoneTitle).toBe('Test op')
   })
 
   it('uses pipeline purple when assigned', () => {

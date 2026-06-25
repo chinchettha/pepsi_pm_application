@@ -406,6 +406,8 @@ export async function listCalendarEventsFiltered(
            ti.mat, ti.ostdescription, ti.confirm_qc_status,
            mp.mpcount, mp.mday, mp.resoncom,
            wc.namewkctr, wc.surnamewkctr,
+           (SELECT MAX(w.cstdate) FROM app.tbwrkclose w WHERE w.idiw37 = o.idiw37) AS last_personnel_close_sec,
+           (SELECT MAX(c.stdate) FROM app.tbcofirm c WHERE c.idiw37 = o.idiw37) AS last_supervisor_close_sec,
            COALESCE(v.percent_close, 0) AS percent_close,
            COALESCE(v.has_confirm, 0) AS has_confirm,
            COALESCE(ac.n, 0) AS assign_count,

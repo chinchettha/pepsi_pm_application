@@ -23,6 +23,9 @@ export const calendarEventHoverDetailSchema = z.object({
   orderFrameEnd: z.string().optional(),
   movedToDate: z.string().optional(),
   moveReason: z.string().optional(),
+  pipelineStatus: z.enum(plannerPipelineStatusSchema).optional(),
+  pmExecutionStatus: z.enum(pmExecutionStatusSchema).optional(),
+  statusLabel: z.string().optional(),
 })
 
 export const calendarEventSchema = z.object({

@@ -4,8 +4,11 @@ import {
   buildCalendarEventDescription,
   buildCalendarEventHoverDetail,
   buildCalendarEventTitle,
+  buildFullCalendarEventHoverDetail,
   mapCalendarOrderRowToEvent,
   resolveCalendarEventColor,
+  resolveCalendarFinishDate,
+  resolveCalendarMovedToDate,
   resolveCalendarWorkHours,
 } from './calendar-event-display.js'
 
@@ -111,6 +114,52 @@ describe('calendar-event-display', () => {
     expect(hover.planDate).toBe('28.05.2026')
     expect(hover.movedToDate).toBeTruthy()
     expect(hover.moveReason).toBe('เครื่องหยุด')
+  })
+
+  it('shows move + finish for closed TECO with app close date', () => {
+    const closeSec = Math.floor(new Date('2026-06-10').getTime() / 1000)
+    const hover = buildFullCalendarEventHoverDetail({
+      ...baseRow,
+      syst: 'TECO',
+      actfinish: null,
+      cday: Math.floor(new Date('2026-06-01').getTime() / 1000),
+      mpcount: 1,
+      mday: Math.floor(new Date('2026-05-20').getTime() / 1000),
+      resoncom: 'รออะไหล่',
+      last_supervisor_close_sec: closeSec,
+      has_confirm: 1,
+      percent_close: 100,
+      assign_count: 1,
+      complete_close_wkctr: 1,
+    })
+    expect(hover.statusLabel).toContain('Closed')
+    expect(hover.statusLabel).toContain('TECO')
+    expect(hover.finishDate).toBe('10.06.2026')
+    expect(hover.movedToDate).toBeTruthy()
+    expect(hover.moveReason).toBe('รออะไหล่')
+    expect(hover.pipelineStatus).toBe('closed')
+  })
+
+  it('resolves finish from personnel close when SAP actfinish empty', () => {
+    const sec = Math.floor(new Date('2026-06-08').getTime() / 1000)
+    expect(
+      resolveCalendarFinishDate({
+        ...baseRow,
+        actfinish: null,
+        last_supervisor_close_sec: null,
+        last_personnel_close_sec: sec,
+      }),
+    ).toBe('08.06.2026')
+  })
+
+  it('resolves moved-to without REL/CRTD gate when mpcount set', () => {
+    const moved = resolveCalendarMovedToDate({
+      ...baseRow,
+      syst: 'TECO',
+      mpcount: 2,
+      cday: Math.floor(new Date('2026-06-01').getTime() / 1000),
+    })
+    expect(moved).toBe('01.06.2026')
   })
 
   it('maps row to calendar event — unassigned uses pipeline red', () => {

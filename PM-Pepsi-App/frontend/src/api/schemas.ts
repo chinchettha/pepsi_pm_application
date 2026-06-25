@@ -636,6 +636,9 @@ export const calendarEventHoverDetailSchema = z.object({
   orderFrameEnd: z.string().optional(),
   movedToDate: z.string().optional(),
   moveReason: z.string().optional(),
+  pipelineStatus: plannerPipelineStatusSchema.optional(),
+  pmExecutionStatus: pmExecutionStatusSchema.optional(),
+  statusLabel: z.string().optional(),
 })
 
 export type CalendarEventHoverDetail = z.infer<typeof calendarEventHoverDetailSchema>

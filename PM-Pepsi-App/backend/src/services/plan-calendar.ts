@@ -1,5 +1,11 @@
 import type { Pool } from 'pg'
-import { buildCalendarDayOrderCounts } from '../lib/calendar-event-display.js'
+import {
+  buildCalendarDayOrderCounts,
+  buildFullCalendarEventHoverDetail,
+  resolveCalendarPlanTimes,
+  resolveCalendarWorkHoursForGantt,
+  type CalendarOrderRow,
+} from '../lib/calendar-event-display.js'
 import { aggregatePipelineCounts } from '../lib/pipeline-counts.js'
 import { PLANNER_DISPATCH_WHERE } from '../lib/planner-dispatch-status.js'
 import {
@@ -8,6 +14,7 @@ import {
   type PlannerPipelineStatus,
 } from '../lib/planner-pipeline.js'
 import { resolveWoPmPhase } from '../lib/wo-pm-phase.js'
+import { resolvePmExecutionStatus } from '../lib/wo-pm-execution.js'
 import {
   FACTORY_CODE,
   isPlanMovableStatus,
@@ -50,10 +57,24 @@ type PlanWorkRow = {
   idiw37: number
   wkorder: string
   wktype: string | null
+  mat?: string | null
   bscstart: string | number | null
+  actfinish?: string | number | null
   cday: string | number | null
   syst: string | null
   operationshorttext: string | null
+  functionalloc?: string | null
+  funcdescrip?: string | null
+  wkctr?: string | null
+  work?: string | number | null
+  untime?: string | number | null
+  mpcount?: number | null
+  mday?: string | number | null
+  resoncom?: string | null
+  namewkctr?: string | null
+  surnamewkctr?: string | null
+  last_personnel_close_sec?: string | number | null
+  last_supervisor_close_sec?: string | number | null
   assign_count: number | string
   worktime_count: number | string
   ack_pending: number | string
@@ -64,6 +85,42 @@ type PlanWorkRow = {
   partial_close_count: number | string
   complete_close_wkctr: number | string
   partial_only_wkctr: number | string
+}
+
+function planRowToCalendarRow(row: PlanWorkRow): CalendarOrderRow {
+  return {
+    idiw37: row.idiw37,
+    wkorder: row.wkorder,
+    wktype: row.wktype,
+    mat: row.mat ?? null,
+    bscstart: row.bscstart,
+    actfinish: row.actfinish ?? null,
+    cday: row.cday,
+    syst: row.syst,
+    operationshorttext: row.operationshorttext,
+    ostdescription: null,
+    wkctr: row.wkctr ?? null,
+    opac: null,
+    equipment: null,
+    equdescrip: null,
+    functionalloc: row.functionalloc ?? null,
+    funcdescrip: row.funcdescrip ?? null,
+    wkstcolor: null,
+    mpcount: row.mpcount ?? null,
+    mday: row.mday ?? null,
+    resoncom: row.resoncom ?? null,
+    namewkctr: row.namewkctr ?? null,
+    surnamewkctr: row.surnamewkctr ?? null,
+    work: row.work ?? null,
+    untime: row.untime ?? null,
+    last_personnel_close_sec: row.last_personnel_close_sec ?? null,
+    last_supervisor_close_sec: row.last_supervisor_close_sec ?? null,
+    percent_close: row.percent_close,
+    has_confirm: row.has_confirm,
+    confirm_qc_status: row.confirm_qc_status,
+    assign_count: row.assign_count,
+    worktime_count: row.worktime_count,
+  }
 }
 
 /** วันที่แสดงบนปฏิทิน (cday ถ้าย้ายแผน ไม่งั้น bscstart) */
@@ -112,6 +169,10 @@ export function mapPlanWorkRowToEvent(row: PlanWorkRow): CalendarEvent | null {
     pipelineStatus: pipeline.status,
   })
 
+  const calRow = planRowToCalendarRow(row)
+  const ganttHours = resolveCalendarWorkHoursForGantt(calRow.work, calRow.untime)
+  const planTimes = resolveCalendarPlanTimes(bscstart, ganttHours)
+
   return {
     id: String(row.idiw37),
     date: unixToDateString(displayUnix),
@@ -119,12 +180,24 @@ export function mapPlanWorkRowToEvent(row: PlanWorkRow): CalendarEvent | null {
     orderId: row.wkorder,
     color: pipeline.color,
     description: row.operationshorttext?.trim() || undefined,
+    hoverDetail: buildFullCalendarEventHoverDetail(calRow, {
+      pipelineStatus: pipeline.status,
+      pmExecutionStatus: resolvePmExecutionStatus({
+        syst: row.syst,
+        percentClose: row.percent_close,
+        hasConfirm: row.has_confirm,
+        confirmQcStatus: row.confirm_qc_status,
+      }),
+    }),
     canMovePlan: isPlanMovableStatus(syst),
     syst,
     pmPhase: resolveWoPmPhase(syst),
     pipelineStatus: pipeline.status,
     pipelineBadges: pipeline.badges,
     workProgressPercent: workProgressPercent ?? undefined,
+    workHours: ganttHours > 0 ? ganttHours : undefined,
+    planStartIso: planTimes.planStartIso,
+    planEndIso: planTimes.planEndIso,
   }
 }
 
@@ -180,8 +253,11 @@ async function queryPlanCalendarPlannerScope(
 ) {
   const factory = `%${FACTORY_CODE}%`
   return pool.query<PlanWorkRow>(
-    `SELECT i.idiw37, i.wkorder, i.wktype, i.bscstart, mov.cday, i.syst,
-            i.operationshorttext,
+    `SELECT i.idiw37, i.wkorder, i.wktype, i.mat, i.bscstart, i.actfinish, mov.cday, i.syst,
+            i.operationshorttext, i.functionalloc, i.funcdescrip, i.wkctr, i.work, i.untime,
+            mov.mpcount, mov.mday, mov.resoncom,
+            (SELECT MAX(w.cstdate) FROM app.tbwrkclose w WHERE w.idiw37 = i.idiw37) AS last_personnel_close_sec,
+            (SELECT MAX(c.stdate) FROM app.tbcofirm c WHERE c.idiw37 = i.idiw37) AS last_supervisor_close_sec,
             COALESCE(ac.n, 0) AS assign_count,
             COALESCE(wc_prog.n, 0) AS worktime_count,
             COALESCE(ap.n, 0) AS ack_pending,
@@ -245,8 +321,12 @@ async function queryPlanCalendarAssigneeScope(
     : [idwkctr, startSec, endSec]
 
   return pool.query<PlanWorkRow>(
-    `SELECT i.idiw37, i.wkorder, i.wktype, i.bscstart, mov.cday, i.syst,
-            i.operationshorttext,
+    `SELECT i.idiw37, i.wkorder, i.wktype, i.mat, i.bscstart, i.actfinish, mov.cday, i.syst,
+            i.operationshorttext, i.functionalloc, i.funcdescrip,
+            COALESCE(mp.wkctr, i.wkctr) AS wkctr, i.work, i.untime,
+            mov.mpcount, mov.mday, mov.resoncom, wc.namewkctr, wc.surnamewkctr,
+            (SELECT MAX(w.cstdate) FROM app.tbwrkclose w WHERE w.idiw37 = i.idiw37) AS last_personnel_close_sec,
+            (SELECT MAX(c.stdate) FROM app.tbcofirm c WHERE c.idiw37 = i.idiw37) AS last_supervisor_close_sec,
             COALESCE(ac.n, 0) AS assign_count,
             COALESCE(wc_prog.n, 0) AS worktime_count,
             COALESCE(ap.n, 0) AS ack_pending,

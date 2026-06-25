@@ -78,6 +78,10 @@ export type CalendarOrderRow = {
   complete_close_wkctr?: number | string | null
   work?: string | number | null
   untime?: string | number | null
+  /** MAX(tbwrkclose.cstdate) — วันปิดงานช่าง */
+  last_personnel_close_sec?: string | number | null
+  /** MAX(tbcofirm.stdate) — วันปิดงานหัวหน้า */
+  last_supervisor_close_sec?: string | number | null
 }
 
 function pmPhaseContextFromCalendarRow(row: CalendarOrderRow): WoPmPhaseContext {
@@ -186,6 +190,12 @@ export type CalendarEventHoverDetail = {
   orderFrameEnd?: string
   movedToDate?: string
   moveReason?: string
+  /** Pipeline จ่ายงาน (plan-calendar) */
+  pipelineStatus?: PlannerPipelineStatus
+  /** กำลังทำ / เสร็จแล้ว / ปิด SAP */
+  pmExecutionStatus?: PmExecutionStatus
+  /** สรุปสถานะสำหรับ hover */
+  statusLabel?: string
 }
 
 function formatTimeFromIso(iso: string): string {
@@ -202,6 +212,60 @@ function formatDotDate(sec: string | number | null | undefined): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const yyyy = d.getFullYear()
   return `${dd}.${mm}.${yyyy}`
+}
+
+const PIPELINE_STATUS_LABELS: Record<PlannerPipelineStatus, string> = {
+  unassigned: 'Unassigned',
+  assigned: 'Assigned',
+  in_progress: 'In progress',
+  partial: 'Partial close',
+  closed: 'Closed',
+}
+
+export function resolveCalendarMovedToDate(row: CalendarOrderRow): string | undefined {
+  const mpcount = row.mpcount != null ? Number(row.mpcount) : 0
+  if (row.mday != null && row.mday !== '' && Number(row.mday) > 0) {
+    return formatDotDate(row.mday) || undefined
+  }
+  if (mpcount >= 1 && row.cday != null && row.cday !== '' && Number(row.cday) > 0) {
+    return formatDotDate(row.cday) || undefined
+  }
+  return undefined
+}
+
+/** SAP actfinish หรือวันปิดงานในแอป (supervisor / personnel) */
+export function resolveCalendarFinishDate(row: CalendarOrderRow): string | undefined {
+  return (
+    formatDotDate(row.actfinish) ||
+    formatDotDate(row.last_supervisor_close_sec) ||
+    formatDotDate(row.last_personnel_close_sec) ||
+    undefined
+  )
+}
+
+export function formatCalendarHoverStatusLabel(input: {
+  pipelineStatus?: PlannerPipelineStatus
+  pmExecutionStatus?: PmExecutionStatus
+  syst?: string | null
+}): string | undefined {
+  const syst = (input.syst ?? '').trim().toUpperCase()
+  const exec = input.pmExecutionStatus ?? 'in_progress'
+  const pipe = input.pipelineStatus
+  const pipeLabel = pipe ? PIPELINE_STATUS_LABELS[pipe] : undefined
+
+  if (pipe === 'closed' || exec === 'closed') {
+    if (syst && syst !== 'CRTD' && syst !== 'REL') {
+      return `Closed — ${syst}`
+    }
+    return pipeLabel ? `Closed — ${pipeLabel}` : PM_EXECUTION_META.closed.label
+  }
+  if (exec === 'done') {
+    return pipeLabel ? `Done — ${pipeLabel}` : PM_EXECUTION_META.done.label
+  }
+  if (pipeLabel) {
+    return `${PM_EXECUTION_META[exec].label} — ${pipeLabel}`
+  }
+  return PM_EXECUTION_META[exec].label
 }
 
 function hasPlanMove(row: CalendarOrderRow): boolean {
@@ -310,13 +374,7 @@ export function buildCalendarEventHoverDetail(row: CalendarOrderRow): CalendarEv
   const resourceName = [row.namewkctr, row.surnamewkctr].filter(Boolean).join(' ').trim()
   const wkctr = (row.wkctr ?? '').trim()
   const functionalDesc = (row.funcdescrip ?? '').trim() || (row.functionalloc ?? '').trim()
-  const mpcount = row.mpcount != null ? Number(row.mpcount) : 0
-  const movedToDate =
-    hasPlanMove(row) && row.mday != null && row.mday !== '' && Number(row.mday) > 0
-      ? formatDotDate(row.mday)
-      : mpcount >= 1 && row.cday != null && row.cday !== '' && Number(row.cday) > 0
-        ? formatDotDate(row.cday)
-        : undefined
+  const movedToDate = resolveCalendarMovedToDate(row)
   const moveReason = (row.resoncom ?? '').trim() || undefined
 
   return {
@@ -332,6 +390,46 @@ export function buildCalendarEventHoverDetail(row: CalendarOrderRow): CalendarEv
     planDate: formatDotDate(row.bscstart) || undefined,
     movedToDate,
     moveReason,
+  }
+}
+
+/** Hover detail ครบ — รวม finish date + order frame + สถานะ (ใช้ทั้ง /calendar และ /plan-calendar) */
+export function buildFullCalendarEventHoverDetail(
+  row: CalendarOrderRow,
+  opts?: {
+    pipelineStatus?: PlannerPipelineStatus
+    pmExecutionStatus?: PmExecutionStatus
+    displayStatus?: CalendarEventDisplayStatus
+  },
+): CalendarEventHoverDetail {
+  const bscstart =
+    row.bscstart != null && row.bscstart !== '' ? Number(row.bscstart) : null
+  const ganttHours = resolveCalendarWorkHoursForGantt(row.work, row.untime)
+  const planTimes =
+    bscstart != null && Number.isFinite(bscstart) && bscstart > 0
+      ? resolveCalendarPlanTimes(bscstart, ganttHours)
+      : null
+  const pipelineStatus = opts?.pipelineStatus ?? resolveCalendarEventPipeline(row).status
+  const pmExecutionStatus =
+    opts?.pmExecutionStatus ??
+    resolvePmExecutionStatus({
+      syst: row.syst,
+      percentClose: row.percent_close,
+      hasConfirm: row.has_confirm,
+      confirmQcStatus: row.confirm_qc_status,
+    })
+  return {
+    ...buildCalendarEventHoverDetail(row),
+    finishDate: resolveCalendarFinishDate(row),
+    orderFrameStart: planTimes ? formatTimeFromIso(planTimes.planStartIso) : undefined,
+    orderFrameEnd: planTimes ? formatTimeFromIso(planTimes.planEndIso) : undefined,
+    pipelineStatus,
+    pmExecutionStatus,
+    statusLabel: formatCalendarHoverStatusLabel({
+      pipelineStatus,
+      pmExecutionStatus,
+      syst: row.syst,
+    }),
   }
 }
 
@@ -372,9 +470,9 @@ export function buildCalendarEventDescription(row: CalendarOrderRow): string {
   if (opLong) lines.push(opLong)
 
   const mpcount = row.mpcount != null ? Number(row.mpcount) : 0
-  if (hasPlanMove(row) && mpcount >= 1) {
+  if (mpcount >= 1) {
     lines.push(`ย้ายแผนครั้งที่ ${mpcount}`)
-    const moved = formatDotDate(row.mday ?? row.cday)
+    const moved = resolveCalendarMovedToDate(row)
     if (moved) lines.push(`Moved to: ${moved}`)
     const reason = (row.resoncom ?? '').trim()
     if (reason) lines.push(`Reason: ${reason}`)
@@ -433,12 +531,11 @@ export function mapCalendarOrderRowToEvent(
   const workHours = resolveCalendarWorkHours(row.work, row.untime)
   const ganttHours = resolveCalendarWorkHoursForGantt(row.work, row.untime)
   const planTimes = resolveCalendarPlanTimes(bscstart, ganttHours)
-  const hoverDetail: CalendarEventHoverDetail = {
-    ...buildCalendarEventHoverDetail(row),
-    finishDate: formatDotDate(row.actfinish) || undefined,
-    orderFrameStart: formatTimeFromIso(planTimes.planStartIso),
-    orderFrameEnd: formatTimeFromIso(planTimes.planEndIso),
-  }
+  const hoverDetail = buildFullCalendarEventHoverDetail(row, {
+    pipelineStatus: pipeline.status,
+    pmExecutionStatus,
+    displayStatus,
+  })
 
   const team = (row.team ?? '').trim()
   const pmTeam =
