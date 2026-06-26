@@ -19,6 +19,7 @@ import { WorkOrderSupervisorCloseSection } from '@/components/scheduling/WorkOrd
 import { WorkOrderMachinePanel } from '@/components/scheduling/WorkOrderMachinePanel'
 import { WorkOrderPlannerCommentSection } from '@/components/scheduling/WorkOrderPlannerCommentSection'
 import { WorkOrderPmCommentSection } from '@/components/scheduling/WorkOrderPmCommentSection'
+import { WorkOrderPmChartLinks } from '@/components/scheduling/WorkOrderPmChartLinks'
 import { WorkOrderTaskListPanel } from '@/components/scheduling/WorkOrderTaskListPanel'
 import { WorkOrderWorkflowSteps } from '@/components/scheduling/WorkOrderWorkflowSteps'
 import { Badge } from '@/components/ui/badge'
@@ -56,8 +57,6 @@ import {
   putWorkOrderTeam,
   putConfirmationComment,
 } from '@/lib/api-public'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   isWorkOrderCloseReady,
   workOrderCloseReadyMessage,
@@ -723,6 +722,7 @@ export function WorkOrderDetailDialog({
                           onSaved={() => void modalQ.refetch()}
                         />
                       ) : null}
+                      {d?.wkorder ? <WorkOrderPmChartLinks /> : null}
                       <WorkOrderTaskListPanel
                         taskList={modalQ.data.taskList}
                         plannerLayout={assignedLayout}

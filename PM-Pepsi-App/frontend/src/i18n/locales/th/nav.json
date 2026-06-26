@@ -16,6 +16,7 @@
     "/backlog": "Backlog / แผนค้าง",
     "/work-orders": "WO/Confirmation",
     "/pm-vibration": "PM ค่าวัด / กระแส 3 เฟส",
+    "/pm-charts": "บันทึก PM Chart",
     "/confirmation": "Confirmation",
     "/planning": "แผน PM/CM",
     "/integration": "SAP CSV / Integration",

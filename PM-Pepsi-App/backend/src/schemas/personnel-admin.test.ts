@@ -5,17 +5,28 @@ import {
 } from './personnel-admin.js'
 
 describe('personnel admin schema', () => {
-  it('accepts explicit userrole and expanded legacy userst A/H/U/W', () => {
+  it('accepts explicit planner/technician userrole with U/W userst', () => {
     const parsed = personnelAdminUpsertBodySchema.parse({
+      idwkctr: 'HR001',
+      wkctr: 'PAC001',
+      userst: 'W',
+      userrole: 'technician',
+      labourcost: 120,
+    })
+
+    expect(parsed.userst).toBe('W')
+    expect(parsed.userrole).toBe('technician')
+  })
+
+  it('rejects legacy userst H and manager role on upsert', () => {
+    const parsed = personnelAdminUpsertBodySchema.safeParse({
       idwkctr: 'HR001',
       wkctr: 'PAC001',
       userst: 'H',
       userrole: 'manager',
-      labourcost: 120,
     })
 
-    expect(parsed.userst).toBe('H')
-    expect(parsed.userrole).toBe('manager')
+    expect(parsed.success).toBe(false)
   })
 
   it('defaults new personnel to planner role and U menuright context', () => {

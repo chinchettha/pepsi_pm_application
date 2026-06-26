@@ -68,7 +68,7 @@ export function resolvePostLoginPathForUserst(
   fallback = '/plan-calendar',
 ): string {
   const normalized = normalizePrimaryRolePair({ userst })
-  return POST_LOGIN_PATH_BY_USERST[normalized.userst]
+  return POST_LOGIN_PATH_BY_USERST[normalized.userst] ?? fallback
 }
 
 export function isVisibleRoleCode(roleCode: string): boolean {

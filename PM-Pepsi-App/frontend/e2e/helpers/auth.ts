@@ -3,6 +3,7 @@ import type { TestPersona, TestPersonaId } from '../../src/lib/test-personas'
 import { personaById, PLANNER_PERSONA, TECHNICIAN_PERSONA } from '../../src/lib/test-personas'
 
 export const API_BASE = process.env.PLAYWRIGHT_API_URL ?? 'http://127.0.0.1:4000'
+const APP_BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
 
 /** Dev seed — Planner: ADMIN01/admin · Technician: WC001/wc001 (wkctr PAC002) */
 function devSeedCredentials(): { username: string; password: string } | null {
@@ -52,6 +53,20 @@ export async function apiLoginAs(
   return { token: body.token, user: body.user, apiBase: API_BASE }
 }
 
+/** Login via app origin so `pm_session` cookie applies to Vite `/api` proxy (not only 127.0.0.1). */
+async function appLoginAs(
+  page: Page,
+  creds: { username: string; password: string },
+): Promise<{ token: string; user: unknown }> {
+  const loginRes = await page.context().request.post(`${APP_BASE}/api/v1/auth/login`, {
+    data: { username: creds.username, password: creds.password, mode: 'workcenter' },
+  })
+  if (!loginRes.ok()) {
+    throw new Error(`Login failed (${creds.username}): ${loginRes.status()} ${await loginRes.text()}`)
+  }
+  return (await loginRes.json()) as { token: string; user: unknown }
+}
+
 export async function apiLogin(request: APIRequestContext): Promise<{
   token: string
   user: unknown
@@ -72,7 +87,7 @@ export async function seedPersonaSession(
 ): Promise<TestPersona> {
   const persona = personaById(personaId)
   const creds = personaCredentials(personaId)
-  const { token, user } = await apiLoginAs(request, creds)
+  const { token, user } = await appLoginAs(page, creds)
   const clearTourSeen = opts?.clearTourSeen ?? false
 
   await page.addInitScript(

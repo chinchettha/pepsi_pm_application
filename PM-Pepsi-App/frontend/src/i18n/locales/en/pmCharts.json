@@ -1,0 +1,138 @@
+{
+  "layout": {
+    "title": "PM Chart Entry",
+    "description": "Manual measurement sheets with live charts — aligned to customer PMChartDesign.xlsx",
+    "navLabel": "PM chart sections",
+    "hintManual": "Enter values in the grid — averages and charts update instantly",
+    "hintCharts": "Three templates: Vibration · Motor Current · Combustion",
+    "hintSave": "Edits auto-save to database",
+    "hintImport": "Import saves to database automatically — duplicate readings are merged"
+  },
+  "toolbar": {
+    "wkorder": "Work Order (optional)",
+    "wkorderPlaceholder": "e.g. 4001565681",
+    "scopeHint": "Leave empty for plant default scope, or enter WO to save per work order",
+    "saving": "Saving…",
+    "lastSaved": "Last saved: {{time}}"
+  },
+  "tabs": {
+    "vibration": "Vibration",
+    "current": "Motor Current",
+    "combustion": "Combustion"
+  },
+  "actions": {
+    "addRow": "Add reading",
+    "removeRow": "Remove row",
+    "save": "Save",
+    "saveOk": "Saved to database",
+    "saveFailed": "Save failed",
+    "exportXlsx": "Export PMChartDesign.xlsx",
+    "exportOk": "Excel exported",
+    "exportFailed": "Export failed",
+    "importXlsx": "Import PMChartDesign.xlsx",
+    "importSaved": "Imported {{count}} sheet(s) and saved to database",
+    "importDuplicates": "{{count}} duplicate reading(s) merged with existing data",
+    "importOk": "Imported {{count}} sheet(s)",
+    "importPartial": "Some sheets were skipped",
+    "importFailed": "Import failed",
+    "exportReport": "Export report (data + charts)",
+    "exportReportOk": "Report exported with charts",
+    "exportReportFailed": "Report export failed"
+  },
+  "empty": {
+    "noRows": "No readings yet — add a row or import from Excel"
+  },
+  "period": {
+    "label": "View period",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "from": "From",
+    "to": "To",
+    "hint": "Charts and report export use this period and date range",
+    "viewHint": "View: {{period}} · {{from}} → {{to}}",
+    "noData": "No readings in this period — widen the date range or switch period"
+  },
+  "vibration": {
+    "subtitle": "Main Oil Pump — displacement (Dst) and sound level (dB) at four measurement points",
+    "date": "D/M/Y",
+    "mainOilPump": "Main Oil Pump",
+    "motorFront": "Motor Front",
+    "motorBack": "Motor Back",
+    "pump1": "Pump Point#1",
+    "pump2": "Pump Point#2",
+    "average": "Average",
+    "dst": "Dst",
+    "db": "dB",
+    "chartsTitle": "Trend charts",
+    "soundLevel": "Sound Level",
+    "displacement": "Displacement",
+    "soundLevelAxis": "Sound level (dB)",
+    "displacementAxis": "Displacement (Micron)",
+    "motorFrontDb": "Motor Front dB",
+    "motorBackDb": "Motor Back dB",
+    "pump1Db": "Pump Point#1 dB",
+    "pump2Db": "Pump Point#2 dB",
+    "motorFrontDst": "Motor Front Dst",
+    "motorBackDst": "Motor Back Dst",
+    "pump1Dst": "Pump Point#1 Dst",
+    "pump2Dst": "Pump Point#2 Dst",
+    "trend": "Polynomial trend (avg)"
+  },
+  "current": {
+    "title": "{{machine}} Motor Current",
+    "subtitle": "Three-phase readings (A) — {{year}} monthly log with reference averages",
+    "machine": "Machine",
+    "phase": "Phase",
+    "yearAverage": "{{year}} Average",
+    "chartTitle": "{{machine}} Motor Current",
+    "yAxis": "Current (A)",
+    "rRef": "R-Ref ({{year}})",
+    "sRef": "S-Ref ({{year}})",
+    "tRef": "T-Ref ({{year}})"
+  },
+  "months": {
+    "feb": "February",
+    "mar": "March",
+    "apr": "April",
+    "may": "May",
+    "jun": "June",
+    "jul": "July",
+    "aug": "August",
+    "sep": "September",
+    "oct": "October",
+    "nov": "November",
+    "dec": "December"
+  },
+  "combustion": {
+    "title": "Combustion / Stack Analysis",
+    "subtitle": "Load-point parameters by month — charts mirror PMChartDesign Combustion sheet",
+    "pointCol": "POINT",
+    "parameter": "PARAMETER",
+    "point": "Point {{point}}",
+    "chartsTitle": "Charts — Point {{point}}",
+    "tempChart": "Temperature",
+    "impuritiesChart": "Impurities",
+    "gasChart": "CO2 & O2 Proportion",
+    "percentAxis": "Percentage (%)"
+  },
+  "combustionMonths": {
+    "jan": "JAN",
+    "mar": "Mar",
+    "aug": "Aug",
+    "oct": "Oct",
+    "dec": "Dec"
+  },
+  "combustionParams": {
+    "tAir": "T. Air",
+    "tGas": "T. Gas",
+    "o2": "O2 (%)",
+    "co": "CO (ppm)",
+    "no2": "NO2 (ppm)",
+    "so2": "SO2 (ppm)",
+    "co2": "CO2 (%)",
+    "eff": "Eff. (%)",
+    "losses": "Losses"
+  }
+}

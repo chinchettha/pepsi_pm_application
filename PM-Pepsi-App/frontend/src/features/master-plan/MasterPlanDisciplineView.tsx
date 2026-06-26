@@ -174,23 +174,28 @@ export function MasterPlanDisciplineView({
   }
   if (workbookQ.data === null) {
     return (
-      <EmptyState
-        icon={Table2}
-        title={t('masterPlan.emptyTitle', { discipline })}
-        description={t('masterPlan.emptyDesc')}
-        action={
-          canWrite ? (
+      <div className="space-y-4">
+        <EmptyState
+          icon={Table2}
+          title={t('masterPlan.emptyTitle', { discipline })}
+          description={t('masterPlan.emptyDesc')}
+        />
+        {canWrite ? (
+          <div className="flex justify-center">
             <MasterPlanImportButton
               onImported={(d) => {
                 onImported?.(d)
                 void workbookQ.refetch()
               }}
             />
-          ) : undefined
-        }
-      />
+          </div>
+        ) : null}
+      </div>
     )
   }
+
+  const workbook = workbookQ.data
+  if (!workbook) return <MasterDataPanelSkeleton />
 
   return (
     <div className="space-y-3">
@@ -200,7 +205,7 @@ export function MasterPlanDisciplineView({
             {t('masterPlan.workbookTitle', { discipline })}
           </p>
           <p className="mt-1 text-xs text-app-muted">
-            {workbookQ.data.sourceFilename} · {t('masterPlan.sheetCount', { count: sheets.length })}
+            {workbook.sourceFilename} · {t('masterPlan.sheetCount', { count: sheets.length })}
           </p>
         </div>
       ) : null}

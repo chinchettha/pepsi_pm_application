@@ -31,7 +31,6 @@ import {
 } from '@/features/master-plan/master-plan-column-keys'
 import {
   isMasterPlanVirtualColumn,
-  masterPlanVirtualColumnLabelKey,
   masterPlanVirtualColumnWidthClass,
   withMasterPlanVirtualColumns,
 } from '@/features/master-plan/master-plan-virtual-columns'

@@ -36,6 +36,7 @@ import { registerAdminTelegramRoutes } from './routes/admin-telegram.js'
 import { registerTelegramRoutes } from './routes/telegram.js'
 import { registerBoardActivityRoutes } from './routes/board-activity.js'
 import { registerBoardPmReadingsRoutes } from './routes/board-pm-readings.js'
+import { registerPmChartDesignRoutes } from './routes/pm-chart-design.js'
 import { registerPmReadingsRoutes } from './routes/pm-readings.js'
 import { registerBoardKioskRoutes } from './routes/board-kiosk.js'
 import { registerSettingsRoutes } from './routes/settings.js'
@@ -81,6 +82,7 @@ export function createApp(opts: {
   registerBoardActivityRoutes(app, opts.pool, opts.sessionSecret)
   registerBoardPmReadingsRoutes(app, opts.pool, opts.sessionSecret)
   registerPmReadingsRoutes(app, opts.pool, opts.sessionSecret)
+  registerPmChartDesignRoutes(app, opts.pool, opts.sessionSecret)
   registerAuthRoutes(app, opts.pool, opts.sessionSecret)
   registerPortalRoutes(app, opts.pool, opts.sessionSecret)
   registerUserPrefRoutes(app, opts.pool, opts.sessionSecret)

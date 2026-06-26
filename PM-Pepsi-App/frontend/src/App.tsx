@@ -43,7 +43,10 @@ import { SettingsPage } from '@/features/settings/SettingsPage'
 import { UserLogPage } from '@/features/user-log/UserLogPage'
 import { EngineeringBoardPage } from '@/features/board/EngineeringBoardPage'
 import { WorkOrdersPage } from '@/features/work-orders/WorkOrdersPage'
-import { PmVibrationPage } from '@/features/pm-vibration/PmVibrationPage'
+import { PmChartsLayout } from '@/features/pm-charts/PmChartsLayout'
+import { PmChartCombustionPage } from '@/features/pm-charts/PmChartCombustionPage'
+import { PmChartCurrentPage } from '@/features/pm-charts/PmChartCurrentPage'
+import { PmChartVibrationPage } from '@/features/pm-charts/PmChartVibrationPage'
 import { PortalPage } from '@/features/portal/PortalPage'
 import { UiPlaygroundPage } from '@/features/dev/UiPlaygroundPage'
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
@@ -70,7 +73,13 @@ export default function App() {
           <Route path="backlog" element={<BacklogPage />} />
           <Route path="work-orders" element={<Navigate to="/confirmation" replace />} />
           <Route path="work-orders/:id" element={<WorkOrdersPage />} />
-          <Route path="pm-vibration" element={<PmVibrationPage />} />
+          <Route path="pm-vibration" element={<Navigate to="/" replace />} />
+          <Route path="pm-charts" element={<PmChartsLayout />}>
+            <Route index element={<Navigate to="vibration" replace />} />
+            <Route path="vibration" element={<PmChartVibrationPage />} />
+            <Route path="current" element={<PmChartCurrentPage />} />
+            <Route path="combustion" element={<PmChartCombustionPage />} />
+          </Route>
           <Route path="confirmation" element={<ConfirmationPage />} />
           <Route path="confirmation/export" element={<Navigate to="/confirmation" replace />} />
           <Route path="planning" element={<PlanningPage />} />

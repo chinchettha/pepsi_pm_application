@@ -18,6 +18,7 @@ import enReports from '@/i18n/locales/en/reports.json'
 import enAdmin from '@/i18n/locales/en/admin.json'
 import enIntegration from '@/i18n/locales/en/integration.json'
 import enBoard from '@/i18n/locales/en/board.json'
+import enPmCharts from '@/i18n/locales/en/pmCharts.json'
 import enPmVibration from '@/i18n/locales/en/pmVibration.json'
 import enMasterData from '@/i18n/locales/en/masterData.json'
 import enUserLog from '@/i18n/locales/en/userLog.json'
@@ -36,6 +37,7 @@ import thReports from '@/i18n/locales/th/reports.json'
 import thAdmin from '@/i18n/locales/th/admin.json'
 import thIntegration from '@/i18n/locales/th/integration.json'
 import thBoard from '@/i18n/locales/th/board.json'
+import thPmCharts from '@/i18n/locales/th/pmCharts.json'
 import thPmVibration from '@/i18n/locales/th/pmVibration.json'
 import thMasterData from '@/i18n/locales/th/masterData.json'
 import thUserLog from '@/i18n/locales/th/userLog.json'
@@ -68,6 +70,7 @@ void i18n.use(initReactI18next).init({
     'integration',
     'board',
     'pmVibration',
+    'pmCharts',
     'masterData',
     'userLog',
     'portal',
@@ -89,6 +92,7 @@ void i18n.use(initReactI18next).init({
       integration: enIntegration,
       board: enBoard,
       pmVibration: enPmVibration,
+      pmCharts: enPmCharts,
       masterData: enMasterData,
       userLog: enUserLog,
       portal: enPortal,
@@ -109,6 +113,7 @@ void i18n.use(initReactI18next).init({
       integration: thIntegration,
       board: thBoard,
       pmVibration: thPmVibration,
+      pmCharts: thPmCharts,
       masterData: thMasterData,
       userLog: thUserLog,
       portal: thPortal,

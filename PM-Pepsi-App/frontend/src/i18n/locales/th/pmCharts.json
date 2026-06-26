@@ -1,0 +1,138 @@
+{
+  "layout": {
+    "title": "บันทึก PM Chart",
+    "description": "ฟอร์มค่าวัด manual พร้อมกราฟอัปเดตทันที — ตาม PMChartDesign.xlsx ของลูกค้า",
+    "navLabel": "ส่วนหน้า PM chart",
+    "hintManual": "กรอกค่าในตาราง — ค่าเฉลี่ยและกราฟอัปเดตทันที",
+    "hintCharts": "3 แบบฟอร์ม: Vibration · กระแสมอเตอร์ · Combustion",
+    "hintSave": "แก้ไขแล้วบันทึกลงฐานข้อมูลอัตโนมัติ",
+    "hintImport": "Import บันทึกลงฐานข้อมูลทันที — ข้อมูลซ้ำจะถูกรวมกับของเดิม"
+  },
+  "toolbar": {
+    "wkorder": "Work Order (ไม่บังคับ)",
+    "wkorderPlaceholder": "เช่น 4001565681",
+    "scopeHint": "ว่าง = scope เริ่มต้นของโรงงาน · ใส่ WO = บันทึกแยกตามใบงาน",
+    "saving": "กำลังบันทึก…",
+    "lastSaved": "บันทึกล่าสุด: {{time}}"
+  },
+  "tabs": {
+    "vibration": "Vibration",
+    "current": "กระแสมอเตอร์",
+    "combustion": "Combustion"
+  },
+  "actions": {
+    "addRow": "เพิ่มแถว",
+    "removeRow": "ลบแถว",
+    "save": "บันทึก",
+    "saveOk": "บันทึกลงฐานข้อมูลแล้ว",
+    "saveFailed": "บันทึกไม่สำเร็จ",
+    "exportXlsx": "Export PMChartDesign.xlsx",
+    "exportOk": "ส่งออก Excel แล้ว",
+    "exportFailed": "ส่งออกไม่สำเร็จ",
+    "importXlsx": "Import PMChartDesign.xlsx",
+    "importSaved": "นำเข้า {{count}} sheet และบันทึกลงฐานข้อมูลแล้ว",
+    "importDuplicates": "รวมข้อมูลซ้ำ {{count}} รายการกับข้อมูลเดิม",
+    "importOk": "นำเข้า {{count}} sheet แล้ว",
+    "importPartial": "บาง sheet ถูกข้าม",
+    "importFailed": "นำเข้าไม่สำเร็จ",
+    "exportReport": "Export รายงาน (ข้อมูล + กราฟ)",
+    "exportReportOk": "ส่งออกรายงานพร้อมกราฟแล้ว",
+    "exportReportFailed": "ส่งออกรายงานไม่สำเร็จ"
+  },
+  "empty": {
+    "noRows": "ยังไม่มีข้อมูล — เพิ่มแถวหรือนำเข้าจาก Excel"
+  },
+  "period": {
+    "label": "ช่วงการดู",
+    "daily": "รายวัน",
+    "weekly": "รายสัปดาห์",
+    "monthly": "รายเดือน",
+    "yearly": "รายปี",
+    "from": "ตั้งแต่",
+    "to": "ถึง",
+    "hint": "กราฟและ export รายงานใช้ช่วงเวลานี้",
+    "viewHint": "มุมมอง: {{period}} · {{from}} → {{to}}",
+    "noData": "ไม่มีข้อมูลในช่วงนี้ — ขยายช่วงวันที่หรือเปลี่ยน period"
+  },
+  "vibration": {
+    "subtitle": "Main Oil Pump — Dst (ไมครอน) และ dB ที่ 4 จุดวัด",
+    "date": "D/M/Y",
+    "mainOilPump": "Main Oil Pump",
+    "motorFront": "Motor Front",
+    "motorBack": "Motor Back",
+    "pump1": "Pump Point#1",
+    "pump2": "Pump Point#2",
+    "average": "Average",
+    "dst": "Dst",
+    "db": "dB",
+    "chartsTitle": "กราฟแนวโน้ม",
+    "soundLevel": "Sound Level",
+    "displacement": "Displacement",
+    "soundLevelAxis": "Sound level (dB)",
+    "displacementAxis": "Displacement (Micron)",
+    "motorFrontDb": "Motor Front dB",
+    "motorBackDb": "Motor Back dB",
+    "pump1Db": "Pump Point#1 dB",
+    "pump2Db": "Pump Point#2 dB",
+    "motorFrontDst": "Motor Front Dst",
+    "motorBackDst": "Motor Back Dst",
+    "pump1Dst": "Pump Point#1 Dst",
+    "pump2Dst": "Pump Point#2 Dst",
+    "trend": "Polynomial trend (avg)"
+  },
+  "current": {
+    "title": "{{machine}} Motor Current",
+    "subtitle": "กระแส 3 เฟส (A) — บันทึกรายเดือน {{year}} พร้อมเส้นอ้างอิง",
+    "machine": "Machine",
+    "phase": "Phase",
+    "yearAverage": "เฉลี่ย {{year}}",
+    "chartTitle": "{{machine}} Motor Current",
+    "yAxis": "Current (A)",
+    "rRef": "R-Ref ({{year}})",
+    "sRef": "S-Ref ({{year}})",
+    "tRef": "T-Ref ({{year}})"
+  },
+  "months": {
+    "feb": "February",
+    "mar": "March",
+    "apr": "April",
+    "may": "May",
+    "jun": "June",
+    "jul": "July",
+    "aug": "August",
+    "sep": "September",
+    "oct": "October",
+    "nov": "November",
+    "dec": "December"
+  },
+  "combustion": {
+    "title": "Combustion / Stack Analysis",
+    "subtitle": "พารามิเตอร์ตาม load point รายเดือน — กราฟตาม sheet Combustion",
+    "pointCol": "POINT",
+    "parameter": "PARAMETER",
+    "point": "Point {{point}}",
+    "chartsTitle": "กราฟ — Point {{point}}",
+    "tempChart": "Temperature",
+    "impuritiesChart": "Impurities",
+    "gasChart": "CO2 & O2 Proportion",
+    "percentAxis": "Percentage (%)"
+  },
+  "combustionMonths": {
+    "jan": "JAN",
+    "mar": "Mar",
+    "aug": "Aug",
+    "oct": "Oct",
+    "dec": "Dec"
+  },
+  "combustionParams": {
+    "tAir": "T. Air",
+    "tGas": "T. Gas",
+    "o2": "O2 (%)",
+    "co": "CO (ppm)",
+    "no2": "NO2 (ppm)",
+    "so2": "SO2 (ppm)",
+    "co2": "CO2 (%)",
+    "eff": "Eff. (%)",
+    "losses": "Losses"
+  }
+}

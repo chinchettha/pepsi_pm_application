@@ -1,6 +1,7 @@
 import { navMenuResponseSchema, type NavMenuItem } from '@/api/schemas'
 import { appNav, type NavEntry, type NavLinkEntry } from '@/components/layout/nav-config'
 import { fetchApi } from '@/lib/fetch-api'
+import { HIDDEN_NAV_ROUTES } from '@/lib/hidden-nav-routes'
 import { resolveNavIcon } from '@/lib/nav-icon-map'
 
 /** Routes removed from product — strip from sidebar (API tbmenu + fallback supplement). */
@@ -11,6 +12,7 @@ const DEPRECATED_NAV_ROUTES = new Set([
   '/personnel/admin',
   /** Merged into `/confirmation` (see migration 111) */
   '/personnel/confirm',
+  ...HIDDEN_NAV_ROUTES,
 ])
 
 /** ชื่อเมนูจาก tbmenu ที่ต้องการ override ฝั่ง React */

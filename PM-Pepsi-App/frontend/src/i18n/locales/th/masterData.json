@@ -308,6 +308,7 @@
       "workOrders": "ใบงาน ({{count}})",
       "noWorkOrders": "ไม่พบใบงานสำหรับ mntplan นี้",
       "pm3Phase": "PM วัดกระแส 3 เฟส",
+      "pmChartEntry": "บันทึก PM Chart",
       "tasklist": "Task list master",
       "equipment": "Equipment master"
     },

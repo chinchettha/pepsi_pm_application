@@ -13,6 +13,8 @@ const DEPRECATED_NAV_ROUTES = new Set([
   '/personnel/admin',
   '/personnel/confirm',
   '/work-orders',
+  /** Hidden until technician manual-entry pages (pm-vibration + 3 more) ship */
+  '/pm-vibration',
 ])
 
 function isDeprecatedNavItem(to: string, menulink: string | null): boolean {

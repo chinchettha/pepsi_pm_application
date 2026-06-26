@@ -46,11 +46,12 @@ export function mapWorkcenterRow(row: WorkcenterRow): AuthUser {
   const nameEng = row.namewkctreng ?? ''
   const surnameEng = row.surnamewkctreng ?? ''
   const { sysstatus, userLevel } = mapSysstatus(row.userst)
+  const wkctrCode = row.wkctr?.trim() || row.idwkctr
 
   return {
     idwkctr: row.idwkctr,
-    username: row.wkctr,
-    wkctr: row.wkctr,
+    username: wkctrCode,
+    wkctr: wkctrCode,
     plnt: row.plnt,
     userst: row.userst,
     sysstatus,

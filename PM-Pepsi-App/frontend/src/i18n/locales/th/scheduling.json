@@ -383,7 +383,11 @@
     "toastAssignPersonOk": "จ่ายงานช่างสำเร็จ",
     "toastAssignFailed": "จ่ายงานไม่สำเร็จ",
     "toastTeamOk": "เพิ่มงานให้ Team {{team}} สำเร็จ",
-    "toastTeamFailed": "บันทึกทีมไม่สำเร็จ"
+    "toastTeamFailed": "บันทึกทีมไม่สำเร็จ",
+    "pmChartLinks": {
+      "title": "บันทึก PM Chart",
+      "description": "เปิดฟอร์มค่าวัด manual (Vibration · Current · Combustion)"
+    }
   },
   "woSummary": {
     "opac": "OPAC",

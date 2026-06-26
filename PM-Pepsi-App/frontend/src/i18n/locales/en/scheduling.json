@@ -383,7 +383,11 @@
     "toastAssignPersonOk": "Technician assignment successful",
     "toastAssignFailed": "Assignment failed",
     "toastTeamOk": "Added to Team {{team}} successfully",
-    "toastTeamFailed": "Could not save team"
+    "toastTeamFailed": "Could not save team",
+    "pmChartLinks": {
+      "title": "PM Chart entry",
+      "description": "Open manual measurement sheets (Vibration · Current · Combustion)"
+    }
   },
   "woSummary": {
     "opac": "OPAC",

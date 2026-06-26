@@ -16,6 +16,7 @@
     "/backlog": "Backlog",
     "/work-orders": "WO / Confirmation",
     "/pm-vibration": "PM Measurements / 3-Phase",
+    "/pm-charts": "PM Chart Entry",
     "/confirmation": "Confirmation",
     "/planning": "PM/CM Planning",
     "/integration": "SAP CSV / Integration",

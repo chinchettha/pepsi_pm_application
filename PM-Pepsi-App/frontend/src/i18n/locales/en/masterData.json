@@ -308,6 +308,7 @@
       "workOrders": "Work orders ({{count}})",
       "noWorkOrders": "No work orders for this mntplan",
       "pm3Phase": "PM 3-phase measurements",
+      "pmChartEntry": "PM Chart entry",
       "tasklist": "Task list master",
       "equipment": "Equipment master"
     },

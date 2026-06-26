@@ -36,6 +36,10 @@ function createPoolMock() {
           return { rows: [{ wkctr: 'PAC002' }], rowCount: 1 }
         }
 
+        if (text.includes('UPDATE app.tbplangingwork') && text.includes('pwcomment')) {
+          return { rows: [], rowCount: 0 }
+        }
+
         if (text.includes('INSERT INTO app.tbplangingwork')) {
           inserted.push((params?.[3] as string[]) ?? [])
           return { rows: [], rowCount: inserted[inserted.length - 1].length }

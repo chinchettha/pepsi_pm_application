@@ -111,17 +111,12 @@ export function MasterPlanRowLinksMenu({ rowId, onOpenWorkOrder }: MasterPlanRow
                   type="button"
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-slate-100"
                   onClick={() => {
-                    const firstWo = links.workOrders.wkOrders[0]
-                    if (firstWo) {
-                      navigate(`/pm-vibration?wkorder=${encodeURIComponent(firstWo)}`)
-                    } else {
-                      navigate('/pm-vibration')
-                    }
+                    navigate('/pm-charts/vibration')
                     setOpen(false)
                   }}
                 >
                   <Activity className="size-3.5 shrink-0 text-[#2f5597]" />
-                  {t('masterPlan.rowLinks.pm3Phase')}
+                  {t('masterPlan.rowLinks.pmChartEntry')}
                 </button>
               </li>
             ) : null}

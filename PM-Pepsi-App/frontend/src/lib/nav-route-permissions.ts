@@ -20,6 +20,7 @@ export const NAV_ROUTE_PERMISSION: Record<string, string> = {
   '/backlog': 'backlog.read',
   '/work-orders': 'work-orders.read',
   '/pm-vibration': 'confirmation.read',
+  '/pm-charts': 'confirmation.read',
   '/confirmation': 'confirmation.read',
   '/planning': 'planning.read',
   '/integration': 'iw37n.read',

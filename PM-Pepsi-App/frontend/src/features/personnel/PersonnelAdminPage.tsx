@@ -54,7 +54,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   applyImpersonationSession,
-  getStoredAuthUser,
   refreshAuthSession,
 } from '@/features/auth/login-api'
 import {
@@ -298,7 +297,6 @@ export function PersonnelAdminPage({ variant = 'personnel' }: PersonnelAdminPage
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const qc = useQueryClient()
-  const authUser = getStoredAuthUser()
   const isLegacyAdmin = useAnyPermission([
     'admin.users.read',
     'admin.users.write',

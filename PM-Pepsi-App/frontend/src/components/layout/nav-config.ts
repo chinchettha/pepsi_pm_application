@@ -53,8 +53,8 @@ export const appNav: NavEntry[] = [
   { kind: 'item', to: '/backlog', label: 'Backlog', icon: LayoutList, menuright: 'A:U:W' },
   {
     kind: 'item',
-    to: '/pm-vibration',
-    label: 'PM Measurements / 3-Phase',
+    to: '/pm-charts',
+    label: 'PM Chart Entry',
     icon: LineChart,
     menuright: 'A:U:W',
     permission: 'confirmation.read',
